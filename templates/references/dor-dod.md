@@ -55,6 +55,8 @@ Before doing your main work, output this section:
 | **Agatha** | Spec + UX + ADR + doc plan + code | Doc plan items, spec-vs-code divergences |
 | **Roz** (test authoring) | ADR + spec + existing code | Test descriptions, function signatures, domain intent |
 | **Roz** | ADR + spec | Requirements to verify against implementation |
+| **Poirot** | Git diff only (no upstream artifacts) | Diff metadata: files changed, lines added/removed, functions modified |
+| **Distillator** | Source documents (spec, UX doc, ADR) | Source paths, token estimates, downstream consumer |
 
 ## Definition of Done (DoD)
 
@@ -107,6 +109,18 @@ After completing your work, output this section:
 - Every doc plan item addressed
 - Code read for accuracy -- divergences flagged
 - Examples for every endpoint or config option
+
+**Poirot:**
+- Minimum 5 findings produced (or HALT documented with re-analysis)
+- All severity categories checked: logic, security, error handling, naming, dead code, type safety, resource management, concurrency
+- Cross-file analysis completed (or "Not applicable -- single file" noted)
+- Grep verification performed for pattern-based findings
+
+**Distillator:**
+- Preservation checklist complete -- all categories (decisions, rejected alternatives, constraints, dependencies, open questions, scope boundaries, named entities, numbers/dates/versions) counted and verified
+- Compression ratio reported in YAML frontmatter
+- Zero prose paragraphs -- bullets only
+- Round-trip reconstruction produced when VALIDATE: true (or explicitly marked N/A)
 
 **Ellis:**
 - Diff analyzed completely -- no missed files

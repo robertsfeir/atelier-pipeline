@@ -83,6 +83,38 @@ prompts. These are not pre-loaded into Eva's always-on context.
 > - Zero TODO/FIXME/HACK in delivered code
 > OUTPUT: Step N complete report with DoR/DoD sections, Bugs Discovered section, files changed
 
+**Poirot (blind review -- parallel with Roz QA, after Colby build):**
+> TASK: Blind review of Colby's build output for ADR-NNNN Step N
+> DIFF: [raw output of `git diff` for this unit -- Eva pastes the full diff here]
+> CONSTRAINTS:
+> - You receive ONLY the diff. No spec, no ADR, no context. This is by design.
+> - Minimum 5 findings required. Zero findings = HALT and re-analyze.
+> - Check: logic, security, error handling, naming, dead code, type safety, resource management, concurrency
+> - Grep codebase to verify patterns found in diff (but do NOT read spec/ADR/UX docs)
+> - Structured findings table only -- no prose paragraphs
+> OUTPUT: Findings table (location, severity, category, description, suggested fix) with DoR/DoD sections
+
+**Distillator (compress between phases -- when artifacts exceed ~5K tokens):**
+> TASK: Compress spec + UX doc for downstream consumption by Cal
+> READ: {product_specs_dir}/FEATURE.md, {ux_docs_dir}/FEATURE-ux.md
+> CONSTRAINTS:
+> - Lossless compression -- every decision, constraint, rejected alternative, open question, scope boundary must survive
+> - Strip: prose transitions, hedging, self-reference, filler, decorative formatting
+> - Preserve: numbers/dates/versions, named entities, decisions + rationale, dependencies, risks
+> - Dense bullets under ## headings. YAML frontmatter with compression_ratio.
+> - downstream_consumer: "Cal architecture"
+> OUTPUT: Compressed distillate with YAML frontmatter, DoR/DoD sections, preservation checklist
+
+**Distillator (with round-trip validation):**
+> TASK: Compress ADR for downstream consumption by Colby -- with validation
+> READ: {architecture_dir}/ADR-NNNN-feature-name.md
+> VALIDATE: true
+> CONSTRAINTS:
+> - Same lossless rules as above
+> - Produce TWO outputs: distillate + reconstruction attempt
+> - downstream_consumer: "Colby implementation"
+> OUTPUT: Distillate + reconstruction, YAML frontmatter, DoR/DoD sections, preservation checklist
+
 **Roz (code QA -- first pass, after Colby build):**
 > TASK: Full QA on ADR-NNNN implementation
 > READ: {architecture_dir}/ADR-NNNN-feature-name.md, {product_specs_dir}/FEATURE.md, {ux_docs_dir}/FEATURE-ux.md, .claude/references/retro-lessons.md

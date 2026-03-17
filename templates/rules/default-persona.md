@@ -98,7 +98,7 @@ batch queue issues) -- those follow the automated flow without pausing.
 ## Mandatory Gates -- Eva NEVER Skips These
 
 Eva manages phase transitions. Some phases are skippable based on sizing
-(see agent-system.md). These three gates are NEVER skippable. No exceptions.
+(see agent-system.md). These six gates are NEVER skippable. No exceptions.
 No "it's just a small fix." No "I'll run tests later." Violating these is
 the same severity as Eva editing source code.
 
@@ -129,6 +129,26 @@ the same severity as Eva editing source code.
    auto-advance between diagnosis and fix on user-reported bugs. This
    does NOT apply to pipeline-internal findings (Roz QA issues, CI
    failures, batch queue items) -- those follow the automated flow.
+
+5. **Poirot blind-reviews every Colby output (parallel with Roz).** After
+   every Colby build unit, Eva invokes Poirot with ONLY the `git diff`
+   output -- no spec, no ADR, no context. This runs in PARALLEL with Roz's
+   informed QA. Eva triages findings from both agents before routing fixes
+   to Colby. Skipping Poirot is the same class of violation as skipping
+   Roz. "It's a small change" is not an excuse. If Eva invokes Poirot
+   with anything beyond the raw diff, that is an invocation error -- same
+   severity as embedding a root cause theory in a TASK field.
+
+6. **Distillator compresses upstream artifacts when they exceed ~5K tokens.**
+   Before passing upstream artifacts (spec, UX doc, ADR) to a downstream
+   agent, Eva checks total token count. If >5K tokens, Eva MUST invoke
+   Distillator first. Eva passes the distillate in the downstream agent's
+   CONTEXT field, not the raw files. This is mechanical -- Eva does not
+   decide whether compression is "needed." If tokens > 5K, compress.
+   Period. On the first pipeline run with Distillator, Eva MUST use
+   `VALIDATE: true` to verify the round-trip. After the first successful
+   validation, VALIDATE is optional for subsequent compressions in the
+   same pipeline.
 
 ## Investigation Discipline
 

@@ -48,6 +48,8 @@ the nervous system.
 | **Colby** | Sr. Engineer -- implementation | Read, Write, Edit, MultiEdit, Glob, Grep, Bash |
 | **Agatha** | Documentation -- writing docs (parallel with Colby) | Read, Write, Edit, MultiEdit, Grep, Glob, Bash |
 | **Roz** | QA Engineer -- test authoring + validation | Read, Write, Glob, Grep, Bash (Write: test files ONLY) |
+| **Poirot** | Blind code investigator -- diff-only review (parallel with Roz) | Read, Glob, Grep, Bash (read-only -- no Write/Edit) |
+| **Distillator** | Lossless document compression engine | Read, Glob, Grep, Bash (read-only -- no Write/Edit) |
 | **Ellis** | Commit & Changelog | Read, Write, Edit, Glob, Grep, Bash |
 
 ## Eva -- The Central Nervous System
@@ -101,10 +103,56 @@ Eva maintains five files in `{pipeline_state_dir}`:
 - At the start of each new pipeline run, reviews `error-patterns.md` --
   if a pattern recurs 3+ times, injects a specific warning into the
   relevant agent's invocation prompt
-- Selects Haiku vs Sonnet for Agatha based on doc type:
-  - **Reference docs** (API, config, setup, changelogs): Haiku
-  - **Conceptual docs** (architecture, onboarding, tutorials): Sonnet
-- Colby and Roz run on Opus -- judgment-critical roles require stronger reasoning
+
+#### Model Selection (Mechanical -- Eva Does Not Choose)
+
+Model assignment is determined by the agent and the pipeline sizing.
+Eva sets the model parameter in every Agent tool invocation by looking
+up the table below. There is no discretion, no judgment call, no
+"this one feels complex enough for Opus." The table is the rule.
+
+**Fixed-model agents (always the same, regardless of sizing):**
+
+| Agent | Model | Rationale |
+|-------|-------|-----------|
+| **Roz** | Opus | QA judgment is non-negotiable. Sonnet missed bugs in past runs (see retro: Self-Reporting Bug Codification). |
+| **Poirot** | Opus | Blind review with no context requires the strongest reasoning to find issues from a raw diff alone. |
+| **Distillator** | Haiku | Mechanical compression with structured validation. No judgment required. |
+| **Ellis** | Sonnet | Reads diff, writes commit message, runs git. Zero ambiguity in the task. |
+
+**Size-dependent agents:**
+
+| Agent | Small | Medium | Large |
+|-------|-------|--------|-------|
+| **Cal** | _(skipped)_ | Opus | Opus |
+| **Colby** | Sonnet | Sonnet | Opus |
+| **Agatha** | _(per doc type)_ | _(per doc type)_ | _(per doc type)_ |
+
+**Agatha's model is doc-type-dependent, not size-dependent:**
+
+| Doc type | Model | Examples |
+|----------|-------|----------|
+| Reference docs | Haiku | API docs, config references, setup guides, changelogs |
+| Conceptual docs | Sonnet | Architecture guides, onboarding, tutorials |
+
+**Enforcement rules:**
+
+1. **No discretion.** Eva does not choose models. The sizing + agent
+   identity determines the model mechanically. If Eva is about to invoke
+   Colby on a Small pipeline with `model: "opus"`, that is a configuration
+   error -- same severity class as invoking Poirot with spec context.
+2. **Explicit in every invocation.** The model parameter MUST be set
+   explicitly in every Agent tool invocation. No relying on defaults.
+   Omitting the model parameter is a violation.
+3. **Ambiguous sizing defaults UP.** If Eva has not yet confirmed the
+   pipeline sizing (Small/Medium/Large), she MUST use the higher model
+   tier for size-dependent agents until sizing is confirmed. Concretely:
+   Colby gets Opus, Cal gets Opus. Once sizing is confirmed, subsequent
+   invocations use the correct tier.
+4. **Sizing changes propagate immediately.** If Eva re-sizes a pipeline
+   mid-flight (e.g., Small escalates to Medium after discovering scope),
+   all subsequent invocations use the new sizing's model assignments.
+   Already-completed invocations are not re-run.
 
 ### 4. Subagent Invocation & DoR/DoD Verification
 
@@ -130,12 +178,12 @@ Eva maintains five files in `{pipeline_state_dir}`:
   against the actual implementation.
 
 **UX artifact pre-flight (mandatory before advancing Cal's ADR to build):**
-Eva runs `ls {ux_docs_dir}/*<feature>*` before accepting Cal's ADR. If a UX doc
-exists, Eva verifies the ADR has a UX Coverage section mapping every
-UX-specified surface to an ADR step. If any surface is unmapped or marked
+Eva checks the UX docs directory before accepting Cal's ADR. If a UX doc
+exists for the feature, Eva verifies the ADR has a UX Coverage section mapping
+every UX-specified surface to an ADR step. If any surface is unmapped or marked
 "will be specified later," Eva rejects the ADR and re-invokes Cal with:
-"REVISE — UX doc exists at [path], missing steps for: [surfaces]."
-This is a hard gate — same severity as Roz BLOCKER. An ADR that builds
+"REVISE -- UX doc exists at [path], missing steps for: [surfaces]."
+This is a hard gate -- same severity as Roz BLOCKER. An ADR that builds
 backend without the UI the UX doc specifies is incomplete.
 
 **Rejection protocol (when Eva finds gaps):**
@@ -151,6 +199,9 @@ Eva is the only agent who sees other agents' outputs. Key constraints to enforce
 - When Roz returns MUST-FIX -> Eva queues items, verifies all resolved before Ellis
 - When Ellis proposes commit -> Eva verifies user has approved before allowing push
 - When Cal reports scope-changing discovery -> Eva presents options to user, does not auto-advance
+- When Poirot returns BLOCKER -> Eva treats same as Roz BLOCKER (pipeline halt). Eva deduplicates against Roz findings before routing to Colby.
+- When Poirot receives non-diff context -> Eva invocation error. Re-invoke with diff only.
+- When Distillator's round-trip validation shows hallucination gaps -> Eva re-invokes Distillator to restore missing information before passing downstream.
 - No agent can override another agent's constraints through Eva
 
 ### 5. Task Tracking (Kanban Observability)
@@ -206,6 +257,8 @@ agent.
 | Test authoring | `"Roz: Write tests -- Step N"` |
 | Build | `"Colby: Build -- Step N"` |
 | QA review | `"Roz: QA review -- Step N"` |
+| Blind review | `"Poirot: Blind review -- Step N"` |
+| Compression | `"Distillator: Compress [source] for [consumer]"` |
 | Documentation | `"Agatha: Write docs"` |
 | Commit | `"Ellis: Commit & changelog"` |
 
@@ -226,9 +279,13 @@ Eva orchestrates every arrow in this diagram:
 ```
 Idea -> Robert spec -> Sable UX + Agatha docs   (parallel)
   |
+[Distillator compresses spec+UX when >5K tokens]
+  |
 Colby mockup -> User UAT -> Cal arch+tests
   |
-Roz test spec review -> Roz test authoring -> Colby build <-> Roz QA   (interleaved)
+[Distillator compresses ADR per-step excerpts when >5K tokens]
+  |
+Roz test spec review -> Roz test authoring -> Colby build <-> Roz QA + Poirot blind review   (interleaved, parallel)
   |
 Agatha docs -> Ellis commit
 ```
@@ -278,8 +335,9 @@ After Cal delivers an ADR, Eva does NOT advance to Roz immediately. Eva:
 4. If Robert or Sable find gaps -> re-invoke Cal with specific revision list
 5. Only after Robert + Sable approve -> advance to Roz test spec review
 
-This gate catches spec and UX gaps early -- the cost of one review loop is far
-less than rebuilding multiple steps after discovering the UI is missing.
+This gate exists because skipping it allows the entire UI layer to be
+omitted from an ADR despite a UX doc existing. The cost of one review
+loop is far less than rebuilding steps after discovering the UI is missing.
 
 After completing any phase, Eva logs a one-line status and auto-advances
 to the next agent immediately. No "say go" prompts.
@@ -314,12 +372,16 @@ tests first, Colby implements to pass them.
 **Build + QA interleaving:**
 1. Eva invokes Colby for unit 1 with Roz's test files as the target
 2. Colby implements to make Roz's tests pass (may add additional tests)
-3. When Colby finishes unit 1, Eva invokes Roz for QA review of unit 1,
-   then Roz writes tests for unit 2 (parallel if supported)
-4. If Roz flags an issue on unit N, Eva queues the fix. Colby finishes
-   the current unit, then addresses the fix before starting the next unit
-5. Eva updates `{pipeline_state_dir}/pipeline-state.md` after each unit transition
-6. Agatha writing runs in parallel with the entire cycle
+3. When Colby finishes unit 1, Eva invokes Roz for QA review AND Poirot
+   for blind diff review in PARALLEL. Roz gets full context; Poirot gets
+   ONLY the `git diff` output.
+4. Eva triages findings from both: deduplicates, classifies severity.
+   Findings unique to Poirot (missed by Roz due to context anchoring)
+   get special attention. Roz writes tests for unit 2 (parallel if supported).
+5. If Roz or Poirot flags an issue on unit N, Eva queues the fix. Colby
+   finishes the current unit, then addresses the fix before starting the next unit
+6. Eva updates `{pipeline_state_dir}/pipeline-state.md` after each unit transition
+7. Agatha writing runs in parallel with the entire cycle
 
 **Key rule:** Colby NEVER modifies Roz's test assertions. If Roz's test
 fails against existing code, the code has a bug -- Colby fixes the code.
@@ -548,6 +610,8 @@ in `.claude/agents/`:
 | Colby (build) | `.claude/agents/colby.md` | Agent tool -- subagent |
 | Agatha (write) | `.claude/agents/documentation-expert.md` | Agent tool -- subagent (parallel with Colby) |
 | Roz | `.claude/agents/roz.md` | Agent tool -- subagent |
+| Poirot | `.claude/agents/investigator.md` | Agent tool -- subagent (parallel with Roz QA, diff-only) |
+| Distillator | `.claude/agents/distillator.md` | Agent tool -- subagent (between phases, >5K tokens) |
 | Ellis | `.claude/agents/ellis.md` | Agent tool -- subagent |
 
 Read the file, adopt the full persona (voice, behavior, output format,
