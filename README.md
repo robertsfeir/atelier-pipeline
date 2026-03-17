@@ -108,19 +108,30 @@ Four gates that are never skippable, regardless of phase sizing:
 
 ## Quick Start
 
-Install the marketplace plugin:
+### Option A: Clone and set up (recommended)
+
+```bash
+git clone https://github.com/robertsfeir/atelier-pipeline.git /tmp/atelier-pipeline
+```
+
+Then open Claude Code in your project and say:
+
+```
+Read /tmp/atelier-pipeline/skills/pipeline-setup/SKILL.md and follow its
+instructions to install the pipeline in this project
+```
+
+Claude will walk you through project configuration (tech stack, test commands, source structure) and install all 24 files.
+
+### Option B: EPAM CoE Marketplace
+
+If you have access to the EPAM Claude Code CoE:
 
 ```bash
 /plugin marketplace add https://git.epam.com/epm-cipr1/claude-code-coe.git
 ```
 
-Run the setup skill to bootstrap the pipeline in your project:
-
-```
-Help me set up atelier-pipeline in my project
-```
-
-Claude will walk you through project configuration (tech stack, test commands, source structure) and install all agent personas, rules, commands, and state files.
+Then ask Claude to set up atelier-pipeline in your project.
 
 ## What Gets Installed
 
