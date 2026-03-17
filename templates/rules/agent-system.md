@@ -129,6 +129,15 @@ Eva maintains five files in `{pipeline_state_dir}`:
 - For Roz invocations: include the spec requirements list so Roz can diff
   against the actual implementation.
 
+**UX artifact pre-flight (mandatory before advancing Cal's ADR to build):**
+Eva runs `ls {ux_docs_dir}/*<feature>*` before accepting Cal's ADR. If a UX doc
+exists, Eva verifies the ADR has a UX Coverage section mapping every
+UX-specified surface to an ADR step. If any surface is unmapped or marked
+"will be specified later," Eva rejects the ADR and re-invokes Cal with:
+"REVISE — UX doc exists at [path], missing steps for: [surfaces]."
+This is a hard gate — same severity as Roz BLOCKER. An ADR that builds
+backend without the UI the UX doc specifies is incomplete.
+
 **Rejection protocol (when Eva finds gaps):**
 - List the specific missing requirements or unexplained gaps
 - Re-invoke the same agent with TASK: "Revise -- missing requirements: [list]"
@@ -255,10 +264,22 @@ User overrides: "full ceremony" forces pauses at every transition.
 | Feature spec | Sable + Agatha planning in parallel (skills) |
 | Spec + UX doc | Colby mockup (subagent) |
 | Spec + UX + mockup approved | Cal clarification (skill) -> Cal ADR production (subagent) |
-| ADR from Cal | Roz test spec review (subagent) |
+| ADR from Cal (Medium/Large with UI) | Eva UX pre-flight -> Robert review -> Sable review -> Cal revision (if gaps found) -> Roz test spec review |
+| ADR from Cal (Small or no UI) | Roz test spec review (subagent) |
 | Roz-approved test spec | Roz test authoring (subagent) -- writes test assertions per ADR step |
 | Roz test files ready | Continuous QA: Colby build <-> Roz QA (subagents) + Agatha writing (parallel) |
 | Implemented + QA-passed code | Ellis (subagent) |
+
+**Stakeholder review gate (mandatory for Medium/Large features with UI):**
+After Cal delivers an ADR, Eva does NOT advance to Roz immediately. Eva:
+1. Runs UX pre-flight (`ls {ux_docs_dir}/*<feature>*`) -- verifies UX Coverage table
+2. Routes to **Robert** (skill) -- presents ADR, asks Robert to flag spec gaps
+3. Routes to **Sable** (skill) -- presents ADR, asks Sable to flag UX gaps
+4. If Robert or Sable find gaps -> re-invoke Cal with specific revision list
+5. Only after Robert + Sable approve -> advance to Roz test spec review
+
+This gate catches spec and UX gaps early -- the cost of one review loop is far
+less than rebuilding multiple steps after discovering the UI is missing.
 
 After completing any phase, Eva logs a one-line status and auto-advances
 to the next agent immediately. No "say go" prompts.

@@ -131,7 +131,10 @@ When invoked before Colby builds, write test files that define correct behavior:
 9. CI/CD Compat: conditional when diff touches auth, RBAC, env vars, middleware
 10. Docs Impact: conditional when diff adds/changes endpoints, env vars, behavior
 11. Dependencies: new deps -> publish date, vulns, license, necessity
-12. UX Flow Verification: trace Sable's UX doc states against implementation
+12. **UX Flow Verification (BLOCKER when UX doc exists):** Run `ls {ux_docs_dir}/*<feature>*`.
+    If a UX doc exists, trace EVERY surface it specifies against the implementation.
+    Each editor, form, section, and interaction in the UX doc must have corresponding
+    code. Missing UI for a UX-specified surface = BLOCKER, not a suggestion.
 13. Exploratory: unexpected inputs, realistic volumes, a11y
 14. Semantic Correctness: For tests asserting behavior of existing utilities/helpers, verify the expected value matches domain intent, not just current code behavior. A test that codifies a bug is worse than no test. BLOCKER if found.
 15. Contract Coverage: conditional when diff touches job kinds, dynamic imports, cross-module mapping
@@ -146,6 +149,12 @@ When reviewing a test spec (no code yet):
 3. Description quality — specific enough to write test without seeing source
 4. Contract boundaries — all dynamic imports, shape dependencies, status consumers identified?
 5. Independently identify cases Cal missed
+6. **UX doc completeness gate (BLOCKER).** Run `ls {ux_docs_dir}/*<feature>*`. If a UX
+   doc exists, verify EVERY surface, editor, form, and interaction it specifies
+   has a corresponding ADR step with test coverage. If the ADR is missing steps
+   for UX-specified elements, verdict is REVISE — Roz sends back to Cal before
+   approving. This is not optional. An ADR that builds backend but skips the UI
+   that the UX doc specifies is incomplete.
 
 **Output:** Coverage table, gaps, missing tests, verdict (APPROVED / REVISE).
 
