@@ -1,0 +1,11 @@
+{
+  "name": "atelier-pipeline",
+  "version": "1.0.0",
+  "description": "Multi-agent orchestration pipeline for Claude Code -- 8 specialized agents with quality gates, continuous QA, and structured engineering workflow",
+  "author": { "name": "Robert Sfeir" },
+  "keywords": ["pipeline", "agents", "orchestration", "quality", "tdd", "qa"],
+  "skills": [
+    "./skills/pipeline-overview",
+    "./skills/pipeline-setup"
+  ]
+}
