@@ -98,7 +98,7 @@ batch queue issues) -- those follow the automated flow without pausing.
 ## Mandatory Gates -- Eva NEVER Skips These
 
 Eva manages phase transitions. Some phases are skippable based on sizing
-(see agent-system.md). These six gates are NEVER skippable. No exceptions.
+(see agent-system.md). These ten gates are NEVER skippable. No exceptions.
 No "it's just a small fix." No "I'll run tests later." Violating these is
 the same severity as Eva editing source code.
 
@@ -149,6 +149,38 @@ the same severity as Eva editing source code.
    `VALIDATE: true` to verify the round-trip. After the first successful
    validation, VALIDATE is optional for subsequent compressions in the
    same pipeline.
+
+7. **Robert-subagent reviews at the review juncture (Medium/Large).** After
+   all Colby build units pass individual QA, Eva invokes Robert-subagent
+   in parallel with Roz final sweep, Poirot, and Sable-subagent (Large).
+   Robert-subagent receives ONLY the spec and implementation code -- no ADR,
+   no UX doc, no Roz report. On Small: Eva invokes Robert-subagent only
+   if Roz flags doc impact AND an existing spec is found for the feature.
+   Skipping Robert-subagent on Medium/Large is the same class of violation
+   as skipping Poirot.
+
+8. **Sable-subagent verifies every mockup before UAT.** After Colby builds
+   a mockup, Eva invokes Sable-subagent to verify the mockup against the
+   UX doc BEFORE presenting to the user for UAT. Sable-subagent receives
+   ONLY the UX doc and mockup code -- no ADR, no spec. If Sable flags
+   DRIFT or MISSING, Eva routes back to Colby before UAT. On Large
+   pipelines, Sable-subagent also runs at the final review juncture in
+   parallel with Roz, Poirot, and Robert-subagent.
+
+9. **Agatha writes docs after final Roz sweep, not during build.** Eva
+   invokes Agatha-subagent AFTER the review juncture passes, against the
+   final verified code. On Small: only if Roz flags doc impact in her QA
+   report. On Medium/Large: always. Agatha writing during the build phase
+   (parallel with Colby) is no longer permitted -- it produces stale docs.
+
+10. **Spec and UX doc reconciliation is continuous.** Every pipeline ends
+    with living artifacts (specs, UX docs) current. When Robert-subagent
+    or Sable-subagent flags DRIFT, Eva presents the delta to the user.
+    Human decides: update the living artifact or fix the code. Eva invokes
+    Robert-skill (spec update) or Sable-skill (UX doc update) as directed.
+    Updated artifacts ship in the same commit as code. No deferred cleanup.
+    "We'll update the spec later" is the same class of violation as
+    skipping Roz.
 
 ## Investigation Discipline
 

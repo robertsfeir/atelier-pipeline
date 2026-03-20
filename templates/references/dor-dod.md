@@ -48,11 +48,13 @@ Before doing your main work, output this section:
 
 | Agent | Primary Source | Extract |
 |-------|---------------|---------|
-| **Sable** | Robert's spec | User stories, personas, acceptance criteria, edge cases |
+| **Sable** (skill) | Robert's spec | User stories, personas, acceptance criteria, edge cases |
+| **Sable** (subagent) | UX doc only (no ADR, no spec) | Screens, states, interactions, a11y, copy, responsive |
 | **Cal** | Spec + UX doc + doc plan | Functional requirements, UX constraints, data concerns |
 | **Colby** (mockup) | Spec + UX doc | Screens, states, interactions, copy |
 | **Colby** (build) | Spec + UX doc + ADR | Acceptance criteria per step, spec edge cases, UX states |
 | **Agatha** | Spec + UX + ADR + doc plan + code | Doc plan items, spec-vs-code divergences |
+| **Robert** (subagent) | Spec only (no ADR, no UX doc) | Acceptance criteria, user stories, edge cases, NFRs |
 | **Roz** (test authoring) | ADR + spec + existing code | Test descriptions, function signatures, domain intent |
 | **Roz** | ADR + spec | Requirements to verify against implementation |
 | **Poirot** | Git diff only (no upstream artifacts) | Diff metadata: files changed, lines added/removed, functions modified |
@@ -110,6 +112,20 @@ After completing your work, output this section:
 - Code read for accuracy -- divergences flagged
 - Examples for every endpoint or config option
 
+**Robert (subagent):**
+- Every acceptance criterion from the spec has a verdict (PASS / DRIFT / MISSING / AMBIGUOUS)
+- No blanket approvals -- each criterion has file:line evidence or explicit explanation
+- DRIFT findings include both spec reference and code reference
+- AMBIGUOUS findings halt pipeline (human decides)
+- When reviewing docs: every user-facing behavior in spec verified against docs
+
+**Sable (subagent):**
+- Every screen, state, interaction, a11y requirement, and copy item has a verdict
+- Five-state audit completed for every screen (empty, loading, populated, error, overflow)
+- Accessibility audit completed (keyboard, ARIA, contrast, focus, screen reader)
+- DRIFT findings include both UX doc reference and code reference
+- AMBIGUOUS findings halt pipeline (human decides)
+
 **Poirot:**
 - Minimum 5 findings produced (or HALT documented with re-analysis)
 - All severity categories checked: logic, security, error handling, naming, dead code, type safety, resource management, concurrency
@@ -150,9 +166,19 @@ Roz has a special role -- she verifies other agents' DoD claims:
 - Include upstream artifact paths directly relevant to the work unit
 - Pass context-brief excerpts via the CONTEXT field, not READ
 - For Roz: include the requirements list from the spec for independent verification
+- For Robert-subagent: include ONLY the spec and code paths. No ADR, UX doc, or Roz report.
+- For Sable-subagent: include ONLY the UX doc and code paths. No ADR, spec, or Roz report.
+- For Agatha: invoke AFTER final Roz sweep (not parallel with Colby)
 
 **At phase transition:**
 - Read agent's DoR -- spot-check against spec for missing requirements
 - Read agent's DoD -- verify no unexplained gaps or silent drops
 - Do not advance pipeline if DoR has obvious omissions or DoD has gaps
 - Pass Colby's requirements to Roz for independent verification
+
+**At pipeline end (spec/UX reconciliation):**
+- Triage DRIFT findings from Robert-subagent and Sable-subagent
+- Present delta to user -- human decides: update living artifact or fix code
+- If update: invoke Robert-skill (spec) or Sable-skill (UX doc) to correct
+- If fix: route to Colby, re-run Roz, then re-run the subagent that flagged it
+- Updated artifacts ship in same commit as code via Ellis

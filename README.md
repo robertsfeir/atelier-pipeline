@@ -4,7 +4,7 @@ A multi-agent orchestration system for Claude Code that replaces chaotic AI-assi
 
 ## What is this?
 
-Atelier Pipeline gives Claude Code eight specialized agent personas — a product officer, UX designer, architect, engineer, QA engineer, documentation specialist, commit manager, and a central orchestrator — each with clear responsibilities, strict boundaries, and independent quality verification. The result is AI-assisted development that actually works like a real engineering team: specs get written, designs get validated, tests get authored before code, every change passes independent QA, and nothing ships without review.
+Atelier Pipeline gives Claude Code ten specialized agent personas — a product officer, UX designer, architect, engineer, QA engineer, blind code investigator, documentation specialist, commit manager, compression engine, and a central orchestrator — each with clear responsibilities, strict boundaries, and independent quality verification. The result is AI-assisted development that actually works like a real engineering team: specs get written, designs get validated, tests get authored before code, every change passes independent QA, product acceptance and UX acceptance are verified against original intent, and nothing ships without review.
 
 ## Why?
 
@@ -33,6 +33,8 @@ Atelier Pipeline solves these by separating concerns across specialized agents, 
                        \      /
                     Colby (mockup)
                           |
+                 Sable verifies mockup                --- UX acceptance
+                          |
                      User UAT review
                           |
                 Cal (architecture + test spec)
@@ -40,12 +42,18 @@ Atelier Pipeline solves these by separating concerns across specialized agents, 
                   Roz (test spec review)
                           |
                   Roz (test authoring)
-                       /      \
-                      /        \
-      Colby (build) <-> Roz (QA)    Agatha (docs)    --- parallel + interleaved
-                      \        /
-                       \      /
-                Ellis (commit + changelog)
+                          |
+      Colby (build) <-> Roz (QA) + Poirot             --- interleaved
+                          |
+      Roz + Poirot + Robert + Sable                    --- review juncture (parallel)
+                          |
+                   Agatha (docs)                       --- against final verified code
+                          |
+               Robert verifies docs                    --- product acceptance
+                          |
+           Spec/UX reconciliation (if drift)           --- living artifacts updated
+                          |
+                Ellis (commit + changelog)             --- one atomic commit
 ```
 
 The build/QA cycle is not one pass — it interleaves per ADR step:
@@ -54,26 +62,29 @@ The build/QA cycle is not one pass — it interleaves per ADR step:
   Roz writes tests (step 1)  -->  Colby builds (step 1)  -->  Roz reviews (step 1)
   Roz writes tests (step 2)  -->  Colby builds (step 2)  -->  Roz reviews (step 2)
   ...repeat for each ADR step...
-  Roz final sweep (full integration review)
+  Review juncture (Roz final sweep + Poirot + Robert + Sable in parallel)
 ```
 
-**Phase sizing keeps it pragmatic.** Small fixes (bug fix, single file) skip straight to Colby -> Roz -> Ellis. Medium features add architecture. Only large, multi-concern features run the full pipeline. Smart ceremony, not bureaucratic ceremony.
+**Phase sizing keeps it pragmatic.** Small fixes (bug fix, single file) skip straight to Colby -> Roz -> Ellis (with Agatha if Roz flags doc impact). Medium features require a spec and add architecture + product acceptance review. Only large, multi-concern features run the full pipeline including UX acceptance. Smart ceremony, not bureaucratic ceremony.
 
 ## Agent Roster
 
 | Agent | Role | When | Type | Pronouns |
 |-------|------|------|------|----------|
 | **Eva** | Pipeline Orchestrator / DevOps | Always active — routes, tracks state, enforces gates | Skill (main thread) | -- |
-| **Robert** | Chief Product Officer | Feature discovery through spec | Skill | -- |
-| **Sable** | Senior UI/UX Designer | Spec through UX design document | Skill | -- |
+| **Robert** | Chief Product Officer | Feature discovery, spec production, product acceptance review | Skill / Subagent | -- |
+| **Sable** | Senior UI/UX Designer | UX design, mockup verification, UX acceptance review | Skill / Subagent | -- |
 | **Cal** | Senior Software Architect | Design through ADR production | Skill / Subagent | -- |
 | **Colby** | Senior Software Engineer | Mockup and build phases | Subagent | she/her |
-| **Roz** | QA Engineer | Test authoring, code review, verification | Subagent | she/her |
-| **Agatha** | Documentation Specialist | Doc planning and writing (parallel with build) | Skill / Subagent | -- |
-| **Ellis** | Commit and Changelog Manager | Post-QA through git commit | Subagent | -- |
+| **Roz** | QA Engineer | Test authoring, code review, verification, doc-impact assessment | Subagent | she/her |
+| **Poirot** | Blind Code Investigator | Diff-only review (parallel with Roz) | Subagent | he/him |
+| **Agatha** | Documentation Specialist | Doc planning and writing (after final QA, not during build) | Skill / Subagent | -- |
+| **Ellis** | Commit and Changelog Manager | Post-review through git commit | Subagent | -- |
+| **Distillator** | Compression Engine | Artifact compression when >5K tokens | Subagent | -- |
 
 **Skills** run in the main Claude Code thread for conversational, back-and-forth work.
 **Subagents** run in their own context windows for focused execution tasks.
+Some agents have both modes: Robert and Sable are skills for authoring (specs, UX docs) and subagents for verification (acceptance review). Cal is a skill for clarification and a subagent for ADR production. Agatha is a skill for doc planning and a subagent for doc writing.
 
 ## Key Principles
 
@@ -97,14 +108,36 @@ Debug flows systematically check four layers: Application, Transport, Infrastruc
 
 After each pipeline run, error patterns are categorized and logged. Patterns that recur three or more times get injected as explicit warnings into future agent prompts. The system learns from its own mistakes. Categories include: hallucinated-api, wrong-logic, pattern-drift, security-blindspot, over-engineering, stale-context, missing-state, and test-gap.
 
+### Information Asymmetry as Verification
+
+Three reviewers run in parallel at the review juncture, each with deliberately constrained context:
+
+- **Poirot** sees only the git diff — no spec, no ADR, no context. Catches code-intrinsic flaws.
+- **Robert** (subagent) sees only the spec and code — no ADR. Catches product spec drift.
+- **Sable** (subagent) sees only the UX doc and code — no ADR. Catches UX design drift.
+
+Each reviewer's constraint prevents anchoring to the architect's interpretation. If the ADR subtly reframed a spec requirement and Colby faithfully built the reframed version, Robert catches the drift because he compares against the original intent. This three-axis review catches different failure classes that no single reviewer can replicate.
+
+### Living Artifacts, Immutable Records
+
+Specs and UX docs are **living artifacts** — updated at the end of every pipeline to stay current with the implementation. When Robert or Sable's acceptance review flags drift, the human decides: fix the code or update the spec/UX doc. Updated artifacts ship in the same commit as code. No deferred cleanup.
+
+ADRs are **immutable records** — never updated in place. If architecture changes, Cal writes a new ADR that supersedes the original. Decision history stays intact.
+
 ### Mandatory Gates
 
-Four gates that are never skippable, regardless of phase sizing:
+Ten gates that are never skippable, regardless of phase sizing:
 
 1. **Roz verifies every Colby output.** No agent self-reviews.
 2. **Ellis commits. Eva never runs git.** Separation of orchestration and execution.
 3. **Full test suite between work units.** On the actual integrated codebase, not self-reported results.
 4. **User approves bug fix approach.** Roz diagnoses, the user reviews, then Colby fixes. No auto-advance on user-reported bugs.
+5. **Poirot blind-reviews every Colby output.** Parallel with Roz, diff-only.
+6. **Distillator compresses artifacts over 5K tokens.** Mechanical, no discretion.
+7. **Robert reviews at the review juncture.** Product acceptance on Medium/Large.
+8. **Sable verifies every mockup before UAT.** UX acceptance before human review.
+9. **Agatha writes docs after final QA, not during build.** Against verified code only.
+10. **Spec/UX reconciliation is continuous.** Every pipeline ends with living artifacts current.
 
 ## Quick Start
 
@@ -145,6 +178,10 @@ your-project/
       cal.md                      # Architect subagent persona
       colby.md                    # Engineer subagent persona
       roz.md                      # QA subagent persona
+      robert.md                   # Product acceptance reviewer subagent
+      sable.md                    # UX acceptance reviewer subagent
+      investigator.md             # Poirot blind code investigator subagent
+      distillator.md              # Compression engine subagent
       ellis.md                    # Commit manager subagent persona
       documentation-expert.md     # Documentation subagent persona
     commands/
@@ -186,11 +223,11 @@ The system adapts to your stack. It has been developed on a React/Express/Postgr
 
 | Size | Criteria | Phases Run |
 |------|----------|-----------|
-| **Small** | Single file change, bug fix, test addition, or fewer than 3 files | Colby -> Roz -> Ellis |
-| **Medium** | 2-4 ADR steps, typical feature work | Cal -> Colby <-> Roz -> Agatha -> Ellis |
-| **Large** | 5+ ADR steps, new system, multi-concern feature | Robert -> Sable -> Agatha -> Colby (mockup) -> Cal -> Roz <-> Colby -> Agatha -> Ellis |
+| **Small** | Single file change, bug fix, test addition, or fewer than 3 files | Colby -> Roz -> (Agatha if Roz flags doc impact) -> (Robert verifies docs if spec exists) -> Ellis |
+| **Medium** | 2-4 ADR steps, typical feature work | Robert spec (required) -> Cal -> Colby <-> Roz + Poirot -> Robert review -> Agatha -> Robert verifies docs -> Ellis |
+| **Large** | 5+ ADR steps, new system, multi-concern feature | Full pipeline: Robert -> Sable + Agatha plan -> Colby mockup -> Sable verifies -> UAT -> Cal -> Roz <-> Colby + Poirot -> Roz + Poirot + Robert + Sable review -> Agatha -> Robert verifies docs -> reconciliation -> Ellis |
 
-Eva assesses scope at the start and adjusts automatically. Users can override with "full ceremony" (forces all pauses) or "stop" / "hold" (halts auto-advance).
+Eva assesses scope at the start and adjusts automatically. Medium/Large pipelines require a Robert spec before advancing — no spec, no pipeline. Users can override with "full ceremony" (forces all pauses) or "stop" / "hold" (halts auto-advance).
 
 ## Slash Commands
 

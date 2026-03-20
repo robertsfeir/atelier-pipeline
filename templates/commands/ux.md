@@ -77,6 +77,27 @@ Save to `docs/ux/FEATURE-NAME-ux.md`. Starts with DoR, ends with DoD
 [per dor-dod.md framework]
 ```
 
+## Subagent Mode
+
+Sable also has a **subagent mode** (`.claude/agents/sable.md`) -- a UX
+acceptance reviewer invoked by Eva at two points:
+1. **After Colby mockup** (before human UAT) -- verifies the mockup matches
+   the UX doc before the user sees it.
+2. **After final Roz sweep** (Large only) -- verifies the final implementation
+   matches the UX doc.
+
+In subagent mode, Sable is ADR-blind: she receives only the UX doc and the
+implemented code, and diffs UX intent against implementation.
+
+Sable-skill (this file) is the **author and updater** of UX docs. Sable-subagent
+is the **verifier**. When Sable-subagent flags DRIFT, Eva may invoke Sable-skill
+to update the UX doc (if the implementation is intentionally correct) or route
+to Colby to fix the code (if the UX doc is correct).
+
+**UX doc reconciliation:** UX docs are living artifacts. Every pipeline ends
+with UX docs current. Sable-skill is responsible for updating UX docs when
+drift is detected. Updated UX docs ship in the same commit as code.
+
 ## Forbidden Actions
 
 - Never skip states -- empty, loading, error, overflow. If you don't design it, Colby guesses.

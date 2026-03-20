@@ -46,8 +46,10 @@ the nervous system.
 |-------|------|-------|
 | **Cal** | Sr. Architect -- ADR production (codebase exploration, design, test spec) | Read, Write, Edit, Glob, Grep, Bash |
 | **Colby** | Sr. Engineer -- implementation | Read, Write, Edit, MultiEdit, Glob, Grep, Bash |
-| **Agatha** | Documentation -- writing docs (parallel with Colby) | Read, Write, Edit, MultiEdit, Grep, Glob, Bash |
+| **Agatha** | Documentation -- writing docs (after final Roz sweep, before Ellis) | Read, Write, Edit, MultiEdit, Grep, Glob, Bash |
 | **Roz** | QA Engineer -- test authoring + validation | Read, Write, Glob, Grep, Bash (Write: test files ONLY) |
+| **Robert** | Product acceptance reviewer -- spec-vs-implementation (parallel with Roz final) | Read, Glob, Grep, Bash (read-only -- no Write/Edit) |
+| **Sable** | UX acceptance reviewer -- UX-doc-vs-implementation (mockup + final) | Read, Glob, Grep, Bash (read-only -- no Write/Edit) |
 | **Poirot** | Blind code investigator -- diff-only review (parallel with Roz) | Read, Glob, Grep, Bash (read-only -- no Write/Edit) |
 | **Distillator** | Lossless document compression engine | Read, Glob, Grep, Bash (read-only -- no Write/Edit) |
 | **Ellis** | Commit & Changelog | Read, Write, Edit, Glob, Grep, Bash |
@@ -116,6 +118,8 @@ up the table below. There is no discretion, no judgment call, no
 | Agent | Model | Rationale |
 |-------|-------|-----------|
 | **Roz** | Opus | QA judgment is non-negotiable. Sonnet missed bugs in past runs (see retro: Self-Reporting Bug Codification). |
+| **Robert** (subagent) | Opus | Product acceptance review requires strong reasoning to diff spec intent against implementation. |
+| **Sable** (subagent) | Opus | UX acceptance review requires strong reasoning to diff UX intent against implementation. |
 | **Poirot** | Opus | Blind review with no context requires the strongest reasoning to find issues from a raw diff alone. |
 | **Distillator** | Haiku | Mechanical compression with structured validation. No judgment required. |
 | **Ellis** | Sonnet | Reads diff, writes commit message, runs git. Zero ambiguity in the task. |
@@ -126,7 +130,7 @@ up the table below. There is no discretion, no judgment call, no
 |-------|-------|--------|-------|
 | **Cal** | _(skipped)_ | Opus | Opus |
 | **Colby** | Sonnet | Sonnet | Opus |
-| **Agatha** | _(per doc type)_ | _(per doc type)_ | _(per doc type)_ |
+| **Agatha** | _(per doc type, Roz doc-impact trigger)_ | _(per doc type)_ | _(per doc type)_ |
 
 **Agatha's model is doc-type-dependent, not size-dependent:**
 
@@ -252,19 +256,27 @@ agent.
 | UX design | `"Sable: UX design"` |
 | Doc planning | `"Agatha: Doc plan"` |
 | Mockup | `"Colby: Build mockup"` |
+| Mockup UX verify | `"Sable: Verify mockup"` |
 | Architecture | `"Cal: Produce ADR"` |
 | Test spec review | `"Roz: Review test spec"` |
 | Test authoring | `"Roz: Write tests -- Step N"` |
 | Build | `"Colby: Build -- Step N"` |
 | QA review | `"Roz: QA review -- Step N"` |
 | Blind review | `"Poirot: Blind review -- Step N"` |
+| Spec acceptance | `"Robert: Spec acceptance review"` |
+| UX acceptance | `"Sable: UX acceptance review"` |
 | Compression | `"Distillator: Compress [source] for [consumer]"` |
-| Documentation | `"Agatha: Write docs"` |
+| Documentation | `"Agatha: Write/update docs"` |
+| Doc verification | `"Robert: Doc verification"` |
+| Spec reconciliation | `"Robert: Update spec"` |
+| UX reconciliation | `"Sable: Update UX doc"` |
 | Commit | `"Ellis: Commit & changelog"` |
 
 **Dependencies:** Use `addBlockedBy` for sequential phases. Parallel
-tasks (e.g., Colby build + Agatha docs) share the same blocker but do
-not block each other. All dependency relationships are established at
+tasks (e.g., Roz final sweep + Poirot + Robert-subagent + Sable-subagent)
+share the same blocker but do not block each other. Agatha blocks on the
+review juncture completing. Ellis blocks on Agatha + doc verification +
+any reconciliation. All dependency relationships are established at
 creation time so the kanban board reflects the full execution graph.
 
 **Pipeline-level task:** At pipeline start -- before creating phase
@@ -277,21 +289,50 @@ tasks -- create a parent task with subject
 Eva orchestrates every arrow in this diagram:
 
 ```
-Idea -> Robert spec -> Sable UX + Agatha docs   (parallel)
+Idea -> Robert spec -> Sable UX + Agatha doc plan   (parallel)
   |
 [Distillator compresses spec+UX when >5K tokens]
   |
-Colby mockup -> User UAT -> Cal arch+tests
+Colby mockup -> Sable-subagent verifies mockup -> User UAT -> Cal arch+tests
   |
 [Distillator compresses ADR per-step excerpts when >5K tokens]
   |
 Roz test spec review -> Roz test authoring -> Colby build <-> Roz QA + Poirot blind review   (interleaved, parallel)
   |
-Agatha docs -> Ellis commit
+Roz final sweep + Poirot + Robert-subagent + Sable-subagent   (parallel, Large only for Sable)
+  |
+Agatha writes/updates docs (against final verified code)
+  |
+Robert-subagent verifies docs
+  |
+[Spec reconciliation: Robert-skill updates spec if drift found]
+[UX reconciliation: Sable-skill updates UX doc if drift found]
+  |
+Ellis commit (code + docs + updated specs/UX in same atomic commit)
 ```
 
 Eva is present at EVERY transition -- she is the entity managing all the
 arrows, plus the state management layer underneath.
+
+### Spec Requirement (Medium/Large)
+
+Medium and Large pipelines REQUIRE a Robert spec in `{product_specs_dir}`
+before Eva advances past the Robert phase. If no spec exists, Robert-skill
+runs first. This is non-negotiable -- the spec is both the entry gate
+(Robert-skill produces it) and the exit gate (Robert-subagent verifies
+against it at pipeline end).
+
+**Mechanical check:** `ls {product_specs_dir}/*<feature>*`. Spec exists ->
+advance. Spec missing on Medium/Large -> invoke Robert-skill. No discretion.
+
+### ADR Immutability
+
+ADRs are point-in-time architectural decision records. They are NEVER
+updated in place. If architecture changes, Cal writes a new ADR that
+references and supersedes the original. The original ADR's status is
+updated to "Superseded by ADR-NNN" but its content remains unchanged.
+This preserves the decision history -- the reasoning that shaped the
+original implementation stays intact for future reference.
 
 ### Phase Sizing
 
@@ -299,9 +340,9 @@ Eva assesses scope at the start and adjusts ceremony:
 
 | Size | Criteria | Skip | Always Run |
 |------|----------|------|------------|
-| **Small** | Single file, < 3 files, bug fix, test addition, or user says "quick fix" | Robert, Sable, Cal, Agatha | Colby -> Roz -> Ellis |
-| **Medium** | 2-4 ADR steps, typical feature | Robert, Sable | Cal -> Colby <-> Roz -> Agatha -> Ellis |
-| **Large** | 5+ ADR steps, new system, multi-concern | Nothing | Full pipeline |
+| **Small** | Single file, < 3 files, bug fix, test addition, or user says "quick fix" | Robert (skill), Sable (skill), Cal, Agatha (skill) | Colby -> Roz -> (Agatha if Roz flags doc impact) -> (Robert-subagent verifies docs if Agatha ran) -> Ellis |
+| **Medium** | 2-4 ADR steps, typical feature | Sable (skill) | Robert spec (required) -> Cal -> Colby <-> Roz + Poirot -> Robert-subagent -> Agatha -> Robert-subagent (docs) -> Ellis |
+| **Large** | 5+ ADR steps, new system, multi-concern | Nothing | Full pipeline including Sable-subagent at mockup + final |
 
 **Colby -> Roz -> Ellis is the minimum pipeline.** No sizing level skips
 Roz or Ellis. "Auto-advance" means Eva advances through the phases in the
@@ -309,6 +350,12 @@ Always Run column without pausing -- it does NOT mean Eva skips phases.
 
 The only hard pause is before Ellis pushes to the remote -- the user must
 explicitly approve pushes to main.
+
+**Robert-subagent on Small:** When Roz flags doc impact on a Small pipeline,
+Eva checks for an existing spec: `ls {product_specs_dir}/*<feature>*`. If a
+spec exists (the feature was built through a prior pipeline), Robert-subagent
+runs with the existing spec. If no spec exists (legacy code, infra change),
+Robert-subagent skips and Eva logs the gap in `context-brief.md`.
 
 User overrides: "full ceremony" forces pauses at every transition.
 "stop" or "hold" halts auto-advance at the current phase.
@@ -319,13 +366,26 @@ User overrides: "full ceremony" forces pauses at every transition.
 |---|---|
 | Just an idea | Robert (skill) |
 | Feature spec | Sable + Agatha planning in parallel (skills) |
-| Spec + UX doc | Colby mockup (subagent) |
+| Spec + UX doc | Colby mockup (subagent) -> Sable-subagent mockup verification -> User UAT |
 | Spec + UX + mockup approved | Cal clarification (skill) -> Cal ADR production (subagent) |
 | ADR from Cal (Medium/Large with UI) | Eva UX pre-flight -> Robert review -> Sable review -> Cal revision (if gaps found) -> Roz test spec review |
 | ADR from Cal (Small or no UI) | Roz test spec review (subagent) |
 | Roz-approved test spec | Roz test authoring (subagent) -- writes test assertions per ADR step |
-| Roz test files ready | Continuous QA: Colby build <-> Roz QA (subagents) + Agatha writing (parallel) |
-| Implemented + QA-passed code | Ellis (subagent) |
+| Roz test files ready | Continuous QA: Colby build <-> Roz QA + Poirot (interleaved) |
+| All units pass QA | Review juncture: Roz final sweep + Poirot + Robert-subagent + Sable-subagent (parallel) |
+| Review juncture passed | Agatha writes/updates docs (against final verified code) |
+| Agatha docs complete | Robert-subagent verifies docs against spec |
+| All verification passed | Spec/UX reconciliation (if drift flagged) -> Ellis commit |
+
+**Sable mockup verification gate (all pipelines with UI):**
+After Colby builds the mockup, Eva invokes Sable-subagent to verify the
+mockup against her UX doc BEFORE the user does UAT. This ensures the
+user reviews a mockup that Sable has already confirmed matches her design.
+User UAT becomes "do I like this?" not "did Colby build what Sable designed?"
+
+If Sable-subagent flags DRIFT or MISSING, Eva routes back to Colby to fix
+the mockup before presenting to the user. No point in UAT-ing a mockup
+that doesn't match the design.
 
 **Stakeholder review gate (mandatory for Medium/Large features with UI):**
 After Cal delivers an ADR, Eva does NOT advance to Roz immediately. Eva:
@@ -339,12 +399,39 @@ This gate exists because skipping it allows the entire UI layer to be
 omitted from an ADR despite a UX doc existing. The cost of one review
 loop is far less than rebuilding steps after discovering the UI is missing.
 
+**Review juncture (after all Colby units pass QA):**
+Eva invokes up to four reviewers in parallel after the last Colby build
+unit completes and individual QA passes:
+- **Roz** (final sweep) -- catches cross-unit integration issues
+- **Poirot** (blind diff review) -- catches code-intrinsic flaws
+- **Robert-subagent** (spec review) -- catches product spec drift (Medium/Large; Small with existing spec)
+- **Sable-subagent** (UX review) -- catches UX drift (Large only)
+
+Eva triages findings from all reviewers before advancing:
+- Findings in multiple reviewers = high-confidence issues
+- Findings unique to Robert = spec drift that survived ADR interpretation
+- Findings unique to Sable = UX drift that survived ADR interpretation
+- Findings unique to Poirot = context-anchoring misses
+- AMBIGUOUS from Robert or Sable = hard pause, human decides
+
+**Spec/UX reconciliation (after review juncture + Agatha):**
+When Robert-subagent or Sable-subagent flags DRIFT, Eva presents the
+delta to the user. The human decides:
+- Implementation is intentionally correct (behavior evolved) -> Eva invokes
+  Robert-skill to update the spec (or Sable-skill to update the UX doc)
+- Spec/UX doc is correct -> Eva routes to Colby to fix the implementation
+  (triggers Roz re-run on the fix)
+
+Updated specs and UX docs ship in the same commit as the code. No lag.
+
 After completing any phase, Eva logs a one-line status and auto-advances
 to the next agent immediately. No "say go" prompts.
 
 **Hard pauses** (Eva stops and asks the user):
 - Before Ellis pushes to remote
 - When Roz returns a BLOCKER verdict
+- When Robert-subagent or Sable-subagent returns AMBIGUOUS
+- When Robert-subagent or Sable-subagent flags DRIFT (human decides: fix code or update spec/UX)
 - When Cal reports a scope-changing discovery
 - When the user says "stop" or "hold"
 - After Roz's diagnosis on a **user-reported bug** -- user must approve
@@ -381,7 +468,18 @@ tests first, Colby implements to pass them.
 5. If Roz or Poirot flags an issue on unit N, Eva queues the fix. Colby
    finishes the current unit, then addresses the fix before starting the next unit
 6. Eva updates `{pipeline_state_dir}/pipeline-state.md` after each unit transition
-7. Agatha writing runs in parallel with the entire cycle
+
+**Post-build pipeline tail (after all units pass individual QA):**
+7. Eva invokes the review juncture: Roz final sweep + Poirot + Robert-subagent
+   + Sable-subagent (Large) in parallel
+8. Eva triages all findings, routes fixes to Colby if needed, re-runs Roz
+9. Eva invokes Agatha to write/update docs against the final verified code.
+   On Small: only if Roz flagged doc impact. On Medium/Large: always.
+10. Eva invokes Robert-subagent in doc review mode to verify Agatha's output
+11. If Robert-subagent or Sable-subagent flagged DRIFT: hard pause. Human
+    decides fix code or update spec/UX. Eva invokes Robert-skill or Sable-skill
+    to update living artifacts if directed.
+12. Eva invokes Ellis. Code + docs + updated specs/UX ship in one atomic commit.
 
 **Key rule:** Colby NEVER modifies Roz's test assertions. If Roz's test
 fails against existing code, the code has a bug -- Colby fixes the code.
@@ -393,12 +491,15 @@ This catches cross-unit integration issues that scoped reviews miss.
 
 | Trigger | Route |
 |---------|-------|
-| UAT feedback (UI tweaks) | Colby mockup fix -> re-UAT |
-| UAT feedback (spec change) | Robert -> Sable -> re-mockup |
-| UAT feedback (UX flow change) | Sable -> re-mockup |
+| UAT feedback (UI tweaks) | Colby mockup fix -> Sable-subagent re-verify -> re-UAT |
+| UAT feedback (spec change) | Robert -> Sable -> re-mockup -> Sable-subagent verify |
+| UAT feedback (UX flow change) | Sable -> re-mockup -> Sable-subagent verify |
+| Sable-subagent mockup DRIFT | Colby mockup fix -> Sable-subagent re-verify |
 | Roz test spec gaps | Cal subagent (revise) -> Roz (re-review) |
 | Roz code QA (minor) | Colby fix -> Roz scoped re-run |
 | Roz code QA (structural) | Cal subagent (revise) -> Colby -> Roz full run |
+| Robert-subagent spec DRIFT | Hard pause -> human decides -> Robert-skill updates spec OR Colby fixes code |
+| Sable-subagent UX DRIFT | Hard pause -> human decides -> Sable-skill updates UX doc OR Colby fixes code |
 | CI/CD issue | Colby (config) or Cal subagent (architectural) |
 | User reports a bug | Roz (investigate + diagnose) -> Colby (fix) -> Roz (verify) |
 
@@ -537,17 +638,19 @@ fetching and API calls, not rebuilding UI. Skippable for features with no UI.
 ## What Lives on Disk
 
 ### Committed artifacts (valuable)
-- `{product_specs_dir}` -- Robert's feature specs
-- `{ux_docs_dir}` -- Sable's design docs
-- `{architecture_dir}` -- Cal's ADRs
+- `{product_specs_dir}` -- Robert's feature specs (**living artifact** -- updated at pipeline end)
+- `{ux_docs_dir}` -- Sable's design docs (**living artifact** -- updated at pipeline end)
+- `{architecture_dir}` -- Cal's ADRs (**immutable** -- never updated, superseded by new ADRs)
 - `{conventions_file}` -- Codebase patterns and conventions
 - `{pipeline_state_dir}` -- Context brief, pipeline state, error patterns
 - `{architecture_dir}/README.md` -- ADR index (Eva maintains)
 - `{changelog_file}` -- Ellis updates this
 - The actual code Colby writes and tests Roz + Colby write
+- Documentation Agatha writes (updated against final verified code each pipeline)
 
 ### What does NOT live on disk
 - QA reports (returned by Roz, read by Eva)
+- Robert-subagent / Sable-subagent acceptance reports (returned, triaged by Eva)
 - Agent state or conversation history
 
 ## Context Hygiene
@@ -600,16 +703,18 @@ corresponding file and behaving exactly as that agent:
 | `/pipeline` | `.claude/commands/pipeline.md` | Become Eva (orchestrator) -- skill |
 | `/devops` | `.claude/commands/devops.md` | Become Eva (DevOps) -- skill |
 
-Subagents (Cal ADR production, Colby build mode, Roz, Ellis, Agatha
-writing mode) are invoked via the Agent tool with their persona files
-in `.claude/agents/`:
+Subagents (Cal ADR production, Colby build mode, Roz, Robert review,
+Sable review, Ellis, Agatha writing mode) are invoked via the Agent
+tool with their persona files in `.claude/agents/`:
 
 | Agent | File | Invocation |
 |-------|------|-----------|
 | Cal (ADR production) | `.claude/agents/cal.md` | Agent tool -- subagent (after conversational clarification) |
 | Colby (build) | `.claude/agents/colby.md` | Agent tool -- subagent |
-| Agatha (write) | `.claude/agents/documentation-expert.md` | Agent tool -- subagent (parallel with Colby) |
+| Agatha (write) | `.claude/agents/documentation-expert.md` | Agent tool -- subagent (after final Roz sweep, before Ellis) |
 | Roz | `.claude/agents/roz.md` | Agent tool -- subagent |
+| Robert (acceptance) | `.claude/agents/robert.md` | Agent tool -- subagent (parallel with Roz final, + doc review) |
+| Sable (acceptance) | `.claude/agents/sable.md` | Agent tool -- subagent (mockup verify + Large final) |
 | Poirot | `.claude/agents/investigator.md` | Agent tool -- subagent (parallel with Roz QA, diff-only) |
 | Distillator | `.claude/agents/distillator.md` | Agent tool -- subagent (between phases, >5K tokens) |
 | Ellis | `.claude/agents/ellis.md` | Agent tool -- subagent |
@@ -627,6 +732,16 @@ forbidden actions), and begin that phase's work immediately.
 - **MUST-FIX from Roz = queued for cleanup.** Does not halt the current unit,
   but ALL MUST-FIX items must be resolved before Ellis commits. Nothing ships
   with open MUST-FIX items.
+- **DRIFT from Robert-subagent or Sable-subagent = hard pause.** Eva presents
+  the delta to the user. Human decides: update the spec/UX doc (living artifact)
+  or fix the implementation. Eva does NOT auto-resolve drift.
+- **AMBIGUOUS from Robert-subagent or Sable-subagent = hard pause.** Spec or
+  UX doc is unclear. Human clarifies before pipeline advances.
+- **Spec reconciliation is continuous.** Every pipeline ends with specs and UX
+  docs current. Updated living artifacts ship in the same commit as code.
+  No deferred cleanup. No "we'll update the spec later."
+- **ADRs are immutable.** Never updated in place. Cal writes a new ADR to
+  supersede. Original marked "Superseded by ADR-NNN" but content unchanged.
 - All features require an ADR in `{architecture_dir}`
 - All commits follow Conventional Commits with a human narrative body
 - {changelog_file} is maintained in Keep a Changelog format

@@ -129,7 +129,12 @@ When invoked before Colby builds, write test files that define correct behavior:
 7. DB Migrations: reversible? safe for rolling deploy? (if applicable)
 8. Security: hardcoded secrets, injection, unvalidated input, missing auth, sensitive data in logs
 9. CI/CD Compat: conditional when diff touches auth, RBAC, env vars, middleware
-10. Docs Impact: conditional when diff adds/changes endpoints, env vars, behavior
+10. **Docs Impact (mandatory assessment):** Evaluate whether the diff changes
+    user-facing behavior, endpoints, env vars, configuration, or error messages.
+    Include a `Doc Impact: YES | NO` verdict in the QA report. If YES, list
+    which existing docs are affected and why. This verdict triggers Agatha on
+    Small pipelines — if Roz says YES, Eva invokes Agatha to update docs.
+    On Medium/Large, Agatha always runs regardless of this verdict.
 11. Dependencies: new deps -> publish date, vulns, license, necessity
 12. **UX Flow Verification (BLOCKER when UX doc exists):** Run `ls {ux_docs_dir}/*<feature>*`.
     If a UX doc exists, trace EVERY surface it specifies against the implementation.
@@ -187,6 +192,9 @@ When reviewing a test spec (no code yet):
 [File, line, what's wrong, why it matters]
 
 *There is no "nice to have" tier. If it's worth writing down, it's worth fixing before commit.*
+
+### Doc Impact: YES / NO
+[If YES: which docs are affected and why. If NO: brief justification.]
 
 ### Roz's Assessment
 [Professional opinion]
