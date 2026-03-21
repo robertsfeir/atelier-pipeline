@@ -1,0 +1,17 @@
+{
+  "name": "atelier-brain",
+  "version": "1.0.0",
+  "description": "Persistent institutional memory for atelier-pipeline agents",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs",
+    "start:http": "node server.mjs http"
+  },
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "pg": "^8.20.0",
+    "pgvector": "^0.2.1",
+    "zod": "^3.24.0"
+  }
+}
