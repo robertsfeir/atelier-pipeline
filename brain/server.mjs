@@ -759,6 +759,14 @@ async function handleRestApi(req, res) {
       try {
         const brainConfig = await getBrainConfig();
         const countResult = await pool.query(`SELECT count(*)::int AS total FROM thoughts WHERE status = 'active'`);
+        // Get last consolidation (most recent reflection created_at)
+        const lastConsolResult = await pool.query(
+          `SELECT created_at FROM thoughts WHERE thought_type = 'reflection' ORDER BY created_at DESC LIMIT 1`
+        );
+        const lastConsolidation = lastConsolResult.rows[0]?.created_at || null;
+        const nextConsolidation = lastConsolidation
+          ? new Date(new Date(lastConsolidation).getTime() + brainConfig.consolidation_interval_minutes * 60 * 1000)
+          : null;
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({
           connected: true,
@@ -766,6 +774,8 @@ async function handleRestApi(req, res) {
           config_source: config._source,
           thought_count: countResult.rows[0].total,
           consolidation_interval_minutes: brainConfig.consolidation_interval_minutes,
+          last_consolidation: lastConsolidation,
+          next_consolidation_at: nextConsolidation,
         }));
       } catch {
         res.writeHead(200, { "Content-Type": "application/json" });
@@ -908,6 +918,179 @@ function readBody(req) {
 }
 
 // =============================================================================
+// Step 4: TTL Enforcement Timer
+// =============================================================================
+
+async function runTTLEnforcement() {
+  try {
+    const result = await pool.query(`
+      UPDATE thoughts t
+      SET status = 'expired', invalidated_at = now()
+      FROM thought_type_config ttc
+      WHERE t.thought_type = ttc.thought_type
+        AND ttc.default_ttl_days IS NOT NULL
+        AND t.status = 'active'
+        AND t.created_at < now() - (ttc.default_ttl_days || ' days')::interval
+      RETURNING t.id
+    `);
+    if (result.rowCount > 0) {
+      console.log(`TTL: Expired ${result.rowCount} thoughts`);
+    }
+  } catch (err) {
+    console.error("TTL enforcement error:", err.message);
+  }
+}
+
+let ttlTimer = null;
+
+async function startTTLTimer() {
+  const brainConfig = await getBrainConfig();
+  // TTL runs less frequently than consolidation — default 60 min
+  const intervalMs = 60 * 60 * 1000;
+  ttlTimer = setInterval(runTTLEnforcement, intervalMs);
+  // Run once on startup
+  await runTTLEnforcement();
+}
+
+// =============================================================================
+// Step 5: Consolidation Engine
+// =============================================================================
+
+async function runConsolidation() {
+  const client = await pool.connect();
+  try {
+    const brainConfig = await getBrainConfig(client);
+    if (!brainConfig.brain_enabled) return;
+
+    // Find active, non-reflection thoughts not yet consolidated
+    const unconsolidated = await client.query(`
+      SELECT t.id, t.content, t.thought_type, t.importance, t.embedding
+      FROM thoughts t
+      WHERE t.status = 'active'
+        AND t.thought_type != 'reflection'
+        AND NOT EXISTS (
+          SELECT 1 FROM thought_relations r
+          WHERE r.target_id = t.id AND r.relation_type = 'synthesized_from'
+        )
+      ORDER BY t.created_at DESC
+      LIMIT $1
+    `, [brainConfig.consolidation_max_thoughts]);
+
+    if (unconsolidated.rows.length < brainConfig.consolidation_min_thoughts) {
+      return; // Not enough thoughts to consolidate
+    }
+
+    // Simple clustering: group by pairwise similarity > 0.6
+    const thoughts = unconsolidated.rows;
+    const clusters = [];
+    const assigned = new Set();
+
+    for (let i = 0; i < thoughts.length; i++) {
+      if (assigned.has(thoughts[i].id)) continue;
+      const cluster = [thoughts[i]];
+      assigned.add(thoughts[i].id);
+
+      for (let j = i + 1; j < thoughts.length; j++) {
+        if (assigned.has(thoughts[j].id)) continue;
+        // Check similarity between embeddings
+        const simResult = await client.query(
+          `SELECT (1 - ($1::vector(1536) <=> $2::vector(1536)))::float AS sim`,
+          [thoughts[i].embedding, thoughts[j].embedding]
+        );
+        if (simResult.rows[0].sim > 0.6) {
+          cluster.push(thoughts[j]);
+          assigned.add(thoughts[j].id);
+        }
+      }
+
+      if (cluster.length >= 3) {
+        clusters.push(cluster);
+      }
+    }
+
+    if (clusters.length === 0) return;
+
+    // Synthesize each cluster into a reflection
+    for (const cluster of clusters) {
+      try {
+        const thoughtContents = cluster.map((t, i) => `${i + 1}. [${t.thought_type}] ${t.content}`).join("\n");
+
+        const llmRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "openai/gpt-4o-mini",
+            messages: [{
+              role: "user",
+              content: `Synthesize these ${cluster.length} observations into a single higher-level insight. Preserve specific details, decisions, and reasoning. Do not generalize away the useful specifics.\n\n${thoughtContents}`,
+            }],
+          }),
+        });
+
+        if (!llmRes.ok) {
+          console.error(`Consolidation LLM error for cluster: ${llmRes.status}`);
+          continue; // Skip this cluster, try next
+        }
+
+        const llmData = await llmRes.json();
+        const synthesis = llmData.choices[0].message.content;
+        if (!synthesis) continue;
+
+        // Generate embedding for the reflection
+        const reflectionEmbedding = await getEmbedding(synthesis);
+
+        // Compute importance: max(cluster) + 0.05, capped at 1.0
+        const maxImportance = Math.max(...cluster.map(t => t.importance));
+        const reflectionImportance = Math.min(1.0, maxImportance + 0.05);
+
+        // Insert reflection
+        await client.query("BEGIN");
+        const reflResult = await client.query(
+          `INSERT INTO thoughts (content, embedding, thought_type, source_agent, source_phase, importance, scope)
+           VALUES ($1, $2, 'reflection', 'eva', 'reconciliation', $3, ARRAY['default']::ltree[])
+           RETURNING id`,
+          [synthesis, pgvector.toSql(reflectionEmbedding), reflectionImportance]
+        );
+        const reflectionId = reflResult.rows[0].id;
+
+        // Create synthesized_from relations (reflection = source_id, source thought = target_id)
+        for (const thought of cluster) {
+          await client.query(
+            `INSERT INTO thought_relations (source_id, target_id, relation_type, context)
+             VALUES ($1, $2, 'synthesized_from', 'Automatic consolidation')
+             ON CONFLICT (source_id, target_id, relation_type) DO NOTHING`,
+            [reflectionId, thought.id]
+          );
+        }
+
+        await client.query("COMMIT");
+        console.log(`Consolidation: Created reflection from ${cluster.length} thoughts`);
+      } catch (clusterErr) {
+        await client.query("ROLLBACK").catch(() => {});
+        console.error(`Consolidation cluster error: ${clusterErr.message}`);
+        // Continue to next cluster
+      }
+    }
+  } catch (err) {
+    console.error("Consolidation error:", err.message);
+  } finally {
+    client.release();
+  }
+}
+
+let consolidationTimer = null;
+
+async function startConsolidationTimer() {
+  const brainConfig = await getBrainConfig();
+  const intervalMs = brainConfig.consolidation_interval_minutes * 60 * 1000;
+  consolidationTimer = setInterval(runConsolidation, intervalMs);
+  console.log(`Consolidation timer: every ${brainConfig.consolidation_interval_minutes} min`);
+}
+
+// =============================================================================
 // Server Startup (stdio or HTTP mode)
 // =============================================================================
 
@@ -976,12 +1159,18 @@ if (mode === "http") {
     }
   });
 
-  httpServer.listen(PORT, () => {
+  httpServer.listen(PORT, async () => {
     console.log(`Atelier Brain MCP server running on http://localhost:${PORT} (config: ${config._source})`);
+    // Start background timers (non-blocking)
+    await startTTLTimer().catch(err => console.error("TTL timer start failed:", err.message));
+    await startConsolidationTimer().catch(err => console.error("Consolidation timer start failed:", err.message));
   });
 } else {
   const server = new McpServer({ name: "atelier-brain", version: "1.0.0" });
   registerTools(server);
   const transport = new StdioServerTransport();
   await server.connect(transport);
+  // Start background timers in stdio mode too
+  await startTTLTimer().catch(err => console.error("TTL timer start failed:", err.message));
+  await startConsolidationTimer().catch(err => console.error("Consolidation timer start failed:", err.message));
 }
