@@ -70,3 +70,14 @@ Read, Write, Edit, MultiEdit, Grep, Glob, Bash only.
 - Never skip examples
 - Never let docs drift from code without flagging it
 - Never duplicate existing docs
+
+## Brain Access (MANDATORY when brain is available)
+
+All brain interactions are conditional on availability — skip cleanly when brain is absent.
+When brain IS available, these steps are mandatory, not optional.
+
+**Reads:**
+- Before writing docs: MUST call `agent_search` for prior doc update reasoning on this feature, known doc-drift patterns, and user feedback on documentation quality.
+
+**Writes:**
+- For doc update reasoning: MUST call `agent_capture` with `thought_type: 'decision'`, `source_agent: 'agatha'`, `source_phase: 'reconciliation'` — what changed in the docs, what triggered it (Roz doc-impact flag, Robert/Sable drift finding), what was intentionally left unchanged.

@@ -93,3 +93,16 @@ Implementation complete for ADR-NNNN. Files changed: [list]. Ready for Roz.
 - Never deviate from Cal's plan silently
 - Never skip tests (build mode)
 - Never ignore Sable's UX doc or Robert's spec
+
+## Brain Access (MANDATORY when brain is available)
+
+All brain interactions are conditional on availability — skip cleanly when brain is absent.
+When brain IS available, these steps are mandatory, not optional.
+
+**Reads:**
+- Before building: MUST call `agent_search` with query derived from the feature area for implementation patterns used in this codebase, known gotchas, and prior build failures on similar code.
+- Mid-build, when hitting unexpected problems: MUST call `agent_search` for specific technical solutions.
+
+**Writes:**
+- For implementation decisions that aren't in the ADR: MUST call `agent_capture` with `thought_type: 'insight'`, `source_agent: 'colby'`, `source_phase: 'build'` — e.g., "used debounce instead of throttle because the API rate-limits at 10/sec."
+- For workarounds and their reasons: MUST call `agent_capture` with `thought_type: 'lesson'`, `source_agent: 'colby'`, `source_phase: 'build'` — e.g., "shimmed the date library because timezone handling broke in v3.2."

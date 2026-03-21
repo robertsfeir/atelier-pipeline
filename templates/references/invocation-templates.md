@@ -20,6 +20,7 @@ prompts. These are not pre-loaded into Eva's always-on context.
 > TASK: Produce ADR for [feature name]
 > READ: {product_specs_dir}/FEATURE.md, {ux_docs_dir}/FEATURE-ux.md, {product_specs_dir}/FEATURE-doc-plan.md, .claude/references/retro-lessons.md
 > CONTEXT: [User preferences and decisions from context-brief.md]
+> BRAIN: [If brain available: prior architectural decisions, rejected approaches, and technical constraints from agent_search. Omit section if brain unavailable.]
 > WARN: [Specific pattern if recurred 3x in error-patterns.md, otherwise omit]
 > CONSTRAINTS:
 > - Map blast radius (every file, module, integration, CI/CD impact)
@@ -31,6 +32,7 @@ prompts. These are not pre-loaded into Eva's always-on context.
 > TASK: Build mockup for [feature name]
 > READ: {product_specs_dir}/FEATURE.md, {ux_docs_dir}/FEATURE-ux.md, .claude/references/retro-lessons.md
 > CONTEXT: [User preferences from context-brief.md]
+> BRAIN: [If brain available: implementation patterns, known gotchas from agent_search. Omit if unavailable.]
 > CONSTRAINTS:
 > - Real components in {features_dir}/feature-name/ using existing component library
 > - Wire to mock data hook, NOT API calls
@@ -42,6 +44,7 @@ prompts. These are not pre-loaded into Eva's always-on context.
 > TASK: Investigate bug -- [observed symptom, not theory]
 > HYPOTHESES: [Eva's theory] | [alternative at different layer]
 > READ: [relevant feature and API files], .claude/references/retro-lessons.md
+> BRAIN: [If brain available: recurring QA patterns, prior findings on similar code from agent_search. Omit if unavailable.]
 > CONSTRAINTS:
 > - Trace the full request path: frontend call -> API route -> handler -> data access
 > - Run relevant tests to confirm bug. Check API logs.
@@ -53,6 +56,7 @@ prompts. These are not pre-loaded into Eva's always-on context.
 **Roz (test spec review -- after Cal, before Colby build):**
 > TASK: Review test spec for ADR-NNNN
 > READ: {architecture_dir}/ADR-NNNN-feature-name.md, {product_specs_dir}/FEATURE.md, .claude/references/retro-lessons.md
+> BRAIN: [If brain available: recurring QA patterns on this module from agent_search. Omit if unavailable.]
 > CONSTRAINTS:
 > - Check failure:happy ratio (failure >= happy, hard rule)
 > - Check description quality (specific enough to write test without source)
@@ -63,6 +67,7 @@ prompts. These are not pre-loaded into Eva's always-on context.
 **Roz (test authoring -- pre-build, per ADR step):**
 > TASK: Write test assertions for ADR-NNNN Step N -- [step description]
 > READ: {architecture_dir}/ADR-NNNN-feature-name.md (Step N), {product_specs_dir}/FEATURE.md, [relevant source files], .claude/references/retro-lessons.md
+> BRAIN: [If brain available: test strategies that worked/failed on similar code from agent_search. Omit if unavailable.]
 > CONSTRAINTS:
 > - Write concrete test assertions, not descriptions
 > - Assert DOMAIN-CORRECT behavior, not current code behavior
@@ -75,6 +80,7 @@ prompts. These are not pre-loaded into Eva's always-on context.
 > TASK: Implement ADR-NNNN Step N -- [description]
 > READ: {architecture_dir}/ADR-NNNN-feature-name.md, [Roz-authored test files], .claude/references/retro-lessons.md
 > CONTEXT: Roz's test files define correct behavior. Make them pass. Do not modify Roz's assertions.
+> BRAIN: [If brain available: implementation patterns, known gotchas, prior build failures from agent_search. Omit if unavailable.]
 > CONSTRAINTS:
 > - Make Roz's pre-written tests pass -- NEVER modify her assertions
 > - **Inner loop:** `{fast_test_command}` for rapid iteration. **Full suite** at unit completion.
@@ -118,6 +124,7 @@ prompts. These are not pre-loaded into Eva's always-on context.
 **Roz (code QA -- first pass, after Colby build):**
 > TASK: Full QA on ADR-NNNN implementation
 > READ: {architecture_dir}/ADR-NNNN-feature-name.md, {product_specs_dir}/FEATURE.md, {ux_docs_dir}/FEATURE-ux.md, .claude/references/retro-lessons.md
+> BRAIN: [If brain available: prior findings on similar code patterns, known fragile areas from agent_search. Omit if unavailable.]
 > DIFF: [output of `git diff --stat` and `git diff --name-only` for unit N]
 > CONSTRAINTS:
 > - Run all QA checks in order (per your persona file)
@@ -151,6 +158,7 @@ prompts. These are not pre-loaded into Eva's always-on context.
 **Agatha (writing mode):**
 > TASK: Write documentation for [feature name]
 > READ: {product_specs_dir}/FEATURE.md, {ux_docs_dir}/FEATURE-ux.md, {architecture_dir}/ADR-NNNN-feature-name.md, {product_specs_dir}/FEATURE-doc-plan.md, .claude/references/retro-lessons.md
+> BRAIN: [If brain available: prior doc update reasoning, doc-drift patterns from agent_search. Omit if unavailable.]
 > CONSTRAINTS:
 > - Follow doc plan
 > - Read actual code for accuracy -- specs describe intent, code describes reality

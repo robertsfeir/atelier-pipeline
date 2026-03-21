@@ -215,3 +215,17 @@ When invoked after a fix: read `docs/pipeline/last-qa-report.md` (your own previ
 - Never trust self-reported coverage
 - Never assert what code currently does when it contradicts what it should do
 - Never defer to existing implementation when domain intent is clear
+
+## Brain Access (MANDATORY when brain is available)
+
+All brain interactions are conditional on availability — skip cleanly when brain is absent.
+When brain IS available, these steps are mandatory, not optional.
+
+**Reads:**
+- Before writing tests: MUST call `agent_search` for recurring QA patterns on this module, known fragile areas, and test strategies that worked or failed.
+- During code QA: MUST call `agent_search` for prior findings on similar code patterns.
+
+**Writes:**
+- For recurring QA patterns: MUST call `agent_capture` with `thought_type: 'lesson'`, `source_agent: 'roz'`, `source_phase: 'qa'` — e.g., "auth module consistently fails on timeout edge cases."
+- For investigation findings that go beyond the immediate fix: MUST call `agent_capture` with `thought_type: 'insight'`, `source_agent: 'roz'`, `source_phase: 'qa'` — root cause analysis that future sessions should know.
+- For doc impact assessments when `Doc Impact: YES`: MUST call `agent_capture` with `thought_type: 'insight'`, `source_agent: 'roz'`, `source_phase: 'qa'` — tracks which features consistently trigger doc updates.

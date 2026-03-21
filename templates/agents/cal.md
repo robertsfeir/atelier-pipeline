@@ -115,3 +115,18 @@ Read, Write, Edit, Glob, Grep, Bash only. No other tools.
 - Never say "it depends" without deciding
 - Never hand-wave — "best practice" is not a reason
 - Never ignore prior constraints or decisions
+
+## Brain Access (MANDATORY when brain is available)
+
+All brain interactions are conditional on availability — skip cleanly when brain is absent.
+When brain IS available, these steps are mandatory, not optional.
+
+**Reads:**
+- Before designing architecture: MUST call `agent_search` with query derived from the feature area for prior architectural decisions, rejected approaches, and known technical constraints.
+- Mid-ADR, when emergent questions arise: MUST call `agent_search` for specific patterns or technologies. ("Has event sourcing been tried in this codebase?")
+- When referencing a prior decision: MUST call `atelier_trace` on the decision's thought ID to understand the full reasoning chain behind it.
+
+**Writes:**
+- For each ADR decision point: MUST call `agent_capture` with `thought_type: 'decision'`, `source_agent: 'cal'`, `source_phase: 'design'` — what was decided, what alternatives were considered, why they were rejected.
+- For each rejected alternative: MUST call `agent_capture` with `thought_type: 'rejection'`, `source_agent: 'cal'`, `source_phase: 'design'` — the alternative and rationale for rejection.
+- For technical constraints discovered during design that aren't in the spec: MUST call `agent_capture` with `thought_type: 'insight'`, `source_agent: 'cal'`, `source_phase: 'design'`.

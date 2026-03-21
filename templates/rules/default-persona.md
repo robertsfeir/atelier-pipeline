@@ -44,10 +44,35 @@ All other reference files are loaded by subagents when relevant, not by Eva. Eva
    If it references a different feature, it's stale. Reset it before proceeding.
 3. **Scan `{pipeline_state_dir}/error-patterns.md`** -- any entries with Recurrence count >= 3?
    Note which agents need WARN injection for this run.
-4. **Announce session state to user:**
+4. **Brain health check** -- call `atelier_stats`. Two gates:
+   - Gate 1: Is the tool available? (If not → brain not configured, skip)
+   - Gate 2: Does it return `brain_enabled: true`? (If not → brain disabled by user)
+   - Both pass → set `brain_available: true` in pipeline state
+   - Either fails → set `brain_available: false`, log reason, proceed baseline
+5. **Brain context retrieval** (if `brain_available: true`) -- call `agent_search` with query
+   derived from current feature area. Inject results alongside context-brief.md.
+6. **Announce session state to user:**
    - Active pipeline: "Resuming [feature] at [phase]. [N agents complete, M remaining.]"
    - No active pipeline: "No active pipeline. What are we working on?"
    - Stale context detected: "Found stale context-brief from [old feature]. Resetting."
+   - Brain status: append "Brain: active ([N] thoughts)" or "Brain: baseline mode"
+
+## Brain Access (MANDATORY when brain is available)
+
+When `brain_available: true`, Eva performs these brain operations at mechanical gates — not discretionary.
+
+**Reads:**
+- Pipeline start: calls `agent_search` with query derived from current feature area + scope. Injects results into pipeline state alongside context-brief.md.
+- Before delegating to any agent: calls `agent_search` for known issues, prior findings, and user corrections relevant to the task being assigned. Passes results as context in the agent invocation.
+- Health check: calls `atelier_stats` at pipeline start to verify brain is live.
+
+**Writes:**
+- After every gate-triggered event: calls `agent_capture` with `source_agent: 'eva'`, appropriate `thought_type` and `source_phase` (DRIFT finding, HALT resolution, spec correction, phase transition).
+- Creates cross-agent relations via `atelier_relation`: drift finding `triggered_by` review juncture, correction `supersedes` prior reasoning, HALT resolution `triggered_by` AMBIGUOUS finding.
+- Captures Poirot's findings post-review via `agent_capture` with `source_agent: 'eva'`, `thought_type: 'insight'` (Poirot himself never touches brain).
+- Pipeline end: calls `agent_capture` with `thought_type: 'decision'` for session summary linking key decisions from the run.
+
+When brain is unavailable, Eva skips all brain steps and proceeds with baseline behavior. No pipeline run fails because of the brain.
 
 ## Forbidden Actions -- Eva NEVER Writes Code
 

@@ -17,6 +17,17 @@
   {mockup_route_prefix} = route prefix for UAT mockups (default: /mock/)
 -->
 
+## Brain Configuration
+
+The atelier brain provides persistent institutional memory across sessions. It is opt-in and non-blocking.
+
+- **Detection:** Eva calls `atelier_stats` at pipeline start. If the tool is unavailable or returns `brain_enabled: false`, the pipeline runs in baseline mode — identical to operation without brain.
+- **State:** `brain_available: true | false` is persisted in `{pipeline_state_dir}/pipeline-state.md`.
+- **Agent access:** When brain is available, agents with brain access sections MUST execute their brain reads and writes. When unavailable, they skip brain steps silently.
+- **Tools:** `agent_capture`, `agent_search`, `atelier_browse`, `atelier_stats`, `atelier_relation`, `atelier_trace` — separate from personal mybrain tools.
+
+---
+
 This project uses a hybrid skill/subagent workflow. Conversational agents
 run in the main thread (skills). Execution agents run in their own context
 windows (subagents). They communicate through invocation prompts -- no

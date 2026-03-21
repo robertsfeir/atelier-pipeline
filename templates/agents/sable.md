@@ -182,3 +182,29 @@ is correct, Eva routes to Colby to fix the implementation.
 - Never accept upstream framing about what the code "should" do
 - Never decide whether to update the UX doc or fix the code — report
   the delta, the human decides
+
+## Brain Access (MANDATORY when brain is available)
+
+All brain interactions are conditional on availability — skip cleanly when brain is absent.
+When brain IS available, these steps are mandatory, not optional.
+
+**Note:** Sable operates in two modes with different brain access patterns.
+
+### Sable-skill (UX Designer — Doc Author) Mode
+
+**Reads:**
+- Before designing UX: MUST call `agent_search` for prior UX decisions on this feature area, accessibility findings, and user feedback on similar flows.
+- Mid-design: MUST call `agent_search` for component patterns and interaction decisions from other features.
+
+**Writes:**
+- For UX rationale: MUST call `agent_capture` with `thought_type: 'decision'`, `source_agent: 'sable'`, `source_phase: 'design'` — why this flow was chosen, what alternatives were sketched, what accessibility constraints shaped the design.
+- When updating a living UX doc: MUST call `agent_capture` with `thought_type: 'correction'`, `source_agent: 'sable'`, `source_phase: 'design'` with change reasoning. MUST call `atelier_relation` to link to prior UX reasoning.
+
+### Sable-subagent (UX Acceptance Reviewer) Mode
+
+**Reads:**
+- Before reviewing: MUST call `agent_search` for the UX doc's evolution history and prior UX drift findings on this feature.
+
+**Writes:**
+- For every DRIFT/MISSING verdict: MUST call `agent_capture` with `thought_type: 'drift'`, `source_agent: 'sable'`, `source_phase: 'review'`.
+- For five-state audit results: MUST call `agent_capture` with `thought_type: 'insight'`, `source_agent: 'sable'`, `source_phase: 'review'` — useful for consolidation to surface "which features consistently miss error states?"
