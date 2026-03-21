@@ -21,7 +21,9 @@ import pg from "pg";
 import pgvector from "pgvector/pg";
 import { createServer } from "http";
 import crypto from "crypto";
-import { readFileSync } from "fs";
+import { readFileSync, existsSync } from "fs";
+import { fileURLToPath } from "url";
+import path from "path";
 
 // =============================================================================
 // Configuration
@@ -1091,6 +1093,64 @@ async function startConsolidationTimer() {
 }
 
 // =============================================================================
+// Static File Serving (Settings UI — ADR Step 7)
+// =============================================================================
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const UI_DIR = path.join(__dirname, "ui");
+
+const MIME_TYPES = {
+  ".html": "text/html; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".js": "application/javascript; charset=utf-8",
+};
+
+function handleStaticFile(req, res) {
+  let urlPath = new URL(req.url, `http://${req.headers.host}`).pathname;
+
+  // Only handle /ui paths
+  if (!urlPath.startsWith("/ui")) return false;
+
+  // /ui or /ui/ → serve index.html
+  let relativePath = urlPath.slice("/ui".length) || "/index.html";
+  if (relativePath === "/") relativePath = "/index.html";
+
+  const ext = path.extname(relativePath);
+  const contentType = MIME_TYPES[ext];
+  if (!contentType) {
+    res.writeHead(404, { "Content-Type": "text/plain" });
+    res.end("Not found");
+    return true;
+  }
+
+  const filePath = path.join(UI_DIR, relativePath);
+
+  // Prevent directory traversal
+  if (!filePath.startsWith(UI_DIR)) {
+    res.writeHead(403, { "Content-Type": "text/plain" });
+    res.end("Forbidden");
+    return true;
+  }
+
+  if (!existsSync(filePath)) {
+    res.writeHead(404, { "Content-Type": "text/plain" });
+    res.end("Not found");
+    return true;
+  }
+
+  try {
+    const content = readFileSync(filePath);
+    res.writeHead(200, { "Content-Type": contentType });
+    res.end(content);
+  } catch {
+    res.writeHead(500, { "Content-Type": "text/plain" });
+    res.end("Internal server error");
+  }
+  return true;
+}
+
+// =============================================================================
 // Server Startup (stdio or HTTP mode)
 // =============================================================================
 
@@ -1121,6 +1181,11 @@ if (mode === "http") {
       res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
 
       if (req.method === "OPTIONS") { res.writeHead(204); res.end(); return; }
+
+      // Serve static UI files
+      if (req.url.startsWith("/ui") && req.method === "GET") {
+        if (handleStaticFile(req, res)) return;
+      }
 
       // Route /api/* to REST handlers
       if (req.url.startsWith("/api/")) {

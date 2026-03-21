@@ -6,6 +6,8 @@
   "keywords": ["pipeline", "agents", "orchestration", "quality", "tdd", "qa"],
   "skills": [
     "./skills/pipeline-overview",
-    "./skills/pipeline-setup"
-  ]
+    "./skills/pipeline-setup",
+    "./skills/brain-setup"
+  ],
+  "mcpServers": ".mcp.json"
 }
