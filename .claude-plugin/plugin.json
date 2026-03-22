@@ -2,12 +2,8 @@
   "name": "atelier-pipeline",
   "version": "1.0.0",
   "description": "Multi-agent orchestration with quality gates, continuous QA, and persistent institutional memory across sessions",
-  "author": { "name": "Robert Sfeir" },
-  "keywords": ["pipeline", "agents", "orchestration", "quality", "tdd", "qa"],
-  "skills": [
-    "./skills/pipeline-overview",
-    "./skills/pipeline-setup",
-    "./skills/brain-setup",
-    "./skills/brain-hydrate"
-  ]
+  "author": {
+    "name": "Robert Sfeir",
+    "email": "robert@sfeir.design"
+  }
 }
