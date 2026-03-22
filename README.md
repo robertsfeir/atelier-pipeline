@@ -10,22 +10,84 @@ Atelier Pipeline has two core systems:
 
 **Atelier Brain.** A persistent memory layer backed by PostgreSQL and vector embeddings that gives your agents institutional memory across sessions. Without it, every time you close a terminal you lose the architectural decisions that shaped your implementation, the user corrections that steered scope, the rejected alternatives that explain why you didn't go a different way, and the QA lessons that prevent recurring bugs. The brain captures all of this during pipeline runs and surfaces it automatically when agents need context. It includes write-time conflict detection, TTL-based knowledge decay, and background consolidation that synthesizes raw observations into higher-level insights. The pipeline works without the brain — but with it, session 12 of a feature build has the same context as session 1.
 
-## Install
+## Getting Started
 
-### As a Claude Code Plugin
+### 1. Install the Plugin
+
+Add the marketplace and install:
 
 ```
 /plugin marketplace add robertsfeir/atelier-pipeline
-/plugin install atelier-pipeline
+/plugin install atelier-pipeline@atelier-pipeline
 ```
 
-Then run the setup skill in your project:
+Restart Claude Code after install.
+
+### 2. Set Up the Pipeline
+
+Open Claude Code in your project and run:
 
 ```
 /atelier-pipeline:pipeline-setup
 ```
 
-Claude walks you through project configuration (tech stack, test commands, source structure) and installs 27 files. At the end, it offers to set up the Atelier Brain for persistent memory.
+Claude walks you through project configuration one question at a time:
+- Tech stack and framework
+- Test commands (lint, typecheck, test suite)
+- Source structure and database patterns
+- Coverage and complexity thresholds
+
+It then installs 27 files into your project (agent personas, commands, references, pipeline state). At the end, it offers to set up the Atelier Brain.
+
+### 3. Set Up the Brain (optional but recommended)
+
+If you skipped the brain offer during pipeline setup, run it separately:
+
+```
+/atelier-pipeline:brain-setup
+```
+
+The setup asks:
+
+1. **Personal or shared?** Personal config stays local (never committed). Shared config is committed to the repo with `${ENV_VAR}` placeholders — no bare secrets.
+2. **Docker or local PostgreSQL?** Docker is one command (`docker compose up`). Local PostgreSQL requires pgvector and ltree extensions.
+3. **OpenRouter API key.** Needed for vector embeddings. Get one at https://openrouter.ai/keys and set `export OPENROUTER_API_KEY="sk-or-..."` in your shell profile.
+4. **Scope path.** A dot-separated namespace like `myorg.myproduct` that organizes knowledge.
+
+Setup verifies the connection and confirms:
+
+```
+Brain is live.
+  Tools available: 6
+  Scope: myorg.myproduct
+  Config: personal (~/.claude/plugins/data/atelier-pipeline/brain-config.json)
+  Database: Local PostgreSQL (myproject_brain)
+```
+
+**Teammate onboarding:** If a shared brain config already exists in the repo, `/atelier-pipeline:brain-setup` detects it automatically and tells the new team member which environment variables to set. No interactive setup needed.
+
+### 4. Hydrate the Brain (optional)
+
+For existing projects with ADRs, specs, or git history:
+
+```
+/atelier-pipeline:brain-hydrate
+```
+
+Scans your project artifacts, extracts the reasoning behind decisions (not the content itself), and imports it as brain thoughts. Safe to re-run — duplicate detection prevents re-importing.
+
+### 5. Start Building
+
+Describe a feature idea, or type `/pipeline` to start Eva. She sizes the work and routes to the right agent.
+
+## Updating the Plugin
+
+```
+claude plugin marketplace update atelier-pipeline
+claude plugin update atelier-pipeline@atelier-pipeline
+```
+
+The first command refreshes the marketplace catalog. The second pulls the new plugin version. Restart Claude Code after updating.
 
 ### Manual Setup (without plugin system)
 
@@ -124,15 +186,20 @@ These are installed into your project by `/pipeline-setup`:
 | `/devops` | Eva | Infrastructure and deployment |
 | `/docs` | Agatha | Documentation planning and writing |
 
-## Atelier Brain Setup
+## Atelier Brain
 
-The brain is an MCP server with 6 tools (`agent_capture`, `agent_search`, `atelier_browse`, `atelier_stats`, `atelier_relation`, `atelier_trace`) that agents use automatically during pipeline runs.
+The brain is an MCP server with 6 tools that agents use automatically during pipeline runs:
 
-**Getting started:**
+| Tool | Purpose |
+|------|---------|
+| `agent_capture` | Save a decision, lesson, preference, or correction |
+| `agent_search` | Semantic search across brain thoughts |
+| `atelier_browse` | Paginated browse by type or status |
+| `atelier_stats` | Brain health check (thought count, config, status) |
+| `atelier_relation` | Create typed edges between thoughts (supersedes, contradicts, evolves_from) |
+| `atelier_trace` | Walk relation chains from a thought |
 
-1. **`/brain-setup`** — Configures the database and connection. Supports Docker (recommended) or local PostgreSQL. Requires an OpenRouter API key for embeddings. Supports personal (local, not committed) or shared (team, committed) configurations.
-
-2. **`/brain-hydrate`** — Imports reasoning from existing project artifacts into a fresh brain. Scans ADRs, feature specs, UX docs, error patterns, retro lessons, and git history. Extracts the *why* behind decisions, not the content itself. Safe to re-run — duplicate detection prevents re-importing.
+Agents capture thoughts during pipeline runs and search for relevant context before making decisions. Write-time conflict detection catches contradictions (>0.9 similarity = duplicate, 0.7-0.9 = LLM-classified). TTL decay expires stale knowledge per thought type. Background consolidation synthesizes raw observations into reflections.
 
 ## What Gets Installed
 
