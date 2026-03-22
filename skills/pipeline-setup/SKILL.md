@@ -149,25 +149,26 @@ This project uses a multi-agent orchestration pipeline for structured developmen
 - Full test suite between work units
 ```
 
-### Step 6: Print Summary
+### Step 6: Print Summary and Offer Brain Setup
 
 After installation, print:
 
-1. A count of files installed (24 files across 5 directories)
+1. A count of files installed (27 files across 5 directories)
 2. The directory tree showing what was created
 3. A reminder of available slash commands
 4. Instructions to start their first pipeline run
+5. **Offer to set up the Atelier Brain** -- persistent memory across sessions
 
 **Example summary:**
 
 ```
 Atelier Pipeline installed successfully.
 
-Files installed: 24
+Files installed: 27
   .claude/rules/       -- 2 files (Eva persona, orchestration rules)
-  .claude/agents/      -- 5 files (Cal, Colby, Roz, Ellis, Agatha)
+  .claude/agents/      -- 9 files (Cal, Colby, Roz, Robert, Sable, Poirot, Distillator, Ellis, Agatha)
   .claude/commands/    -- 7 files (/pm, /ux, /architect, /debug, /pipeline, /devops, /docs)
-  .claude/references/  -- 4 files (quality framework, retro lessons, invocation templates, cloud patterns)
+  .claude/references/  -- 4 files (quality framework, retro lessons, invocation templates, pipeline operations)
   docs/pipeline/       -- 5 files (state tracking for session recovery)
   CLAUDE.md            -- updated with pipeline section
 
@@ -184,6 +185,18 @@ To start your first pipeline:
   Describe a feature idea, or say "let's build [feature name]"
   Eva will size the work and route to the right starting agent.
 ```
+
+**Brain setup offer (always ask):**
+
+After printing the summary, ask the user:
+
+> The pipeline is ready. Would you also like to set up the **Atelier Brain**?
+> It gives your agents persistent memory across sessions -- architectural
+> decisions, user corrections, QA lessons, and rejected alternatives survive
+> when you close the terminal. It's optional and the pipeline works fine
+> without it.
+
+If the user says yes, invoke the `brain-setup` skill. If no, finish.
 
 ## Important Notes
 
