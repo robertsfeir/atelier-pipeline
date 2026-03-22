@@ -1,0 +1,14 @@
+{
+  "name": "atelier-pipeline",
+  "owner": {
+    "name": "Robert Sfeir",
+    "email": "robert@sfeir.design"
+  },
+  "plugins": [
+    {
+      "name": "atelier-pipeline",
+      "source": ".",
+      "description": "Multi-agent orchestration with quality gates, continuous QA, and persistent institutional memory across sessions"
+    }
+  ]
+}
