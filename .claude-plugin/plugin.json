@@ -10,5 +10,5 @@
     "./skills/brain-setup",
     "./skills/brain-hydrate"
   ],
-  "mcpServers": ".mcp.json"
+  "mcpServers": "./.mcp.json"
 }
