@@ -35,7 +35,7 @@ If the user does not have answers for optional items (coverage, complexity), use
 Read the template files from the plugin's templates directory. These serve as the base for each installed file:
 
 ```
-plugins/atelier-pipeline/templates/
+plugins/atelier-pipeline/source/
   rules/
     default-persona.md            # Eva orchestrator persona
     agent-system.md               # Full orchestration rules, routing, gates
@@ -78,33 +78,33 @@ Copy each template to its destination in the user's project, customizing placeho
 
 | Template Source | Destination | Purpose |
 |----------------|-------------|---------|
-| `templates/rules/default-persona.md` | `.claude/rules/default-persona.md` | Eva persona -- always loaded by Claude Code |
-| `templates/rules/agent-system.md` | `.claude/rules/agent-system.md` | Orchestration rules, routing table, quality gates |
-| `templates/agents/cal.md` | `.claude/agents/cal.md` | Architect subagent persona |
-| `templates/agents/colby.md` | `.claude/agents/colby.md` | Engineer subagent persona |
-| `templates/agents/roz.md` | `.claude/agents/roz.md` | QA subagent persona |
-| `templates/agents/robert.md` | `.claude/agents/robert.md` | Product reviewer subagent persona |
-| `templates/agents/sable.md` | `.claude/agents/sable.md` | UX reviewer subagent persona |
-| `templates/agents/investigator.md` | `.claude/agents/investigator.md` | Blind investigator subagent persona |
-| `templates/agents/distillator.md` | `.claude/agents/distillator.md` | Compression engine subagent persona |
-| `templates/agents/ellis.md` | `.claude/agents/ellis.md` | Commit manager subagent persona |
-| `templates/agents/documentation-expert.md` | `.claude/agents/documentation-expert.md` | Documentation subagent persona |
-| `templates/commands/pm.md` | `.claude/commands/pm.md` | /pm slash command |
-| `templates/commands/ux.md` | `.claude/commands/ux.md` | /ux slash command |
-| `templates/commands/architect.md` | `.claude/commands/architect.md` | /architect slash command |
-| `templates/commands/debug.md` | `.claude/commands/debug.md` | /debug slash command |
-| `templates/commands/pipeline.md` | `.claude/commands/pipeline.md` | /pipeline slash command |
-| `templates/commands/devops.md` | `.claude/commands/devops.md` | /devops slash command |
-| `templates/commands/docs.md` | `.claude/commands/docs.md` | /docs slash command |
-| `templates/references/dor-dod.md` | `.claude/references/dor-dod.md` | Quality framework |
-| `templates/references/retro-lessons.md` | `.claude/references/retro-lessons.md` | Shared lessons (empty template) |
-| `templates/references/invocation-templates.md` | `.claude/references/invocation-templates.md` | Subagent invocation examples |
-| `templates/references/pipeline-operations.md` | `.claude/references/pipeline-operations.md` | Operational procedures (model selection, QA, feedback, batch, worktree, context) |
-| `templates/pipeline/pipeline-state.md` | `docs/pipeline/pipeline-state.md` | Session recovery state |
-| `templates/pipeline/context-brief.md` | `docs/pipeline/context-brief.md` | Context preservation |
-| `templates/pipeline/error-patterns.md` | `docs/pipeline/error-patterns.md` | Error pattern tracking |
-| `templates/pipeline/investigation-ledger.md` | `docs/pipeline/investigation-ledger.md` | Debug hypothesis tracking |
-| `templates/pipeline/last-qa-report.md` | `docs/pipeline/last-qa-report.md` | QA report persistence |
+| `source/rules/default-persona.md` | `.claude/rules/default-persona.md` | Eva persona -- always loaded by Claude Code |
+| `source/rules/agent-system.md` | `.claude/rules/agent-system.md` | Orchestration rules, routing table, quality gates |
+| `source/agents/cal.md` | `.claude/agents/cal.md` | Architect subagent persona |
+| `source/agents/colby.md` | `.claude/agents/colby.md` | Engineer subagent persona |
+| `source/agents/roz.md` | `.claude/agents/roz.md` | QA subagent persona |
+| `source/agents/robert.md` | `.claude/agents/robert.md` | Product reviewer subagent persona |
+| `source/agents/sable.md` | `.claude/agents/sable.md` | UX reviewer subagent persona |
+| `source/agents/investigator.md` | `.claude/agents/investigator.md` | Blind investigator subagent persona |
+| `source/agents/distillator.md` | `.claude/agents/distillator.md` | Compression engine subagent persona |
+| `source/agents/ellis.md` | `.claude/agents/ellis.md` | Commit manager subagent persona |
+| `source/agents/documentation-expert.md` | `.claude/agents/documentation-expert.md` | Documentation subagent persona |
+| `source/commands/pm.md` | `.claude/commands/pm.md` | /pm slash command |
+| `source/commands/ux.md` | `.claude/commands/ux.md` | /ux slash command |
+| `source/commands/architect.md` | `.claude/commands/architect.md` | /architect slash command |
+| `source/commands/debug.md` | `.claude/commands/debug.md` | /debug slash command |
+| `source/commands/pipeline.md` | `.claude/commands/pipeline.md` | /pipeline slash command |
+| `source/commands/devops.md` | `.claude/commands/devops.md` | /devops slash command |
+| `source/commands/docs.md` | `.claude/commands/docs.md` | /docs slash command |
+| `source/references/dor-dod.md` | `.claude/references/dor-dod.md` | Quality framework |
+| `source/references/retro-lessons.md` | `.claude/references/retro-lessons.md` | Shared lessons (empty template) |
+| `source/references/invocation-templates.md` | `.claude/references/invocation-templates.md` | Subagent invocation examples |
+| `source/references/pipeline-operations.md` | `.claude/references/pipeline-operations.md` | Operational procedures (model selection, QA, feedback, batch, worktree, context) |
+| `source/pipeline/pipeline-state.md` | `docs/pipeline/pipeline-state.md` | Session recovery state |
+| `source/pipeline/context-brief.md` | `docs/pipeline/context-brief.md` | Context preservation |
+| `source/pipeline/error-patterns.md` | `docs/pipeline/error-patterns.md` | Error pattern tracking |
+| `source/pipeline/investigation-ledger.md` | `docs/pipeline/investigation-ledger.md` | Debug hypothesis tracking |
+| `source/pipeline/last-qa-report.md` | `docs/pipeline/last-qa-report.md` | QA report persistence |
 
 **Total: 27 files across 5 directories.**
 

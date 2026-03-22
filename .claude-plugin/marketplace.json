@@ -1,5 +1,6 @@
 {
   "name": "atelier-pipeline",
+  "description": "Multi-agent orchestration plugins for Claude Code with quality gates, continuous QA, and persistent institutional memory",
   "owner": {
     "name": "Robert Sfeir",
     "email": "robert@sfeir.design"

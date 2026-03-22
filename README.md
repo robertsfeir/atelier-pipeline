@@ -1,12 +1,14 @@
 # Atelier Pipeline
 
-A Claude Code plugin that provides multi-agent orchestration with quality gates, continuous QA, and persistent memory across sessions.
+A Claude Code plugin that provides multi-agent orchestration with quality gates, continuous QA, and persistent institutional memory across sessions.
 
 ## What It Does
 
-Atelier Pipeline installs ten specialized agent personas into your Claude Code project — each with clear responsibilities, strict boundaries, and independent quality verification. Eva orchestrates, Robert handles product, Sable designs UX, Cal architects, Colby builds, Roz tests, Poirot blind-reviews, Agatha documents, Ellis commits, and Distillator compresses. The result: specs get written, designs get validated, tests get authored before code, every change passes independent QA, and nothing ships without review.
+Atelier Pipeline has two core systems:
 
-The plugin includes an optional persistent memory layer (Atelier Brain) that preserves architectural decisions, user corrections, QA lessons, and rejected alternatives across sessions.
+**Multi-Agent Orchestration.** Ten specialized agent personas with clear responsibilities, strict boundaries, and independent quality verification. Eva orchestrates, Robert handles product, Sable designs UX, Cal architects, Colby builds, Roz tests, Poirot blind-reviews, Agatha documents, Ellis commits, and Distillator compresses. Specs get written, designs get validated, tests get authored before code, every change passes independent QA, and nothing ships without review.
+
+**Atelier Brain.** A persistent memory layer backed by PostgreSQL and vector embeddings that gives your agents institutional memory across sessions. Without it, every time you close a terminal you lose the architectural decisions that shaped your implementation, the user corrections that steered scope, the rejected alternatives that explain why you didn't go a different way, and the QA lessons that prevent recurring bugs. The brain captures all of this during pipeline runs and surfaces it automatically when agents need context. It includes write-time conflict detection, TTL-based knowledge decay, and background consolidation that synthesizes raw observations into higher-level insights. The pipeline works without the brain — but with it, session 12 of a feature build has the same context as session 1.
 
 ## Install
 
@@ -122,17 +124,15 @@ These are installed into your project by `/pipeline-setup`:
 | `/devops` | Eva | Infrastructure and deployment |
 | `/docs` | Agatha | Documentation planning and writing |
 
-## Atelier Brain
+## Atelier Brain Setup
 
-Optional persistent memory layer that gives agents institutional memory across sessions. Without it, the pipeline works identically — the brain adds cross-session context, not runtime behavior.
+The brain is an MCP server with 6 tools (`agent_capture`, `agent_search`, `atelier_browse`, `atelier_stats`, `atelier_relation`, `atelier_trace`) that agents use automatically during pipeline runs.
 
-**What it stores:** Architectural decisions, rejected alternatives, user corrections, QA lessons, spec drift history, and consolidated reflections.
+**Getting started:**
 
-**How it works:** MCP server backed by PostgreSQL + pgvector. Agents capture thoughts during pipeline runs and search for relevant context before making decisions. Write-time conflict detection catches contradictions. TTL decay expires stale knowledge. Background consolidation synthesizes raw observations into higher-level insights.
+1. **`/brain-setup`** — Configures the database and connection. Supports Docker (recommended) or local PostgreSQL. Requires an OpenRouter API key for embeddings. Supports personal (local, not committed) or shared (team, committed) configurations.
 
-**Setup:** Run `/brain-setup` after installing the pipeline. Supports Docker (recommended) or local PostgreSQL. Requires an OpenRouter API key for embeddings.
-
-**Hydration:** Run `/brain-hydrate` to import reasoning from existing project artifacts (ADRs, specs, UX docs, error patterns, git history) into a fresh brain.
+2. **`/brain-hydrate`** — Imports reasoning from existing project artifacts into a fresh brain. Scans ADRs, feature specs, UX docs, error patterns, retro lessons, and git history. Extracts the *why* behind decisions, not the content itself. Safe to re-run — duplicate detection prevents re-importing.
 
 ## What Gets Installed
 
