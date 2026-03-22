@@ -4,9 +4,6 @@
       "command": "node",
       "args": ["${CLAUDE_PLUGIN_ROOT}/brain/server.mjs"],
       "env": {
-        "DATABASE_URL": "${ATELIER_BRAIN_DATABASE_URL}",
-        "OPENROUTER_API_KEY": "${OPENROUTER_API_KEY}",
-        "BRAIN_CONFIG_PROJECT": "${CLAUDE_PROJECT_DIR}/.claude/brain-config.json",
         "BRAIN_CONFIG_USER": "${CLAUDE_PLUGIN_DATA}/brain-config.json"
       }
     }
