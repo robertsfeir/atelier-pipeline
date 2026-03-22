@@ -43,6 +43,10 @@ plugins/atelier-pipeline/templates/
     cal.md                        # Architect subagent
     colby.md                      # Engineer subagent
     roz.md                        # QA subagent
+    robert.md                     # Product reviewer subagent
+    sable.md                      # UX reviewer subagent
+    investigator.md               # Poirot (blind investigator) subagent
+    distillator.md                # Compression engine subagent
     ellis.md                      # Commit manager subagent
     documentation-expert.md       # Documentation subagent
   commands/
@@ -57,7 +61,7 @@ plugins/atelier-pipeline/templates/
     dor-dod.md                    # Definition of Ready / Definition of Done framework
     retro-lessons.md              # Retro lessons template (starts empty)
     invocation-templates.md       # Subagent invocation examples
-    cloud-architecture.md         # Cloud/IaC reference patterns
+    pipeline-operations.md        # Operational procedures (model selection, QA flow, feedback loops)
   pipeline/
     pipeline-state.md             # Session recovery state template
     context-brief.md              # Context preservation template
@@ -79,6 +83,10 @@ Copy each template to its destination in the user's project, customizing placeho
 | `templates/agents/cal.md` | `.claude/agents/cal.md` | Architect subagent persona |
 | `templates/agents/colby.md` | `.claude/agents/colby.md` | Engineer subagent persona |
 | `templates/agents/roz.md` | `.claude/agents/roz.md` | QA subagent persona |
+| `templates/agents/robert.md` | `.claude/agents/robert.md` | Product reviewer subagent persona |
+| `templates/agents/sable.md` | `.claude/agents/sable.md` | UX reviewer subagent persona |
+| `templates/agents/investigator.md` | `.claude/agents/investigator.md` | Blind investigator subagent persona |
+| `templates/agents/distillator.md` | `.claude/agents/distillator.md` | Compression engine subagent persona |
 | `templates/agents/ellis.md` | `.claude/agents/ellis.md` | Commit manager subagent persona |
 | `templates/agents/documentation-expert.md` | `.claude/agents/documentation-expert.md` | Documentation subagent persona |
 | `templates/commands/pm.md` | `.claude/commands/pm.md` | /pm slash command |
@@ -91,14 +99,14 @@ Copy each template to its destination in the user's project, customizing placeho
 | `templates/references/dor-dod.md` | `.claude/references/dor-dod.md` | Quality framework |
 | `templates/references/retro-lessons.md` | `.claude/references/retro-lessons.md` | Shared lessons (empty template) |
 | `templates/references/invocation-templates.md` | `.claude/references/invocation-templates.md` | Subagent invocation examples |
-| `templates/references/cloud-architecture.md` | `.claude/references/cloud-architecture.md` | Cloud/IaC patterns |
+| `templates/references/pipeline-operations.md` | `.claude/references/pipeline-operations.md` | Operational procedures (model selection, QA, feedback, batch, worktree, context) |
 | `templates/pipeline/pipeline-state.md` | `docs/pipeline/pipeline-state.md` | Session recovery state |
 | `templates/pipeline/context-brief.md` | `docs/pipeline/context-brief.md` | Context preservation |
 | `templates/pipeline/error-patterns.md` | `docs/pipeline/error-patterns.md` | Error pattern tracking |
 | `templates/pipeline/investigation-ledger.md` | `docs/pipeline/investigation-ledger.md` | Debug hypothesis tracking |
 | `templates/pipeline/last-qa-report.md` | `docs/pipeline/last-qa-report.md` | QA report persistence |
 
-**Total: 24 files across 5 directories.**
+**Total: 27 files across 5 directories.**
 
 ### Step 4: Customize Placeholders
 

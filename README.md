@@ -196,7 +196,7 @@ your-project/
       dor-dod.md                  # Quality framework
       retro-lessons.md            # Shared lessons (starts with template)
       invocation-templates.md     # Subagent invocation examples
-      cloud-architecture.md       # Cloud/IaC reference patterns
+      pipeline-operations.md    # Operational procedures (model selection, QA, feedback, batch, worktree)
   docs/
     pipeline/
       pipeline-state.md           # Session recovery state

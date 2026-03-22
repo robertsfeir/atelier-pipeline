@@ -7,7 +7,8 @@
   "skills": [
     "./skills/pipeline-overview",
     "./skills/pipeline-setup",
-    "./skills/brain-setup"
+    "./skills/brain-setup",
+    "./skills/brain-hydrate"
   ],
   "mcpServers": ".mcp.json"
 }
