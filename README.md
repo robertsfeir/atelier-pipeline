@@ -28,7 +28,7 @@ Restart Claude Code after install.
 Open Claude Code in your project and run:
 
 ```
-/atelier-pipeline:pipeline-setup
+/pipeline-setup
 ```
 
 Claude walks you through project configuration one question at a time:
@@ -44,7 +44,7 @@ It then installs 27 files into your project (agent personas, commands, reference
 If you skipped the brain offer during pipeline setup, run it separately:
 
 ```
-/atelier-pipeline:brain-setup
+/brain-setup
 ```
 
 The setup asks:
@@ -64,14 +64,14 @@ Brain is live.
   Database: Local PostgreSQL (myproject_brain)
 ```
 
-**Teammate onboarding:** If a shared brain config already exists in the repo, `/atelier-pipeline:brain-setup` detects it automatically and tells the new team member which environment variables to set. No interactive setup needed.
+**Teammate onboarding:** If a shared brain config already exists in the repo, `/brain-setup` detects it automatically and tells the new team member which environment variables to set. No interactive setup needed.
 
 ### 4. Hydrate the Brain (optional)
 
 For existing projects with ADRs, specs, or git history:
 
 ```
-/atelier-pipeline:brain-hydrate
+/brain-hydrate
 ```
 
 Scans your project artifacts, extracts the reasoning behind decisions (not the content itself), and imports it as brain thoughts. Safe to re-run — duplicate detection prevents re-importing.
@@ -108,10 +108,10 @@ The plugin provides four skills:
 
 | Skill | Trigger | Purpose |
 |-------|---------|---------|
-| `/atelier-pipeline:pipeline-setup` | "set up the pipeline", "install atelier" | Installs all agent personas, commands, references, and state files into your project |
-| `/atelier-pipeline:pipeline-overview` | "how does the pipeline work", "explain atelier" | Quick reference for the pipeline system, agents, and principles |
-| `/atelier-pipeline:brain-setup` | "set up the brain", "configure brain" | Configures the Atelier Brain persistent memory (Docker or local PostgreSQL) |
-| `/atelier-pipeline:brain-hydrate` | "hydrate brain", "seed memory", "import history" | Imports existing project knowledge (ADRs, specs, git history) into the brain |
+| `/pipeline-setup` | "set up the pipeline", "install atelier" | Installs all agent personas, commands, references, and state files into your project |
+| `/pipeline-overview` | "how does the pipeline work", "explain atelier" | Quick reference for the pipeline system, agents, and principles |
+| `/brain-setup` | "set up the brain", "configure brain" | Configures the Atelier Brain persistent memory (Docker or local PostgreSQL) |
+| `/brain-hydrate` | "hydrate brain", "seed memory", "import history" | Imports existing project knowledge (ADRs, specs, git history) into the brain |
 
 ## The Pipeline
 
