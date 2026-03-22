@@ -22,7 +22,7 @@ Atelier Pipeline has two core systems:
 Then run the setup skill in your project:
 
 ```
-/pipeline-setup
+/atelier-pipeline:pipeline-setup
 ```
 
 Claude walks you through project configuration (tech stack, test commands, source structure) and installs 27 files. At the end, it offers to set up the Atelier Brain for persistent memory.
@@ -46,10 +46,10 @@ The plugin provides four skills:
 
 | Skill | Trigger | Purpose |
 |-------|---------|---------|
-| `/pipeline-setup` | "set up the pipeline", "install atelier" | Installs all agent personas, commands, references, and state files into your project |
-| `/pipeline-overview` | "how does the pipeline work", "explain atelier" | Quick reference for the pipeline system, agents, and principles |
-| `/brain-setup` | "set up the brain", "configure brain" | Configures the Atelier Brain persistent memory (Docker or local PostgreSQL) |
-| `/brain-hydrate` | "hydrate brain", "seed memory", "import history" | Imports existing project knowledge (ADRs, specs, git history) into the brain |
+| `/atelier-pipeline:pipeline-setup` | "set up the pipeline", "install atelier" | Installs all agent personas, commands, references, and state files into your project |
+| `/atelier-pipeline:pipeline-overview` | "how does the pipeline work", "explain atelier" | Quick reference for the pipeline system, agents, and principles |
+| `/atelier-pipeline:brain-setup` | "set up the brain", "configure brain" | Configures the Atelier Brain persistent memory (Docker or local PostgreSQL) |
+| `/atelier-pipeline:brain-hydrate` | "hydrate brain", "seed memory", "import history" | Imports existing project knowledge (ADRs, specs, git history) into the brain |
 
 ## The Pipeline
 
