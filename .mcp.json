@@ -1,11 +1,9 @@
 {
-  "mcpServers": {
-    "atelier-brain": {
-      "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/brain/server.mjs"],
-      "env": {
-        "BRAIN_CONFIG_USER": "${CLAUDE_PLUGIN_DATA}/brain-config.json"
-      }
+  "atelier-brain": {
+    "command": "node",
+    "args": ["${CLAUDE_PLUGIN_ROOT}/brain/server.mjs"],
+    "env": {
+      "BRAIN_CONFIG_USER": "${CLAUDE_PLUGIN_DATA}/brain-config.json"
     }
   }
 }
