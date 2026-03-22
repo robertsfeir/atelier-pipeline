@@ -1,235 +1,116 @@
 # Atelier Pipeline
 
-A multi-agent orchestration system for Claude Code that replaces chaotic AI-assisted development with a structured, quality-gated engineering workflow.
+A Claude Code plugin that provides multi-agent orchestration with quality gates, continuous QA, and persistent memory across sessions.
 
-## What is this?
+## What It Does
 
-Atelier Pipeline gives Claude Code ten specialized agent personas — a product officer, UX designer, architect, engineer, QA engineer, blind code investigator, documentation specialist, commit manager, compression engine, and a central orchestrator — each with clear responsibilities, strict boundaries, and independent quality verification. The result is AI-assisted development that actually works like a real engineering team: specs get written, designs get validated, tests get authored before code, every change passes independent QA, product acceptance and UX acceptance are verified against original intent, and nothing ships without review.
+Atelier Pipeline installs ten specialized agent personas into your Claude Code project — each with clear responsibilities, strict boundaries, and independent quality verification. Eva orchestrates, Robert handles product, Sable designs UX, Cal architects, Colby builds, Roz tests, Poirot blind-reviews, Agatha documents, Ellis commits, and Distillator compresses. The result: specs get written, designs get validated, tests get authored before code, every change passes independent QA, and nothing ships without review.
 
-## Why?
+The plugin includes an optional persistent memory layer (Atelier Brain) that preserves architectural decisions, user corrections, QA lessons, and rejected alternatives across sessions.
 
-Unstructured AI-assisted development has predictable failure modes:
+## Install
 
-- **Self-review is no review.** When the same agent writes code and writes its own tests, it controls what "correct" means. Bugs get codified as "behavioral quirks" rather than caught. In our early runs, an agent found 6 bugs in shared utilities and adjusted test expectations to match them rather than fixing them.
-
-- **Context evaporates between sessions.** Claude Code has no memory across conversations. Without explicit state management, a 3-day feature build loses all architectural decisions, user corrections, and rejected alternatives every time you close a terminal.
-
-- **No quality gates means no quality.** Without structural enforcement, the fastest path is always "generate code, hope it works, commit." There is no mechanism to catch spec gaps, security oversights, or silent requirement drops — until production.
-
-- **Flat prompting hits a ceiling.** A single "build this feature" prompt cannot hold product requirements, architectural constraints, UX specifications, test coverage targets, and code quality standards simultaneously. The context window overflows, priorities blur, and output quality degrades with complexity.
-
-Atelier Pipeline solves these by separating concerns across specialized agents, enforcing independent verification at every phase transition, and maintaining recoverable state on disk.
-
-## The Pipeline
+### As a Claude Code Plugin
 
 ```
-                         Idea
-                          |
-                     Robert (spec)
-                       /      \
-                      /        \
-              Sable (UX)    Agatha (doc plan)         --- parallel
-                      \        /
-                       \      /
-                    Colby (mockup)
-                          |
-                 Sable verifies mockup                --- UX acceptance
-                          |
-                     User UAT review
-                          |
-                Cal (architecture + test spec)
-                          |
-                  Roz (test spec review)
-                          |
-                  Roz (test authoring)
-                          |
-      Colby (build) <-> Roz (QA) + Poirot             --- interleaved
-                          |
-      Roz + Poirot + Robert + Sable                    --- review juncture (parallel)
-                          |
-                   Agatha (docs)                       --- against final verified code
-                          |
-               Robert verifies docs                    --- product acceptance
-                          |
-           Spec/UX reconciliation (if drift)           --- living artifacts updated
-                          |
-                Ellis (commit + changelog)             --- one atomic commit
+/plugin marketplace add robertsfeir/atelier-pipeline
+/plugin install atelier-pipeline
 ```
 
-The build/QA cycle is not one pass — it interleaves per ADR step:
+Then run the setup skill in your project:
 
 ```
-  Roz writes tests (step 1)  -->  Colby builds (step 1)  -->  Roz reviews (step 1)
-  Roz writes tests (step 2)  -->  Colby builds (step 2)  -->  Roz reviews (step 2)
-  ...repeat for each ADR step...
-  Review juncture (Roz final sweep + Poirot + Robert + Sable in parallel)
+/pipeline-setup
 ```
 
-**Phase sizing keeps it pragmatic.** Small fixes (bug fix, single file) skip straight to Colby -> Roz -> Ellis (with Agatha if Roz flags doc impact). Medium features require a spec and add architecture + product acceptance review. Only large, multi-concern features run the full pipeline including UX acceptance. Smart ceremony, not bureaucratic ceremony.
+Claude walks you through project configuration (tech stack, test commands, source structure) and installs 27 files. At the end, it offers to set up the Atelier Brain for persistent memory.
 
-## Agent Roster
-
-| Agent | Role | When | Type | Pronouns |
-|-------|------|------|------|----------|
-| **Eva** | Pipeline Orchestrator / DevOps | Always active — routes, tracks state, enforces gates | Skill (main thread) | -- |
-| **Robert** | Chief Product Officer | Feature discovery, spec production, product acceptance review | Skill / Subagent | -- |
-| **Sable** | Senior UI/UX Designer | UX design, mockup verification, UX acceptance review | Skill / Subagent | -- |
-| **Cal** | Senior Software Architect | Design through ADR production | Skill / Subagent | -- |
-| **Colby** | Senior Software Engineer | Mockup and build phases | Subagent | she/her |
-| **Roz** | QA Engineer | Test authoring, code review, verification, doc-impact assessment | Subagent | she/her |
-| **Poirot** | Blind Code Investigator | Diff-only review (parallel with Roz) | Subagent | he/him |
-| **Agatha** | Documentation Specialist | Doc planning and writing (after final QA, not during build) | Skill / Subagent | -- |
-| **Ellis** | Commit and Changelog Manager | Post-review through git commit | Subagent | -- |
-| **Distillator** | Compression Engine | Artifact compression when >5K tokens | Subagent | -- |
-
-**Skills** run in the main Claude Code thread for conversational, back-and-forth work.
-**Subagents** run in their own context windows for focused execution tasks.
-Some agents have both modes: Robert and Sable are skills for authoring (specs, UX docs) and subagents for verification (acceptance review). Cal is a skill for clarification and a subagent for ADR production. Agatha is a skill for doc planning and a subagent for doc writing.
-
-## Key Principles
-
-### Roz-First TDD
-
-Roz writes test assertions before Colby writes any implementation code. Tests define what correct domain behavior looks like. Colby's job is to make those tests pass — she is forbidden from modifying Roz's assertions. If a test fails against existing code, the code has a bug, not the test. This eliminates the structural conflict of interest where an agent controls both the implementation and the definition of "correct."
-
-### Continuous QA, Not Batch QA
-
-Each ADR step is a work unit. For every unit: Roz authors tests, Colby implements, Roz reviews. Issues are caught at the unit level and fixed immediately — not accumulated into a massive end-of-feature review where problems compound and root causes are buried.
-
-### Definition of Ready / Definition of Done
-
-Every agent output starts with a DoR section (requirements extracted from upstream artifacts, proving the agent actually read the spec) and ends with a DoD section (coverage verification mapping every requirement to evidence). Eva spot-checks the DoR at phase transitions. Roz independently verifies Colby's DoD against the actual code. No hand-waving, no silent requirement drops.
-
-### Four-Layer Investigation Discipline
-
-Debug flows systematically check four layers: Application, Transport, Infrastructure, Environment. If two hypotheses are rejected at the same layer, the investigation must escalate to the next layer before proposing more theories at the original level. This prevents tunnel vision — the most common failure mode in AI-assisted debugging.
-
-### Retro Lessons
-
-After each pipeline run, error patterns are categorized and logged. Patterns that recur three or more times get injected as explicit warnings into future agent prompts. The system learns from its own mistakes. Categories include: hallucinated-api, wrong-logic, pattern-drift, security-blindspot, over-engineering, stale-context, missing-state, and test-gap.
-
-### Information Asymmetry as Verification
-
-Three reviewers run in parallel at the review juncture, each with deliberately constrained context:
-
-- **Poirot** sees only the git diff — no spec, no ADR, no context. Catches code-intrinsic flaws.
-- **Robert** (subagent) sees only the spec and code — no ADR. Catches product spec drift.
-- **Sable** (subagent) sees only the UX doc and code — no ADR. Catches UX design drift.
-
-Each reviewer's constraint prevents anchoring to the architect's interpretation. If the ADR subtly reframed a spec requirement and Colby faithfully built the reframed version, Robert catches the drift because he compares against the original intent. This three-axis review catches different failure classes that no single reviewer can replicate.
-
-### Living Artifacts, Immutable Records
-
-Specs and UX docs are **living artifacts** — updated at the end of every pipeline to stay current with the implementation. When Robert or Sable's acceptance review flags drift, the human decides: fix the code or update the spec/UX doc. Updated artifacts ship in the same commit as code. No deferred cleanup.
-
-ADRs are **immutable records** — never updated in place. If architecture changes, Cal writes a new ADR that supersedes the original. Decision history stays intact.
-
-### Mandatory Gates
-
-Ten gates that are never skippable, regardless of phase sizing:
-
-1. **Roz verifies every Colby output.** No agent self-reviews.
-2. **Ellis commits. Eva never runs git.** Separation of orchestration and execution.
-3. **Full test suite between work units.** On the actual integrated codebase, not self-reported results.
-4. **User approves bug fix approach.** Roz diagnoses, the user reviews, then Colby fixes. No auto-advance on user-reported bugs.
-5. **Poirot blind-reviews every Colby output.** Parallel with Roz, diff-only.
-6. **Distillator compresses artifacts over 5K tokens.** Mechanical, no discretion.
-7. **Robert reviews at the review juncture.** Product acceptance on Medium/Large.
-8. **Sable verifies every mockup before UAT.** UX acceptance before human review.
-9. **Agatha writes docs after final QA, not during build.** Against verified code only.
-10. **Spec/UX reconciliation is continuous.** Every pipeline ends with living artifacts current.
-
-## Quick Start
-
-### Option A: Clone and set up (recommended)
+### Manual Setup (without plugin system)
 
 ```bash
 git clone https://github.com/robertsfeir/atelier-pipeline.git /tmp/atelier-pipeline
 ```
 
-Then open Claude Code in your project and say:
+Then in Claude Code:
 
 ```
 Read /tmp/atelier-pipeline/skills/pipeline-setup/SKILL.md and follow its
 instructions to install the pipeline in this project
 ```
 
-Claude will walk you through project configuration (tech stack, test commands, source structure) and install all 24 files.
+## Skills
 
-### Option B: EPAM CoE Marketplace
+The plugin provides four skills:
 
-If you have access to the EPAM Claude Code CoE:
+| Skill | Trigger | Purpose |
+|-------|---------|---------|
+| `/pipeline-setup` | "set up the pipeline", "install atelier" | Installs all agent personas, commands, references, and state files into your project |
+| `/pipeline-overview` | "how does the pipeline work", "explain atelier" | Quick reference for the pipeline system, agents, and principles |
+| `/brain-setup` | "set up the brain", "configure brain" | Configures the Atelier Brain persistent memory (Docker or local PostgreSQL) |
+| `/brain-hydrate` | "hydrate brain", "seed memory", "import history" | Imports existing project knowledge (ADRs, specs, git history) into the brain |
 
-```bash
-/plugin marketplace add https://git.epam.com/epm-cipr1/claude-code-coe.git
+## The Pipeline
+
+```
+                       Idea
+                        |
+                   Robert (spec)
+                     /      \
+              Sable (UX)    Agatha (doc plan)         --- parallel
+                     \      /
+                  Colby (mockup)
+                        |
+               Sable verifies mockup                  --- UX acceptance
+                        |
+                   User UAT review
+                        |
+              Cal (architecture + test spec)
+                        |
+                Roz (test spec review)
+                        |
+                Roz (test authoring)
+                        |
+    Colby (build) <-> Roz (QA) + Poirot               --- interleaved per ADR step
+                        |
+    Roz + Poirot + Robert + Sable                      --- review juncture (parallel)
+                        |
+                 Agatha (docs)                         --- against final verified code
+                        |
+             Robert verifies docs                      --- product acceptance
+                        |
+         Spec/UX reconciliation (if drift)             --- living artifacts updated
+                        |
+              Ellis (commit + changelog)               --- one atomic commit
 ```
 
-Then ask Claude to set up atelier-pipeline in your project.
+**Phase sizing keeps it pragmatic:**
 
-## What Gets Installed
-
-```
-your-project/
-  .claude/
-    rules/
-      default-persona.md          # Eva persona (always loaded by Claude Code)
-      agent-system.md             # Full orchestration rules, routing, gates
-    agents/
-      cal.md                      # Architect subagent persona
-      colby.md                    # Engineer subagent persona
-      roz.md                      # QA subagent persona
-      robert.md                   # Product acceptance reviewer subagent
-      sable.md                    # UX acceptance reviewer subagent
-      investigator.md             # Poirot blind code investigator subagent
-      distillator.md              # Compression engine subagent
-      ellis.md                    # Commit manager subagent persona
-      documentation-expert.md     # Documentation subagent persona
-    commands/
-      pm.md                       # /pm command (Robert)
-      ux.md                       # /ux command (Sable)
-      architect.md                # /architect command (Cal)
-      debug.md                    # /debug command (Roz -> Colby -> Roz)
-      pipeline.md                 # /pipeline command (Eva)
-      devops.md                   # /devops command (Eva)
-      docs.md                     # /docs command (Agatha)
-    references/
-      dor-dod.md                  # Quality framework
-      retro-lessons.md            # Shared lessons (starts with template)
-      invocation-templates.md     # Subagent invocation examples
-      pipeline-operations.md    # Operational procedures (model selection, QA, feedback, batch, worktree)
-  docs/
-    pipeline/
-      pipeline-state.md           # Session recovery state
-      context-brief.md            # Cross-session context preservation
-      error-patterns.md           # Error pattern tracking
-      investigation-ledger.md     # Debug hypothesis tracking
-      last-qa-report.md           # Roz's most recent QA report
-```
-
-## Customization
-
-During setup, you configure project-specific values that get wired into the agent personas:
-
-- **Test commands** — lint, typecheck, and test suite commands (e.g., `npm run lint`, `pytest`, `cargo test`)
-- **Source structure** — where features, components, and services live
-- **Database/store patterns** — factory functions, ORMs, raw SQL, whatever your project uses
-- **Coverage thresholds** — statement, branch, function, and line targets
-- **Complexity thresholds** — cyclomatic complexity limits for your codebase
-- **Build and deploy commands** — how your project builds and ships
-
-The system adapts to your stack. It has been developed on a React/Express/PostgreSQL project but the orchestration patterns, quality gates, and agent boundaries are stack-agnostic.
-
-## Phase Sizing
-
-| Size | Criteria | Phases Run |
+| Size | Criteria | What Runs |
 |------|----------|-----------|
-| **Small** | Single file change, bug fix, test addition, or fewer than 3 files | Colby -> Roz -> (Agatha if Roz flags doc impact) -> (Robert verifies docs if spec exists) -> Ellis |
-| **Medium** | 2-4 ADR steps, typical feature work | Robert spec (required) -> Cal -> Colby <-> Roz + Poirot -> Robert review -> Agatha -> Robert verifies docs -> Ellis |
-| **Large** | 5+ ADR steps, new system, multi-concern feature | Full pipeline: Robert -> Sable + Agatha plan -> Colby mockup -> Sable verifies -> UAT -> Cal -> Roz <-> Colby + Poirot -> Roz + Poirot + Robert + Sable review -> Agatha -> Robert verifies docs -> reconciliation -> Ellis |
+| **Small** | Bug fix, single file, < 3 files | Colby -> Roz -> (Agatha if doc impact) -> Ellis |
+| **Medium** | 2-4 ADR steps, typical feature | Robert spec -> Cal -> Colby <-> Roz + Poirot -> Robert review -> Agatha -> Ellis |
+| **Large** | 5+ ADR steps, new system | Full pipeline including Sable mockup + UX acceptance |
 
-Eva assesses scope at the start and adjusts automatically. Medium/Large pipelines require a Robert spec before advancing — no spec, no pipeline. Users can override with "full ceremony" (forces all pauses) or "stop" / "hold" (halts auto-advance).
+## Agents
+
+| Agent | Role | Type |
+|-------|------|------|
+| **Eva** | Pipeline Orchestrator / DevOps | Skill (main thread) |
+| **Robert** | Chief Product Officer | Skill + Subagent |
+| **Sable** | Senior UI/UX Designer | Skill + Subagent |
+| **Cal** | Senior Software Architect | Skill + Subagent |
+| **Colby** | Senior Software Engineer | Subagent |
+| **Roz** | QA Engineer | Subagent |
+| **Poirot** | Blind Code Investigator | Subagent |
+| **Agatha** | Documentation Specialist | Skill + Subagent |
+| **Ellis** | Commit and Changelog Manager | Subagent |
+| **Distillator** | Compression Engine | Subagent |
+
+**Skills** run in the main Claude Code thread for conversational work. **Subagents** run in their own context windows for focused execution. Some agents have both modes — conversational for authoring, subagent for verification.
 
 ## Slash Commands
+
+These are installed into your project by `/pipeline-setup`:
 
 | Command | Agent | Purpose |
 |---------|-------|---------|
@@ -241,8 +122,82 @@ Eva assesses scope at the start and adjusts automatically. Medium/Large pipeline
 | `/devops` | Eva | Infrastructure and deployment |
 | `/docs` | Agatha | Documentation planning and writing |
 
-## Credits
+## Atelier Brain
 
-Built and battle-tested on a real production project over dozens of pipeline runs. Every principle, gate, and lesson in this system came from an actual failure that was diagnosed, fixed, and prevented from recurring.
+Optional persistent memory layer that gives agents institutional memory across sessions. Without it, the pipeline works identically — the brain adds cross-session context, not runtime behavior.
 
-**Author:** Robert Sfeir
+**What it stores:** Architectural decisions, rejected alternatives, user corrections, QA lessons, spec drift history, and consolidated reflections.
+
+**How it works:** MCP server backed by PostgreSQL + pgvector. Agents capture thoughts during pipeline runs and search for relevant context before making decisions. Write-time conflict detection catches contradictions. TTL decay expires stale knowledge. Background consolidation synthesizes raw observations into higher-level insights.
+
+**Setup:** Run `/brain-setup` after installing the pipeline. Supports Docker (recommended) or local PostgreSQL. Requires an OpenRouter API key for embeddings.
+
+**Hydration:** Run `/brain-hydrate` to import reasoning from existing project artifacts (ADRs, specs, UX docs, error patterns, git history) into a fresh brain.
+
+## What Gets Installed
+
+`/pipeline-setup` installs 27 files into your project:
+
+```
+your-project/
+  .claude/
+    rules/                       # Always loaded by Claude Code
+      default-persona.md         # Eva orchestrator persona
+      agent-system.md            # Orchestration rules, routing, gates
+    agents/                      # Loaded when subagents are invoked
+      cal.md                     # Architect
+      colby.md                   # Engineer
+      roz.md                     # QA
+      robert.md                  # Product reviewer
+      sable.md                   # UX reviewer
+      investigator.md            # Poirot (blind investigator)
+      distillator.md             # Compression engine
+      ellis.md                   # Commit manager
+      documentation-expert.md    # Agatha (documentation)
+    commands/                    # Loaded when user types slash command
+      pm.md                      # /pm (Robert)
+      ux.md                      # /ux (Sable)
+      architect.md               # /architect (Cal)
+      debug.md                   # /debug (Roz -> Colby -> Roz)
+      pipeline.md                # /pipeline (Eva)
+      devops.md                  # /devops (Eva)
+      docs.md                    # /docs (Agatha)
+    references/                  # Loaded by agents on demand
+      dor-dod.md                 # Quality framework
+      retro-lessons.md           # Shared lessons (starts empty)
+      invocation-templates.md    # Subagent invocation examples
+      pipeline-operations.md     # Model selection, QA flow, feedback loops
+  docs/
+    pipeline/                    # Eva reads at session start for recovery
+      pipeline-state.md          # Session recovery state
+      context-brief.md           # Cross-session context
+      error-patterns.md          # Error pattern tracking
+      investigation-ledger.md    # Debug hypothesis tracking
+      last-qa-report.md          # Roz's most recent QA report
+```
+
+## Key Principles
+
+- **Roz-First TDD.** Roz writes tests before Colby builds. Colby cannot modify Roz's assertions.
+- **Continuous QA.** Each ADR step is a work unit with its own test-build-review cycle.
+- **DoR/DoD.** Every agent proves it read upstream artifacts (DoR) and covers all requirements (DoD).
+- **Information asymmetry.** Three parallel reviewers see constrained context to prevent anchoring — Poirot sees only the diff, Robert sees only the spec, Sable sees only the UX doc.
+- **Four-layer investigation.** Debug flows check Application, Transport, Infrastructure, Environment. Two rejected hypotheses at one layer forces escalation.
+- **Living artifacts.** Specs and UX docs are updated at pipeline end. ADRs are immutable records.
+- **Retro lessons.** Error patterns recurring 3+ times get injected as warnings into future agent prompts.
+
+## Customization
+
+During setup, you configure project-specific values:
+
+- Test commands (lint, typecheck, test suite)
+- Source structure (where features, components, services live)
+- Database/store patterns
+- Coverage and complexity thresholds
+- Build and deploy commands
+
+The orchestration patterns and quality gates are stack-agnostic.
+
+## Author
+
+Robert Sfeir
