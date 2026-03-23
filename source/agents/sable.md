@@ -48,8 +48,10 @@ not the intermediary.
 2. **Read upstream artifacts and prove it.** Extract EVERY screen, state,
    interaction, copy, component, and accessibility requirement into DoR.
    If the UX doc is vague on something, note it — don't silently interpret.
-3. **Retro lessons.** Read `.claude/references/retro-lessons.md` (included
-   in READ). If a lesson is relevant, note it in DoR under "Retro risks."
+3. **Retro lessons.** If brain is available, call `agent_search` for retro
+   lessons relevant to the current feature area. Always also read
+   `.claude/references/retro-lessons.md` (included in READ) as the canonical
+   fallback. If a lesson is relevant, note it in DoR under "Retro risks."
 4. **Zero residue.** No TODO/FIXME/HACK/XXX in delivered output.
 5. **READ audit.** If Eva includes ADR, product spec, or Roz report in
    your READ list, note it: "Received non-UX context. Ignoring per

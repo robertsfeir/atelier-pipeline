@@ -1,0 +1,751 @@
+# Atelier Pipeline -- Technical Reference
+
+Version: 1.5.1
+
+This document is the comprehensive technical reference for the atelier-pipeline Claude Code plugin. It covers plugin architecture, agent system design, orchestration logic, brain infrastructure, and customization points. For usage-oriented documentation, see [the user guide](user-guide.md).
+
+---
+
+## Table of Contents
+
+1. [Plugin Architecture](#plugin-architecture)
+2. [File Tree -- What Lives Where](#file-tree----what-lives-where)
+3. [Loading Mechanics -- What Loads When](#loading-mechanics----what-loads-when)
+4. [Agent System Design](#agent-system-design)
+5. [Agent Reference Table](#agent-reference-table)
+6. [Information Asymmetry Design](#information-asymmetry-design)
+7. [Eva's Orchestration Logic](#evas-orchestration-logic)
+8. [Invocation Template System](#invocation-template-system)
+9. [DoR/DoD Framework](#dordod-framework)
+10. [Continuous QA Flow](#continuous-qa-flow)
+11. [Error Pattern Tracking and Retro Lessons](#error-pattern-tracking-and-retro-lessons)
+12. [Brain Architecture](#brain-architecture)
+13. [Pipeline State Files and Session Recovery](#pipeline-state-files-and-session-recovery)
+14. [Setup and Install System](#setup-and-install-system)
+15. [Customization Points](#customization-points)
+
+---
+
+## Plugin Architecture
+
+Atelier Pipeline is a Claude Code plugin distributed via the plugin marketplace. It consists of two subsystems:
+
+1. **Multi-agent orchestration** -- template files installed into the target project's `.claude/` and `docs/pipeline/` directories. These define agent personas, slash commands, quality references, and state files.
+2. **Atelier Brain** -- an MCP server (`brain/server.mjs`) that runs as a sidecar, providing persistent institutional memory backed by PostgreSQL and vector embeddings.
+
+The plugin itself lives in the Claude Code plugin directory (typically `~/.claude/plugins/atelier-pipeline/`). The plugin metadata is in `.claude-plugin/plugin.json`.
+
+### Plugin-Level Files (stay in the plugin directory)
+
+```
+atelier-pipeline/                         # Plugin root (CLAUDE_PLUGIN_ROOT)
+  .claude-plugin/
+    plugin.json                           # Plugin metadata, hooks, version (1.5.1)
+  source/                                 # Template files -- copied to target project
+    rules/
+      default-persona.md
+      agent-system.md
+    agents/
+      cal.md, colby.md, roz.md, robert.md,
+      sable.md, investigator.md, distillator.md,
+      ellis.md, documentation-expert.md
+    commands/
+      pm.md, ux.md, architect.md, debug.md,
+      pipeline.md, devops.md, docs.md
+    references/
+      dor-dod.md, retro-lessons.md,
+      invocation-templates.md, pipeline-operations.md
+    pipeline/
+      pipeline-state.md, context-brief.md, error-patterns.md,
+      investigation-ledger.md, last-qa-report.md
+  brain/                                  # MCP server -- runs as sidecar
+    server.mjs                            # Main server (MCP + REST API)
+    schema.sql                            # PostgreSQL schema
+    docker-compose.yml                    # Docker setup for brain database
+    docker-entrypoint.sh
+    package.json
+    ui/                                   # Settings UI (Phase 2)
+  skills/                                 # Plugin skills (run in main thread)
+    pipeline-setup/SKILL.md               # /pipeline-setup
+    brain-setup/SKILL.md                  # /brain-setup
+    brain-hydrate/SKILL.md                # /brain-hydrate
+  scripts/
+    check-updates.sh                      # SessionStart hook -- detects plugin updates
+```
+
+### Hooks
+
+The plugin registers a `SessionStart` hook in `plugin.json` that runs two commands on every Claude Code session start:
+
+1. **Dependency install** -- runs `npm install` in the `brain/` directory if `node_modules` does not exist.
+2. **Update check** -- runs `scripts/check-updates.sh` to compare the installed template version (`.claude/.atelier-version`) against the current plugin version. If they differ, it notifies the user that pipeline files may be outdated.
+
+---
+
+## File Tree -- What Lives Where
+
+After running `/pipeline-setup`, 27 files are installed into the target project. The plugin templates remain in the plugin directory and are never modified.
+
+### Target Project (installed by /pipeline-setup)
+
+```
+your-project/
+  .claude/
+    .atelier-version                      # Plugin version marker for update detection
+    rules/                                # Always loaded by Claude Code
+      default-persona.md                  # Eva orchestrator persona
+      agent-system.md                     # Orchestration rules, routing, gates
+    agents/                               # Loaded when subagents are invoked
+      cal.md                              # Architect
+      colby.md                            # Engineer
+      roz.md                              # QA
+      robert.md                           # Product reviewer
+      sable.md                            # UX reviewer
+      investigator.md                     # Poirot (blind investigator)
+      distillator.md                      # Compression engine
+      ellis.md                            # Commit manager
+      documentation-expert.md             # Agatha (documentation)
+    commands/                             # Loaded when user types slash command
+      pm.md                               # /pm (Robert)
+      ux.md                               # /ux (Sable)
+      architect.md                        # /architect (Cal)
+      debug.md                            # /debug (Roz -> Colby -> Roz)
+      pipeline.md                         # /pipeline (Eva)
+      devops.md                           # /devops (Eva)
+      docs.md                             # /docs (Agatha)
+    references/                           # Loaded by agents on demand
+      dor-dod.md                          # Quality framework
+      retro-lessons.md                    # Shared lessons (starts empty)
+      invocation-templates.md             # Subagent invocation examples
+      pipeline-operations.md              # Model selection, QA flow, feedback loops
+  docs/
+    pipeline/                             # Eva reads at session start for recovery
+      pipeline-state.md                   # Session recovery state
+      context-brief.md                    # Cross-session context
+      error-patterns.md                   # Error pattern tracking
+      investigation-ledger.md             # Debug hypothesis tracking
+      last-qa-report.md                   # Roz's most recent QA report
+```
+
+**Total: 27 files across 5 directories, plus the `.atelier-version` marker and an update to `CLAUDE.md`.**
+
+### What Does NOT Live on Disk
+
+- QA reports (returned by Roz, read by Eva, not persisted except `last-qa-report.md`)
+- Robert-subagent and Sable-subagent acceptance reports (returned, triaged by Eva)
+- Agent state or conversation history (subagent context windows are ephemeral)
+
+---
+
+## Loading Mechanics -- What Loads When
+
+Claude Code has specific loading behaviors for each directory under `.claude/`:
+
+| Directory | When Loaded | Loaded By | Scope |
+|-----------|-------------|-----------|-------|
+| `.claude/rules/` | **Every conversation**, automatically | Claude Code runtime | Global -- all messages see these files |
+| `.claude/agents/` | When a subagent is invoked via the Agent tool | Claude Code Agent tool | Per-subagent -- only the invoked agent's file |
+| `.claude/commands/` | When the user types a `/command` | Claude Code command system | Per-command -- only the triggered command's file |
+| `.claude/references/` | On demand, when an agent reads them | Agents via `Read` tool | Per-read -- loaded just-in-time |
+| `docs/pipeline/` | At session start by Eva, during pipeline | Eva via `Read` tool | Per-read |
+
+**Critical implication:** `default-persona.md` and `agent-system.md` are always in context. This is why Eva is the default persona -- she is present in every conversation whether or not `/pipeline` is invoked. All other files are loaded only when needed, keeping context usage efficient.
+
+**Eva's always-loaded context** consists of exactly three files: `default-persona.md`, `agent-system.md`, and `CLAUDE.md`. She does NOT pre-load `CONVENTIONS.md`, `dor-dod.md`, or `retro-lessons.md` -- those are subagent concerns.
+
+---
+
+## Agent System Design
+
+### Skills vs. Subagents
+
+The system uses a hybrid architecture with two execution modes:
+
+**Skills** run in the main Claude Code thread. They are conversational, support back-and-forth with the user, and share the main context window. When Eva adopts a skill persona (e.g., Robert for `/pm`), she reads the command file and behaves as that agent within the main thread.
+
+**Subagents** run in their own context windows via Claude Code's Agent tool. They receive focused prompts, execute their task, and return results. Their context window is isolated -- they cannot see what other agents produced unless Eva includes it in their invocation prompt.
+
+Some agents operate in both modes:
+- **Robert**: skill mode for spec authoring (`/pm`), subagent mode for product acceptance review
+- **Sable**: skill mode for UX design (`/ux`), subagent mode for mockup/implementation verification
+- **Cal**: skill mode for conversational clarification (`/architect`), subagent mode for ADR production
+- **Agatha**: skill mode for doc planning (`/docs`), subagent mode for doc writing
+
+### Custom Commands Are Not Skills
+
+The slash commands (`/pm`, `/ux`, `/docs`, `/architect`, `/debug`, `/pipeline`, `/devops`) are **custom agent persona commands**, not Claude Code skills. The `Skill` tool must not be invoked for them. When the user types one, Eva reads the corresponding `.claude/commands/*.md` file and adopts that agent's persona. This distinction matters because skills use the `Skill` tool invocation path, while custom commands trigger persona adoption in the main thread.
+
+The four actual plugin skills (`/pipeline-setup`, `/pipeline-overview`, `/brain-setup`, `/brain-hydrate`) live in the plugin's `skills/` directory and are invoked through the `Skill` tool.
+
+---
+
+## Agent Reference Table
+
+| Agent | Role | Execution Mode | Tools | Write Access | Brain Access | Model (Fixed/Size-Dependent) |
+|-------|------|---------------|-------|-------------|--------------|------------------------------|
+| **Eva** | Pipeline Orchestrator / DevOps | Main thread (always loaded) | Read, Glob, Grep, Bash, TaskCreate, TaskUpdate | `docs/pipeline/` state files ONLY | Reads: `agent_search`, `atelier_stats`. Writes: cross-cutting decisions, phase transitions, Poirot findings. | N/A (orchestrator) |
+| **Robert** (skill) | CPO -- spec authoring | Main thread (`/pm`) | Full conversational | Spec files | Reads: prior specs, corrections. Writes: spec rationale, corrections. | N/A (skill) |
+| **Robert** (subagent) | Product acceptance reviewer | Subagent | Read, Glob, Grep, Bash | **None** (read-only) | Reads: spec evolution, prior drift. Writes: drift findings, pass verdicts. | Opus (fixed) |
+| **Sable** (skill) | UX Designer -- doc authoring | Main thread (`/ux`) | Full conversational | UX docs | Reads: prior UX decisions, a11y. Writes: UX rationale, corrections. | N/A (skill) |
+| **Sable** (subagent) | UX acceptance reviewer | Subagent | Read, Glob, Grep, Bash | **None** (read-only) | Reads: UX doc evolution. Writes: drift/missing verdicts, five-state audit. | Opus (fixed) |
+| **Cal** (skill) | Architect -- conversational | Main thread (`/architect`) | Full conversational | None during conversation | Reads: prior decisions, constraints. | N/A (skill) |
+| **Cal** (subagent) | Architect -- ADR production | Subagent | Read, Write, Edit, Glob, Grep, Bash | ADR files | Reads: prior decisions, rejected approaches. Writes: decisions, rejections, insights. | Opus (fixed for Medium/Large) |
+| **Colby** | Senior Software Engineer | Subagent | Read, Write, Edit, MultiEdit, Glob, Grep, Bash | Source files, test files | Reads: implementation patterns, gotchas. Writes: implementation insights, workarounds. | Sonnet (Small/Medium), Opus (Large) |
+| **Roz** | QA Engineer | Subagent | Read, Write, Glob, Grep, Bash | **Test files ONLY** | Reads: QA patterns, fragile areas. Writes: recurring patterns, investigation findings, doc impact. | Opus (fixed) |
+| **Poirot** | Blind Code Investigator | Subagent | Read, Glob, Grep, Bash | **None** (read-only) | **None** -- Poirot never touches brain. Eva captures his findings. | Opus (fixed) |
+| **Agatha** (skill) | Documentation -- planning | Main thread (`/docs`) | Full conversational | None during planning | N/A | N/A (skill) |
+| **Agatha** (subagent) | Documentation -- writing | Subagent | Read, Write, Edit, MultiEdit, Grep, Glob, Bash | Documentation files | Reads: prior doc reasoning, drift patterns. Writes: doc update reasoning, gap findings. | Haiku (reference docs), Sonnet (conceptual docs) |
+| **Ellis** | Commit and Changelog Manager | Subagent | Read, Write, Edit, Glob, Grep, Bash | Git operations, changelog | N/A | Sonnet (fixed) |
+| **Distillator** | Lossless Compression Engine | Subagent | Read, Glob, Grep, Bash | **None** (read-only, output returned to Eva) | **None** | Haiku (fixed) |
+
+### Forbidden Actions by Agent
+
+| Agent | Forbidden Actions |
+|-------|-------------------|
+| **Eva** | Write/Edit/MultiEdit/NotebookEdit on ANY file outside `docs/pipeline/`. Never writes code. Never runs `git add`/`commit`/`push`. Never investigates user-reported bugs (Roz does). Never embeds root cause in TASK field. |
+| **Robert** (subagent) | Read ADR files, UX docs, or Roz reports. Write/Edit anything. Ask for more context. Produce blanket approvals. Decide whether to update spec or fix code (reports delta, human decides). |
+| **Sable** (subagent) | Read ADR files, product specs, or Roz reports. Write/Edit anything. Interpret ambiguous UX docs (HALTs instead). Decide whether to update UX doc or fix code. |
+| **Cal** | Write implementation code. Say "it depends" without deciding. Hand-wave ("best practice" is not a reason). Deliver ADR with placeholder steps. |
+| **Colby** | Modify Roz's test assertions. Leave TODO/FIXME/HACK. Report complete with unimplemented functionality. Move pages from `/mock/*` to production without real APIs. |
+| **Roz** | Write to non-test files. Approve failing code. Skip checks. Trust self-reported coverage. Assert what code currently does when it contradicts domain intent. |
+| **Poirot** | Read spec/ADR/product/UX docs. Ask for context. Write/Edit anything. Produce fewer than 5 findings without HALT. Write prose paragraphs. |
+| **Distillator** | Drop decisions, rejected alternatives, or scope boundaries. Editorialize. Produce prose paragraphs. Modify source files. |
+| **Ellis** | Commit without QA passing. Use generic commit messages. Commit without user approval. Use `git add -A` or `git add .`. |
+
+---
+
+## Information Asymmetry Design
+
+Three parallel reviewers (Poirot, Robert-subagent, Sable-subagent) are deliberately given constrained context to prevent anchoring bias. This is not a limitation -- it is the core design principle for independent verification.
+
+### How It Works
+
+| Reviewer | Receives | Does NOT Receive | Why |
+|----------|----------|------------------|-----|
+| **Poirot** | Raw `git diff` output only | Spec, ADR, UX doc, Eva framing, Colby self-report | Evaluates what was ACTUALLY built, not what was INTENDED. Prevents anchoring to the author's reasoning. |
+| **Robert** (subagent) | Product spec + implemented code/docs | ADR, UX doc, Roz report, Colby self-report | Compares implementation against original product intent. If the ADR reframed 9 of 10 criteria but missed the 10th, Robert catches it because he reads the original spec, not the intermediary. |
+| **Sable** (subagent) | UX design doc + implemented code | ADR, product spec, Roz report, Colby self-report | Compares implementation against original UX intent. If the ADR simplified an interaction during architectural planning, Sable catches the drift. |
+
+### Enforcement
+
+All three agents have READ audit rules in their persona files. If Eva accidentally includes non-permitted context in their invocation, they log: "Received non-[expected] context. Ignoring per information asymmetry constraint." This makes constraint violations visible rather than silently corrupting the review.
+
+### Eva's Triage of Parallel Findings
+
+After the review juncture (all three reviewers run in parallel with Roz's final sweep), Eva triages findings:
+
+- **Findings in multiple reviewers** = high-confidence issues
+- **Findings unique to Robert** = spec drift that survived ADR interpretation
+- **Findings unique to Sable** = UX drift that survived ADR interpretation
+- **Findings unique to Poirot** = context-anchoring misses (things Roz missed because she had too much context)
+- **AMBIGUOUS from Robert or Sable** = hard pause, human decides
+
+---
+
+## Eva's Orchestration Logic
+
+### Session Boot Sequence
+
+Eva runs this sequence on every new session:
+
+1. Read `docs/pipeline/pipeline-state.md` -- detect in-progress pipeline
+2. Read `docs/pipeline/context-brief.md` -- verify it matches pipeline-state's feature (stale = reset)
+3. Scan `docs/pipeline/error-patterns.md` -- note entries with recurrence count >= 3 for WARN injection
+4. Brain health check -- call `atelier_stats`. Two gates: tool available? returns `brain_enabled: true`? Both pass = `brain_available: true`
+5. Brain context retrieval (if available) -- call `agent_search` with query from current feature area
+6. Announce session state to user
+
+### Phase Sizing
+
+Eva assesses scope at pipeline start and adjusts ceremony:
+
+| Size | Criteria | Pipeline |
+|------|----------|----------|
+| **Small** | Bug fix, single file, < 3 files, user says "quick fix" | Colby -> Roz -> (Agatha if Roz flags doc impact) -> (Robert-subagent verifies docs if Agatha ran) -> Ellis |
+| **Medium** | 2-4 ADR steps, typical feature | Robert spec -> Cal -> Roz test spec review -> Roz test authoring -> Colby <-> Roz + Poirot -> Review juncture (Roz + Poirot + Robert-subagent) -> Agatha -> Robert-subagent (docs) -> Ellis |
+| **Large** | 5+ ADR steps, new system, multi-concern | Full pipeline including Sable mockup + Sable at final review juncture |
+
+**The minimum pipeline is always Colby -> Roz -> Ellis.** No sizing level skips Roz or Ellis.
+
+### Auto-Routing
+
+When no pipeline is active, Eva classifies every user message against the intent detection table in `agent-system.md` and routes automatically:
+
+- High confidence: route directly, announce which agent and why
+- Ambiguous: ask ONE clarifying question with a proposed action and an alternative
+- Always mention slash commands as manual overrides
+
+### Hard Pauses (Eva stops and asks the user)
+
+- Before Ellis pushes to remote
+- Roz returns BLOCKER verdict
+- Robert-subagent or Sable-subagent returns AMBIGUOUS
+- Robert-subagent or Sable-subagent flags DRIFT (human decides: fix code or update spec/UX)
+- Cal reports a scope-changing discovery
+- User says "stop" or "hold"
+- After Roz's diagnosis on a user-reported bug (user must approve fix approach)
+
+### Mandatory Gates (never skippable, same severity as Eva writing code)
+
+1. Roz verifies every Colby output
+2. Ellis commits (Eva never runs git on code)
+3. Full test suite between work units
+4. Roz investigates user-reported bugs (Eva does not)
+5. Poirot blind-reviews every Colby output (parallel with Roz)
+6. Distillator compresses upstream artifacts when >5K tokens
+7. Robert-subagent reviews at review juncture (Medium/Large)
+8. Sable-subagent verifies every mockup before UAT
+9. Agatha writes docs after final Roz sweep, not during build
+10. Spec/UX reconciliation is continuous (living artifacts updated in same commit)
+
+### Model Selection
+
+Model assignment is mechanical -- determined by agent identity and pipeline sizing. Eva looks up the model table in `pipeline-operations.md`. There is no discretion.
+
+**Fixed-model agents:**
+
+| Agent | Model | Rationale |
+|-------|-------|-----------|
+| Roz | Opus | QA judgment is non-negotiable |
+| Robert (subagent) | Opus | Product acceptance requires strong reasoning |
+| Sable (subagent) | Opus | UX acceptance requires strong reasoning |
+| Poirot | Opus | Blind review with no context requires strongest reasoning |
+| Distillator | Haiku | Mechanical compression, no judgment needed |
+| Ellis | Sonnet | Read diff, write message, run git -- zero ambiguity |
+
+**Size-dependent agents:**
+
+| Agent | Small | Medium | Large |
+|-------|-------|--------|-------|
+| Cal | (skipped) | Opus | Opus |
+| Colby | Sonnet | Sonnet | Opus |
+| Agatha | Per doc type | Per doc type | Per doc type |
+
+Agatha uses Haiku for reference docs (API, config, changelogs) and Sonnet for conceptual docs (architecture guides, tutorials).
+
+**Enforcement rules:**
+- Ambiguous sizing defaults UP (Opus until confirmed)
+- Sizing changes propagate immediately to subsequent invocations
+- Explicit model parameter required in every Agent tool invocation
+
+### State Management
+
+Eva maintains five files in `docs/pipeline/`:
+
+| File | Purpose | Reset Behavior |
+|------|---------|----------------|
+| `pipeline-state.md` | Unit-by-unit progress tracker. Updated after each phase transition. Enables session recovery. | Never reset automatically |
+| `context-brief.md` | Conversational decisions, corrections, user preferences, rejected alternatives. | Reset at start of each new feature pipeline |
+| `error-patterns.md` | Post-pipeline error log categorized by type. Recurrence tracking for WARN injection. | Append-only |
+| `investigation-ledger.md` | Debug hypothesis tracking. Records each theory, layer, evidence, outcome. | Reset at start of each new investigation |
+| `last-qa-report.md` | Roz's most recent QA report. Persisted so scoped re-runs can reference previous findings. | Overwritten on each Roz QA pass |
+
+---
+
+## Invocation Template System
+
+All subagent invocations follow a standardized template:
+
+```
+TASK: [observed symptom -- what is happening, not why]
+HYPOTHESES: [Eva's theory AND at least one alternative at a different system layer -- omit for non-debug]
+READ: [files directly relevant to THIS work unit (prefer <= 6), always include retro-lessons.md]
+CONTEXT: [one-line summary from context-brief.md if relevant, otherwise omit]
+BRAIN: available | unavailable [agents with Brain Access sections use this flag]
+WARN: [specific retro-lesson if pattern matches from error-patterns.md, otherwise omit]
+CONSTRAINTS: [3-5 bullets -- what to do and what NOT to do]
+OUTPUT: [what to produce, what format, where to write it -- must include DoR and DoD sections]
+```
+
+### Key Design Rules
+
+- **Anti-framing rule:** TASK describes the observed symptom, not Eva's theory. Embedding a root cause theory in TASK anchors the subagent to Eva's framing (sycophancy risk). Theories go in HYPOTHESES.
+- **READ budget:** Prefer <= 6 files. Always include `retro-lessons.md`. Pass context-brief excerpts in CONTEXT, not READ, to save file slots.
+- **DIFF section (Roz-specific):** Eva always runs `git diff --stat` and `git diff --name-only` and includes the output so Roz has a map of what changed.
+- **DIFF section (Poirot-specific):** Eva pastes the raw `git diff` output. Nothing else. No spec, no ADR, no framing.
+- **WARN injection:** When `error-patterns.md` shows a pattern recurring 3+ times, Eva adds a targeted warning to the relevant agent's invocation.
+
+The full invocation examples for each agent are in `.claude/references/invocation-templates.md`, loaded by Eva just-in-time when constructing prompts.
+
+---
+
+## DoR/DoD Framework
+
+The Definition of Ready / Definition of Done framework in `.claude/references/dor-dod.md` replaces procedural checklists with structural output requirements.
+
+### How It Works
+
+- **DoR** (Definition of Ready) is the **first section** of every agent's output. It proves the agent read upstream artifacts by extracting specific requirements into a table with source citations.
+- **DoD** (Definition of Done) is the **last section** of every agent's output. It proves coverage by mapping every DoR requirement to a status (Done or Deferred with explicit reason).
+- Eva verifies both at phase transitions. Roz independently verifies Colby's DoD against actual code.
+
+### Universal Conditions (every agent, every time)
+
+1. Every DoR requirement has a status in DoD (Done or Deferred with explicit reason)
+2. No silent drops -- missing = Deferred with reason, not absent
+3. No TODO/FIXME/HACK in delivered output
+4. Output template complete -- every section filled
+
+### Roz's Special Role in DoD Enforcement
+
+Roz does not trust self-reported coverage. Eva includes the requirements list in Roz's invocation, and Roz diffs requirements against actual implementation:
+
+- Self-reported "Done" that doesn't match code = BLOCKER
+- Requirements in the spec/ADR that Colby didn't even list in her DoR = BLOCKER (silent drop)
+- Roz does not trust coverage tables -- she verifies them
+
+---
+
+## Continuous QA Flow
+
+The continuous QA model replaces the old batch model (Colby builds everything, then Roz reviews everything). Cal's ADR steps become work units, and each unit goes through its own build-test cycle.
+
+### Pre-Build: Roz-First TDD
+
+1. Eva invokes Roz in Test Authoring Mode for unit N's ADR step
+2. Roz reads Cal's test spec, existing code, and the product spec
+3. Roz writes test files with concrete assertions defining correct behavior
+4. Tests are expected to fail -- they define the target state, not current behavior
+5. Roz asserts what code SHOULD do (domain intent), not what it currently does
+
+### Build + QA Interleaving
+
+1. Eva invokes Colby for unit 1 with Roz's test files as the target
+2. Colby implements to make Roz's tests pass (may add edge-case tests, but NEVER modifies Roz's assertions)
+3. When Colby finishes unit 1, Eva invokes **Roz** (full context) and **Poirot** (diff only) in PARALLEL
+4. Eva triages findings from both agents, deduplicates, classifies severity
+5. If Roz or Poirot flags issues, Eva queues fixes. Colby finishes current unit, then addresses fixes before starting the next unit
+6. Eva updates `pipeline-state.md` after each unit transition
+
+### Post-Build Pipeline Tail
+
+7. Review juncture: Roz final sweep + Poirot + Robert-subagent + Sable-subagent (Large) in parallel
+8. Eva triages all findings, routes fixes to Colby if needed, re-runs Roz
+9. Agatha writes/updates docs against final verified code
+10. Robert-subagent verifies Agatha's docs against spec
+11. If DRIFT flagged: hard pause, human decides fix code or update living artifact
+12. Ellis commits: code + docs + updated specs/UX in one atomic commit
+
+### Key Rules
+
+- **Colby NEVER modifies Roz's test assertions.** If a test fails against existing code, the code has a bug -- Colby fixes the code.
+- **Roz final sweep is mandatory** even after all units pass individual review, to catch cross-unit integration issues.
+- **Pre-commit sweep:** Eva checks all Roz reports for unresolved MUST-FIX items. Zero open items required before Ellis.
+
+### Feedback Loop Routing
+
+| Trigger | Route |
+|---------|-------|
+| UAT feedback (UI tweaks) | Colby mockup fix -> Sable-subagent re-verify -> re-UAT |
+| UAT feedback (spec change) | Robert -> Sable -> re-mockup -> Sable-subagent verify |
+| Roz test spec gaps | Cal subagent (revise) -> Roz (re-review) |
+| Roz code QA (minor) | Colby fix -> Roz scoped re-run |
+| Roz code QA (structural) | Cal subagent (revise) -> Colby -> Roz full run |
+| Robert-subagent spec DRIFT | Hard pause -> human decides -> Robert-skill updates spec OR Colby fixes code |
+| Sable-subagent UX DRIFT | Hard pause -> human decides -> Sable-skill updates UX doc OR Colby fixes code |
+| User reports a bug | Roz (investigate + diagnose) -> Hard pause (user approves approach) -> Colby (fix) -> Roz (verify) |
+
+---
+
+## Error Pattern Tracking and Retro Lessons
+
+### Error Patterns (`docs/pipeline/error-patterns.md`)
+
+After each pipeline completion (successful commit), Eva appends to this file with what Roz found, categorized as one of: `hallucinated-api`, `wrong-logic`, `pattern-drift`, `security-blindspot`, `over-engineering`, `stale-context`, `missing-state`, `test-gap`.
+
+Each entry includes a `Recurrence count: N` field. Eva increments this when the same category pattern appears in a new pipeline run. At the start of each pipeline, Eva scans for entries with count >= 3 and notes which agents need WARN injection.
+
+### Retro Lessons (`.claude/references/retro-lessons.md`)
+
+Systemic lessons (not one-off bugs) are captured in this file using a standard format:
+
+- **What happened** -- the symptom
+- **Root cause** -- why it happened
+- **Rules derived** -- per-agent rules to prevent recurrence
+
+### Dual-Write Pattern
+
+When a pipeline reveals a systemic lesson, Eva writes it to two places:
+
+1. **Always:** Append to `retro-lessons.md` (git-trackable, works without brain)
+2. **If brain is available:** Also call `agent_capture` with `thought_type: 'lesson'`, `source_agent: 'eva'`, `source_phase: 'retro'`
+
+This ensures lessons are both version-controlled and brain-searchable. Agents search the brain first (if available) for relevant retro lessons, then also read the markdown file as a fallback.
+
+---
+
+## Brain Architecture
+
+### Overview
+
+The Atelier Brain is an MCP server (`brain/server.mjs`) backed by PostgreSQL with pgvector and ltree extensions. It provides persistent institutional memory that survives across sessions. The pipeline works without it, but with it, session 12 of a feature build has the same context as session 1.
+
+### Database Schema
+
+**Required extensions:** `vector` (pgvector), `ltree`
+
+**Core tables:**
+
+| Table | Purpose |
+|-------|---------|
+| `thoughts` | Core knowledge store. Each row is a thought with content, embedding (1536-dimensional vector), metadata, type, source agent/phase, importance score, status, scope, and timestamps. |
+| `thought_relations` | Typed edges between thoughts. Convention: `source_id` = newer/derived thought, `target_id` = older/original thought. |
+| `thought_type_config` | Lookup table for TTL and default importance per thought type. |
+| `brain_config` | Singleton configuration row controlling conflict detection thresholds, consolidation settings, and default scope. |
+
+**Thought types (enum):**
+
+| Type | Default TTL | Default Importance | Description |
+|------|-------------|-------------------|-------------|
+| `decision` | Never expires | 0.9 | Architectural or product decisions |
+| `preference` | Never expires | 1.0 | Human preferences and HALT resolutions |
+| `lesson` | 365 days | 0.7 | Retro learnings and patterns |
+| `rejection` | 180 days | 0.5 | Alternatives considered and discarded |
+| `drift` | 90 days | 0.8 | Spec/UX drift findings |
+| `correction` | 90 days | 0.7 | Fixes applied after drift detection |
+| `insight` | 180 days | 0.6 | Mid-task discoveries |
+| `reflection` | Never expires | 0.85 | Consolidation-generated synthesis |
+
+**Relation types (enum):** `supersedes`, `triggered_by`, `evolves_from`, `contradicts`, `supports`, `synthesized_from`
+
+### MCP Tools
+
+The brain exposes 6 tools via MCP:
+
+| Tool | Purpose | Key Parameters |
+|------|---------|---------------|
+| `agent_capture` | Store a thought with schema-enforced metadata, dedup, conflict detection, and auto-supersession. | `content`, `thought_type`, `source_agent`, `source_phase`, `importance` (0-1), optional `supersedes_id`, `scope`, `metadata` |
+| `agent_search` | Semantic search using three-axis scoring. Updates `last_accessed_at` on returned results. | `query`, `threshold` (default 0.2), `limit` (default 10), `scope`, `include_invalidated`, `filter` |
+| `atelier_browse` | Paginated browse by type or status. | Type/status filter, pagination |
+| `atelier_stats` | Brain health check. Returns thought count, config, and status. | None |
+| `atelier_relation` | Create typed edges between thoughts. | `source_id`, `target_id`, `relation_type`, `context` |
+| `atelier_trace` | Walk relation chains from a thought. Recursive traversal. | Starting thought ID, direction |
+
+### Three-Axis Scoring
+
+The `match_thoughts_scored` PostgreSQL function ranks search results using three weighted factors:
+
+```
+score = (0.5 * recency_decay) + (2.0 * importance) + (3.0 * cosine_similarity)
+```
+
+- **Relevance (weight 3.0):** cosine similarity between query embedding and thought embedding. What you're asking about matters most.
+- **Importance (weight 2.0):** the thought's importance score. Decisions outrank tactical findings.
+- **Recency (weight 0.5):** exponential decay based on `last_accessed_at`. Tiebreaker only -- old decisions still surface.
+
+Recency decay formula: `0.995 ^ hours_since_last_access`
+
+### Write-Time Conflict Detection
+
+When `agent_capture` receives a new `decision` or `preference` thought:
+
+1. **Search** for similar active thoughts in overlapping scopes using the candidate threshold (default 0.7)
+2. **Tier 1 -- Duplicate (>0.9 similarity):** Merge into existing thought. Update content if new importance is higher, merge metadata, bump `last_accessed_at`.
+3. **Tier 2 -- Candidate (0.7-0.9 similarity):** If LLM classification is enabled, call GPT-4o-mini to classify as DUPLICATE, CONTRADICTION, COMPLEMENT, SUPERSESSION, or NOVEL.
+   - DUPLICATE: merge
+   - CONTRADICTION (same scope): auto-supersede (newest wins)
+   - CONTRADICTION (cross-scope): mark both as `conflicted`, create `contradicts` relation
+   - SUPERSESSION: auto-supersede, create `supersedes` relation
+   - COMPLEMENT/NOVEL: store normally, record related ID
+4. **Tier 3 -- Novel (<0.7 similarity):** Store normally with no conflict flag.
+
+### TTL-Based Knowledge Decay
+
+Each thought type has a configured TTL in `thought_type_config`. Thoughts past their TTL transition to `expired` status and are excluded from default searches (unless `include_invalidated` is set).
+
+### Config Resolution
+
+The brain server resolves its configuration using a priority chain:
+
+1. **Project config** (`BRAIN_CONFIG_PROJECT` env var -> `.claude/brain-config.json`) -- shared team config
+2. **Personal config** (`BRAIN_CONFIG_USER` env var -> `~/.claude/plugins/data/atelier-pipeline/brain-config.json`) -- local-only
+3. **Environment variables** (`DATABASE_URL` or `ATELIER_BRAIN_DATABASE_URL`, `OPENROUTER_API_KEY`) -- fallback
+4. **No config found** -- exit cleanly, brain disabled
+
+Config files support `${ENV_VAR}` placeholders for secrets. Shared configs never contain bare secret values.
+
+### Hybrid Capture Model
+
+Agents write their own domain-specific captures directly using their own `source_agent` name. Eva does NOT duplicate agent captures. Eva captures only cross-cutting concerns:
+
+- User decisions and preferences (things no single agent owns)
+- Phase transitions with outcome summaries
+- Cross-agent pattern convergence (e.g., Roz and Robert both flag the same drift)
+- Deploy/infra outcomes
+- Poirot's findings (Poirot himself never touches brain)
+- Pipeline-end session summaries
+
+Eva spot-checks that agents performed their brain captures but does not re-capture on their behalf.
+
+---
+
+## Pipeline State Files and Session Recovery
+
+### Recovery Mechanism
+
+If Claude Code is closed mid-pipeline and reopened, Eva recovers by reading the state files:
+
+1. **`pipeline-state.md`** tells Eva the current feature, phase, and unit-by-unit progress
+2. **`context-brief.md`** restores conversational decisions and user preferences
+3. **`error-patterns.md`** identifies recurring issues for WARN injection
+4. **Existing artifacts on disk** (specs, ADRs, code changes) confirm what has been produced
+
+Eva announces the recovery: "Resuming [feature] at [phase]. [N agents complete, M remaining.]"
+
+### Stale Context Detection
+
+If `context-brief.md` references a different feature than `pipeline-state.md`, Eva treats it as stale and resets it before proceeding.
+
+### Context Hygiene
+
+Eva manages context aggressively to prevent context window exhaustion:
+
+| Context | Eva Carries | Subagents Carry |
+|---------|------------|-----------------|
+| `pipeline-state.md` | Always | Never (they get their unit scope) |
+| `context-brief.md` | Summary only | Relevant excerpt in CONTEXT field |
+| `CONVENTIONS.md` | Never | Only when writing code |
+| `dor-dod.md` | Never | In their persona file |
+| `retro-lessons.md` | Never | Always (included in every READ) |
+| Feature spec | Never | Only if directly relevant |
+| ADR | Never | Only the relevant step |
+
+Between major phases, subagent sessions start fresh. Within Colby+Roz interleaving, each unit is a separate subagent invocation with fresh context. Eva never carries Roz reports in her context -- she reads the verdict (PASS/FAIL + blockers), not the full report.
+
+---
+
+## Setup and Install System
+
+### /pipeline-setup
+
+The `pipeline-setup` skill is conversational. It:
+
+1. **Gathers project information** one question at a time: tech stack, test framework, test commands, source structure, database patterns, build/deploy commands, coverage thresholds, complexity limits.
+2. **Reads template files** from `source/` in the plugin directory.
+3. **Copies 27 files** to the target project, replacing placeholders with project-specific values.
+4. **Writes version marker** to `.claude/.atelier-version` for update detection.
+5. **Updates `CLAUDE.md`** with a pipeline section.
+6. **Offers brain setup** at the end.
+
+Placeholder replacement:
+
+| Placeholder | Example Value |
+|-------------|---------------|
+| `{test_command}` | `npm test` |
+| `{lint_command}` | `npm run lint` |
+| `{typecheck_command}` | `npm run typecheck` |
+| `{fast_test_command}` | `npx vitest run` |
+| `{source_dir}` | `src/` |
+| `{features_dir}` | `src/features/` |
+| `{architecture_dir}` | `docs/architecture/` |
+| `{product_specs_dir}` | `docs/product/` |
+| `{ux_docs_dir}` | `docs/ux/` |
+| `{pipeline_state_dir}` | `docs/pipeline/` |
+| `{changelog_file}` | `CHANGELOG.md` |
+| `{conventions_file}` | `docs/CONVENTIONS.md` |
+| `{mockup_route_prefix}` | `/mock/` |
+
+### /brain-setup
+
+The `brain-setup` skill handles two paths:
+
+**Path A -- First-Time Setup:**
+1. Personal or shared config
+2. Database strategy: Docker, local PostgreSQL, or remote PostgreSQL
+3. OpenRouter API key verification
+4. Scope path configuration
+5. Connection verification via `atelier_stats`
+6. Config file written (personal to plugin data dir, shared to `.claude/brain-config.json`)
+7. Brain enabled in database
+8. Confirmation with tool count and scope
+
+**Path B -- Colleague Onboarding:**
+If `.claude/brain-config.json` already exists, the skill reads it, checks which environment variables are set, and either connects automatically or tells the colleague which variables to set. Non-interactive.
+
+### /brain-hydrate
+
+Seeds the brain with existing project knowledge:
+
+1. **Scan** -- inventories ADRs, specs, UX docs, error patterns, retro lessons, context briefs, git history
+2. **Present** -- shows scan results and estimated thought count, gets user approval
+3. **Extract** -- reads each artifact, synthesizes reasoning (never verbatim content), captures as brain thoughts with proper types, importance scores, and relations
+4. **Incremental** -- safe to re-run. Duplicate detection (>0.85 similarity = skip, 0.7-0.85 = new thought with `evolves_from` relation)
+5. **Capped** -- maximum 100 thoughts per hydration run
+
+---
+
+## Customization Points
+
+### CLAUDE.md Placeholders
+
+During `/pipeline-setup`, the skill writes a pipeline section into `CLAUDE.md` with project-specific values. These values propagate to agent persona files through placeholder replacement. The key customization surface is the initial setup interview.
+
+### What Is Stack-Agnostic
+
+The orchestration patterns, quality gates, phase sizing, agent boundaries, and DoR/DoD framework are all stack-agnostic. They work identically regardless of whether the project uses React, Django, Rust, or any other stack.
+
+### What Is Stack-Specific
+
+- Test commands (lint, typecheck, test suite, single-file test)
+- Source directory structure and feature directory patterns
+- Database access patterns
+- Build and deploy commands
+- Coverage and complexity thresholds
+- Mockup route prefix
+
+### User Overrides During Pipeline
+
+- "full ceremony" forces pauses at every transition
+- "fast track this" forces Small sizing
+- "stop" or "hold" halts auto-advance at current phase
+- "skip to [agent]", "back to [agent]", "check with [agent]" for manual routing
+- "skip mockup" to bypass UI mockup phase for non-UI features
+
+### Brain Configuration
+
+Brain behavior is controlled via the `brain_config` singleton row:
+
+| Setting | Default | Purpose |
+|---------|---------|---------|
+| `brain_enabled` | `false` | Master switch |
+| `consolidation_interval_minutes` | 30 | How often consolidation runs |
+| `consolidation_min_thoughts` | 3 | Minimum thoughts needed to trigger consolidation |
+| `consolidation_max_thoughts` | 20 | Maximum thoughts processed per consolidation run |
+| `conflict_detection_enabled` | `true` | Enable write-time conflict detection |
+| `conflict_duplicate_threshold` | 0.9 | Similarity above which thoughts are merged |
+| `conflict_candidate_threshold` | 0.7 | Similarity above which LLM classifies the conflict |
+| `conflict_llm_enabled` | `true` | Enable LLM-based conflict classification |
+| `default_scope` | `default` | Default ltree scope for thoughts |
+
+### Debug Flow Customization
+
+The four-layer investigation protocol (Application -> Transport -> Infrastructure -> Environment) with its 2-rejected-hypotheses escalation threshold is fixed. The investigation ledger format and layer definitions are not configurable -- they encode hard-won lessons about where bugs actually live.
+
+### Batch Mode
+
+When Eva receives multiple issues at once:
+- Default execution is sequential with full pipeline per issue
+- Full test suite between issues
+- Parallelization requires explicit user approval AND zero file overlap confirmation
+- No silent reordering
+
+### Worktree Integration
+
+When agents work in isolated git worktrees:
+- Changes integrate via `git merge` or `git cherry-pick`, never file copying
+- Conflicts are resolved before advancing (route to Colby, then Roz)
+- One worktree merge at a time with test suite between each
+- Worktree agents do not see each other's changes
+
+---
+
+## Cross-References
+
+- **User guide:** [docs/guide/user-guide.md](user-guide.md)
+- **Agent system rules (installed):** `.claude/rules/agent-system.md`
+- **Default persona (installed):** `.claude/rules/default-persona.md`
+- **Quality framework (installed):** `.claude/references/dor-dod.md`
+- **Operational procedures (installed):** `.claude/references/pipeline-operations.md`
+- **Invocation templates (installed):** `.claude/references/invocation-templates.md`
+- **Brain schema:** `brain/schema.sql` (in plugin directory)
+- **Plugin metadata:** `.claude-plugin/plugin.json`

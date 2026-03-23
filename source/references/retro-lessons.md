@@ -11,11 +11,16 @@ repeats 3+ times.
 
 - **After each pipeline:** Eva identifies systemic issues from Roz's QA
   findings. If an issue reveals a reusable lesson (not just a one-off bug),
-  add it here.
+  add it here AND capture it in the brain (if available) via `agent_capture`
+  with `thought_type: 'lesson'`, `source_agent: 'eva'`, `source_phase: 'retro'`.
 - **Format:** Each lesson has: What happened, Root cause, and Rules derived
   (per agent).
-- **Agents read this file** at the start of every work unit. If a lesson is
-  relevant, they note it in their DoR's "Retro risks" field.
+- **Agents search the brain first** (if available) for retro lessons relevant
+  to the current feature area, then also read this file as a fallback. If a
+  lesson is relevant, they note it in their DoR's "Retro risks" field.
+- **This file is the canonical fallback** — the pipeline works without a brain.
+  The brain adds searchability so agents get relevant lessons instead of the
+  full list.
 - **Eva injects WARN** into agent invocations when error-patterns.md shows
   a pattern recurring 3+ times. The WARN references the specific lesson here.
 

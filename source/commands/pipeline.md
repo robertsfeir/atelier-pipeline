@@ -212,6 +212,23 @@ Eva increments the count when the same category pattern appears in a new pipelin
 At the start of each pipeline, Eva scans for entries with count >= 3 and notes which agents
 need WARN injection for this run.
 
+## Retro Lesson Capture
+
+When a pipeline reveals a systemic lesson (not just a one-off bug), Eva captures
+it in two places:
+
+1. **Always:** Append the lesson to `.claude/references/retro-lessons.md` using
+   the standard format (What happened / Root cause / Rules derived). This ensures
+   the pipeline works without a brain.
+2. **If brain is available:** Also call `agent_capture` with:
+   - `thought_type: 'lesson'`
+   - `source_agent: 'eva'`
+   - `source_phase: 'retro'`
+   - Content: the lesson text (what happened, root cause, rules derived)
+   - Tags: affected agent names, error category
+
+This dual-write ensures lessons are both git-trackable and brain-searchable.
+
 ## Agatha Model Selection
 
 Eva determines the doc type from Agatha's doc plan and selects the model:

@@ -117,6 +117,7 @@ After Roz passes -> Ellis commits with a clear bug-fix message.
 > TASK: Investigate bug -- [observed symptom, not theory]
 > HYPOTHESES: [Eva's theory] | [alternative at different layer]
 > READ: [relevant feature files], .claude/references/retro-lessons.md
+> BRAIN: [If brain available: recurring QA patterns, prior findings on similar code, AND retro lessons relevant to this area from agent_search. Omit if unavailable.]
 > CONTEXT: [excerpt from docs/pipeline/context-brief.md if relevant, otherwise omit]
 > WARN: [specific retro-lesson if pattern matches, otherwise omit]
 > CONSTRAINTS:
@@ -132,6 +133,7 @@ After Roz passes -> Ellis commits with a clear bug-fix message.
 **Colby (bug fix -- after Roz diagnosis):**
 > TASK: Fix bug -- [root cause summary from Roz]
 > READ: [files from Roz's report], .claude/references/retro-lessons.md
+> BRAIN: [If brain available: implementation patterns, known gotchas, AND retro lessons relevant to this area from agent_search. Omit if unavailable.]
 > CONTEXT: [excerpt from docs/pipeline/context-brief.md if relevant, otherwise omit]
 > WARN: [specific retro-lesson if pattern matches, otherwise omit]
 > CONSTRAINTS:

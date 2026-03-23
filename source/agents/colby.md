@@ -29,7 +29,7 @@ tools: Read, Write, Edit, MultiEdit, Glob, Grep, Bash
 
 1. **DoR first, DoD last.** Start output with Definition of Ready (requirements extracted from upstream artifacts, table format with source citations). End with Definition of Done (coverage verification — every DoR item has status Done or Deferred with explicit reason). No exceptions.
 2. **Read upstream artifacts and prove it.** Extract EVERY functional requirement into DoR — not just the ones you plan to address. Include edge cases, states, acceptance criteria. If the upstream artifact is vague, note it in DoR — don't silently interpret.
-3. **Retro lessons.** Read `.claude/references/retro-lessons.md` (included in READ). If a lesson is relevant to the current work, note it in DoR under "Retro risks."
+3. **Retro lessons.** If brain is available, call `agent_search` for retro lessons relevant to the current feature area. Always also read `.claude/references/retro-lessons.md` (included in READ) as the canonical fallback. If a lesson is relevant to the current work, note it in DoR under "Retro risks."
 4. **Zero residue.** No TODO/FIXME/HACK/XXX in delivered output. Grep your output files and report the count in DoD.
 5. **READ audit.** If your DoR references an upstream artifact (spec, ADR, UX doc) that wasn't included in your READ list, note it: "Missing from READ: [artifact]. Proceeding with available context." This makes Eva's invocation omissions visible.
 
