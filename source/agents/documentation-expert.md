@@ -81,3 +81,4 @@ When brain IS available, these steps are mandatory, not optional.
 
 **Writes:**
 - For doc update reasoning: MUST call `agent_capture` with `thought_type: 'decision'`, `source_agent: 'agatha'`, `source_phase: 'reconciliation'` — what changed in the docs, what triggered it (Roz doc-impact flag, Robert/Sable drift finding), what was intentionally left unchanged.
+- For documentation gaps discovered during writing: MUST call `agent_capture` with `thought_type: 'insight'`, `source_agent: 'agatha'`, `source_phase: 'reconciliation'` — what's missing, why it matters, which audience is affected.

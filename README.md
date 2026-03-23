@@ -50,7 +50,7 @@ If you skipped the brain offer during pipeline setup, run it separately:
 The setup asks:
 
 1. **Personal or shared?** Personal config stays local (never committed). Shared config is committed to the repo with `${ENV_VAR}` placeholders — no bare secrets.
-2. **Docker or local PostgreSQL?** Docker is one command (`docker compose up`). Local PostgreSQL requires pgvector and ltree extensions.
+2. **Docker, local PostgreSQL, or remote PostgreSQL?** Docker is one command (`docker compose up`). Local PostgreSQL requires pgvector and ltree extensions. Remote PostgreSQL (RDS, Supabase, etc.) connects to an existing managed database — setup verifies the connection, checks for required extensions, and applies the schema if needed.
 3. **OpenRouter API key.** Needed for vector embeddings. Get one at https://openrouter.ai/keys and set `export OPENROUTER_API_KEY="sk-or-..."` in your shell profile.
 4. **Scope path.** A dot-separated namespace like `myorg.myproduct` that organizes knowledge.
 
@@ -110,7 +110,7 @@ The plugin provides four skills:
 |-------|---------|---------|
 | `/pipeline-setup` | "set up the pipeline", "install atelier" | Installs all agent personas, commands, references, and state files into your project |
 | `/pipeline-overview` | "how does the pipeline work", "explain atelier" | Quick reference for the pipeline system, agents, and principles |
-| `/brain-setup` | "set up the brain", "configure brain" | Configures the Atelier Brain persistent memory (Docker or local PostgreSQL) |
+| `/brain-setup` | "set up the brain", "configure brain" | Configures the Atelier Brain persistent memory (Docker, local PostgreSQL, or remote PostgreSQL) |
 | `/brain-hydrate` | "hydrate brain", "seed memory", "import history" | Imports existing project knowledge (ADRs, specs, git history) into the brain |
 
 ## The Pipeline

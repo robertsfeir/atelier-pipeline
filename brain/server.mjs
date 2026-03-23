@@ -51,17 +51,22 @@ function resolveConfig() {
     try {
       const raw = readFileSync(configPath, "utf-8");
       const config = JSON.parse(raw);
-      // Resolve ${ENV_VAR} placeholders
+      // Resolve ${ENV_VAR} placeholders (both full-value and inline)
       const resolved = {};
       for (const [key, value] of Object.entries(config)) {
-        if (typeof value === "string" && value.startsWith("${") && value.endsWith("}")) {
-          const envKey = value.slice(2, -1);
-          const envVal = process.env[envKey];
-          if (!envVal) {
-            console.error(`Missing env var ${envKey} referenced in config`);
-            return null;
-          }
-          resolved[key] = envVal;
+        if (typeof value === "string" && value.includes("${")) {
+          let missing = false;
+          const result = value.replace(/\$\{([^}]+)\}/g, (_, envKey) => {
+            const envVal = process.env[envKey];
+            if (!envVal) {
+              console.error(`Missing env var ${envKey} referenced in config`);
+              missing = true;
+              return "";
+            }
+            return envVal;
+          });
+          if (missing) return null;
+          resolved[key] = result;
         } else {
           resolved[key] = value;
         }

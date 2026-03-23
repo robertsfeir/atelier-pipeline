@@ -61,16 +61,36 @@ All other reference files are loaded by subagents when relevant, not by Eva. Eva
 
 When `brain_available: true`, Eva performs these brain operations at mechanical gates — not discretionary.
 
+### Hybrid Capture Model
+
+Agents write their own domain-specific captures directly (Cal captures decisions, Colby captures implementation insights, Roz captures QA findings, etc.). Each agent uses their own name as `source_agent` so the brain tracks who learned what. Eva does NOT duplicate agent captures.
+
+Eva captures **cross-cutting concerns only** — things no single agent owns:
+
 **Reads:**
 - Pipeline start: calls `agent_search` with query derived from current feature area + scope. Injects results into pipeline state alongside context-brief.md.
 - Before delegating to any agent: calls `agent_search` for known issues, prior findings, and user corrections relevant to the task being assigned. Passes results as context in the agent invocation.
 - Health check: calls `atelier_stats` at pipeline start to verify brain is live.
 
-**Writes:**
-- After every gate-triggered event: calls `agent_capture` with `source_agent: 'eva'`, appropriate `thought_type` and `source_phase` (DRIFT finding, HALT resolution, spec correction, phase transition).
+**Writes (cross-cutting only):**
+- User decisions: calls `agent_capture` with `source_agent: 'eva'`, `thought_type: 'decision'` when the user expresses a preference, correction, or override during conversation.
+- Phase transitions: calls `agent_capture` with `source_agent: 'eva'`, `thought_type: 'decision'` at each pipeline phase transition with outcome summary.
+- Cross-agent patterns: when the same issue is found by multiple reviewers (e.g., Roz and Robert both flag the same drift), calls `agent_capture` with `source_agent: 'eva'`, `thought_type: 'insight'` noting the convergence.
+- Deploy/infra outcomes: calls `agent_capture` with `source_agent: 'eva'`, `thought_type: 'lesson'` after deploy attempts (pass or fail) and infrastructure changes.
 - Creates cross-agent relations via `atelier_relation`: drift finding `triggered_by` review juncture, correction `supersedes` prior reasoning, HALT resolution `triggered_by` AMBIGUOUS finding.
 - Captures Poirot's findings post-review via `agent_capture` with `source_agent: 'eva'`, `thought_type: 'insight'` (Poirot himself never touches brain).
 - Pipeline end: calls `agent_capture` with `thought_type: 'decision'` for session summary linking key decisions from the run.
+
+**Verification (spot-check, not duplicate):**
+- After each agent completes work, Eva spot-checks that the agent performed its brain captures. If an agent with a Brain Access section returned output but did not capture, Eva logs the gap — she does NOT re-capture on the agent's behalf (that would produce duplicates with `source_agent: 'eva'` instead of the real author).
+
+### /devops Capture Gates
+
+When Eva operates in /devops mode, these captures fire at mechanical gates:
+- After every deploy attempt (pass or fail): `agent_capture` with `source_agent: 'eva'`, `thought_type: 'lesson'`, `source_phase: 'devops'` — what was deployed, outcome, error if failed.
+- After every infrastructure config change: `agent_capture` with `source_agent: 'eva'`, `thought_type: 'decision'`, `source_phase: 'devops'` — what changed and why.
+- After every database operation: `agent_capture` with `source_agent: 'eva'`, `thought_type: 'decision'`, `source_phase: 'devops'` — migration, schema change, or data operation performed.
+- After every external service configuration: `agent_capture` with `source_agent: 'eva'`, `thought_type: 'decision'`, `source_phase: 'devops'` — service, change, and outcome.
 
 When brain is unavailable, Eva skips all brain steps and proceeds with baseline behavior. No pipeline run fails because of the brain.
 
