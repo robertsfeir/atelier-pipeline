@@ -32,7 +32,7 @@ Ask the user:
 
 Ask the user:
 
-> "How would you like to run the brain database -- local PostgreSQL or Docker?"
+> "How would you like to run the brain database -- local PostgreSQL, Docker, or remote PostgreSQL (RDS, Supabase, etc.)?"
 
 #### Option: Docker
 
@@ -60,6 +60,29 @@ Ask the user:
    - **Missing pgvector:** "The pgvector extension is required but not installed. Install it with: `brew install pgvector` (macOS) or `sudo apt install postgresql-16-pgvector` (Ubuntu). Then run `CREATE EXTENSION vector;` in your database."
    - **Missing ltree:** "The ltree extension is required but not installed. Run `CREATE EXTENSION ltree;` in your database (ltree ships with PostgreSQL)."
 5. Database URL: `postgresql://<user>:${ATELIER_BRAIN_DB_PASSWORD}@localhost:5432/<database_name>`
+
+#### Option: Remote PostgreSQL
+
+1. Ask for connection details:
+   - **Host** (e.g., `db.example.com`, `project.supabase.co`, `myinstance.us-east-1.rds.amazonaws.com`)
+   - **Port** (default: `5432`)
+   - **Database name** (default: `atelier_brain`)
+   - **User** (default: `postgres`)
+2. Ask if SSL is required:
+   > "Should the connection use SSL? (Recommended yes for remote databases.)"
+   - Default: **yes** for remote connections.
+3. Verify the database is reachable by running `psql "postgresql://<user>:${ATELIER_BRAIN_DB_PASSWORD}@<host>:<port>/<database_name><ssl_params>" -c "SELECT 1;"`.
+   - **Success:** Proceed.
+   - **Connection refused / timed out:** "Cannot reach the database at `<host>:<port>`. Verify the host, port, and that your IP is allowed through any firewall or security group rules."
+   - **Authentication error:** "Authentication failed. Check the username and `ATELIER_BRAIN_DB_PASSWORD` environment variable."
+   - **SSL error:** "SSL connection failed. Verify that the remote database supports SSL and that your SSL mode is correct. Try `sslmode=require` or check if the provider requires a specific CA certificate."
+4. Check if the schema is already applied by running `psql "<connection_url>" -c "SELECT tablename FROM pg_tables WHERE schemaname = 'public';"`.
+   - **Tables present:** Skip schema application.
+   - **No tables:** Ask the user: "The database exists but has no tables. Apply the brain schema now?" If yes, run `psql "<connection_url>" -f ${CLAUDE_PLUGIN_ROOT}/brain/schema.sql`.
+5. Check for required extensions (pgvector, ltree) by running `psql "<connection_url>" -c "SELECT extname FROM pg_extension;"`.
+   - **Missing pgvector:** "The pgvector extension is required but not available on the remote database. Enable it through your provider's dashboard or run `CREATE EXTENSION vector;` if you have superuser access."
+   - **Missing ltree:** "The ltree extension is required. Run `CREATE EXTENSION ltree;` on the remote database (ltree ships with PostgreSQL)."
+6. Database URL: `postgresql://<user>:${ATELIER_BRAIN_DB_PASSWORD}@<host>:<port>/<database_name>?sslmode=require` (omit `?sslmode=require` if the user chose no SSL).
 
 ### Step 3: OpenRouter API Key
 
@@ -104,6 +127,16 @@ Write the config file based on the user's choice in Step 1.
 }
 ```
 
+For remote PostgreSQL, the URL includes the remote host and SSL parameters:
+
+```json
+{
+  "database_url": "postgresql://postgres:${ATELIER_BRAIN_DB_PASSWORD}@db.example.com:5432/atelier_brain?sslmode=require",
+  "openrouter_api_key": "${OPENROUTER_API_KEY}",
+  "scope": "myorg.myproduct"
+}
+```
+
 - **Personal:** Write to `${CLAUDE_PLUGIN_DATA}/brain-config.json`. This path is local to the user and is not tracked by git.
 - **Shared:** Write to `.claude/brain-config.json` in the project root. This file is committed to the repo. Verify that no bare secret values are present -- only `${ENV_VAR}` placeholders.
 
@@ -120,7 +153,7 @@ Brain is live.
   Tools available: [N] (list count from atelier_stats)
   Scope: [scope path from Step 4]
   Config: [personal | shared] ([file path])
-  Database: [Docker | Local PostgreSQL]
+  Database: [Docker | Local PostgreSQL | Remote PostgreSQL]
 ```
 
 ---
@@ -190,6 +223,8 @@ Handle these failure cases with clear messages and retry guidance:
 | Database already exists | Skip creation. Verify tables exist. If tables are present, skip schema application and proceed. |
 | Container fails to start | "The brain database container failed to start. Run `docker compose -f ${CLAUDE_PLUGIN_ROOT}/brain/docker-compose.yml logs` to see what went wrong." |
 | Connection refused after setup | "The database started but is not accepting connections yet. Wait a few seconds and try again, or check the logs for errors." |
+| SSL connection failed | "SSL connection to the remote database failed. Verify that the server supports SSL, check your `sslmode` setting, and confirm whether the provider requires a specific CA certificate (e.g., `sslmode=verify-full&sslrootcert=path/to/ca.pem`)." |
+| Remote connection timed out | "Connection to `<host>:<port>` timed out. Check that the host and port are correct, your network can reach the server, and your IP is allowed through any firewall or security group rules." |
 
 ## Important Notes
 
