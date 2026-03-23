@@ -152,47 +152,11 @@ For remote PostgreSQL, the URL includes the remote host and SSL parameters:
 - **Personal:** Write to `${CLAUDE_PLUGIN_DATA}/brain-config.json`. This path is local to the user and is not tracked by git.
 - **Shared:** Write to `.claude/brain-config.json` in the project root. This file is committed to the repo. Verify that no bare secret values are present -- only `${ENV_VAR}` placeholders.
 
-### Step 7: Register MCP Server in Project
-
-The plugin's `.mcp.json` uses HTTP transport, but the brain server uses stdio.
-Stdio MCP servers must be registered in the project-level `.mcp.json` with
-absolute paths (tilde `~` does not expand).
-
-1. Find the plugin install path by running:
-   ```bash
-   find ~/.claude/plugins -path "*/atelier-pipeline/brain/start.sh" -print -quit 2>/dev/null
-   ```
-2. Read the project's `.mcp.json` if it exists (it may have other servers like gitlab).
-3. Add or update the `atelier-brain` entry using the absolute path found above.
-   Use `sh` as the command with `start.sh` — the wrapper installs dependencies
-   before starting the server, solving the first-session timing issue:
-   ```json
-   {
-     "atelier-brain": {
-       "command": "sh",
-       "args": ["/absolute/path/to/atelier-pipeline/brain/start.sh"],
-       "env": {
-         "BRAIN_CONFIG_USER": "/absolute/path/to/.claude/plugins/data/atelier-pipeline/brain-config.json",
-         "ATELIER_BRAIN_DB_PASSWORD": "${ATELIER_BRAIN_DB_PASSWORD}",
-         "ATELIER_BRAIN_DATABASE_URL": "${ATELIER_BRAIN_DATABASE_URL}",
-         "OPENROUTER_API_KEY": "${OPENROUTER_API_KEY}"
-       }
-     }
-   }
-   ```
-4. Merge with existing entries -- do not overwrite other MCP servers.
-5. For **shared** config, also add `"BRAIN_CONFIG_PROJECT"` pointing to the
-   absolute path of `.claude/brain-config.json` in the project root.
-
-**Important:** Use absolute paths resolved from the actual filesystem. Do not
-use `~`, `$HOME`, `${CLAUDE_PLUGIN_ROOT}`, or any variable that requires
-shell or plugin system expansion.
-
-### Step 8: Enable Brain in Database
+### Step 7: Enable Brain in Database
 
 Set `brain_config.brain_enabled = true` in the database via `PUT /api/config`.
 
-### Step 9: Confirm
+### Step 8: Confirm
 
 Print a confirmation message:
 
@@ -224,12 +188,8 @@ Check which `${ENV_VAR}` references in the config are satisfied by the current e
 
 #### All present:
 
-1. Check if the project's `.mcp.json` has an `atelier-brain` entry. If not,
-   register the MCP server using the same process as Path A Step 7 (find the
-   plugin install path, add entry with absolute paths, merge with existing
-   servers). The colleague needs the server registered locally.
-2. Verify the connection using `atelier_stats`.
-3. Print: "Brain connected. You're using the team brain at [scope]."
+1. Verify the connection using `atelier_stats`.
+2. Print: "Brain connected. You're using the team brain at [scope]."
 
 #### Some missing:
 
