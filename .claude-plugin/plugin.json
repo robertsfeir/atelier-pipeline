@@ -1,9 +1,21 @@
 {
   "name": "atelier-pipeline",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Multi-agent orchestration with quality gates, continuous QA, and persistent institutional memory across sessions",
   "author": {
     "name": "Robert Sfeir",
     "email": "robert@sfeir.design"
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "test -d \"${CLAUDE_PLUGIN_ROOT}/brain/node_modules\" || npm install --prefix \"${CLAUDE_PLUGIN_ROOT}/brain\" --silent 2>/dev/null"
+          }
+        ]
+      }
+    ]
   }
 }
