@@ -108,6 +108,19 @@ Copy each template to its destination in the user's project, customizing placeho
 
 **Total: 27 files across 5 directories.**
 
+### Step 3b: Write Version Marker
+
+After copying all template files, write the current plugin version to `.claude/.atelier-version`:
+
+```bash
+# Read version from plugin.json and write to project
+grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" | head -1 | grep -o '"[^"]*"$' | tr -d '"' > .claude/.atelier-version
+```
+
+This file is used by the SessionStart hook to detect when the plugin has been updated and the project's pipeline files may be outdated. The hook compares this version against the plugin's current version and notifies the user if an update is available.
+
+**Important:** Always write this file, even on reinstalls. It must reflect the version of the templates that were actually installed.
+
 ### Step 4: Customize Placeholders
 
 The following placeholders in template files must be replaced with project-specific values:
