@@ -175,8 +175,7 @@ absolute paths (tilde `~` does not expand).
          "BRAIN_CONFIG_USER": "/absolute/path/to/.claude/plugins/data/atelier-pipeline/brain-config.json",
          "ATELIER_BRAIN_DB_PASSWORD": "${ATELIER_BRAIN_DB_PASSWORD}",
          "ATELIER_BRAIN_DATABASE_URL": "${ATELIER_BRAIN_DATABASE_URL}",
-         "OPENROUTER_API_KEY": "${OPENROUTER_API_KEY}",
-         "ATELIER_BRAIN_USER": "${ATELIER_BRAIN_USER}"
+         "OPENROUTER_API_KEY": "${OPENROUTER_API_KEY}"
        }
      }
    }
