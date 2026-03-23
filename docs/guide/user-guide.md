@@ -366,7 +366,7 @@ The brain is optional persistent memory that survives across Claude Code session
 
 Run `/brain-setup` (or accept the offer at the end of `/pipeline-setup`).
 
-The setup asks four things:
+The setup asks five things:
 
 1. **Personal or shared?**
    - Personal: config stored locally, never committed to git.
@@ -383,6 +383,10 @@ The setup asks four things:
 3. **OpenRouter API key** -- needed for vector embeddings. Get one at https://openrouter.ai/keys and set `export OPENROUTER_API_KEY="sk-or-..."` in your shell profile.
 
 4. **Scope path** -- a dot-separated namespace like `myorg.myproduct` that organizes brain knowledge.
+
+5. **Brain name** (optional) -- a display name for your brain (e.g., "My Noodle", "Cortex"). Eva uses this name in pipeline announcements and reports instead of the generic "Brain". Leave blank to keep the default.
+
+After answering these questions, the setup registers the brain MCP server in your project's `.mcp.json` with absolute paths and verifies the connection. You do not need to configure the MCP registration manually.
 
 ### Teammate onboarding
 

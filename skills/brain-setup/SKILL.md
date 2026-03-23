@@ -104,6 +104,14 @@ Ask the user:
 
 Provide examples: `acme.webapp`, `myteam.api`, `personal.sideproject`.
 
+### Step 4b: Brain Name (optional)
+
+Ask the user:
+
+> "Want to give your brain a name? This is a display name used in pipeline announcements and reports. Leave blank for the default ('Brain')."
+
+Provide examples: `My Noodle`, `HAL`, `Cortex`, `The Archive`. Store as `brain_name` in the config. If the user skips or leaves blank, omit the field (defaults to "Brain").
+
 ### Step 5: Verify Connection
 
 Run the `atelier_stats` tool (or equivalent health check endpoint) to verify the brain is reachable and functional.
@@ -123,9 +131,12 @@ Write the config file based on the user's choice in Step 1.
 {
   "database_url": "postgresql://atelier:${ATELIER_BRAIN_DB_PASSWORD}@localhost:5432/atelier_brain",
   "openrouter_api_key": "${OPENROUTER_API_KEY}",
-  "scope": "myorg.myproduct"
+  "scope": "myorg.myproduct",
+  "brain_name": "My Noodle"
 }
 ```
+
+The `brain_name` field is optional. Omit it to default to "Brain".
 
 For remote PostgreSQL, the URL includes the remote host and SSL parameters:
 
@@ -133,7 +144,8 @@ For remote PostgreSQL, the URL includes the remote host and SSL parameters:
 {
   "database_url": "postgresql://postgres:${ATELIER_BRAIN_DB_PASSWORD}@db.example.com:5432/atelier_brain?sslmode=require",
   "openrouter_api_key": "${OPENROUTER_API_KEY}",
-  "scope": "myorg.myproduct"
+  "scope": "myorg.myproduct",
+  "brain_name": "My Noodle"
 }
 ```
 

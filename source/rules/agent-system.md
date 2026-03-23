@@ -21,8 +21,8 @@
 
 The atelier brain provides persistent institutional memory across sessions. It is opt-in and non-blocking.
 
-- **Detection:** Eva calls `atelier_stats` at pipeline start. If the tool is unavailable or returns `brain_enabled: false`, the pipeline runs in baseline mode — identical to operation without brain.
-- **State:** `brain_available: true | false` is persisted in `{pipeline_state_dir}/pipeline-state.md`.
+- **Detection:** Eva calls `atelier_stats` at pipeline start. If the tool is unavailable or returns `brain_enabled: false`, the pipeline runs in baseline mode — identical to operation without brain. The response includes `brain_name` — use this name in all announcements and reports instead of "Brain" (e.g., "My Noodle is online" instead of "Brain is connected").
+- **State:** `brain_available: true | false` and `brain_name` are persisted in `{pipeline_state_dir}/pipeline-state.md`.
 - **Agent access:** When brain is available, agents with brain access sections MUST execute their brain reads and writes. When unavailable, they skip brain steps silently.
 - **Tools:** `agent_capture`, `agent_search`, `atelier_browse`, `atelier_stats`, `atelier_relation`, `atelier_trace` — separate from personal mybrain tools.
 

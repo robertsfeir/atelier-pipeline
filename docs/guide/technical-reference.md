@@ -1,6 +1,6 @@
 # Atelier Pipeline -- Technical Reference
 
-Version: 1.7.0
+Version: 1.7.3
 
 This document is the comprehensive technical reference for the atelier-pipeline Claude Code plugin. It covers plugin architecture, agent system design, orchestration logic, brain infrastructure, and customization points. For usage-oriented documentation, see [the user guide](user-guide.md).
 
@@ -41,7 +41,7 @@ The plugin itself lives in the Claude Code plugin directory (typically `~/.claud
 ```
 atelier-pipeline/                         # Plugin root (CLAUDE_PLUGIN_ROOT)
   .claude-plugin/
-    plugin.json                           # Plugin metadata, hooks, version (1.7.0)
+    plugin.json                           # Plugin metadata, hooks, version (1.7.3)
   source/                                 # Template files -- copied to target project
     rules/
       default-persona.md
@@ -60,6 +60,7 @@ atelier-pipeline/                         # Plugin root (CLAUDE_PLUGIN_ROOT)
       pipeline-state.md, context-brief.md, error-patterns.md,
       investigation-ledger.md, last-qa-report.md
   brain/                                  # MCP server -- runs as sidecar
+    start.sh                              # Wrapper script -- installs node_modules then starts server
     server.mjs                            # Main server (MCP + REST API, auto-migration)
     schema.sql                            # PostgreSQL schema (canonical for fresh installs)
     migrations/                           # Idempotent SQL migrations for existing databases
@@ -184,6 +185,8 @@ The four actual plugin skills (`/pipeline-setup`, `/pipeline-overview`, `/brain-
 ---
 
 ## Agent Reference Table
+
+Agent persona files use `disallowedTools` (denylist) in their frontmatter rather than a `tools` allowlist. This ensures subagents inherit MCP tools (including brain tools) from the parent session -- a `tools` allowlist would block MCP tool inheritance because only explicitly listed tools would be available to the subagent.
 
 | Agent | Role | Execution Mode | Tools | Write Access | Brain Access | Model (Fixed/Size-Dependent) |
 |-------|------|---------------|-------|-------------|--------------|------------------------------|
@@ -499,6 +502,14 @@ The same dual-write pattern applies to context brief entries. Eva always writes 
 
 The Atelier Brain is an MCP server (`brain/server.mjs`) backed by PostgreSQL with pgvector and ltree extensions. It provides persistent institutional memory that survives across sessions. The pipeline works without it, but with it, session 12 of a feature build has the same context as session 1.
 
+### Startup
+
+The brain server is launched via `brain/start.sh`, a shell wrapper that installs `node_modules` (if missing) before starting the Node.js server. This solves a first-session timing issue where the project `.mcp.json` would spawn the server before the `SessionStart` hook had a chance to run `npm install`. The wrapper makes the server self-bootstrapping regardless of hook execution order.
+
+### MCP Transport and Project Registration
+
+The plugin's `.mcp.json` supports HTTP transport only. The brain server uses stdio transport, which requires registration in the project-level `.mcp.json` with absolute paths (tilde `~` does not expand in `.mcp.json`). The `/brain-setup` skill handles this automatically: it locates the plugin install path, resolves absolute paths, and adds an `atelier-brain` entry to the project's `.mcp.json` using `sh` as the command with `start.sh` as the argument. Environment variables for config paths, database credentials, and the OpenRouter API key are passed through the `env` block. Existing entries in the project `.mcp.json` are preserved during this merge.
+
 ### Database Schema
 
 **Required extensions:** `vector` (pgvector), `ltree`
@@ -539,7 +550,7 @@ The brain exposes 6 tools via MCP:
 | `agent_capture` | Store a thought with schema-enforced metadata, dedup, conflict detection, and auto-supersession. Human attribution (`captured_by`) is resolved automatically from git config or `ATELIER_BRAIN_USER` env var. | `content`, `thought_type`, `source_agent`, `source_phase`, `importance` (0-1), optional `supersedes_id`, `scope`, `metadata` |
 | `agent_search` | Semantic search using three-axis scoring. Updates `last_accessed_at` on returned results. | `query`, `threshold` (default 0.2), `limit` (default 10), `scope`, `include_invalidated`, `filter` |
 | `atelier_browse` | Paginated browse by type or status. | Type/status filter, pagination |
-| `atelier_stats` | Brain health check. Returns thought count, config, and status. | None |
+| `atelier_stats` | Brain health check. Returns thought count, config, status, and `brain_name`. | None |
 | `atelier_relation` | Create typed edges between thoughts. | `source_id`, `target_id`, `relation_type`, `context` |
 | `atelier_trace` | Walk relation chains from a thought. Recursive traversal. | Starting thought ID, direction |
 
@@ -587,6 +598,8 @@ The brain server resolves its configuration using a priority chain:
 4. **No config found** -- exit cleanly, brain disabled
 
 Config files support `${ENV_VAR}` placeholders for secrets. Shared configs never contain bare secret values.
+
+The config file also supports an optional `brain_name` field -- a display name for the brain (e.g., "My Noodle", "Cortex"). When set, Eva uses this name in pipeline announcements and reports instead of the generic "Brain". The value flows through `atelier_stats` and `/api/health` responses as `brain_name`, defaulting to `"Brain"` when omitted.
 
 ### Hybrid Capture Model
 
@@ -759,13 +772,15 @@ The `brain-setup` skill handles two paths:
 2. Database strategy: Docker, local PostgreSQL, or remote PostgreSQL
 3. OpenRouter API key verification
 4. Scope path configuration
-5. Connection verification via `atelier_stats`
-6. Config file written (personal to plugin data dir, shared to `.claude/brain-config.json`)
-7. Brain enabled in database
-8. Confirmation with tool count and scope
+5. Brain name (optional display name, defaults to "Brain")
+6. Connection verification via `atelier_stats`
+7. Config file written (personal to plugin data dir, shared to `.claude/brain-config.json`)
+8. MCP server registered in project `.mcp.json` with absolute paths (stdio transport)
+9. Brain enabled in database
+10. Confirmation with tool count and scope
 
 **Path B -- Colleague Onboarding:**
-If `.claude/brain-config.json` already exists, the skill reads it, checks which environment variables are set, and either connects automatically or tells the colleague which variables to set. Non-interactive.
+If `.claude/brain-config.json` already exists, the skill reads it, checks which environment variables are set, and either connects automatically or tells the colleague which variables to set. The skill also registers the MCP server in the colleague's project `.mcp.json` if the entry is missing. Non-interactive.
 
 ### /brain-hydrate
 

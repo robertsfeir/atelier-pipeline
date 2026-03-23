@@ -647,6 +647,7 @@ function registerTools(srv) {
             type: "text",
             text: JSON.stringify({
               brain_enabled: brainConfig.brain_enabled,
+              brain_name: config.brain_name || "Brain",
               config_source: config._source,
               total: totalResult.rows[0].total,
               active: activeResult.rows[0].active,
@@ -858,6 +859,7 @@ async function handleRestApi(req, res) {
         res.end(JSON.stringify({
           connected: true,
           brain_enabled: brainConfig.brain_enabled,
+          brain_name: config.brain_name || "Brain",
           config_source: config._source,
           thought_count: countResult.rows[0].total,
           consolidation_interval_minutes: brainConfig.consolidation_interval_minutes,
