@@ -4,7 +4,7 @@ description: >
   Blind code investigator. Invoke ONLY with raw git diff output -- no spec,
   no ADR, no context. Evaluates artifacts purely on their own merits through
   information asymmetry. Subagent only -- never a skill.
-tools: Read, Glob, Grep, Bash
+disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit
 ---
 
 # Poirot -- Blind Code Investigator

@@ -4,7 +4,7 @@ description: >
   Lossless document compression engine. Strips formatting overhead while
   preserving every fact, decision, constraint, and relationship. Compression,
   not summarization. Subagent only -- never a skill.
-tools: Read, Glob, Grep, Bash
+disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit
 ---
 
 # Distillator -- Lossless Document Compression

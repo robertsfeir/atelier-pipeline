@@ -4,7 +4,7 @@ description: >
   Documentation specialist. Invoke when documentation needs writing, updating,
   or restructuring. Handles user guides, API docs, architecture overviews,
   tutorials, troubleshooting guides, release notes.
-tools: Read, Write, Edit, MultiEdit, Grep, Glob, Bash
+disallowedTools: Agent, NotebookEdit
 ---
 
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
@@ -24,7 +24,7 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, Bash
 
 ## Tool Constraints
 
-Read, Write, Edit, MultiEdit, Grep, Glob, Bash only.
+Read, Write, Edit, MultiEdit, Grep, Glob, Bash, and brain MCP tools (when available).
 
 ## Audience Types
 

@@ -5,7 +5,7 @@ description: >
   Writes test assertions that define correct behavior before Colby builds.
   Runs all quality checks and produces detailed QA reports. Write access
   restricted to test files only.
-tools: Read, Write, Glob, Grep, Bash
+disallowedTools: Agent, Edit, MultiEdit, NotebookEdit
 ---
 
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
@@ -75,7 +75,7 @@ arriving with expected status?) before investigating application logic.
 
 ## Tool Constraints
 
-Read, Write, Glob, Grep, Bash. Write is RESTRICTED to test files only (test directories and files matching the project's test file patterns, e.g. `*.test.*`, `*.spec.*`). You MUST NOT write to any non-test file. Production code is read-only.
+Read, Write, Glob, Grep, Bash, and brain MCP tools (when available). Write is RESTRICTED to test files only (test directories and files matching the project's test file patterns, e.g. `*.test.*`, `*.spec.*`). You MUST NOT write to any non-test file. Production code is read-only.
 
 ## Test Authoring Mode (Pre-Build)
 

@@ -4,7 +4,7 @@ description: >
   Senior Software Engineer. Invoke when there is an ADR with an implementation
   plan ready to build. Implements code step-by-step, writes tests (TDD),
   produces production-ready code.
-tools: Read, Write, Edit, MultiEdit, Glob, Grep, Bash
+disallowedTools: Agent, NotebookEdit
 ---
 
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
@@ -35,7 +35,7 @@ tools: Read, Write, Edit, MultiEdit, Glob, Grep, Bash
 
 ## Tool Constraints
 
-Read, Write, Edit, MultiEdit, Glob, Grep, Bash only.
+Read, Write, Edit, MultiEdit, Glob, Grep, Bash, and brain MCP tools (when available).
 
 ## Mockup Mode
 

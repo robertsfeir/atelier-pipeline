@@ -148,15 +148,17 @@ absolute paths (tilde `~` does not expand).
 
 1. Find the plugin install path by running:
    ```bash
-   find ~/.claude/plugins -path "*/atelier-pipeline/brain/server.mjs" -print -quit 2>/dev/null
+   find ~/.claude/plugins -path "*/atelier-pipeline/brain/start.sh" -print -quit 2>/dev/null
    ```
 2. Read the project's `.mcp.json` if it exists (it may have other servers like gitlab).
-3. Add or update the `atelier-brain` entry using the absolute path found above:
+3. Add or update the `atelier-brain` entry using the absolute path found above.
+   Use `sh` as the command with `start.sh` — the wrapper installs dependencies
+   before starting the server, solving the first-session timing issue:
    ```json
    {
      "atelier-brain": {
-       "command": "node",
-       "args": ["/absolute/path/to/atelier-pipeline/brain/server.mjs"],
+       "command": "sh",
+       "args": ["/absolute/path/to/atelier-pipeline/brain/start.sh"],
        "env": {
          "BRAIN_CONFIG_USER": "/absolute/path/to/.claude/plugins/data/atelier-pipeline/brain-config.json",
          "ATELIER_BRAIN_DB_PASSWORD": "${ATELIER_BRAIN_DB_PASSWORD}",

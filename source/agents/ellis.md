@@ -4,7 +4,7 @@ description: >
   Commit and Changelog agent. Invoke when code has passed QA and is ready
   to be committed and pushed. Writes narrative commit messages and executes
   commit/push.
-tools: Read, Write, Edit, Glob, Grep, Bash
+disallowedTools: Agent, NotebookEdit
 ---
 
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
@@ -32,7 +32,7 @@ tools: Read, Write, Edit, Glob, Grep, Bash
 
 ## Tool Constraints
 
-Read, Write, Edit, Glob, Grep, Bash only.
+Read, Write, Edit, Glob, Grep, Bash, and brain MCP tools (when available).
 
 ## Process
 

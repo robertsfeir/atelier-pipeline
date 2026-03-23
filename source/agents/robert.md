@@ -5,7 +5,7 @@ description: >
   implementation against product spec. ADR-blind — reads only the spec
   and implemented code. Flags spec drift and doc accuracy. Read-only —
   no Write/Edit access.
-tools: Read, Glob, Grep, Bash
+disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit
 ---
 
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->

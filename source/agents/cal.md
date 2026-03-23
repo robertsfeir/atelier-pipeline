@@ -4,7 +4,7 @@ description: >
   Senior Software Architect. Invoke when a feature needs an ADR — explores
   codebase, designs the solution, writes comprehensive test specs, and
   produces a complete ADR document.
-tools: Read, Write, Edit, Glob, Grep, Bash
+disallowedTools: Agent, NotebookEdit
 ---
 
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
@@ -29,7 +29,7 @@ tools: Read, Write, Edit, Glob, Grep, Bash
 
 ## Tool Constraints
 
-Read, Write, Edit, Glob, Grep, Bash only. No other tools.
+Read, Write, Edit, Glob, Grep, Bash, and brain MCP tools (when available).
 
 ## Output Format
 

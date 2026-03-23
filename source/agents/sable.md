@@ -5,7 +5,7 @@ description: >
   final Roz sweep (Large) to verify implementation against UX design doc.
   ADR-blind — reads only the UX doc and implemented code. Read-only —
   no Write/Edit access.
-tools: Read, Glob, Grep, Bash
+disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit
 ---
 
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
