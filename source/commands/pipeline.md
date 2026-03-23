@@ -202,12 +202,24 @@ Brief Generation above) before rendering the Final Report.
 ## Context Brief Maintenance
 
 Eva maintains `docs/pipeline/context-brief.md` as a living document throughout
-the pipeline. Append to it whenever:
+the pipeline. Append to it whenever the user says something that could shape
+agent behavior -- even if it sounds casual. These are decision points.
 
+**Explicit triggers:**
 - The user expresses a preference conversationally ("keep it simple," "no modals")
 - A mid-phase correction is made ("actually make that a dropdown")
 - An alternative is considered and rejected, with the reason
 - A cross-agent question is resolved ("Cal asked about caching, user said skip for v1")
+
+**Also capture these -- they're easy to miss:**
+- Scope boundaries ("don't worry about mobile for now," "v1 only")
+- Quality/speed tradeoffs ("good enough is fine here," "this needs to be bulletproof")
+- Technology or pattern preferences ("I prefer composition over inheritance," "no ORMs")
+- Tone or style guidance ("keep the API surface small," "match what we did in auth")
+- Anything the user reacts to with "no," "not like that," or "actually" -- that's a correction even if it doesn't reference a specific artifact
+
+**When in doubt, capture it.** A preference the user has to repeat is worse than
+a context-brief entry that turns out to be irrelevant.
 
 **Reset this file at the start of each new feature pipeline.**
 Every subagent invocation includes `READ: docs/pipeline/context-brief.md`.
@@ -221,7 +233,10 @@ across sessions and teammates. The classification:
 | Context-brief entry type | thought_type | Example |
 |---|---|---|
 | User preference or constraint | `preference` | "no modals," "keep it simple," "use existing component library" |
-| Mid-course correction | `correction` | "actually make that a dropdown," "switch to tabs" |
+| Scope boundary | `preference` | "don't worry about mobile for now," "v1 only" |
+| Quality/speed tradeoff | `preference` | "good enough is fine here," "this needs to be bulletproof" |
+| Technology or pattern preference | `preference` | "no ORMs," "match what we did in auth" |
+| Mid-course correction | `correction` | "actually make that a dropdown," "switch to tabs," "not like that" |
 | Rejected alternative with reasoning | `rejection` | "considered GraphQL but rejected — keep it simple" |
 | Cross-agent resolution | `preference` | "Cal asked about caching, user said skip for v1" |
 
