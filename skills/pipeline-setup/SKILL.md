@@ -108,6 +108,65 @@ Copy each template to its destination in the user's project, customizing placeho
 
 **Total: 27 files across 5 directories.**
 
+### Step 3a: Install Enforcement Hooks
+
+Copy the hook scripts from the plugin's `source/hooks/` directory to `.claude/hooks/`
+in the project. These hooks mechanically enforce agent boundaries — they are not
+optional and must be installed for the pipeline to function correctly.
+
+| Template Source | Destination | Purpose |
+|----------------|-------------|---------|
+| `source/hooks/enforce-paths.sh` | `.claude/hooks/enforce-paths.sh` | Blocks Write/Edit outside each agent's allowed file paths |
+| `source/hooks/enforce-sequencing.sh` | `.claude/hooks/enforce-sequencing.sh` | Blocks out-of-order agent invocations (e.g., Ellis without Roz QA) |
+| `source/hooks/enforce-git.sh` | `.claude/hooks/enforce-git.sh` | Blocks git write operations from main thread (must go through Ellis) |
+| `source/hooks/check-brain-usage.sh` | `.claude/hooks/check-brain-usage.sh` | Warns when agents with brain access don't use brain tools |
+| `source/hooks/enforcement-config.json` | `.claude/hooks/enforcement-config.json` | Project-specific paths and agent rules |
+
+After copying, make the `.sh` files executable: `chmod +x .claude/hooks/*.sh`
+
+**Customize enforcement-config.json** with the project-specific values from Step 1:
+- `pipeline_state_dir`: the pipeline state directory (default: `docs/pipeline`)
+- `architecture_dir`: the ADR directory (default: `docs/architecture`)
+- `product_specs_dir`: the specs directory (default: `docs/product`)
+- `ux_docs_dir`: the UX docs directory (default: `docs/ux`)
+- `test_patterns`: array of patterns matching the project's test files (e.g., `[".test.", ".spec.", "/tests/", "conftest"]`)
+
+**Register hooks in `.claude/settings.json`** — merge with existing settings if the
+file already exists. Add this hooks section:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [{"type": "command", "command": ".claude/hooks/enforce-paths.sh"}]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [{"type": "command", "command": ".claude/hooks/enforce-sequencing.sh"}]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [{"type": "command", "command": ".claude/hooks/enforce-git.sh"}]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Agent",
+        "hooks": [{"type": "command", "command": ".claude/hooks/check-brain-usage.sh"}]
+      }
+    ]
+  }
+}
+```
+
+**Important:** These hooks require `jq` to be installed. Check with `command -v jq`.
+If `jq` is not available, tell the user: "Install jq for pipeline enforcement hooks:
+`brew install jq` (macOS) or `apt install jq` (Linux)."
+
+**Total with hooks: 32 files across 6 directories.**
+
 ### Step 3b: Write Version Marker
 
 After copying all template files, write the current plugin version to `.claude/.atelier-version`:
@@ -177,12 +236,14 @@ After installation, print:
 ```
 Atelier Pipeline installed successfully.
 
-Files installed: 27
+Files installed: 32
   .claude/rules/       -- 2 files (Eva persona, orchestration rules)
   .claude/agents/      -- 9 files (Cal, Colby, Roz, Robert, Sable, Poirot, Distillator, Ellis, Agatha)
   .claude/commands/    -- 7 files (/pm, /ux, /architect, /debug, /pipeline, /devops, /docs)
   .claude/references/  -- 4 files (quality framework, retro lessons, invocation templates, pipeline operations)
+  .claude/hooks/       -- 5 files (path enforcement, sequencing, git guard, brain usage, config)
   docs/pipeline/       -- 5 files (state tracking for session recovery)
+  .claude/settings.json -- updated with hook registration
   CLAUDE.md            -- updated with pipeline section
 
 Available commands:
@@ -226,4 +287,5 @@ If the user says yes, invoke the `brain-setup` skill. If no, finish.
 | `.claude/agents/` | Claude Code when subagents are invoked | Agent personas for execution tasks |
 | `.claude/commands/` | Claude Code when user types a slash command | Manual agent invocation overrides |
 | `.claude/references/` | Agents when they need shared knowledge | Quality framework, lessons, templates |
+| `.claude/hooks/` | Claude Code on every tool call (PreToolUse/PostToolUse) | Mechanical enforcement of agent boundaries, sequencing, and brain usage |
 | `docs/pipeline/` | Eva at session start | State recovery, context preservation, error tracking |

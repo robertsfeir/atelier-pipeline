@@ -203,7 +203,7 @@ Agents capture thoughts during pipeline runs and search for relevant context bef
 
 ## What Gets Installed
 
-`/pipeline-setup` installs 27 files into your project:
+`/pipeline-setup` installs 32 files into your project:
 
 ```
 your-project/
@@ -234,6 +234,13 @@ your-project/
       retro-lessons.md           # Shared lessons (starts empty)
       invocation-templates.md    # Subagent invocation examples
       pipeline-operations.md     # Model selection, QA flow, feedback loops
+    hooks/                       # Mechanical enforcement (PreToolUse/PostToolUse)
+      enforce-paths.sh           # Blocks Write/Edit outside agent's allowed paths
+      enforce-sequencing.sh      # Blocks out-of-order agent invocations
+      enforce-git.sh             # Blocks git write ops from main thread
+      check-brain-usage.sh       # Warns when agents skip brain tools
+      enforcement-config.json    # Project-specific paths and rules
+    settings.json                # Hook registration
   docs/
     pipeline/                    # Eva reads at session start for recovery
       pipeline-state.md          # Session recovery state
@@ -242,6 +249,8 @@ your-project/
       investigation-ledger.md    # Debug hypothesis tracking
       last-qa-report.md          # Roz's most recent QA report
 ```
+
+**Requires:** `jq` for hook enforcement (`brew install jq` on macOS, `apt install jq` on Linux).
 
 ## Key Principles
 
@@ -252,6 +261,7 @@ your-project/
 - **Four-layer investigation.** Debug flows check Application, Transport, Infrastructure, Environment. Two rejected hypotheses at one layer forces escalation.
 - **Living artifacts.** Specs and UX docs are updated at pipeline end. ADRs are immutable records.
 - **Retro lessons.** Error patterns recurring 3+ times get injected as warnings into future agent prompts.
+- **Mechanical enforcement.** PreToolUse hooks block agents from writing outside their designated paths, enforce pipeline sequencing (no commits without QA), and prevent Eva from running git operations directly. Behavioral guidance tells agents what to do; hooks ensure they can't do what they shouldn't.
 
 ## Customization
 
