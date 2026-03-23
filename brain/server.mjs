@@ -22,6 +22,7 @@ import pgvector from "pgvector/pg";
 import { createServer } from "http";
 import crypto from "crypto";
 import { readFileSync, existsSync } from "fs";
+import { execSync } from "child_process";
 import { fileURLToPath } from "url";
 import path from "path";
 
@@ -32,9 +33,9 @@ import path from "path";
 const EMBEDDING_MODEL = "openai/text-embedding-3-small";
 
 // Enums matching schema.sql — used for Zod validation
-const THOUGHT_TYPES = ["decision", "preference", "lesson", "rejection", "drift", "correction", "insight", "reflection"];
+const THOUGHT_TYPES = ["decision", "preference", "lesson", "rejection", "drift", "correction", "insight", "reflection", "handoff"];
 const SOURCE_AGENTS = ["eva", "cal", "robert", "sable", "colby", "roz", "poirot", "agatha", "distillator", "ellis"];
-const SOURCE_PHASES = ["design", "build", "qa", "review", "reconciliation", "setup"];
+const SOURCE_PHASES = ["design", "build", "qa", "review", "reconciliation", "setup", "handoff"];
 const THOUGHT_STATUSES = ["active", "superseded", "invalidated", "expired", "conflicted"];
 const RELATION_TYPES = ["supersedes", "triggered_by", "evolves_from", "contradicts", "supports", "synthesized_from"];
 
@@ -104,6 +105,29 @@ if (!OPENROUTER_API_KEY) {
   process.exit(1);
 }
 
+// =============================================================================
+// Human Identity Resolution (resolved once at startup)
+// =============================================================================
+
+function resolveIdentity() {
+  const envUser = process.env.ATELIER_BRAIN_USER;
+  if (envUser) return envUser;
+
+  try {
+    const name = execSync("git config user.name", { encoding: "utf-8", timeout: 5000 }).trim();
+    const email = execSync("git config user.email", { encoding: "utf-8", timeout: 5000 }).trim();
+    if (name && email) return `${name} <${email}>`;
+    if (name) return name;
+    if (email) return email;
+  } catch {
+    // git not available or not configured
+  }
+
+  return null;
+}
+
+const CAPTURED_BY = resolveIdentity();
+
 const pool = new pg.Pool({ connectionString: DATABASE_URL });
 
 pool.on("connect", async (client) => {
@@ -113,6 +137,53 @@ pool.on("connect", async (client) => {
 pool.on("error", (err) => {
   console.error("Database pool error:", err.message);
 });
+
+// =============================================================================
+// Auto-Migration (idempotent — safe to run on every startup)
+// =============================================================================
+
+async function runMigrations() {
+  const client = await pool.connect();
+  try {
+    // Check if captured_by column exists
+    const colCheck = await client.query(
+      `SELECT 1 FROM information_schema.columns
+       WHERE table_name = 'thoughts' AND column_name = 'captured_by'`
+    );
+    if (colCheck.rows.length === 0) {
+      console.log("Migration: adding captured_by column...");
+      await client.query(`ALTER TABLE thoughts ADD COLUMN captured_by TEXT`);
+
+      // Replace match_thoughts_scored to include captured_by
+      const migrationPath = path.join(path.dirname(fileURLToPath(import.meta.url)), "migrations", "001-add-captured-by.sql");
+      if (existsSync(migrationPath)) {
+        const sql = readFileSync(migrationPath, "utf-8");
+        await client.query(sql);
+      }
+      console.log("Migration: captured_by column added.");
+    }
+
+    // Check if handoff enum value exists
+    const handoffCheck = await client.query(
+      `SELECT 1 FROM pg_enum WHERE enumlabel = 'handoff' AND enumtypid = 'thought_type'::regtype`
+    );
+    if (handoffCheck.rows.length === 0) {
+      console.log("Migration: adding handoff enum values...");
+      const migrationPath = path.join(path.dirname(fileURLToPath(import.meta.url)), "migrations", "002-add-handoff-enums.sql");
+      if (existsSync(migrationPath)) {
+        const sql = readFileSync(migrationPath, "utf-8");
+        await client.query(sql);
+      }
+      console.log("Migration: handoff enum values added.");
+    }
+  } catch (err) {
+    console.error("Migration check failed (non-fatal):", err.message);
+  } finally {
+    client.release();
+  }
+}
+
+await runMigrations();
 
 // =============================================================================
 // Embedding Generation
@@ -327,8 +398,8 @@ function registerTools(srv) {
 
         // Insert new thought
         const insertResult = await client.query(
-          `INSERT INTO thoughts (content, embedding, metadata, thought_type, source_agent, source_phase, importance, trigger_event, status, scope)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::ltree[])
+          `INSERT INTO thoughts (content, embedding, metadata, thought_type, source_agent, source_phase, importance, trigger_event, captured_by, status, scope)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::ltree[])
            RETURNING id, created_at`,
           [
             content,
@@ -339,6 +410,7 @@ function registerTools(srv) {
             source_phase,
             importance,
             trigger_event || null,
+            CAPTURED_BY,
             conflictResult.action === "conflict" ? "conflicted" : "active",
             `{${scopeArray.join(",")}}`,
           ]
@@ -399,6 +471,7 @@ function registerTools(srv) {
         const response = {
           thought_id: newThought.id,
           created_at: newThought.created_at,
+          captured_by: CAPTURED_BY,
           conflict_flag: conflictResult.action === "conflict" || conflictResult.conflictFlag || false,
           related_ids: relatedIds,
         };
@@ -465,6 +538,7 @@ function registerTools(srv) {
           importance: r.importance,
           status: r.status,
           scope: r.scope,
+          captured_by: r.captured_by,
           created_at: r.created_at,
           similarity: parseFloat(r.similarity?.toFixed(4)),
           recency_score: parseFloat(r.recency_score?.toFixed(4)),
@@ -491,9 +565,10 @@ function registerTools(srv) {
       status: z.enum(THOUGHT_STATUSES).optional().describe("Filter by status"),
       thought_type: z.enum(THOUGHT_TYPES).optional().describe("Filter by thought type"),
       source_agent: z.enum(SOURCE_AGENTS).optional().describe("Filter by source agent"),
+      captured_by: z.string().optional().describe("Filter by human who captured"),
       scope: z.string().optional().describe("Filter by ltree scope"),
     },
-    async ({ limit = 20, offset = 0, status, thought_type, source_agent, scope }) => {
+    async ({ limit = 20, offset = 0, status, thought_type, source_agent, captured_by, scope }) => {
       try {
         const conditions = [];
         const params = [];
@@ -502,13 +577,14 @@ function registerTools(srv) {
         if (status) { conditions.push(`status = $${paramIdx++}`); params.push(status); }
         if (thought_type) { conditions.push(`thought_type = $${paramIdx++}`); params.push(thought_type); }
         if (source_agent) { conditions.push(`source_agent = $${paramIdx++}`); params.push(source_agent); }
+        if (captured_by) { conditions.push(`captured_by = $${paramIdx++}`); params.push(captured_by); }
         if (scope) { conditions.push(`scope @> ARRAY[$${paramIdx++}]::ltree[]`); params.push(scope); }
 
         const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
         params.push(limit, offset);
 
         const result = await pool.query(
-          `SELECT id, content, thought_type, source_agent, source_phase, importance, status, scope, created_at, updated_at
+          `SELECT id, content, thought_type, source_agent, source_phase, importance, status, scope, captured_by, created_at, updated_at
            FROM thoughts ${where}
            ORDER BY created_at DESC
            LIMIT $${paramIdx++} OFFSET $${paramIdx++}`,
@@ -558,6 +634,9 @@ function registerTools(srv) {
         const byAgent = await pool.query(
           `SELECT source_agent, count(*)::int AS count FROM thoughts GROUP BY source_agent ORDER BY count DESC`
         );
+        const byHuman = await pool.query(
+          `SELECT COALESCE(captured_by, 'unknown') AS captured_by, count(*)::int AS count FROM thoughts GROUP BY captured_by ORDER BY count DESC`
+        );
         const totalResult = await pool.query(`SELECT count(*)::int AS total FROM thoughts`);
         const activeResult = await pool.query(`SELECT count(*)::int AS active FROM thoughts WHERE status = 'active'`);
         const expiredResult = await pool.query(`SELECT count(*)::int AS expired FROM thoughts WHERE status = 'expired'`);
@@ -576,6 +655,7 @@ function registerTools(srv) {
               by_type: Object.fromEntries(byType.rows.map(r => [r.thought_type, r.count])),
               by_status: Object.fromEntries(byStatus.rows.map(r => [r.status, r.count])),
               by_agent: Object.fromEntries(byAgent.rows.map(r => [r.source_agent, r.count])),
+              by_human: Object.fromEntries(byHuman.rows.map(r => [r.captured_by, r.count])),
               consolidation_interval_minutes: brainConfig.consolidation_interval_minutes,
             }),
           }],
@@ -674,7 +754,7 @@ function registerTools(srv) {
       try {
         // Get the root thought
         const rootResult = await pool.query(
-          `SELECT id, content, thought_type, source_agent, source_phase, importance, status, scope, created_at
+          `SELECT id, content, thought_type, source_agent, source_phase, importance, status, scope, captured_by, created_at
            FROM thoughts WHERE id = $1`,
           [thought_id]
         );
@@ -689,13 +769,13 @@ function registerTools(srv) {
         if (direction === "backward" || direction === "both") {
           const backResult = await pool.query(
             `WITH RECURSIVE chain AS (
-              SELECT t.id, t.content, t.thought_type, t.source_agent, t.source_phase, t.importance, t.status, t.scope, t.created_at,
+              SELECT t.id, t.content, t.thought_type, t.source_agent, t.source_phase, t.importance, t.status, t.scope, t.captured_by, t.created_at,
                      1 AS depth, r.relation_type AS via_relation, r.context AS via_context
               FROM thought_relations r
               JOIN thoughts t ON t.id = r.target_id
               WHERE r.source_id = $1
               UNION ALL
-              SELECT t.id, t.content, t.thought_type, t.source_agent, t.source_phase, t.importance, t.status, t.scope, t.created_at,
+              SELECT t.id, t.content, t.thought_type, t.source_agent, t.source_phase, t.importance, t.status, t.scope, t.captured_by, t.created_at,
                      chain.depth + 1, r.relation_type, r.context
               FROM thought_relations r
               JOIN thoughts t ON t.id = r.target_id
@@ -717,13 +797,13 @@ function registerTools(srv) {
         if (direction === "forward" || direction === "both") {
           const forwardResult = await pool.query(
             `WITH RECURSIVE chain AS (
-              SELECT t.id, t.content, t.thought_type, t.source_agent, t.source_phase, t.importance, t.status, t.scope, t.created_at,
+              SELECT t.id, t.content, t.thought_type, t.source_agent, t.source_phase, t.importance, t.status, t.scope, t.captured_by, t.created_at,
                      1 AS depth, r.relation_type AS via_relation, r.context AS via_context
               FROM thought_relations r
               JOIN thoughts t ON t.id = r.source_id
               WHERE r.target_id = $1
               UNION ALL
-              SELECT t.id, t.content, t.thought_type, t.source_agent, t.source_phase, t.importance, t.status, t.scope, t.created_at,
+              SELECT t.id, t.content, t.thought_type, t.source_agent, t.source_phase, t.importance, t.status, t.scope, t.captured_by, t.created_at,
                      chain.depth + 1, r.relation_type, r.context
               FROM thought_relations r
               JOIN thoughts t ON t.id = r.source_id
@@ -898,11 +978,13 @@ async function handleRestApi(req, res) {
       const byType = await pool.query(`SELECT thought_type, count(*)::int AS count FROM thoughts GROUP BY thought_type`);
       const byStatus = await pool.query(`SELECT status, count(*)::int AS count FROM thoughts GROUP BY status`);
       const byAgent = await pool.query(`SELECT source_agent, count(*)::int AS count FROM thoughts GROUP BY source_agent`);
+      const byHumanRest = await pool.query(`SELECT COALESCE(captured_by, 'unknown') AS captured_by, count(*)::int AS count FROM thoughts GROUP BY captured_by`);
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({
         by_type: Object.fromEntries(byType.rows.map(r => [r.thought_type, r.count])),
         by_status: Object.fromEntries(byStatus.rows.map(r => [r.status, r.count])),
         by_agent: Object.fromEntries(byAgent.rows.map(r => [r.source_agent, r.count])),
+        by_human: Object.fromEntries(byHumanRest.rows.map(r => [r.captured_by, r.count])),
       }));
       return true;
     }

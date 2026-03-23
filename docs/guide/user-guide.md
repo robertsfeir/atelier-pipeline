@@ -14,6 +14,7 @@ A structured, multi-agent development workflow for Claude Code. Ten specialized 
 - [Debugging with /debug](#debugging-with-debug)
 - [Phase Sizing](#phase-sizing)
 - [The Atelier Brain](#the-atelier-brain)
+- [Team Collaboration](#team-collaboration)
 - [State Recovery](#state-recovery)
 - [Customization](#customization)
 - [Updating the Plugin](#updating-the-plugin)
@@ -95,7 +96,7 @@ Your idea
   -> Ellis commits everything atomically
 ```
 
-Not every feature goes through every phase. See [Phase Sizing](#phase-sizing) for how Eva adjusts.
+Not every feature goes through every phase. See [Phase Sizing](#phase-sizing) for how Eva adjusts. When an ADR step produces non-code artifacts only (schema DDL, configuration, migration scripts, agent instruction files), the Roz test spec and test authoring phases are skipped for that step -- Colby implements, Roz verifies against ADR requirements, and Agatha follows sequentially.
 
 ---
 
@@ -345,6 +346,16 @@ Eva assesses every request and adjusts how much ceremony to apply.
 
 The minimum pipeline is always Colby -> Roz -> Ellis. Roz and Ellis are never skipped.
 
+### Non-code ADR steps
+
+Some ADR steps produce no testable application code -- schema DDL, agent instruction files (markdown), configuration files, or migration scripts. For these steps, Eva skips the Roz test spec review and test authoring phases because there is no application code to test. Instead:
+
+1. Colby implements the non-code step
+2. Roz reviews Colby's output in verification mode -- checking that the ADR's acceptance criteria are met rather than running code QA checks
+3. Agatha runs after Roz passes (sequentially, not in parallel with Colby, because there is no Roz test spec approval to gate the parallel launch)
+
+If an ADR mixes code and non-code steps, Eva splits them: code steps follow the normal Roz-first TDD flow, non-code steps follow this flow. Both must pass before Ellis commits.
+
 ---
 
 ## The Atelier Brain
@@ -415,6 +426,14 @@ Agents automatically capture and search during pipeline runs. You do not need to
 | QA lessons | Roz finds recurring patterns | Future Colby gets warnings before making the same mistake |
 | Scope decisions | Robert defines boundaries | Future Robert knows what was explicitly deferred and why |
 
+### Human attribution
+
+Every brain thought records who produced it in a `captured_by` field. The value is resolved automatically from your git config (`user.name`) or the `ATELIER_BRAIN_USER` environment variable if set. You do not need to configure this -- it happens on every capture.
+
+Attribution shows up in search results, browse output, and stats. On a team, this lets you see that Alice captured a preference and Bob captured a correction, giving you a clear trail of who shaped each decision.
+
+If you are running against an existing brain database created before attribution was added, the server auto-migrates the schema on startup. Existing thoughts will have a blank `captured_by` until they are re-captured or updated.
+
 ### Brain tools
 
 The brain provides six MCP tools that agents use automatically:
@@ -429,6 +448,41 @@ The brain provides six MCP tools that agents use automatically:
 | `atelier_trace` | Walk relation chains from a thought |
 
 For details on brain internals, see the [Technical Reference](technical-reference.md).
+
+---
+
+## Team Collaboration
+
+When multiple people work on the same feature across sessions, the brain bridges the gap between them. Two mechanisms make this work: context brief capture and handoff briefs.
+
+### Context brief preferences carry across sessions
+
+During a pipeline run, Eva records your preferences, corrections, and rejected alternatives in `context-brief.md`. This file is reset at the start of each new feature pipeline, so those decisions would normally be lost.
+
+With the brain enabled, Eva dual-writes each context brief entry to the brain as it happens. When a teammate starts a new session on the same feature, their agents find your preferences and corrections via `agent_search` alongside architectural decisions and QA findings.
+
+For example, if you say "no modals, keep it simple" during your session, Eva writes that to the context brief and also captures it as a `preference` thought in the brain. When your teammate's session begins, their agents search for context on the feature and see your directive. They do not need to re-discover your preferences.
+
+The same applies to mid-course corrections ("actually make that a dropdown") and rejected alternatives ("considered caching but rejected -- keep it simple for v1"). Each is captured with the appropriate type so the brain ranks them correctly.
+
+If the brain is unavailable, nothing changes. Eva writes to `context-brief.md` exactly as before. The brain capture is additive -- it adds cross-session discovery without affecting in-session behavior.
+
+### Handoff briefs
+
+When you finish a session (or say "hand off" mid-pipeline), Eva generates a structured handoff brief and captures it to the brain. This is the synthesis a teammate needs to pick up where you left off -- not scattered fragments, but a single coherent summary.
+
+A handoff brief contains:
+
+- **Completed work** -- which ADR steps or phases were finished
+- **Unfinished work** -- what remains, including partially started steps
+- **Key decisions** -- the most consequential choices made this session, with reasoning
+- **Surprises** -- anything that deviated from the plan
+- **User corrections** -- preferences and mid-course changes that shaped the work
+- **Warnings** -- known risks, fragile areas, or "watch out for X" notes
+
+When a teammate starts a session on the same feature, the handoff brief surfaces as a high-relevance search result. Multiple handoffs on the same feature (Alice to Bob, Bob to Carol) each appear as separate entries, ordered by recency.
+
+Handoff briefs are generated automatically at pipeline completion and on explicit request mid-pipeline. Eva skips handoff generation for empty sessions (no ADR steps completed and no context brief entries) and when the brain is unavailable. Without the brain, Eva's existing Final Report serves as the session summary.
 
 ---
 

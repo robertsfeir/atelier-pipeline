@@ -15,7 +15,7 @@ CREATE EXTENSION IF NOT EXISTS ltree;
 
 CREATE TYPE thought_type AS ENUM (
   'decision', 'preference', 'lesson', 'rejection',
-  'drift', 'correction', 'insight', 'reflection'
+  'drift', 'correction', 'insight', 'reflection', 'handoff'
 );
 
 CREATE TYPE source_agent AS ENUM (
@@ -24,7 +24,7 @@ CREATE TYPE source_agent AS ENUM (
 );
 
 CREATE TYPE source_phase AS ENUM (
-  'design', 'build', 'qa', 'review', 'reconciliation', 'setup'
+  'design', 'build', 'qa', 'review', 'reconciliation', 'setup', 'handoff'
 );
 
 CREATE TYPE thought_status AS ENUM (
@@ -56,7 +56,8 @@ INSERT INTO thought_type_config VALUES
   ('drift',       90,   0.8,  'Spec/UX drift findings'),
   ('correction',  90,   0.7,  'Fixes applied after drift detection'),
   ('insight',     180,  0.6,  'Mid-task discoveries'),
-  ('reflection',  NULL, 0.85, 'Consolidation-generated synthesis');
+  ('reflection',  NULL, 0.85, 'Consolidation-generated synthesis'),
+  ('handoff',     NULL, 0.9,  'Structured handoff briefs for team collaboration');
 
 -- Brain configuration (singleton — CHECK constraint enforces single row)
 CREATE TABLE brain_config (
@@ -89,6 +90,7 @@ CREATE TABLE thoughts (
   source_phase source_phase NOT NULL,
   importance FLOAT NOT NULL CHECK (importance >= 0 AND importance <= 1),
   trigger_event TEXT,
+  captured_by TEXT,
   status thought_status NOT NULL DEFAULT 'active',
   scope ltree[] DEFAULT ARRAY['default']::ltree[],
   invalidated_at TIMESTAMPTZ,
@@ -174,6 +176,7 @@ RETURNS TABLE (
   importance FLOAT,
   status thought_status,
   scope ltree[],
+  captured_by TEXT,
   created_at TIMESTAMPTZ,
   invalidated_at TIMESTAMPTZ,
   similarity FLOAT,
@@ -203,6 +206,7 @@ BEGIN
     t.importance,
     t.status,
     t.scope,
+    t.captured_by,
     t.created_at,
     t.invalidated_at,
     (1 - (t.embedding <=> query_embedding))::FLOAT AS similarity,

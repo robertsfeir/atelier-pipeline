@@ -96,7 +96,10 @@ Eva maintains five files in `{pipeline_state_dir}`:
   Claude Code is closed mid-pipeline.
 - **`context-brief.md`** -- Captures conversational decisions, corrections,
   user preferences, and rejected alternatives so subagents don't lose
-  context. Reset at the start of each new feature pipeline.
+  context. Reset at the start of each new feature pipeline. When brain is
+  available, Eva dual-writes each entry to the brain via `agent_capture`
+  (see pipeline.md Context Brief Maintenance section for classification
+  table and capture parameters).
 - **`error-patterns.md`** -- Post-pipeline error log categorized by type.
 - **`investigation-ledger.md`** -- Hypothesis tracking during debug flows.
   Records each theory, its layer, evidence found, and outcome. Reset at
@@ -259,6 +262,7 @@ User overrides: "full ceremony" forces pauses at every transition.
 | Spec + UX + mockup approved | Cal clarification (skill) -> Cal ADR production (subagent) |
 | ADR from Cal (Medium/Large with UI) | Eva UX pre-flight -> Robert review -> Sable review -> Cal revision (if gaps found) -> Roz test spec review |
 | ADR from Cal (Small or no UI) | Roz test spec review (subagent) |
+| ADR from Cal (non-code -- schema, instructions, config) | Skip Roz test spec/authoring. Colby implements -> Roz verifies against ADR -> Agatha (sequential, not parallel) |
 | Roz-approved test spec | Roz test authoring (subagent) -- writes test assertions per ADR step |
 | Roz test files ready | Continuous QA: Colby build <-> Roz QA + Poirot (interleaved) |
 | All units pass QA | Review juncture: Roz final sweep + Poirot + Robert-subagent + Sable-subagent (parallel) |

@@ -72,6 +72,7 @@ When routing to an agent based on user intent:
 - After UAT approved -> Cal conversational clarification (main thread), then Cal subagent for ADR production (reads spec, UX doc, doc plan, AND UAT feedback)
 - After Cal -> Roz (test spec review)
 - After Roz approves test spec -> **Continuous QA** (interleaved Colby + Roz) + Agatha writing
+- After Cal (non-code ADR -- schema, instructions, config only) -> **Skip Roz test spec/authoring.** Colby implements, then Roz reviews against ADR requirements (verification, not code QA). Agatha runs after Roz passes. See "Non-Code ADR Steps" below.
 - After all units pass + Roz final sweep -> Ellis
 - After Roz pass (CI/CD flag) -> Eva verifies pipeline -> Ellis
 - After Roz pass (docs catch-up flag) -> Agatha catch-up -> Ellis
@@ -138,6 +139,25 @@ When invoking Roz after a Colby fix, Eva's prompt includes:
 This avoids re-running dependency audit, exploratory testing, CI/CD compat,
 and other checks that passed on the first run and weren't affected by the fix.
 
+**Non-code ADR steps:**
+When Cal's ADR contains steps that produce no testable application code --
+schema DDL, agent instruction files (markdown), configuration, migration
+scripts -- the Roz test spec review and test authoring phases do not apply.
+Eva handles these differently:
+
+1. Eva identifies which ADR steps are non-code at the start of the build phase
+2. Roz test spec review and test authoring are skipped for those steps
+3. Colby implements the non-code steps
+4. Roz reviews Colby's output against the ADR requirements (verification
+   mode -- checking that the ADR's acceptance criteria are met, not running
+   code QA checks)
+5. Agatha runs after Roz passes -- not in parallel with Colby, because
+   there is no Roz test spec approval to gate the parallel launch
+
+If an ADR mixes code and non-code steps, Eva splits them: code steps follow
+the normal Roz-first TDD flow, non-code steps follow this flow. Both must
+pass before Ellis.
+
 **CI/CD verification gate:**
 When Roz flags `CI/CD Verification Required: Yes`:
 1. Check affected CI jobs and config changes.
@@ -155,6 +175,9 @@ covered by Agatha's parallel pass, invoke Agatha for targeted catch-up.
 > ---
 
 ### 3. Final Report
+
+**If brain is available:** generate and capture the handoff brief (see Handoff
+Brief Generation above) before rendering the Final Report.
 
 > ## Pipeline Complete
 >
@@ -188,6 +211,102 @@ the pipeline. Append to it whenever:
 
 **Reset this file at the start of each new feature pipeline.**
 Every subagent invocation includes `READ: docs/pipeline/context-brief.md`.
+
+### Brain Dual-Write (when brain_available: true)
+
+When Eva appends an entry to `context-brief.md` and brain is available, she
+also calls `agent_capture` with the entry. This makes user intent discoverable
+across sessions and teammates. The classification:
+
+| Context-brief entry type | thought_type | Example |
+|---|---|---|
+| User preference or constraint | `preference` | "no modals," "keep it simple," "use existing component library" |
+| Mid-course correction | `correction` | "actually make that a dropdown," "switch to tabs" |
+| Rejected alternative with reasoning | `rejection` | "considered GraphQL but rejected — keep it simple" |
+| Cross-agent resolution | `preference` | "Cal asked about caching, user said skip for v1" |
+
+All captures use:
+- `source_agent: 'eva'`
+- `source_phase`: current pipeline phase (e.g., `'design'`, `'build'`)
+- `importance`: use the `thought_type_config` default (preference: 1.0, correction: 0.7, rejection: 0.5)
+- `scope`: current feature scope
+- `metadata`: include `{ "tags": ["<feature-name>", "context-brief"] }`
+
+**If the `agent_capture` call fails** (brain went down mid-pipeline), Eva
+continues without error. The `context-brief.md` entry is the source of truth
+for the current session. The brain capture is additive for cross-session use.
+
+## Handoff Brief Generation
+
+When brain is available, Eva generates a structured handoff brief in two cases:
+
+1. **Pipeline reaches Final Report** (automatic)
+2. **User says "hand off," "someone else is picking this up," or equivalent** (explicit, mid-pipeline)
+
+### Skip conditions
+
+Do NOT generate a handoff brief if:
+- Brain is unavailable
+- The session produced zero ADR step completions AND zero context-brief entries (empty session)
+- The user explicitly says "no handoff" or "skip handoff"
+
+### Handoff brief template
+
+Eva synthesizes the following from the session's context-brief, pipeline-state,
+and any brain thoughts captured during the run:
+
+```
+## Handoff Brief — [Feature Name]
+**Session:** [date] | **ADR:** [ADR reference if exists]
+
+### Completed Work
+- [ADR Step N]: [brief description of what was done]
+- [ADR Step M]: [brief description]
+
+### Unfinished Work
+- [ADR Step P]: [status — not started / partially started + what remains]
+- [ADR Step Q]: [status]
+
+### Key Decisions (this session)
+1. [Decision]: [reasoning] — [ADR step reference if applicable]
+2. [Decision]: [reasoning]
+3. [Decision]: [reasoning]
+
+### Surprises
+- [What deviated from the plan and why]
+
+### User Corrections
+- [Preferences and mid-course changes that shaped the work]
+- [References to context-brief captures if applicable]
+
+### Warnings for Next Developer
+- [Known risks, fragile areas, "watch out for X" notes]
+```
+
+### Capture
+
+Eva calls `agent_capture` with:
+- `content`: the rendered handoff brief (full text above)
+- `thought_type: 'handoff'`
+- `source_agent: 'eva'`
+- `source_phase: 'handoff'`
+- `importance: 0.9`
+- `scope`: current feature scope
+- `metadata`: `{ "tags": ["<feature-name>", "<adr-reference>", "handoff"] }`
+
+### Failure handling
+
+If `agent_capture` fails at pipeline end, Eva logs: "Handoff brief not captured
+— brain unavailable." The Final Report still renders normally. No pipeline
+disruption.
+
+### Mid-pipeline handoff
+
+When the user triggers an explicit handoff mid-pipeline:
+1. Eva generates the handoff brief from current state (pipeline-state.md + context-brief.md)
+2. Eva captures it to brain
+3. Eva announces: "Handoff brief captured. The next developer can pick up from [current phase]."
+4. Pipeline ends (Eva does not proceed to Final Report unless user asks)
 
 ## Pipeline State Tracking
 

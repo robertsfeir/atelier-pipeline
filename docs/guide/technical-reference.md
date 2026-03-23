@@ -1,6 +1,6 @@
 # Atelier Pipeline -- Technical Reference
 
-Version: 1.5.1
+Version: 1.7.0
 
 This document is the comprehensive technical reference for the atelier-pipeline Claude Code plugin. It covers plugin architecture, agent system design, orchestration logic, brain infrastructure, and customization points. For usage-oriented documentation, see [the user guide](user-guide.md).
 
@@ -20,9 +20,10 @@ This document is the comprehensive technical reference for the atelier-pipeline 
 10. [Continuous QA Flow](#continuous-qa-flow)
 11. [Error Pattern Tracking and Retro Lessons](#error-pattern-tracking-and-retro-lessons)
 12. [Brain Architecture](#brain-architecture)
-13. [Pipeline State Files and Session Recovery](#pipeline-state-files-and-session-recovery)
-14. [Setup and Install System](#setup-and-install-system)
-15. [Customization Points](#customization-points)
+13. [Team Collaboration Internals](#team-collaboration-internals)
+14. [Pipeline State Files and Session Recovery](#pipeline-state-files-and-session-recovery)
+15. [Setup and Install System](#setup-and-install-system)
+16. [Customization Points](#customization-points)
 
 ---
 
@@ -40,7 +41,7 @@ The plugin itself lives in the Claude Code plugin directory (typically `~/.claud
 ```
 atelier-pipeline/                         # Plugin root (CLAUDE_PLUGIN_ROOT)
   .claude-plugin/
-    plugin.json                           # Plugin metadata, hooks, version (1.5.1)
+    plugin.json                           # Plugin metadata, hooks, version (1.7.0)
   source/                                 # Template files -- copied to target project
     rules/
       default-persona.md
@@ -59,8 +60,11 @@ atelier-pipeline/                         # Plugin root (CLAUDE_PLUGIN_ROOT)
       pipeline-state.md, context-brief.md, error-patterns.md,
       investigation-ledger.md, last-qa-report.md
   brain/                                  # MCP server -- runs as sidecar
-    server.mjs                            # Main server (MCP + REST API)
-    schema.sql                            # PostgreSQL schema
+    server.mjs                            # Main server (MCP + REST API, auto-migration)
+    schema.sql                            # PostgreSQL schema (canonical for fresh installs)
+    migrations/                           # Idempotent SQL migrations for existing databases
+      001-add-captured-by.sql             # Adds captured_by column, updates match function
+      002-add-handoff-enums.sql           # Adds handoff to thought_type and source_phase enums
     docker-compose.yml                    # Docker setup for brain database
     docker-entrypoint.sh
     package.json
@@ -267,6 +271,8 @@ Eva assesses scope at pipeline start and adjusts ceremony:
 
 **The minimum pipeline is always Colby -> Roz -> Ellis.** No sizing level skips Roz or Ellis.
 
+**Non-code ADR steps:** When an ADR step produces only non-code artifacts (schema DDL, agent instruction files, configuration, migration scripts), Eva skips Roz test spec review and test authoring for that step. Colby implements, then Roz reviews against ADR requirements in verification mode (not code QA). Agatha runs after Roz passes -- sequentially, not in parallel, because no Roz test spec approval gates the parallel launch. If an ADR mixes code and non-code steps, Eva splits them: code steps use the standard TDD flow, non-code steps use this flow.
+
 ### Auto-Routing
 
 When no pipeline is active, Eva classifies every user message against the intent detection table in `agent-system.md` and routes automatically:
@@ -426,6 +432,17 @@ The continuous QA model replaces the old batch model (Colby builds everything, t
 11. If DRIFT flagged: hard pause, human decides fix code or update living artifact
 12. Ellis commits: code + docs + updated specs/UX in one atomic commit
 
+### Non-Code Steps
+
+ADR steps that produce no testable application code (schema DDL, agent instruction files, configuration, migration scripts) follow a different flow. Eva identifies these at the start of the build phase and handles them separately:
+
+1. Roz test spec review and test authoring are skipped for those steps
+2. Colby implements the non-code step
+3. Roz reviews in verification mode -- checking ADR acceptance criteria are met, not running code QA checks
+4. Agatha runs after Roz passes, sequentially (no parallel launch because there is no Roz test spec approval to gate it)
+
+Mixed ADRs (some code steps, some non-code steps) are split: code steps follow the standard TDD flow above, non-code steps follow this flow. Both must pass before advancing to the review juncture and Ellis.
+
 ### Key Rules
 
 - **Colby NEVER modifies Roz's test assertions.** If a test fails against existing code, the code has a bug -- Colby fixes the code.
@@ -472,6 +489,8 @@ When a pipeline reveals a systemic lesson, Eva writes it to two places:
 
 This ensures lessons are both version-controlled and brain-searchable. Agents search the brain first (if available) for relevant retro lessons, then also read the markdown file as a fallback.
 
+The same dual-write pattern applies to context brief entries. Eva always writes to `context-brief.md` and, when brain is available, also captures the entry to the brain with the appropriate `thought_type` (`preference`, `correction`, or `rejection`). See [Team Collaboration Internals](#team-collaboration-internals) for the classification table and capture parameters.
+
 ---
 
 ## Brain Architecture
@@ -488,7 +507,7 @@ The Atelier Brain is an MCP server (`brain/server.mjs`) backed by PostgreSQL wit
 
 | Table | Purpose |
 |-------|---------|
-| `thoughts` | Core knowledge store. Each row is a thought with content, embedding (1536-dimensional vector), metadata, type, source agent/phase, importance score, status, scope, and timestamps. |
+| `thoughts` | Core knowledge store. Each row is a thought with content, embedding (1536-dimensional vector), metadata, type, source agent/phase, importance score, status, scope, `captured_by` (human attribution), and timestamps. |
 | `thought_relations` | Typed edges between thoughts. Convention: `source_id` = newer/derived thought, `target_id` = older/original thought. |
 | `thought_type_config` | Lookup table for TTL and default importance per thought type. |
 | `brain_config` | Singleton configuration row controlling conflict detection thresholds, consolidation settings, and default scope. |
@@ -505,6 +524,9 @@ The Atelier Brain is an MCP server (`brain/server.mjs`) backed by PostgreSQL wit
 | `correction` | 90 days | 0.7 | Fixes applied after drift detection |
 | `insight` | 180 days | 0.6 | Mid-task discoveries |
 | `reflection` | Never expires | 0.85 | Consolidation-generated synthesis |
+| `handoff` | Never expires | 0.9 | Structured handoff briefs for team collaboration |
+
+**Source phases (enum):** `design`, `build`, `qa`, `review`, `reconciliation`, `setup`, `handoff`
 
 **Relation types (enum):** `supersedes`, `triggered_by`, `evolves_from`, `contradicts`, `supports`, `synthesized_from`
 
@@ -514,7 +536,7 @@ The brain exposes 6 tools via MCP:
 
 | Tool | Purpose | Key Parameters |
 |------|---------|---------------|
-| `agent_capture` | Store a thought with schema-enforced metadata, dedup, conflict detection, and auto-supersession. | `content`, `thought_type`, `source_agent`, `source_phase`, `importance` (0-1), optional `supersedes_id`, `scope`, `metadata` |
+| `agent_capture` | Store a thought with schema-enforced metadata, dedup, conflict detection, and auto-supersession. Human attribution (`captured_by`) is resolved automatically from git config or `ATELIER_BRAIN_USER` env var. | `content`, `thought_type`, `source_agent`, `source_phase`, `importance` (0-1), optional `supersedes_id`, `scope`, `metadata` |
 | `agent_search` | Semantic search using three-axis scoring. Updates `last_accessed_at` on returned results. | `query`, `threshold` (default 0.2), `limit` (default 10), `scope`, `include_invalidated`, `filter` |
 | `atelier_browse` | Paginated browse by type or status. | Type/status filter, pagination |
 | `atelier_stats` | Brain health check. Returns thought count, config, and status. | None |
@@ -534,6 +556,8 @@ score = (0.5 * recency_decay) + (2.0 * importance) + (3.0 * cosine_similarity)
 - **Recency (weight 0.5):** exponential decay based on `last_accessed_at`. Tiebreaker only -- old decisions still surface.
 
 Recency decay formula: `0.995 ^ hours_since_last_access`
+
+The function's return type includes `captured_by`, so search results show who produced each thought.
 
 ### Write-Time Conflict Detection
 
@@ -573,9 +597,90 @@ Agents write their own domain-specific captures directly using their own `source
 - Cross-agent pattern convergence (e.g., Roz and Robert both flag the same drift)
 - Deploy/infra outcomes
 - Poirot's findings (Poirot himself never touches brain)
+- Context brief entries (preferences, corrections, rejected alternatives)
+- Handoff briefs at pipeline end or on explicit handoff trigger
 - Pipeline-end session summaries
 
 Eva spot-checks that agents performed their brain captures but does not re-capture on their behalf.
+
+---
+
+## Team Collaboration Internals
+
+### Human Attribution (`captured_by`)
+
+Every thought stored in the brain includes a `captured_by` text column identifying who produced it. The server resolves this value at capture time using the following priority:
+
+1. `ATELIER_BRAIN_USER` environment variable (if set)
+2. Git config `user.name` (resolved via `git config user.name`)
+
+The value is stored on the `thoughts` table and included in the return type of `match_thoughts_scored`, `atelier_browse`, and `atelier_stats`.
+
+### Auto-Migration System
+
+The brain server runs migrations automatically on startup. Each migration is an idempotent SQL file in `brain/migrations/`. The server checks whether a migration has already been applied by inspecting the schema state (column existence, enum value presence) and runs it only if needed.
+
+**Migration files:**
+
+| File | What It Does |
+|------|-------------|
+| `brain/migrations/001-add-captured-by.sql` | Adds the `captured_by TEXT` column to the `thoughts` table. Replaces the `match_thoughts_scored` function to include `captured_by` in the return type. |
+| `brain/migrations/002-add-handoff-enums.sql` | Adds `'handoff'` to the `thought_type` and `source_phase` PostgreSQL enums. Inserts a `thought_type_config` row for `handoff` (NULL TTL, 0.9 importance). |
+
+Migration 001 is triggered when the `captured_by` column does not exist on the `thoughts` table. Migration 002 is triggered when the `handoff` value is not present in the `thought_type` enum. Both use `IF NOT EXISTS` or equivalent idempotent patterns and are safe to run multiple times.
+
+For fresh installs, `brain/schema.sql` is the canonical schema and already includes all columns, enum values, and config rows. Migrations exist solely for upgrading existing databases.
+
+### Context Brief Dual-Write
+
+Eva dual-writes context brief entries to the brain using the same pattern as retro lessons: always write to the file, also capture to brain if available.
+
+When Eva appends an entry to `docs/pipeline/context-brief.md`, she also calls `agent_capture` with the entry classified by type:
+
+| Context brief entry type | `thought_type` |
+|--------------------------|---------------|
+| User preference or constraint | `preference` |
+| Mid-course correction | `correction` |
+| Rejected alternative with reasoning | `rejection` |
+| Cross-agent resolution | `preference` |
+
+All captures use `source_agent: 'eva'`, the current pipeline phase as `source_phase`, and metadata tags including the feature name and `context-brief`. The importance value follows the `thought_type_config` defaults (preference: 1.0, correction: 0.7, rejection: 0.5).
+
+If the `agent_capture` call fails (brain went down mid-pipeline), Eva continues without error. The file remains the source of truth for the current session. Brain capture is additive for cross-session and cross-teammate discovery.
+
+### Handoff Brief Generation
+
+Eva generates a structured handoff brief in two cases:
+
+1. **Automatic** -- pipeline reaches the Final Report phase
+2. **Explicit** -- user says "hand off," "someone else is picking this up," or equivalent
+
+The handoff brief is captured as a single brain thought with:
+
+- `thought_type: 'handoff'`
+- `source_agent: 'eva'`
+- `source_phase: 'handoff'`
+- `importance: 0.9`
+- Metadata tags: feature name, ADR reference, `handoff`
+
+The `handoff` thought type has the same importance tier as `decision` (0.9) and never expires (NULL TTL), ensuring handoff briefs rank alongside architectural decisions in search results.
+
+**Content structure:** Eva synthesizes the brief from the session's `context-brief.md`, `pipeline-state.md`, and any brain thoughts captured during the run. The brief contains six sections: completed work (with ADR step references), unfinished work, key decisions, surprises, user corrections, and warnings for the next developer.
+
+**Skip conditions:** Eva does not generate a handoff brief when brain is unavailable, when the session produced zero ADR step completions and zero context brief entries, or when the user explicitly declines ("no handoff" / "skip handoff").
+
+**Failure handling:** If `agent_capture` fails at pipeline end, Eva logs a warning ("Handoff brief not captured -- brain unavailable") and the Final Report renders normally. No pipeline disruption.
+
+**Mid-pipeline handoff:** When triggered explicitly, Eva generates the brief from current state, captures it, announces "Handoff brief captured," and ends the pipeline without proceeding to Final Report.
+
+### New Enum Values
+
+Two enum values were added to support handoff briefs:
+
+- `thought_type` enum: `'handoff'` (added after `'reflection'`)
+- `source_phase` enum: `'handoff'` (added after `'setup'`)
+
+The server's `THOUGHT_TYPES` and `SOURCE_PHASES` Zod validation arrays in `brain/server.mjs` include these values, allowing `agent_capture` to accept them without validation errors.
 
 ---
 

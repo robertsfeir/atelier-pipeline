@@ -164,10 +164,10 @@ The atelier brain exposes 6 MCP tools for agent interaction and 7 REST endpoints
 
 | Tool | Purpose | Used By |
 |---|---|---|
-| `agent_capture` | Store a thought with schema-enforced metadata. Handles dedup (>0.9 similarity), conflict detection (0.7-0.9 + LLM classification for decision/preference types), and supersedes relations. | Eva, Cal, Robert-skill, Robert-subagent, Sable-skill, Sable-subagent, Colby, Roz, Agatha |
-| `agent_search` | Semantic search with three-axis scoring (recency + importance + relevance). Scope filtering via ltree. Excludes invalidated thoughts by default. Updates `last_accessed_at` on returned results. | Eva, Cal, Robert-skill, Robert-subagent, Sable-skill, Sable-subagent, Colby, Roz, Agatha |
-| `atelier_browse` | List/filter thoughts by status, thought_type, source_agent. Pagination. | Eva (pipeline monitoring) |
-| `atelier_stats` | Counts by type, status, agent. Last consolidation timestamp. Active vs expired vs invalidated. | Eva (health check at pipeline start) |
+| `agent_capture` | Store a thought with schema-enforced metadata. Handles dedup (>0.9 similarity), conflict detection (0.7-0.9 + LLM classification for decision/preference types), and supersedes relations. Auto-populates `captured_by` from the server's resolved human identity (git config or `ATELIER_BRAIN_USER` env var). | Eva, Cal, Robert-skill, Robert-subagent, Sable-skill, Sable-subagent, Colby, Roz, Agatha |
+| `agent_search` | Semantic search with three-axis scoring (recency + importance + relevance). Scope filtering via ltree. Excludes invalidated thoughts by default. Updates `last_accessed_at` on returned results. Results include `captured_by` for team attribution. | Eva, Cal, Robert-skill, Robert-subagent, Sable-skill, Sable-subagent, Colby, Roz, Agatha |
+| `atelier_browse` | List/filter thoughts by status, thought_type, source_agent, captured_by. Pagination. Results include `captured_by`. | Eva (pipeline monitoring) |
+| `atelier_stats` | Counts by type, status, agent, human. Last consolidation timestamp. Active vs expired vs invalidated. | Eva (health check at pipeline start) |
 | `atelier_relation` | Link two thoughts via typed relation (supersedes, triggered_by, evolves_from, contradicts, supports, synthesized_from). Supersedes type auto-invalidates target. | Eva (cross-agent relations), Cal (ADR reasoning chains), agents (when capturing linked thoughts) |
 | `atelier_trace` | Given a thought ID, traverse the relation graph backward (what led here) or forward (what followed). Recursive with configurable depth limit. | Any agent tracing decision history mid-task |
 
