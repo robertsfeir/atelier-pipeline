@@ -74,10 +74,14 @@ case "$AGENT_TYPE" in
     ;;
 
   colby)
-    path_matches "$FILE_PATH" "docs/" && {
-      echo "BLOCKED: Colby cannot write to docs/. Route documentation changes to Agatha. Attempted: $FILE_PATH" >&2
-      exit 2
-    }
+    # Check against configurable blocked paths (docs, CI/CD, infra, deploy)
+    COLBY_BLOCKED=$(jq -r '.colby_blocked_paths[]' "$CONFIG" 2>/dev/null)
+    for blocked in $COLBY_BLOCKED; do
+      path_matches "$FILE_PATH" "$blocked" && {
+        echo "BLOCKED: Colby cannot write to paths matching '$blocked'. Route to the appropriate agent (Agatha for docs, Eva /devops for infrastructure). Attempted: $FILE_PATH" >&2
+        exit 2
+      }
+    done
     ;;
 
   roz)

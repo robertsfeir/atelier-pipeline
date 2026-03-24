@@ -120,6 +120,8 @@ optional and must be installed for the pipeline to function correctly.
 | `source/hooks/enforce-sequencing.sh` | `.claude/hooks/enforce-sequencing.sh` | Blocks out-of-order agent invocations (e.g., Ellis without Roz QA) |
 | `source/hooks/enforce-git.sh` | `.claude/hooks/enforce-git.sh` | Blocks git write operations from main thread (must go through Ellis) |
 | `source/hooks/check-brain-usage.sh` | `.claude/hooks/check-brain-usage.sh` | Warns when agents with brain access don't use brain tools |
+| `source/hooks/quality-gate.sh` | `.claude/hooks/quality-gate.sh` | Runs test suite when agent tries to stop — blocks if tests fail |
+| `source/hooks/check-complexity.sh` | `.claude/hooks/check-complexity.sh` | Warns when edited files exceed complexity thresholds |
 | `source/hooks/enforcement-config.json` | `.claude/hooks/enforcement-config.json` | Project-specific paths and agent rules |
 
 After copying, make the `.sh` files executable: `chmod +x .claude/hooks/*.sh`
@@ -130,6 +132,8 @@ After copying, make the `.sh` files executable: `chmod +x .claude/hooks/*.sh`
 - `product_specs_dir`: the specs directory (default: `docs/product`)
 - `ux_docs_dir`: the UX docs directory (default: `docs/ux`)
 - `test_patterns`: array of patterns matching the project's test files (e.g., `[".test.", ".spec.", "/tests/", "conftest"]`)
+- `test_command`: the full test suite command from Step 1 (e.g., `npm test`, `pytest`)
+- `complexity_command`: optional complexity checker with `{file}` placeholder (e.g., `npx escomplex {file}`, `radon cc {file} -nc`)
 
 **Register hooks in `.claude/settings.json`** — merge with existing settings if the
 file already exists. Add this hooks section:
@@ -151,10 +155,19 @@ file already exists. Add this hooks section:
         "hooks": [{"type": "command", "command": ".claude/hooks/enforce-git.sh"}]
       }
     ],
+    "Stop": [
+      {
+        "hooks": [{"type": "command", "command": ".claude/hooks/quality-gate.sh"}]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Agent",
         "hooks": [{"type": "command", "command": ".claude/hooks/check-brain-usage.sh"}]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [{"type": "command", "command": ".claude/hooks/check-complexity.sh"}]
       }
     ]
   }
@@ -165,7 +178,7 @@ file already exists. Add this hooks section:
 If `jq` is not available, tell the user: "Install jq for pipeline enforcement hooks:
 `brew install jq` (macOS) or `apt install jq` (Linux)."
 
-**Total with hooks: 32 files across 6 directories.**
+**Total with hooks: 34 files across 6 directories.**
 
 ### Step 3b: Write Version Marker
 
@@ -236,12 +249,12 @@ After installation, print:
 ```
 Atelier Pipeline installed successfully.
 
-Files installed: 32
+Files installed: 34
   .claude/rules/       -- 2 files (Eva persona, orchestration rules)
   .claude/agents/      -- 9 files (Cal, Colby, Roz, Robert, Sable, Poirot, Distillator, Ellis, Agatha)
   .claude/commands/    -- 7 files (/pm, /ux, /architect, /debug, /pipeline, /devops, /docs)
   .claude/references/  -- 4 files (quality framework, retro lessons, invocation templates, pipeline operations)
-  .claude/hooks/       -- 5 files (path enforcement, sequencing, git guard, brain usage, config)
+  .claude/hooks/       -- 7 files (path enforcement, sequencing, git guard, brain usage, quality gate, complexity check, config)
   docs/pipeline/       -- 5 files (state tracking for session recovery)
   .claude/settings.json -- updated with hook registration
   CLAUDE.md            -- updated with pipeline section

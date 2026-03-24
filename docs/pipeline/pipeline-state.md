@@ -1,7 +1,7 @@
 # Pipeline State
 
 ## Current Pipeline
-**Feature:** Pipeline self-install (bootstrap)
+**Feature:** Quality gate hooks (Stop + complexity)
 **Size:** Small
 **Phase:** Commit
 **Status:** Active
@@ -9,9 +9,9 @@
 ## Phase History
 | Phase | Agent | Status | Notes |
 |-------|-------|--------|-------|
-| Setup | Eva | Done | Pipeline installed on own repo |
-| QA | Roz | PASS | Bootstrap install — no code changes to QA |
-| Commit | Ellis | Pending | Awaiting commit and push |
+| Build | Colby | Done | Added quality-gate.sh, check-complexity.sh, updated config and setup |
+| QA | Roz | PASS | Non-code changes — hook scripts and config, verified against requirements |
+| Commit | Ellis | Pending | |
 
 ## Brain
 brain_available: true
