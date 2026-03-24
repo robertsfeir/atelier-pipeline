@@ -37,7 +37,7 @@ Claude walks you through project configuration one question at a time:
 - Source structure and database patterns
 - Coverage and complexity thresholds
 
-It then installs 34 files into your project (agent personas, commands, references, enforcement hooks, pipeline state). At the end, it offers to set up the Atelier Brain.
+It then installs 36 files into your project (agent personas, commands, references, enforcement hooks, pipeline state). At the end, it offers to set up the Atelier Brain.
 
 ### 3. Set Up the Brain (optional but recommended)
 
@@ -151,9 +151,12 @@ The plugin provides four skills:
 
 | Size | Criteria | What Runs |
 |------|----------|-----------|
+| **Micro** | ≤2 files, mechanical, no behavioral change | Colby → test suite → Ellis |
 | **Small** | Bug fix, single file, < 3 files | Colby -> Roz -> (Agatha if doc impact) -> Ellis |
 | **Medium** | 2-4 ADR steps, typical feature | Robert spec -> Cal -> Colby <-> Roz + Poirot -> Robert review -> Agatha -> Ellis |
 | **Large** | 5+ ADR steps, new system | Full pipeline including Sable mockup + UX acceptance |
+
+v2.3 adds wave-based parallel execution, per-unit commits, Robert assumptions-mode for brownfield features, triage consensus matrix, task-level model routing, and Brain pattern/seed capture. See ADR-0004 for details.
 
 ## Agents
 
@@ -203,7 +206,7 @@ Agents capture thoughts during pipeline runs and search for relevant context bef
 
 ## What Gets Installed
 
-`/pipeline-setup` installs 34 files into your project:
+`/pipeline-setup` installs 36 files into your project:
 
 ```
 your-project/
@@ -211,6 +214,8 @@ your-project/
     rules/                       # Always loaded by Claude Code
       default-persona.md         # Eva orchestrator persona
       agent-system.md            # Orchestration rules, routing, gates
+      pipeline-orchestration.md  # Pipeline operations (path-scoped, loads during active pipelines)
+      pipeline-models.md         # Model selection tables (path-scoped)
     agents/                      # Loaded when subagents are invoked
       cal.md                     # Architect
       colby.md                   # Engineer

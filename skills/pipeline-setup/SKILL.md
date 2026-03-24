@@ -80,6 +80,8 @@ Copy each template to its destination in the user's project, customizing placeho
 |----------------|-------------|---------|
 | `source/rules/default-persona.md` | `.claude/rules/default-persona.md` | Eva persona -- always loaded by Claude Code |
 | `source/rules/agent-system.md` | `.claude/rules/agent-system.md` | Orchestration rules, routing table, quality gates |
+| `source/rules/pipeline-orchestration.md` | `.claude/rules/pipeline-orchestration.md` | Pipeline operations (path-scoped) |
+| `source/rules/pipeline-models.md` | `.claude/rules/pipeline-models.md` | Model selection (path-scoped) |
 | `source/agents/cal.md` | `.claude/agents/cal.md` | Architect subagent persona |
 | `source/agents/colby.md` | `.claude/agents/colby.md` | Engineer subagent persona |
 | `source/agents/roz.md` | `.claude/agents/roz.md` | QA subagent persona |
@@ -106,7 +108,7 @@ Copy each template to its destination in the user's project, customizing placeho
 | `source/pipeline/investigation-ledger.md` | `docs/pipeline/investigation-ledger.md` | Debug hypothesis tracking |
 | `source/pipeline/last-qa-report.md` | `docs/pipeline/last-qa-report.md` | QA report persistence |
 
-**Total: 27 files across 5 directories (before hooks).**
+**Total: 29 files across 5 directories (before hooks).**
 
 ### Step 3a: Install Enforcement Hooks
 
@@ -178,7 +180,7 @@ file already exists. Add this hooks section:
 If `jq` is not available, tell the user: "Install jq for pipeline enforcement hooks:
 `brew install jq` (macOS) or `apt install jq` (Linux)."
 
-**Total with hooks: 34 files across 6 directories.**
+**Total with hooks: 36 files across 6 directories.**
 
 ### Step 3b: Write Version Marker
 
@@ -238,7 +240,7 @@ This project uses a multi-agent orchestration pipeline for structured developmen
 
 After installation, print:
 
-1. A count of files installed (34 files across 6 directories)
+1. A count of files installed (36 files across 6 directories)
 2. The directory tree showing what was created
 3. A reminder of available slash commands
 4. Instructions to start their first pipeline run
@@ -249,8 +251,8 @@ After installation, print:
 ```
 Atelier Pipeline installed successfully.
 
-Files installed: 34
-  .claude/rules/       -- 2 files (Eva persona, orchestration rules)
+Files installed: 36
+  .claude/rules/       -- 4 files (Eva persona, orchestration rules, pipeline operations, model selection)
   .claude/agents/      -- 9 files (Cal, Colby, Roz, Robert, Sable, Poirot, Distillator, Ellis, Agatha)
   .claude/commands/    -- 7 files (/pm, /ux, /architect, /debug, /pipeline, /devops, /docs)
   .claude/references/  -- 4 files (quality framework, retro lessons, invocation templates, pipeline operations)

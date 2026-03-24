@@ -47,6 +47,8 @@ atelier-pipeline/                         # Plugin root (CLAUDE_PLUGIN_ROOT)
     rules/
       default-persona.md
       agent-system.md
+      pipeline-orchestration.md           # Path-scoped to docs/pipeline/**
+      pipeline-models.md                  # Path-scoped to docs/pipeline/**
     agents/
       cal.md, colby.md, roz.md, robert.md,
       sable.md, investigator.md, distillator.md,
@@ -98,7 +100,7 @@ The plugin registers a `SessionStart` hook in `plugin.json` that runs two comman
 
 ## File Tree -- What Lives Where
 
-After running `/pipeline-setup`, 34 files are installed into the target project. The plugin templates remain in the plugin directory and are never modified.
+After running `/pipeline-setup`, 36 files are installed into the target project. The plugin templates remain in the plugin directory and are never modified.
 
 ### Target Project (installed by /pipeline-setup)
 
@@ -107,8 +109,10 @@ your-project/
   .claude/
     .atelier-version                      # Plugin version marker for update detection
     rules/                                # Always loaded by Claude Code
-      default-persona.md                  # Eva orchestrator persona
-      agent-system.md                     # Orchestration rules, routing, gates
+      default-persona.md                  # Eva orchestrator persona (identity)
+      agent-system.md                     # Orchestration rules, routing (identity)
+      pipeline-orchestration.md           # Mandatory gates, triage, wave execution (path-scoped: docs/pipeline/**)
+      pipeline-models.md                  # Model selection, Micro tier, complexity classifier (path-scoped: docs/pipeline/**)
     agents/                               # Loaded when subagents are invoked
       cal.md                              # Architect
       colby.md                            # Engineer
@@ -150,7 +154,7 @@ your-project/
       last-qa-report.md                   # Roz's most recent QA report
 ```
 
-**Total: 34 files across 6 directories, plus the `.atelier-version` marker and an update to `CLAUDE.md`.**
+**Total: 36 files across 6 directories, plus the `.atelier-version` marker and an update to `CLAUDE.md`.**
 
 ### What Does NOT Live on Disk
 
@@ -175,6 +179,25 @@ Claude Code has specific loading behaviors for each directory under `.claude/`:
 **Critical implication:** `default-persona.md` and `agent-system.md` are always in context. This is why Eva is the default persona -- she is present in every conversation whether or not `/pipeline` is invoked. All other files are loaded only when needed, keeping context usage efficient.
 
 **Eva's always-loaded context** consists of exactly three files: `default-persona.md`, `agent-system.md`, and `CLAUDE.md`. She does NOT pre-load `CONVENTIONS.md`, `dor-dod.md`, or `retro-lessons.md` -- those are subagent concerns.
+
+### Path-Scoped Rules (Identity vs. Operations Split)
+
+Eva's rules are split into two categories to stay under Anthropic's recommended ~200 lines per rules file:
+
+**Identity files** (always-loaded via `.claude/rules/`):
+- `default-persona.md` -- who Eva is, what she never does, session boot sequence
+- `agent-system.md` -- architecture, agent tables, routing, sizing, invocation template
+
+**Operations files** (path-scoped via YAML frontmatter):
+- `pipeline-orchestration.md` -- mandatory gates, triage consensus matrix, wave execution, per-unit commit flow, investigation discipline, agent standards, review juncture, reconciliation
+- `pipeline-models.md` -- model selection tables, Micro-tier criteria, Colby complexity classifier
+
+Operations files use a `paths: ["docs/pipeline/**"]` frontmatter declaration. Claude Code loads them automatically when any file matching that glob is read. Since Eva's boot sequence reads `docs/pipeline/pipeline-state.md` on every session with an active pipeline, the operational rules load exactly when needed.
+
+**Why this matters:**
+- **Compaction resilience.** Rules files are re-injected from disk after `/compact`. Content loaded via the Read tool gets summarized (potentially lossy). For mandatory gates and triage logic, lossy summarization is unacceptable.
+- **Context efficiency.** Casual Eva (no active pipeline) carries only identity + routing (~350 lines). Active-pipeline Eva gets the full operational ruleset (~430 additional lines) loaded on demand.
+- **Feature isolation.** New pipeline features (wave execution, triage matrix, model routing) land in the operations files, not the always-loaded identity files.
 
 ---
 
@@ -286,6 +309,7 @@ Eva assesses scope at pipeline start and adjusts ceremony:
 
 | Size | Criteria | Pipeline |
 |------|----------|----------|
+| **Micro** | ≤2 files, mechanical only (rename, typo, import fix, version bump), no behavioral change | Colby -> test suite -> Ellis. Test failure auto-re-sizes to Small. |
 | **Small** | Bug fix, single file, < 3 files, user says "quick fix" | Colby -> Roz -> (Agatha if Roz flags doc impact) -> (Robert-subagent verifies docs if Agatha ran) -> Ellis |
 | **Medium** | 2-4 ADR steps, typical feature | Robert spec -> Cal -> Roz test spec review -> Roz test authoring -> Colby <-> Roz + Poirot -> Review juncture (Roz + Poirot + Robert-subagent) -> Agatha -> Robert-subagent (docs) -> Ellis |
 | **Large** | 5+ ADR steps, new system, multi-concern | Full pipeline including Sable mockup + Sable at final review juncture |
@@ -758,7 +782,7 @@ The `pipeline-setup` skill is conversational. It:
 
 1. **Gathers project information** one question at a time: tech stack, test framework, test commands, source structure, database patterns, build/deploy commands, coverage thresholds, complexity limits.
 2. **Reads template files** from `source/` in the plugin directory.
-3. **Copies 34 files** to the target project (27 template files + 7 enforcement hooks), replacing placeholders with project-specific values.
+3. **Copies 36 files** to the target project (27 template files + 2 path-scoped rules + 7 enforcement hooks), replacing placeholders with project-specific values.
 4. **Customizes enforcement hooks** in `.claude/hooks/` -- sets project-specific paths and test/complexity commands in `enforcement-config.json`, registers hooks in `.claude/settings.json`, and makes scripts executable.
 5. **Writes version marker** to `.claude/.atelier-version` for update detection.
 6. **Updates `CLAUDE.md`** with a pipeline section.

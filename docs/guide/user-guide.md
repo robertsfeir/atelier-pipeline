@@ -43,7 +43,7 @@ Open Claude Code in your project directory and run:
 /pipeline-setup
 ```
 
-The setup asks about your project one question at a time: tech stack, test commands, source structure, coverage thresholds. It then installs 34 files into your project (agent personas, commands, references, enforcement hooks, state tracking).
+The setup asks about your project one question at a time: tech stack, test commands, source structure, coverage thresholds. It then installs 36 files into your project (agent personas, commands, references, enforcement hooks, path-scoped rules, state tracking).
 
 ### 3. Build something
 
@@ -333,6 +333,7 @@ Eva assesses every request and adjusts how much ceremony to apply.
 
 | Size | When Eva uses it | What runs | What gets skipped |
 |------|-----------------|-----------|-------------------|
+| **Micro** | Rename, typo, import fix, version bump -- mechanical only, no behavioral change, 2 files or fewer | Colby -> test suite -> Ellis | Everything else. If tests fail, Eva re-sizes to Small automatically. |
 | **Small** | Bug fix, single file change, fewer than 3 files, or you say "quick fix" | Colby -> Roz -> Ellis | Robert, Sable, Cal. Agatha runs only if Roz flags doc impact. |
 | **Medium** | 2-4 implementation steps, typical feature | Robert -> Cal -> Colby/Roz (interleaved) -> Agatha -> Ellis | Sable mockup + UX review (unless the feature has significant UI) |
 | **Large** | 5+ implementation steps, new system, multiple concerns | Full pipeline including Sable mockup, UAT, and final UX review | Nothing |
@@ -356,6 +357,22 @@ Some ADR steps produce no testable application code -- schema DDL, agent instruc
 3. Agatha runs after Roz passes (sequentially, not in parallel with Colby, because there is no Roz test spec approval to gate the parallel launch)
 
 If an ADR mixes code and non-code steps, Eva splits them: code steps follow the normal Roz-first TDD flow, non-code steps follow this flow. Both must pass before Ellis commits.
+
+### Pipeline evolution features (v2.3)
+
+Several capabilities improve pipeline velocity and institutional memory:
+
+**Robert assumptions-mode.** When a feature touches existing code (brownfield), Robert reads the codebase first and presents his understanding as assumptions. You correct what is wrong instead of answering discovery questions from scratch. Greenfield features retain the standard question-first flow. When the Brain is available, Robert also draws on prior decisions and preferences to form better assumptions.
+
+**Wave execution.** When an ADR has independent steps (no shared files), Eva groups them into waves and executes steps within each wave in parallel. Dependent steps sequence across waves. All quality gates are preserved within each wave. Eva falls back to sequential execution if file overlap is detected mid-build.
+
+**Per-unit commits.** During the build phase, Ellis commits after each Roz-verified unit instead of waiting until the end. This improves session recovery (resume from last committed unit) and enables `git bisect` to isolate regressions per unit. After the review juncture, Ellis creates a merge commit or squash to main.
+
+**Triage consensus matrix.** Eva's review juncture triage is mechanical, not discretionary. A lookup table maps every combination of reviewer verdict and severity to a specific action. Roz BLOCKER always halts. Roz PASS plus Poirot flags an issue is treated as a context-anchoring miss (MUST-FIX minimum). Convergent DRIFT from Robert and Sable is escalated with both reports.
+
+**Task-level model routing.** Eva scores each ADR step's complexity before invoking Colby. High-complexity steps on Small and Medium pipelines get promoted to Opus. Low-complexity steps stay on Sonnet. Roz, Poirot, Robert, and Sable model assignments are never changed.
+
+**Brain pattern and seed types.** Two new Brain thought types: `pattern` (reusable implementation approaches captured by Colby, searched by all code-touching agents) and `seed` (out-of-scope ideas captured during any phase, surfaced at pipeline start when a related feature area begins).
 
 ---
 
@@ -679,6 +696,8 @@ your-project/
     rules/                       # Always loaded by Claude Code
       default-persona.md         # Eva orchestrator persona
       agent-system.md            # Orchestration rules and routing
+      pipeline-orchestration.md  # Path-scoped: mandatory gates, triage, wave execution (loads on docs/pipeline/**)
+      pipeline-models.md         # Path-scoped: model selection tables, Micro tier, complexity classifier (loads on docs/pipeline/**)
     agents/                      # Loaded when subagents are invoked
       cal.md                     # Architect
       colby.md                   # Engineer
