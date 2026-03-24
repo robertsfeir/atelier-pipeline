@@ -8,7 +8,8 @@ set -euo pipefail
 INPUT=$(cat)
 
 if ! command -v jq &>/dev/null; then
-  exit 0
+  echo "ERROR: jq is required for atelier-pipeline hooks. Install: brew install jq" >&2
+  exit 2
 fi
 
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
@@ -34,9 +35,10 @@ COMPLEXITY_COMMAND=$(jq -r '.complexity_command // empty' "$CONFIG")
 [ -z "$COMPLEXITY_COMMAND" ] && exit 0
 [ "$COMPLEXITY_COMMAND" = "null" ] && exit 0
 
-# Run complexity check — substitute {file} with the actual file path
-CMD=$(echo "$COMPLEXITY_COMMAND" | sed "s|{file}|$FILE_PATH|g")
-OUTPUT=$(eval "$CMD" 2>&1) || true
+# Run complexity check — substitute {file} placeholder and pass via environment
+export FILE_PATH
+CMD="${COMPLEXITY_COMMAND//\{file\}/$FILE_PATH}"
+OUTPUT=$(bash -c "$CMD" 2>&1) || true
 
 if [ -n "$OUTPUT" ]; then
   echo "WARNING: Complexity check flagged issues in $FILE_PATH:" >&2

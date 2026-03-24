@@ -37,7 +37,7 @@ Claude walks you through project configuration one question at a time:
 - Source structure and database patterns
 - Coverage and complexity thresholds
 
-It then installs 27 files into your project (agent personas, commands, references, pipeline state). At the end, it offers to set up the Atelier Brain.
+It then installs 34 files into your project (agent personas, commands, references, enforcement hooks, pipeline state). At the end, it offers to set up the Atelier Brain.
 
 ### 3. Set Up the Brain (optional but recommended)
 
@@ -203,7 +203,7 @@ Agents capture thoughts during pipeline runs and search for relevant context bef
 
 ## What Gets Installed
 
-`/pipeline-setup` installs 32 files into your project:
+`/pipeline-setup` installs 34 files into your project:
 
 ```
 your-project/

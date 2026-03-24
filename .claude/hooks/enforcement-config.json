@@ -37,5 +37,6 @@
     "agatha",
     "sable",
     "robert"
-  ]
+  ],
+  "brain_required_agents_note": "Eva (main thread) is not listed because hooks only fire for subagents. Eva's brain access is enforced by her persona rules in default-persona.md."
 }

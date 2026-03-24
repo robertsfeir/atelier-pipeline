@@ -11,7 +11,8 @@ set -euo pipefail
 INPUT=$(cat)
 
 if ! command -v jq &>/dev/null; then
-  exit 0
+  echo "ERROR: jq is required for atelier-pipeline hooks. Install: brew install jq" >&2
+  exit 2
 fi
 
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')

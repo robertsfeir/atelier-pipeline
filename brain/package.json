@@ -5,7 +5,9 @@
   "main": "server.mjs",
   "scripts": {
     "start": "node server.mjs",
-    "start:http": "node server.mjs http"
+    "start:http": "node server.mjs http",
+    "test": "node --test ../tests/brain/*.test.mjs",
+    "test:integration": "node --test ../tests/brain/integration.test.mjs"
   },
   "type": "module",
   "dependencies": {

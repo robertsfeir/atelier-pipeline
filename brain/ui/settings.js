@@ -78,11 +78,15 @@
   // Utility
   // =========================================================================
 
+  // Auth token injected by server into window global (when configured)
+  const API_TOKEN = window.__ATELIER_API_TOKEN__ || null;
+
   function api(method, path, body) {
-    const opts = {
-      method,
-      headers: { "Content-Type": "application/json" },
-    };
+    const headers = { "Content-Type": "application/json" };
+    if (API_TOKEN) {
+      headers["Authorization"] = "Bearer " + API_TOKEN;
+    }
+    const opts = { method, headers };
     if (body !== undefined) opts.body = JSON.stringify(body);
     return fetch(path, opts).then((r) => {
       if (!r.ok) throw new Error(`HTTP ${r.status}`);

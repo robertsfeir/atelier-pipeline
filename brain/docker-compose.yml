@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: atelier_brain
       POSTGRES_USER: atelier
-      POSTGRES_PASSWORD: ${ATELIER_BRAIN_DB_PASSWORD:-atelier}
+      POSTGRES_PASSWORD: ${ATELIER_BRAIN_DB_PASSWORD:?Set ATELIER_BRAIN_DB_PASSWORD env var before starting}
     volumes:
       - brain-data:/var/lib/postgresql/data
       - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql

@@ -1,6 +1,6 @@
 {
   "name": "atelier-pipeline",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "description": "Multi-agent orchestration with quality gates, continuous QA, and persistent institutional memory across sessions",
   "author": {
     "name": "Robert Sfeir",

@@ -14,7 +14,8 @@ set -euo pipefail
 INPUT=$(cat)
 
 if ! command -v jq &>/dev/null; then
-  exit 0
+  echo "ERROR: jq is required for atelier-pipeline hooks. Install: brew install jq" >&2
+  exit 2
 fi
 
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
@@ -35,15 +36,32 @@ CONFIG="$SCRIPT_DIR/enforcement-config.json"
 PIPELINE_DIR=$(jq -r '.pipeline_state_dir' "$CONFIG")
 STATE_FILE="$PIPELINE_DIR/pipeline-state.md"
 
+# ─── Structured state parser ─────────────────────────────────────────
+# Reads the machine-readable PIPELINE_STATUS JSON marker from pipeline-state.md.
+# Format: <!-- PIPELINE_STATUS: {"roz_qa": "PASS", "phase": "review", "timestamp": "..."} -->
+# Returns empty string if marker is absent or JSON is malformed.
+parse_pipeline_status() {
+  local field="$1"
+  local json
+  json=$(grep -o 'PIPELINE_STATUS: {[^}]*}' "$STATE_FILE" 2>/dev/null | tail -1 | sed 's/PIPELINE_STATUS: //')
+  [ -z "$json" ] && return 1
+  local value
+  value=$(echo "$json" | jq -r --arg f "$field" '.[$f] // empty' 2>/dev/null)
+  [ -z "$value" ] && return 1
+  echo "$value"
+}
+
 # ─── Gate 1: Ellis requires Roz QA PASS ─────────────────────────────
 # "Ellis commits. Eva does not." + "Roz verifies every Colby output."
-# Ellis cannot be invoked unless pipeline-state.md shows Roz QA passed.
+# Ellis cannot be invoked unless pipeline-state.md contains a structured
+# PIPELINE_STATUS marker with roz_qa set to exactly "PASS".
 if [ "$SUBAGENT_TYPE" = "ellis" ]; then
   if [ ! -f "$STATE_FILE" ]; then
     echo "BLOCKED: Cannot invoke Ellis — no pipeline-state.md found. Roz must pass QA first." >&2
     exit 2
   fi
-  if ! grep -qi "roz.*pass\|qa.*pass\|verdict.*pass" "$STATE_FILE" 2>/dev/null; then
+  ROZ_QA=$(parse_pipeline_status "roz_qa") || true
+  if [ "$ROZ_QA" != "PASS" ]; then
     echo "BLOCKED: Cannot invoke Ellis — no Roz QA PASS found in pipeline-state.md. Roz must verify Colby's output before committing." >&2
     exit 2
   fi
@@ -51,10 +69,12 @@ fi
 
 # ─── Gate 2: Agatha after Roz, not during build ─────────────────────
 # "Agatha writes docs after final Roz sweep, not during build."
+# Uses the structured PIPELINE_STATUS phase field instead of grep.
 if [ "$SUBAGENT_TYPE" = "agatha" ]; then
   if [ -f "$STATE_FILE" ]; then
-    CURRENT_PHASE=$(grep -i "current.*phase\|phase:" "$STATE_FILE" 2>/dev/null | tail -1 | tr '[:upper:]' '[:lower:]')
-    if echo "$CURRENT_PHASE" | grep -qi "build\|implement" 2>/dev/null; then
+    CURRENT_PHASE=$(parse_pipeline_status "phase") || true
+    CURRENT_PHASE=$(echo "$CURRENT_PHASE" | tr '[:upper:]' '[:lower:]')
+    if [ "$CURRENT_PHASE" = "build" ] || [ "$CURRENT_PHASE" = "implement" ]; then
       echo "BLOCKED: Cannot invoke Agatha during the build phase. Agatha writes docs after Roz's final sweep against verified code." >&2
       exit 2
     fi

@@ -31,7 +31,7 @@ explicitly invokes a slash command to switch persona.
 
 ## Always-Loaded Context
 
-Eva's fixed context: default-persona.md + agent-system.md + CLAUDE.md (the slimmed version).
+Eva's fixed context: default-persona.md + agent-system.md + CLAUDE.md (auto-loaded by Claude Code at the project level, not manually loaded by Eva).
 
 All other reference files are loaded by subagents when relevant, not by Eva. Eva reads only:
 - `docs/pipeline/pipeline-state.md` -- at session start to detect in-progress pipelines

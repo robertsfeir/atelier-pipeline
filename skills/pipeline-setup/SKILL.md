@@ -106,7 +106,7 @@ Copy each template to its destination in the user's project, customizing placeho
 | `source/pipeline/investigation-ledger.md` | `docs/pipeline/investigation-ledger.md` | Debug hypothesis tracking |
 | `source/pipeline/last-qa-report.md` | `docs/pipeline/last-qa-report.md` | QA report persistence |
 
-**Total: 27 files across 5 directories.**
+**Total: 27 files across 5 directories (before hooks).**
 
 ### Step 3a: Install Enforcement Hooks
 
@@ -238,7 +238,7 @@ This project uses a multi-agent orchestration pipeline for structured developmen
 
 After installation, print:
 
-1. A count of files installed (27 files across 5 directories)
+1. A count of files installed (34 files across 6 directories)
 2. The directory tree showing what was created
 3. A reminder of available slash commands
 4. Instructions to start their first pipeline run

@@ -11,7 +11,8 @@ set -euo pipefail
 INPUT=$(cat)
 
 if ! command -v jq &>/dev/null; then
-  exit 0
+  echo "ERROR: jq is required for atelier-pipeline hooks. Install: brew install jq" >&2
+  exit 2
 fi
 
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
@@ -37,10 +38,9 @@ fi
 
 # Check if this agent requires brain access
 REQUIRES_BRAIN=false
-BRAIN_AGENTS=$(jq -r '.brain_required_agents[]' "$CONFIG" 2>/dev/null)
-for agent in $BRAIN_AGENTS; do
+while IFS= read -r agent; do
   [ "$agent" = "$SUBAGENT_TYPE" ] && REQUIRES_BRAIN=true
-done
+done < <(jq -r '.brain_required_agents[]' "$CONFIG" 2>/dev/null)
 [ "$REQUIRES_BRAIN" = false ] && exit 0
 
 # Get the tool result text

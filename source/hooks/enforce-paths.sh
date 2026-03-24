@@ -12,9 +12,9 @@ set -euo pipefail
 
 INPUT=$(cat)
 
-# Require jq — degrade gracefully if missing
 if ! command -v jq &>/dev/null; then
-  exit 0
+  echo "ERROR: jq is required for atelier-pipeline hooks. Install: brew install jq" >&2
+  exit 2
 fi
 
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
@@ -29,6 +29,9 @@ esac
 
 # Need a file path to check
 [ -z "$FILE_PATH" ] && exit 0
+
+# Normalize absolute paths to project-relative
+FILE_PATH="${FILE_PATH#$PWD/}"
 
 # Load config — allow if config missing (not yet set up)
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -46,7 +49,7 @@ path_matches() {
   shift
   for prefix in "$@"; do
     case "$file" in
-      *"$prefix"*) return 0 ;;
+      "$prefix"*) return 0 ;;
     esac
   done
   return 1
@@ -55,13 +58,11 @@ path_matches() {
 # Check if file matches test patterns from config
 is_test_file() {
   local file="$1"
-  local patterns
-  patterns=$(jq -r '.test_patterns[]' "$CONFIG" 2>/dev/null)
-  for pattern in $patterns; do
+  while IFS= read -r pattern; do
     case "$file" in
       *"$pattern"*) return 0 ;;
     esac
-  done
+  done < <(jq -r '.test_patterns[]' "$CONFIG" 2>/dev/null)
   return 1
 }
 
@@ -75,13 +76,16 @@ case "$AGENT_TYPE" in
 
   colby)
     # Check against configurable blocked paths (docs, CI/CD, infra, deploy)
-    COLBY_BLOCKED=$(jq -r '.colby_blocked_paths[]' "$CONFIG" 2>/dev/null)
-    for blocked in $COLBY_BLOCKED; do
-      path_matches "$FILE_PATH" "$blocked" && {
-        echo "BLOCKED: Colby cannot write to paths matching '$blocked'. Route to the appropriate agent (Agatha for docs, Eva /devops for infrastructure). Attempted: $FILE_PATH" >&2
-        exit 2
-      }
-    done
+    # Uses substring matching (*pattern*) because blocked_paths includes bare
+    # filenames (Dockerfile, Jenkinsfile) that can appear anywhere in a path
+    while IFS= read -r blocked; do
+      case "$FILE_PATH" in
+        *"$blocked"*)
+          echo "BLOCKED: Colby cannot write to paths matching '$blocked'. Route to the appropriate agent (Agatha for docs, Eva /devops for infrastructure). Attempted: $FILE_PATH" >&2
+          exit 2
+          ;;
+      esac
+    done < <(jq -r '.colby_blocked_paths[]' "$CONFIG" 2>/dev/null)
     ;;
 
   roz)

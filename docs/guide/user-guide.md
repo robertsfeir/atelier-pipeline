@@ -636,6 +636,16 @@ instructions to install the pipeline in this project
 | Pipeline stuck after a Roz BLOCKER | A blocking QA issue was found | Read Roz's report. The issue must be fixed before the pipeline can advance. Eva will route it to Colby. |
 | "Say go to continue" prompts | Feature was sized as Large | Say "go" to advance, or say "fast track this" to reduce ceremony |
 | Pipeline resumes at the wrong phase | Stale state file | Check `docs/pipeline/pipeline-state.md` and correct the current phase, or delete it to start fresh |
+| Pipeline state lost after a crash | Claude Code closed mid-pipeline | State is persisted to `docs/pipeline/pipeline-state.md` after each phase transition. Reopen Claude Code and Eva resumes from the last completed phase. If the file is corrupted, delete it and restart the pipeline from the last known good phase. |
+
+### Hook and enforcement issues
+
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| `jq: command not found` or hooks silently pass everything | `jq` is not installed | macOS: `brew install jq`. Linux: `sudo apt install jq`. The enforcement hooks require `jq` to parse tool input. Without it, hooks cannot inspect arguments and allow all operations through. |
+| Hook blocks an action unexpectedly | The agent is attempting an operation outside its allowed boundaries | Read the block message -- it explains which rule was violated and which agent should handle the action instead. Common cases: Eva trying to edit source code (route to Colby), Colby trying to edit docs (route to Agatha), Eva trying to `git commit` (route to Ellis). |
+| Hook blocks with a path error for a valid file | The file path matches a blocked prefix in `enforcement-config.json` | Check `.claude/hooks/enforcement-config.json` for `colby_blocked_paths` and other path rules. Adjust if your project structure differs from the defaults. |
+| Sequencing hook blocks Ellis invocation | No Roz QA PASS found in pipeline state | Roz must verify Colby's output before Ellis can commit. If Roz already passed but the state file was not updated, check `docs/pipeline/pipeline-state.md` for the QA verdict. |
 
 ### Brain issues
 

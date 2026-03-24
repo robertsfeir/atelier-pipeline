@@ -98,7 +98,7 @@ The plugin registers a `SessionStart` hook in `plugin.json` that runs two comman
 
 ## File Tree -- What Lives Where
 
-After running `/pipeline-setup`, 27 template files plus 7 enforcement hook files are installed into the target project. The plugin templates remain in the plugin directory and are never modified.
+After running `/pipeline-setup`, 34 files are installed into the target project. The plugin templates remain in the plugin directory and are never modified.
 
 ### Target Project (installed by /pipeline-setup)
 
@@ -758,8 +758,8 @@ The `pipeline-setup` skill is conversational. It:
 
 1. **Gathers project information** one question at a time: tech stack, test framework, test commands, source structure, database patterns, build/deploy commands, coverage thresholds, complexity limits.
 2. **Reads template files** from `source/` in the plugin directory.
-3. **Copies 27 template files** to the target project, replacing placeholders with project-specific values.
-4. **Installs 7 enforcement hook files** to `.claude/hooks/` (6 shell scripts + 1 config), customizes `enforcement-config.json` with project-specific paths and test/complexity commands, registers hooks in `.claude/settings.json`, and makes scripts executable.
+3. **Copies 34 files** to the target project (27 template files + 7 enforcement hooks), replacing placeholders with project-specific values.
+4. **Customizes enforcement hooks** in `.claude/hooks/` -- sets project-specific paths and test/complexity commands in `enforcement-config.json`, registers hooks in `.claude/settings.json`, and makes scripts executable.
 5. **Writes version marker** to `.claude/.atelier-version` for update detection.
 6. **Updates `CLAUDE.md`** with a pipeline section.
 7. **Offers brain setup** at the end.

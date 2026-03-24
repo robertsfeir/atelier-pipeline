@@ -17,7 +17,8 @@ CONFIG="$SCRIPT_DIR/enforcement-config.json"
 [ ! -f "$CONFIG" ] && exit 0
 
 if ! command -v jq &>/dev/null; then
-  exit 0
+  echo "ERROR: jq is required for atelier-pipeline hooks. Install: brew install jq" >&2
+  exit 2
 fi
 
 TEST_COMMAND=$(jq -r '.test_command // empty' "$CONFIG")
@@ -49,7 +50,7 @@ fi
 
 # Run tests with loop guard
 export ATELIER_STOP_HOOK_ACTIVE=1
-if ! eval "$TEST_COMMAND" 2>&1; then
+if ! bash -c "$TEST_COMMAND" 2>&1; then
   echo "BLOCKED: Test suite failed. Fix failing tests before finishing. Command: $TEST_COMMAND" >&2
   exit 2
 fi
