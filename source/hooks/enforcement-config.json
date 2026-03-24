@@ -19,6 +19,7 @@
     "k8s/",
     "kubernetes/"
   ],
+  "lint_command": "",
   "test_command": "",
   "complexity_command": "",
   "test_patterns": [

@@ -1,7 +1,7 @@
 #!/bin/bash
-# Stop hook: Quality gate — runs test suite before allowing agent to finish.
-# If tests fail, exit 2 forces the agent to continue working.
-# Uses test_command from enforcement-config.json.
+# Stop hook: Quality gate — runs fast lint/typecheck checks before allowing agent to finish.
+# If checks fail, exit 2 forces the agent to continue working.
+# Uses lint_command from enforcement-config.json (falls back to test_command for backward compat).
 # Guard against infinite loops with ATELIER_STOP_HOOK_ACTIVE env var.
 
 set -euo pipefail
@@ -21,13 +21,17 @@ if ! command -v jq &>/dev/null; then
   exit 2
 fi
 
-TEST_COMMAND=$(jq -r '.test_command // empty' "$CONFIG")
-[ -z "$TEST_COMMAND" ] && exit 0
-[ "$TEST_COMMAND" = "null" ] && exit 0
+# Read lint_command; fall back to test_command for backward compatibility
+LINT_COMMAND=$(jq -r '.lint_command // empty' "$CONFIG")
+if [ -z "$LINT_COMMAND" ] || [ "$LINT_COMMAND" = "null" ]; then
+  LINT_COMMAND=$(jq -r '.test_command // empty' "$CONFIG")
+fi
+[ -z "$LINT_COMMAND" ] && exit 0
+[ "$LINT_COMMAND" = "null" ] && exit 0
 
-# Skip if test command is a placeholder
-case "$TEST_COMMAND" in
-  *"no test"*|*"not configured"*|*"echo"*) exit 0 ;;
+# Skip if lint command is a placeholder
+case "$LINT_COMMAND" in
+  *"no test"*|*"no lint"*|*"not configured"*|*"echo"*) exit 0 ;;
 esac
 
 # Skip if no uncommitted source file changes
@@ -48,10 +52,10 @@ if [ -z "$SOURCE_CHANGES" ] && [ -z "$SOURCE_STAGED" ] && [ -z "$SOURCE_UNTRACKE
   exit 0
 fi
 
-# Run tests with loop guard
+# Run lint checks with loop guard
 export ATELIER_STOP_HOOK_ACTIVE=1
-if ! bash -c "$TEST_COMMAND" 2>&1; then
-  echo "BLOCKED: Test suite failed. Fix failing tests before finishing. Command: $TEST_COMMAND" >&2
+if ! bash -c "$LINT_COMMAND" 2>&1; then
+  echo "BLOCKED: Lint checks failed. Fix lint/typecheck errors before finishing. Command: $LINT_COMMAND" >&2
   exit 2
 fi
 

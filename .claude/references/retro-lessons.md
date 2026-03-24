@@ -76,3 +76,29 @@ expectations to match bugs rather than fixing them.
 ---
 
 <!-- Add your project's retro lessons below this line -->
+
+## Stop Hook Race Condition — Heavy Tests as Gate
+
+**What happened:** The quality-gate Stop hook ran the full test suite
+(including DB-dependent integration tests) on every conversation stop.
+When test containers were down (after cleanup or between sessions), the
+hook failed repeatedly, blocking all agent work. The hook fired dozens
+of times per session (on every subagent completion), making the full
+test suite prohibitively slow and fragile as a gate.
+
+**Root cause:** Single `test_command` field used for both the Stop hook
+(fires frequently, must be fast) and Roz QA (fires once per unit, can
+be thorough). The Stop hook needs checks that complete in seconds with
+no external dependencies. The full test suite belongs in QA, not in a
+hook that fires on every stop.
+
+**Rules derived:**
+- **Eva (setup):** Always configure `lint_command` (fast, no DB) separately
+  from `test_command` (full suite). The Stop hook uses `lint_command`.
+  Roz uses `test_command`.
+- **Colby:** Never put DB-dependent or slow commands in `lint_command`.
+  Lint, typecheck, format checks only. If it needs a running service,
+  it belongs in `test_command`.
+- **Roz:** The Stop hook is NOT a substitute for QA. It catches formatting
+  and type errors early. Full test verification is Roz's job, not the
+  hook's job.

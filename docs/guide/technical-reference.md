@@ -67,7 +67,7 @@ atelier-pipeline/                         # Plugin root (CLAUDE_PLUGIN_ROOT)
       enforce-sequencing.sh               # Pipeline sequencing gates
       enforce-git.sh                      # Git write operation guard
       check-brain-usage.sh                # Brain usage visibility (non-blocking)
-      quality-gate.sh                     # Stop hook -- runs test suite before agent finishes
+      quality-gate.sh                     # Stop hook -- runs lint checks before agent finishes
       check-complexity.sh                 # PostToolUse -- warns on file complexity after edits
       enforcement-config.json             # Project-specific paths and rules
   brain/                                  # MCP server -- runs as sidecar
@@ -141,7 +141,7 @@ your-project/
       enforce-sequencing.sh               # Blocks out-of-order agent invocations
       enforce-git.sh                      # Blocks git write ops from main thread
       check-brain-usage.sh                # Warns when agents skip brain tools
-      quality-gate.sh                     # Stop hook -- blocks agent from finishing if tests fail
+      quality-gate.sh                     # Stop hook -- blocks agent from finishing if lint checks fail
       check-complexity.sh                 # PostToolUse -- warns on file complexity after edits
       enforcement-config.json             # Project-specific paths and rules
     settings.json                         # Hook registration
@@ -853,7 +853,7 @@ All seven scripts require `jq` for JSON parsing. If `jq` is not installed, the h
 | `enforce-sequencing.sh` | PreToolUse | `Agent` | Blocks out-of-order agent invocations from the main thread |
 | `enforce-git.sh` | PreToolUse | `Bash` | Blocks git write operations (`add`, `commit`, `push`, `reset`, `checkout --`, `restore`, `clean`) from the main thread |
 | `check-brain-usage.sh` | PostToolUse | `Agent` | Warns (non-blocking) when an agent with brain access requirements completes without evidence of brain tool usage |
-| `quality-gate.sh` | Stop | (all agents) | Runs the project's test suite when an agent tries to finish. Blocks completion (exit 2) if tests fail, forcing the agent to fix before stopping. |
+| `quality-gate.sh` | Stop | (all agents) | Runs the project's lint checks (`lint_command`) when an agent tries to finish. Blocks completion (exit 2) if checks fail, forcing the agent to fix before stopping. Falls back to `test_command` if `lint_command` is not configured. |
 | `check-complexity.sh` | PostToolUse | `Edit\|Write\|MultiEdit` | Runs the project's complexity checker against the edited file. Non-blocking (warning only). Skips non-source files. |
 
 ### How Hooks Identify the Caller
@@ -909,13 +909,13 @@ The hook skips the check entirely when `pipeline-state.md` does not indicate `br
 
 ### Quality Gate (`quality-gate.sh`)
 
-This Stop hook fires whenever an agent attempts to finish its work. It reads `test_command` from `enforcement-config.json` and runs it. If the test suite fails, the hook exits 2, which blocks the agent from stopping and forces it to fix the failing tests before completing.
+This Stop hook fires whenever an agent attempts to finish its work. It reads `lint_command` from `enforcement-config.json` and runs it. If lint checks fail, the hook exits 2, which blocks the agent from stopping and forces it to fix the errors before completing. If `lint_command` is not configured, the hook falls back to `test_command` for backward compatibility. The full test suite (`test_command`) is used separately by Roz for QA verification -- the Stop hook is designed for fast, frequent checks (lint, typecheck) that run on every agent stop.
 
 **Behavior:**
 
-- If `test_command` is empty, `"null"`, or a placeholder value (contains "no test", "not configured", or "echo"), the hook exits 0 and the agent finishes normally.
+- If `lint_command` is empty, falls back to `test_command`. If both are empty, `"null"`, or a placeholder value (contains "no test", "no lint", "not configured", or "echo"), the hook exits 0 and the agent finishes normally.
 - If the command runs and passes, the hook exits 0.
-- If the command runs and fails, the hook exits 2 with a message: "BLOCKED: Test suite failed. Fix failing tests before finishing."
+- If the command runs and fails, the hook exits 2 with a message: "BLOCKED: Lint checks failed. Fix lint/typecheck errors before finishing."
 
 **Infinite loop guard:** The hook sets the `ATELIER_STOP_HOOK_ACTIVE` environment variable to `1` before running tests. If the hook re-enters (because the agent's fix attempt triggers another stop), it detects the variable and exits 0 immediately. This prevents the hook from recursively running the test suite on every retry.
 
@@ -948,6 +948,7 @@ The configuration file lives at `.claude/hooks/enforcement-config.json` and is c
     ".gitlab/", "deploy/", "infra/", "terraform/",
     "pulumi/", "k8s/", "kubernetes/"
   ],
+  "lint_command": "npm run lint",
   "test_command": "npm test",
   "complexity_command": "npx escomplex {file}",
   "test_patterns": [
@@ -967,7 +968,8 @@ The configuration file lives at `.claude/hooks/enforcement-config.json` and is c
 | `product_specs_dir` | `enforce-paths.sh` | Robert-skill's write boundary (main thread) |
 | `ux_docs_dir` | `enforce-paths.sh` | Sable-skill's write boundary (main thread) |
 | `colby_blocked_paths` | `enforce-paths.sh` | Array of path prefixes Colby cannot write to. Default includes `docs/`, CI/CD paths, container files, and infra directories. Customized during `/pipeline-setup`. |
-| `test_command` | `quality-gate.sh` | Full test suite command (e.g., `npm test`, `pytest`). The Stop hook runs this before allowing an agent to finish. Empty string or placeholder values are skipped. |
+| `lint_command` | `quality-gate.sh` | Fast lint/typecheck command (e.g., `npm run lint`, `ruff check .`). The Stop hook runs this before allowing an agent to finish. Falls back to `test_command` if not configured. Empty string or placeholder values are skipped. |
+| `test_command` | Roz (QA verification) | Full test suite command (e.g., `npm test`, `pytest`). Used by Roz for QA verification, not by the Stop hook (unless `lint_command` is absent). |
 | `complexity_command` | `check-complexity.sh` | Complexity checker command with `{file}` placeholder (e.g., `npx escomplex {file}`, `radon cc {file} -nc`). The PostToolUse hook substitutes the edited file path. Empty string is skipped. |
 | `test_patterns` | `enforce-paths.sh` | Patterns identifying test files for Roz's write boundary |
 | `brain_required_agents` | `check-brain-usage.sh` | Agents expected to use brain tools when brain is available |
@@ -1021,7 +1023,7 @@ Hooks signal their result via exit code:
 - **Exit 0** -- action allowed (or hook not applicable)
 - **Exit 2** -- action blocked; the reason message on stderr is shown to the agent
 
-The three PreToolUse hooks (`enforce-paths.sh`, `enforce-sequencing.sh`, `enforce-git.sh`) exit 2 on violations. The Stop hook (`quality-gate.sh`) also exits 2 when tests fail, which blocks the agent from finishing and forces it to fix the failures. The two PostToolUse hooks (`check-brain-usage.sh`, `check-complexity.sh`) always exit 0 -- they emit warnings but never block.
+The three PreToolUse hooks (`enforce-paths.sh`, `enforce-sequencing.sh`, `enforce-git.sh`) exit 2 on violations. The Stop hook (`quality-gate.sh`) also exits 2 when lint checks fail, which blocks the agent from finishing and forces it to fix the errors. The two PostToolUse hooks (`check-brain-usage.sh`, `check-complexity.sh`) always exit 0 -- they emit warnings but never block.
 
 All seven hooks exit 0 immediately when `jq` is not installed, when the config file is missing, or when the tool call is not one they care about. This ensures the hooks never interfere with unrelated tool usage or with projects that have not yet run `/pipeline-setup`.
 

@@ -18,9 +18,8 @@ Before installing, ask the user about their project. Ask these questions convers
 1. **Tech stack** -- Language, framework, runtime (e.g., "React 19 with Vite, Express.js backend, PostgreSQL")
 2. **Test framework** -- What testing library/runner (e.g., "Vitest", "Jest", "pytest", "cargo test")
 3. **Test commands** -- The exact commands for:
-   - Linting (e.g., `npm run lint`)
-   - Type checking (e.g., `npm run typecheck`)
-   - Running the full test suite (e.g., `npm test` or `npx vitest run`)
+   - **Lint command** -- fast lint/typecheck checks with no DB or external dependencies, used by the Stop hook on every agent completion (e.g., `npm run lint && tsc --noEmit`, `black --check . && ruff check . && mypy .`). Should complete in under 10 seconds.
+   - **Full test suite** -- the complete test suite including DB-dependent and integration tests, used by Roz for QA verification (e.g., `npm test`, `pytest --cov`). Runs once per work unit, not on every stop.
    - Running a single test file (e.g., `npx vitest run path/to/file`)
 4. **Source structure** -- Where features, components, services, and routes live (e.g., "src/features/<feature>/ for frontend, services/api/ for backend")
 5. **Database/store pattern** -- How database access is structured (e.g., "Factory functions with closures over DB client", "Prisma ORM", "raw SQL with pg")
@@ -122,7 +121,7 @@ optional and must be installed for the pipeline to function correctly.
 | `source/hooks/enforce-sequencing.sh` | `.claude/hooks/enforce-sequencing.sh` | Blocks out-of-order agent invocations (e.g., Ellis without Roz QA) |
 | `source/hooks/enforce-git.sh` | `.claude/hooks/enforce-git.sh` | Blocks git write operations from main thread (must go through Ellis) |
 | `source/hooks/check-brain-usage.sh` | `.claude/hooks/check-brain-usage.sh` | Warns when agents with brain access don't use brain tools |
-| `source/hooks/quality-gate.sh` | `.claude/hooks/quality-gate.sh` | Runs test suite when agent tries to stop — blocks if tests fail |
+| `source/hooks/quality-gate.sh` | `.claude/hooks/quality-gate.sh` | Runs fast lint/typecheck checks when agent tries to stop — blocks if checks fail |
 | `source/hooks/check-complexity.sh` | `.claude/hooks/check-complexity.sh` | Warns when edited files exceed complexity thresholds |
 | `source/hooks/enforcement-config.json` | `.claude/hooks/enforcement-config.json` | Project-specific paths and agent rules |
 
@@ -134,7 +133,8 @@ After copying, make the `.sh` files executable: `chmod +x .claude/hooks/*.sh`
 - `product_specs_dir`: the specs directory (default: `docs/product`)
 - `ux_docs_dir`: the UX docs directory (default: `docs/ux`)
 - `test_patterns`: array of patterns matching the project's test files (e.g., `[".test.", ".spec.", "/tests/", "conftest"]`)
-- `test_command`: the full test suite command from Step 1 (e.g., `npm test`, `pytest`)
+- `lint_command`: fast lint/typecheck command from Step 1 -- runs on every agent Stop (e.g., `npm run lint && tsc --noEmit`, `black --check . && ruff check . && mypy .`)
+- `test_command`: full test suite command from Step 1 -- used by Roz for QA verification (e.g., `npm test`, `pytest`)
 - `complexity_command`: optional complexity checker with `{file}` placeholder (e.g., `npx escomplex {file}`, `radon cc {file} -nc`)
 
 **Register hooks in `.claude/settings.json`** — merge with existing settings if the

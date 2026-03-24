@@ -580,15 +580,15 @@ The pipeline does not rely solely on instructions to keep agents in their lanes.
 | Eva runs `git commit` directly | "BLOCKED: Eva cannot run git write operations directly. Route commits through Ellis." |
 | Eva invokes Ellis before Roz passes QA | "BLOCKED: Cannot invoke Ellis -- no Roz QA PASS found in pipeline-state.md. Roz must verify Colby's output before committing." |
 | Eva invokes Agatha during the build phase | "BLOCKED: Cannot invoke Agatha during the build phase. Agatha writes docs after Roz's final sweep against verified code." |
-| An agent tries to finish with failing tests | "BLOCKED: Test suite failed. Fix failing tests before finishing. Command: npm test" |
+| An agent tries to finish with failing lint checks | "BLOCKED: Lint checks failed. Fix lint/typecheck errors before finishing. Command: npm run lint" |
 
 When an agent sees a block message, it adjusts: Eva routes the work to the correct agent, or waits until the prerequisite gate is satisfied. You do not need to intervene.
 
 ### Quality gate
 
-When an agent finishes its work (Colby completes a build step, Roz finishes a QA pass), a Stop hook runs your project's test suite before the agent is allowed to stop. If tests fail, the agent is blocked from finishing and must fix the failures first. This catches regressions at the moment they are introduced, not after the pipeline has moved on.
+When an agent finishes its work (Colby completes a build step, Roz finishes a QA pass), a Stop hook runs your project's lint checks before the agent is allowed to stop. If lint checks fail, the agent is blocked from finishing and must fix the errors first. This catches lint and typecheck regressions at the moment they are introduced, not after the pipeline has moved on.
 
-The test command comes from what you provided during `/pipeline-setup` (e.g., `npm test`, `pytest`). If no test command is configured, the quality gate is skipped.
+The lint command comes from `lint_command` in `enforcement-config.json` (e.g., `npm run lint`, `ruff check .`). If `lint_command` is not configured, the hook falls back to `test_command`. If neither is configured, the quality gate is skipped. The full test suite (`test_command`) is used separately by Roz for QA verification, not by the Stop hook.
 
 ### Complexity warnings
 
