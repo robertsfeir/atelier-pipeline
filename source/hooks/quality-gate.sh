@@ -52,10 +52,20 @@ if [ -z "$SOURCE_CHANGES" ] && [ -z "$SOURCE_STAGED" ] && [ -z "$SOURCE_UNTRACKE
   exit 0
 fi
 
-# Run lint checks with loop guard
+# Detect timeout command (Linux: timeout, macOS coreutils: gtimeout)
+TIMEOUT_CMD=""
+command -v timeout &>/dev/null && TIMEOUT_CMD="timeout 30"
+command -v gtimeout &>/dev/null && TIMEOUT_CMD="gtimeout 30"
+
+# Run lint checks with loop guard and timeout
 export ATELIER_STOP_HOOK_ACTIVE=1
-if ! bash -c "$LINT_COMMAND" 2>&1; then
-  echo "BLOCKED: Lint checks failed. Fix lint/typecheck errors before finishing. Command: $LINT_COMMAND" >&2
+if ! $TIMEOUT_CMD bash -c "$LINT_COMMAND" 2>&1; then
+  LINT_EXIT=$?
+  if [ "$LINT_EXIT" -eq 124 ]; then
+    echo "BLOCKED: Lint command timed out after 30 seconds. Command: $LINT_COMMAND" >&2
+  else
+    echo "BLOCKED: Lint checks failed. Fix lint/typecheck errors before finishing. Command: $LINT_COMMAND" >&2
+  fi
   exit 2
 fi
 

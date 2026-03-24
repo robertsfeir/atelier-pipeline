@@ -36,17 +36,29 @@ CONFIG="$SCRIPT_DIR/enforcement-config.json"
 PIPELINE_DIR=$(jq -r '.pipeline_state_dir' "$CONFIG")
 STATE_FILE="$PIPELINE_DIR/pipeline-state.md"
 
+# ─── Snapshot state file to avoid partial-read race ───────────────────
+# Eva may be mid-write to pipeline-state.md when this hook fires.
+# Copying to a temp file gives a consistent snapshot for parsing.
+STATE_SNAPSHOT=$(mktemp)
+trap 'rm -f "$STATE_SNAPSHOT"' EXIT
+cp "$STATE_FILE" "$STATE_SNAPSHOT" 2>/dev/null || { rm -f "$STATE_SNAPSHOT"; exit 0; }
+
 # ─── Structured state parser ─────────────────────────────────────────
-# Reads the machine-readable PIPELINE_STATUS JSON marker from pipeline-state.md.
+# Reads the machine-readable PIPELINE_STATUS JSON marker from the snapshot.
 # Format: <!-- PIPELINE_STATUS: {"roz_qa": "PASS", "phase": "review", "timestamp": "..."} -->
 # Returns empty string if marker is absent or JSON is malformed.
 parse_pipeline_status() {
   local field="$1"
   local json
-  json=$(grep -o 'PIPELINE_STATUS: {[^}]*}' "$STATE_FILE" 2>/dev/null | tail -1 | sed 's/PIPELINE_STATUS: //')
+  json=$(grep -o 'PIPELINE_STATUS: {[^}]*}' "$STATE_SNAPSHOT" 2>/dev/null | tail -1 | sed 's/PIPELINE_STATUS: //')
   [ -z "$json" ] && return 1
-  local value
-  value=$(echo "$json" | jq -r --arg f "$field" '.[$f] // empty' 2>/dev/null)
+  local value jq_stderr
+  jq_stderr=$(mktemp)
+  value=$(echo "$json" | jq -r --arg f "$field" '.[$f] // empty' 2>"$jq_stderr")
+  if [ -s "$jq_stderr" ]; then
+    echo "WARNING: Pipeline state JSON parse error: $(cat "$jq_stderr")" >&2
+  fi
+  rm -f "$jq_stderr"
   [ -z "$value" ] && return 1
   echo "$value"
 }
