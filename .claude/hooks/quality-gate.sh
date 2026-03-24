@@ -29,6 +29,24 @@ case "$TEST_COMMAND" in
   *"no test"*|*"not configured"*|*"echo"*) exit 0 ;;
 esac
 
+# Skip if no uncommitted source file changes
+# Exclude: docs/**, .claude/**, root *.md, docs/pipeline/**
+SOURCE_CHANGES=$(git diff --name-only HEAD 2>/dev/null \
+  | grep -v '^docs/' \
+  | grep -v '^\.claude/' \
+  | grep -v '^[^/]*\.md$' || true)
+SOURCE_STAGED=$(git diff --name-only --cached 2>/dev/null \
+  | grep -v '^docs/' \
+  | grep -v '^\.claude/' \
+  | grep -v '^[^/]*\.md$' || true)
+SOURCE_UNTRACKED=$(git ls-files --others --exclude-standard 2>/dev/null \
+  | grep -v '^docs/' \
+  | grep -v '^\.claude/' \
+  | grep -v '^[^/]*\.md$' || true)
+if [ -z "$SOURCE_CHANGES" ] && [ -z "$SOURCE_STAGED" ] && [ -z "$SOURCE_UNTRACKED" ]; then
+  exit 0
+fi
+
 # Run tests with loop guard
 export ATELIER_STOP_HOOK_ACTIVE=1
 if ! eval "$TEST_COMMAND" 2>&1; then
