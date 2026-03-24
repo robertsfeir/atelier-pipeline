@@ -285,3 +285,7 @@ The orchestration patterns and quality gates are stack-agnostic.
 ## Author
 
 Robert Sfeir
+
+## License
+
+Apache License 2.0 — see [LICENSE](LICENSE) for details.
