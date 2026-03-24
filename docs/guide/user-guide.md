@@ -17,6 +17,7 @@ A structured, multi-agent development workflow for Claude Code. Ten specialized 
 - [Team Collaboration](#team-collaboration)
 - [State Recovery](#state-recovery)
 - [Customization](#customization)
+- [Mechanical Enforcement](#mechanical-enforcement)
 - [Updating the Plugin](#updating-the-plugin)
 - [Troubleshooting](#troubleshooting)
 - [Reference](#reference)
@@ -549,6 +550,36 @@ The orchestration patterns, quality gates, agent boundaries, and pipeline flow w
 
 ---
 
+## Mechanical Enforcement
+
+The pipeline does not rely solely on instructions to keep agents in their lanes. Four shell-script hooks run automatically on every tool call, blocking actions that would violate agent boundaries before they happen.
+
+### What gets blocked
+
+| Violation | What the agent sees |
+|-----------|---------------------|
+| Eva tries to edit source code | "BLOCKED: Main thread (Eva/Robert/Sable) can only write to docs/pipeline/, docs/product/, or docs/ux/. Route source code changes to Colby, architecture to Cal, documentation to Agatha." |
+| Colby tries to edit a doc file | "BLOCKED: Colby cannot write to docs/. Route documentation changes to Agatha." |
+| Eva runs `git commit` directly | "BLOCKED: Eva cannot run git write operations directly. Route commits through Ellis." |
+| Eva invokes Ellis before Roz passes QA | "BLOCKED: Cannot invoke Ellis -- no Roz QA PASS found in pipeline-state.md. Roz must verify Colby's output before committing." |
+| Eva invokes Agatha during the build phase | "BLOCKED: Cannot invoke Agatha during the build phase. Agatha writes docs after Roz's final sweep against verified code." |
+
+When an agent sees a block message, it adjusts: Eva routes the work to the correct agent, or waits until the prerequisite gate is satisfied. You do not need to intervene.
+
+### What you need to know
+
+- **Nothing to configure.** `/pipeline-setup` installs the hook scripts, registers them in `.claude/settings.json`, and customizes the config file with your project's directory paths. It all happens during setup.
+- **jq is required.** The hooks use `jq` to parse tool input. If `jq` is not installed, the hooks degrade gracefully (they allow everything rather than blocking). Install it with `brew install jq` (macOS) or `apt install jq` (Linux).
+- **Brain usage warnings.** A separate hook warns (without blocking) when an agent completes work without evidence of brain tool usage. This is a visibility aid, not a hard gate.
+
+### Why this matters
+
+Behavioral guidance tells agents what to do. Hooks ensure they cannot do what they should not. A Colby that tries to write documentation gets stopped before the write reaches disk. An Eva that tries to commit code gets redirected to Ellis. The enforcement is mechanical, not discretionary.
+
+For technical details on how the hooks work, see the [Technical Reference](technical-reference.md#enforcement-hooks).
+
+---
+
 ## Updating the Plugin
 
 ### Standard update
@@ -643,6 +674,13 @@ your-project/
       retro-lessons.md           # Shared lessons from past runs
       invocation-templates.md    # Subagent invocation examples
       pipeline-operations.md     # Operational procedures
+    hooks/                       # Mechanical enforcement (PreToolUse/PostToolUse)
+      enforce-paths.sh           # Blocks Write/Edit outside agent's allowed paths
+      enforce-sequencing.sh      # Blocks out-of-order agent invocations
+      enforce-git.sh             # Blocks git write ops from main thread
+      check-brain-usage.sh       # Warns when agents skip brain tools
+      enforcement-config.json    # Project-specific paths and rules
+    settings.json                # Hook registration
   docs/
     pipeline/                    # Eva reads at session start
       pipeline-state.md          # Session recovery state

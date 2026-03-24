@@ -3,5 +3,27 @@
     "allow": [
       "Edit"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [{"type": "command", "command": ".claude/hooks/enforce-paths.sh"}]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [{"type": "command", "command": ".claude/hooks/enforce-sequencing.sh"}]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [{"type": "command", "command": ".claude/hooks/enforce-git.sh"}]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Agent",
+        "hooks": [{"type": "command", "command": ".claude/hooks/check-brain-usage.sh"}]
+      }
+    ]
   }
 }

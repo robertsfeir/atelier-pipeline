@@ -1,6 +1,6 @@
 # Atelier Pipeline -- Technical Reference
 
-Version: 1.7.3
+Version: 2.0.0
 
 This document is the comprehensive technical reference for the atelier-pipeline Claude Code plugin. It covers plugin architecture, agent system design, orchestration logic, brain infrastructure, and customization points. For usage-oriented documentation, see [the user guide](user-guide.md).
 
@@ -23,7 +23,8 @@ This document is the comprehensive technical reference for the atelier-pipeline 
 13. [Team Collaboration Internals](#team-collaboration-internals)
 14. [Pipeline State Files and Session Recovery](#pipeline-state-files-and-session-recovery)
 15. [Setup and Install System](#setup-and-install-system)
-16. [Customization Points](#customization-points)
+16. [Enforcement Hooks](#enforcement-hooks)
+17. [Customization Points](#customization-points)
 
 ---
 
@@ -41,7 +42,7 @@ The plugin itself lives in the Claude Code plugin directory (typically `~/.claud
 ```
 atelier-pipeline/                         # Plugin root (CLAUDE_PLUGIN_ROOT)
   .claude-plugin/
-    plugin.json                           # Plugin metadata, hooks, version (1.7.3)
+    plugin.json                           # Plugin metadata, hooks, version (2.0.0)
   source/                                 # Template files -- copied to target project
     rules/
       default-persona.md
@@ -59,6 +60,12 @@ atelier-pipeline/                         # Plugin root (CLAUDE_PLUGIN_ROOT)
     pipeline/
       pipeline-state.md, context-brief.md, error-patterns.md,
       investigation-ledger.md, last-qa-report.md
+    hooks/                                # Enforcement hook templates
+      enforce-paths.sh                    # File path enforcement per agent
+      enforce-sequencing.sh               # Pipeline sequencing gates
+      enforce-git.sh                      # Git write operation guard
+      check-brain-usage.sh                # Brain usage visibility (non-blocking)
+      enforcement-config.json             # Project-specific paths and rules
   brain/                                  # MCP server -- runs as sidecar
     start.sh                              # Wrapper script -- installs node_modules then starts server
     server.mjs                            # Main server (MCP + REST API, auto-migration)
@@ -123,6 +130,13 @@ your-project/
       retro-lessons.md                    # Shared lessons (starts empty)
       invocation-templates.md             # Subagent invocation examples
       pipeline-operations.md              # Model selection, QA flow, feedback loops
+    hooks/                                # Mechanical enforcement (PreToolUse/PostToolUse)
+      enforce-paths.sh                    # Blocks Write/Edit outside agent's allowed paths
+      enforce-sequencing.sh               # Blocks out-of-order agent invocations
+      enforce-git.sh                      # Blocks git write ops from main thread
+      check-brain-usage.sh                # Warns when agents skip brain tools
+      enforcement-config.json             # Project-specific paths and rules
+    settings.json                         # Hook registration
   docs/
     pipeline/                             # Eva reads at session start for recovery
       pipeline-state.md                   # Session recovery state
@@ -132,7 +146,7 @@ your-project/
       last-qa-report.md                   # Roz's most recent QA report
 ```
 
-**Total: 27 files across 5 directories, plus the `.atelier-version` marker and an update to `CLAUDE.md`.**
+**Total: 32 files across 6 directories, plus the `.atelier-version` marker and an update to `CLAUDE.md`.**
 
 ### What Does NOT Live on Disk
 
@@ -740,10 +754,11 @@ The `pipeline-setup` skill is conversational. It:
 
 1. **Gathers project information** one question at a time: tech stack, test framework, test commands, source structure, database patterns, build/deploy commands, coverage thresholds, complexity limits.
 2. **Reads template files** from `source/` in the plugin directory.
-3. **Copies 27 files** to the target project, replacing placeholders with project-specific values.
-4. **Writes version marker** to `.claude/.atelier-version` for update detection.
-5. **Updates `CLAUDE.md`** with a pipeline section.
-6. **Offers brain setup** at the end.
+3. **Copies 27 template files** to the target project, replacing placeholders with project-specific values.
+4. **Installs 5 enforcement hook files** to `.claude/hooks/`, customizes `enforcement-config.json` with project-specific paths, registers hooks in `.claude/settings.json`, and makes scripts executable.
+5. **Writes version marker** to `.claude/.atelier-version` for update detection.
+6. **Updates `CLAUDE.md`** with a pipeline section.
+7. **Offers brain setup** at the end.
 
 Placeholder replacement:
 
@@ -791,6 +806,149 @@ Seeds the brain with existing project knowledge:
 3. **Extract** -- reads each artifact, synthesizes reasoning (never verbatim content), captures as brain thoughts with proper types, importance scores, and relations
 4. **Incremental** -- safe to re-run. Duplicate detection (>0.85 similarity = skip, 0.7-0.85 = new thought with `evolves_from` relation)
 5. **Capped** -- maximum 100 thoughts per hydration run
+
+---
+
+## Enforcement Hooks
+
+### Overview
+
+The enforcement hooks are shell scripts registered as Claude Code PreToolUse and PostToolUse hooks. They run automatically on every tool invocation and mechanically enforce agent boundaries that persona instructions describe but cannot guarantee. Behavioral guidance tells agents what to do; hooks ensure they cannot do what they should not.
+
+All four scripts require `jq` for JSON parsing. If `jq` is not installed, the hooks degrade gracefully (exit 0, allowing the action) rather than blocking all tool calls.
+
+### The Four Hook Scripts
+
+| Script | Hook Type | Trigger | Purpose |
+|--------|-----------|---------|---------|
+| `enforce-paths.sh` | PreToolUse | `Write\|Edit\|MultiEdit` | Blocks file writes outside each agent's allowed directory paths |
+| `enforce-sequencing.sh` | PreToolUse | `Agent` | Blocks out-of-order agent invocations from the main thread |
+| `enforce-git.sh` | PreToolUse | `Bash` | Blocks git write operations (`add`, `commit`, `push`, `reset`, `checkout --`, `restore`, `clean`) from the main thread |
+| `check-brain-usage.sh` | PostToolUse | `Agent` | Warns (non-blocking) when an agent with brain access requirements completes without evidence of brain tool usage |
+
+### How Hooks Identify the Caller
+
+Claude Code passes a JSON payload to each hook via stdin. Two fields identify who is calling:
+
+- **`agent_type`** -- the subagent's frontmatter name (e.g., `colby`, `roz`, `ellis`, `cal`, `documentation-expert`). Empty string for the main thread.
+- **`agent_id`** -- a unique identifier for the subagent instance. Empty string for the main thread.
+
+The hooks use these fields to apply agent-specific rules. For example, `enforce-paths.sh` checks `agent_type` against a case statement to determine which directories the caller can write to. `enforce-git.sh` and `enforce-sequencing.sh` only enforce from the main thread (where `agent_id` is empty), since subagents are already constrained by their `disallowedTools` frontmatter.
+
+### File Path Enforcement (`enforce-paths.sh`)
+
+This hook intercepts every Write, Edit, and MultiEdit call and checks the target file path against the calling agent's allowed directories.
+
+| Agent | Allowed Write Paths | Blocked From |
+|-------|---------------------|-------------|
+| **Main thread** (Eva, Robert-skill, Sable-skill) | `docs/pipeline/`, `docs/product/`, `docs/ux/` | Source code, architecture docs, test files, config files |
+| **Cal** | `docs/architecture/` (ADR directory) | Source code, pipeline state, other docs |
+| **Colby** | Everything except `docs/` | Documentation files (routed to Agatha) |
+| **Roz** | Test files (matched by config patterns) and `docs/pipeline/last-qa-report.md` | Production source code, documentation |
+| **Ellis** | Full write access | Nothing (commit agent needs to stage all files) |
+| **Agatha** (`documentation-expert`) | `docs/` | Source code, config files |
+| **All other agents** (Poirot, Distillator, Robert-subagent, Sable-subagent) | None (read-only) | Everything -- their `disallowedTools` already blocks writes, this is a safety net |
+
+**The main thread limitation.** Eva, Robert-skill, and Sable-skill share the main Claude Code thread. The hook cannot distinguish between them because all three have an empty `agent_type`. The solution is to allow all three agents' write directories: `docs/pipeline/` (Eva), `docs/product/` (Robert-skill), and `docs/ux/` (Sable-skill). This is a pragmatic trade-off -- the alternative would be blocking legitimate writes from one of the three.
+
+Test files are identified by patterns configured in `enforcement-config.json` (e.g., `.test.`, `.spec.`, `/tests/`, `/__tests__/`, `conftest`). These patterns are customized during `/pipeline-setup` to match the project's test file conventions.
+
+### Pipeline Sequencing Enforcement (`enforce-sequencing.sh`)
+
+This hook intercepts Agent tool calls from the main thread and enforces two mandatory gates by reading `docs/pipeline/pipeline-state.md`:
+
+**Gate 1 -- Ellis requires Roz QA PASS.** Eva cannot invoke Ellis unless `pipeline-state.md` contains evidence of a Roz QA pass (matched by patterns like `roz.*pass`, `qa.*pass`, `verdict.*pass`). This prevents commits without QA verification.
+
+**Gate 2 -- Agatha blocked during build phase.** Eva cannot invoke Agatha (or `documentation-expert`) while `pipeline-state.md` indicates the current phase is `build` or `implement`. Agatha writes docs after Roz's final sweep against verified code, not during active construction.
+
+The hook only enforces from the main thread (empty `agent_id`). Subagents cannot invoke other subagents because the Agent tool is already in their `disallowedTools` list.
+
+### Git Operation Guard (`enforce-git.sh`)
+
+This hook intercepts Bash tool calls from the main thread and blocks git write operations: `git add`, `git commit`, `git push`, `git reset`, `git checkout --`, `git restore`, and `git clean`. Read-only git operations (`git status`, `git diff`, `git log`, `git branch`) are allowed.
+
+Ellis, running as a subagent (non-empty `agent_id`), is not affected by this hook. This ensures that all code commits flow through Ellis, who applies Conventional Commits formatting and verifies QA status.
+
+### Brain Usage Visibility (`check-brain-usage.sh`)
+
+This PostToolUse hook runs after a subagent completes. It checks whether the agent is listed in the `brain_required_agents` array in `enforcement-config.json` and, if so, whether the agent's output contains evidence of brain tool usage (patterns like `agent_search`, `agent_capture`, `searched.*brain`, `captured.*brain`).
+
+If no evidence is found, the hook emits a warning to stderr. This is non-blocking (always exits 0) -- it alerts Eva that the agent may have skipped its required brain reads or writes, but does not prevent the pipeline from advancing.
+
+The hook skips the check entirely when `pipeline-state.md` does not indicate `brain.*available.*true`, since there is nothing to warn about when the brain is not configured.
+
+### Configuration (`enforcement-config.json`)
+
+The configuration file lives at `.claude/hooks/enforcement-config.json` and is customized during `/pipeline-setup` with project-specific values:
+
+```json
+{
+  "pipeline_state_dir": "docs/pipeline",
+  "architecture_dir": "docs/architecture",
+  "product_specs_dir": "docs/product",
+  "ux_docs_dir": "docs/ux",
+  "test_patterns": [
+    ".test.", ".spec.", "/tests/", "/__tests__/",
+    "/test_", "_test.", "conftest"
+  ],
+  "brain_required_agents": [
+    "cal", "colby", "roz", "documentation-expert", "sable", "robert"
+  ]
+}
+```
+
+| Field | Used By | Purpose |
+|-------|---------|---------|
+| `pipeline_state_dir` | `enforce-paths.sh`, `enforce-sequencing.sh` | Main thread write boundary and pipeline state location |
+| `architecture_dir` | `enforce-paths.sh` | Cal's write boundary |
+| `product_specs_dir` | `enforce-paths.sh` | Robert-skill's write boundary (main thread) |
+| `ux_docs_dir` | `enforce-paths.sh` | Sable-skill's write boundary (main thread) |
+| `test_patterns` | `enforce-paths.sh` | Patterns identifying test files for Roz's write boundary |
+| `brain_required_agents` | `check-brain-usage.sh` | Agents expected to use brain tools when brain is available |
+
+### Hook Registration in `.claude/settings.json`
+
+`/pipeline-setup` merges the hook registration into the project's `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [{"type": "command", "command": ".claude/hooks/enforce-paths.sh"}]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [{"type": "command", "command": ".claude/hooks/enforce-sequencing.sh"}]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [{"type": "command", "command": ".claude/hooks/enforce-git.sh"}]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Agent",
+        "hooks": [{"type": "command", "command": ".claude/hooks/check-brain-usage.sh"}]
+      }
+    ]
+  }
+}
+```
+
+Each matcher determines which tool invocations trigger the hook. The pipe-separated `Write|Edit|MultiEdit` matcher fires `enforce-paths.sh` on any file write operation. Existing settings in the file are preserved during the merge.
+
+### Blocking vs. Non-Blocking
+
+Hooks signal their result via exit code:
+
+- **Exit 0** -- action allowed (or hook not applicable)
+- **Exit 2** -- action blocked; the reason message on stderr is shown to the agent
+
+The three PreToolUse hooks (`enforce-paths.sh`, `enforce-sequencing.sh`, `enforce-git.sh`) exit 2 on violations. The PostToolUse hook (`check-brain-usage.sh`) always exits 0 -- it emits warnings but never blocks.
+
+All four hooks exit 0 immediately when `jq` is not installed, when the config file is missing, or when the tool call is not one they care about. This ensures the hooks never interfere with unrelated tool usage or with projects that have not yet run `/pipeline-setup`.
 
 ---
 
