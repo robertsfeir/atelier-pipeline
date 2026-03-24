@@ -11,7 +11,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/enforce-paths.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-paths.sh"
           }
         ]
       },
@@ -20,7 +20,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/enforce-sequencing.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-sequencing.sh"
           }
         ]
       },
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/enforce-git.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-git.sh"
           }
         ]
       }
@@ -39,7 +39,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/quality-gate.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/quality-gate.sh"
           }
         ]
       }
@@ -50,7 +50,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/check-brain-usage.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-brain-usage.sh"
           }
         ]
       },
@@ -59,7 +59,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/check-complexity.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-complexity.sh"
           }
         ]
       }

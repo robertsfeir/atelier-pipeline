@@ -144,30 +144,30 @@ file already exists. Add this hooks section:
     "PreToolUse": [
       {
         "matcher": "Write|Edit|MultiEdit",
-        "hooks": [{"type": "command", "command": ".claude/hooks/enforce-paths.sh"}]
+        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-paths.sh"}]
       },
       {
         "matcher": "Agent",
-        "hooks": [{"type": "command", "command": ".claude/hooks/enforce-sequencing.sh"}]
+        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-sequencing.sh"}]
       },
       {
         "matcher": "Bash",
-        "hooks": [{"type": "command", "command": ".claude/hooks/enforce-git.sh"}]
+        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-git.sh"}]
       }
     ],
     "Stop": [
       {
-        "hooks": [{"type": "command", "command": ".claude/hooks/quality-gate.sh"}]
+        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/quality-gate.sh"}]
       }
     ],
     "PostToolUse": [
       {
         "matcher": "Agent",
-        "hooks": [{"type": "command", "command": ".claude/hooks/check-brain-usage.sh"}]
+        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-brain-usage.sh"}]
       },
       {
         "matcher": "Edit|Write|MultiEdit",
-        "hooks": [{"type": "command", "command": ".claude/hooks/check-complexity.sh"}]
+        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-complexity.sh"}]
       }
     ]
   }
