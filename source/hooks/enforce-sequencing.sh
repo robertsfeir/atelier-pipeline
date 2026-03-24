@@ -67,18 +67,10 @@ fi
 # of invoking Ellis. Checked via the Bash hook below, not here.
 # (This hook only fires on the Agent tool.)
 
-# ─── Gate 4: Colby build requires ADR or spec ────────────────────────
-# Don't let Colby build from scratch without planning artifacts.
-if [ "$SUBAGENT_TYPE" = "colby" ]; then
-  PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // empty')
-  # Check if this is a build invocation (not mockup or fix)
-  if echo "$PROMPT" | grep -qi "implement\|build.*step\|ADR.*step" 2>/dev/null; then
-    ARCH_DIR=$(jq -r '.architecture_dir' "$CONFIG")
-    if [ ! -d "$ARCH_DIR" ] || [ -z "$(ls "$ARCH_DIR"/ADR-* 2>/dev/null)" ]; then
-      echo "BLOCKED: Cannot invoke Colby for implementation without an ADR in $ARCH_DIR/. Run Cal first to produce the architecture plan." >&2
-      exit 2
-    fi
-  fi
-fi
+# ─── Gate 4: Removed ──────────────────────────────────────────────────
+# Previously checked if Colby was invoked for "build" without an ADR.
+# Removed: keyword matching on prompts was fragile, and ADR file naming
+# varies by project. The real enforcement is Gate 1 (Ellis requires Roz
+# QA PASS) — if Colby builds something bad, it can't ship without QA.
 
 exit 0
