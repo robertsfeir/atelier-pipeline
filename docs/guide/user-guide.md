@@ -43,7 +43,7 @@ Open Claude Code in your project directory and run:
 /pipeline-setup
 ```
 
-The setup asks about your project one question at a time: tech stack, test commands, source structure, coverage thresholds. It then installs 27 files into your project (agent personas, commands, references, state tracking).
+The setup asks about your project one question at a time: tech stack, test commands, source structure, coverage thresholds. It then installs 34 files into your project (agent personas, commands, references, enforcement hooks, state tracking).
 
 ### 3. Build something
 
@@ -552,7 +552,7 @@ The orchestration patterns, quality gates, agent boundaries, and pipeline flow w
 
 ## Mechanical Enforcement
 
-The pipeline does not rely solely on instructions to keep agents in their lanes. Four shell-script hooks run automatically on every tool call, blocking actions that would violate agent boundaries before they happen.
+The pipeline does not rely solely on instructions to keep agents in their lanes. Seven shell-script hooks run automatically on every tool call, blocking actions that would violate agent boundaries before they happen.
 
 ### What gets blocked
 
@@ -563,12 +563,25 @@ The pipeline does not rely solely on instructions to keep agents in their lanes.
 | Eva runs `git commit` directly | "BLOCKED: Eva cannot run git write operations directly. Route commits through Ellis." |
 | Eva invokes Ellis before Roz passes QA | "BLOCKED: Cannot invoke Ellis -- no Roz QA PASS found in pipeline-state.md. Roz must verify Colby's output before committing." |
 | Eva invokes Agatha during the build phase | "BLOCKED: Cannot invoke Agatha during the build phase. Agatha writes docs after Roz's final sweep against verified code." |
+| An agent tries to finish with failing tests | "BLOCKED: Test suite failed. Fix failing tests before finishing. Command: npm test" |
 
 When an agent sees a block message, it adjusts: Eva routes the work to the correct agent, or waits until the prerequisite gate is satisfied. You do not need to intervene.
 
+### Quality gate
+
+When an agent finishes its work (Colby completes a build step, Roz finishes a QA pass), a Stop hook runs your project's test suite before the agent is allowed to stop. If tests fail, the agent is blocked from finishing and must fix the failures first. This catches regressions at the moment they are introduced, not after the pipeline has moved on.
+
+The test command comes from what you provided during `/pipeline-setup` (e.g., `npm test`, `pytest`). If no test command is configured, the quality gate is skipped.
+
+### Complexity warnings
+
+After any file edit, a PostToolUse hook runs your project's complexity checker against the changed file. If the file exceeds complexity thresholds, you see a warning in the output. This is non-blocking -- it surfaces potential issues without stopping the agent. Complexity warnings only fire on source files; markdown, JSON, YAML, and other config files are skipped.
+
+The complexity command also comes from `/pipeline-setup` (e.g., `npx escomplex {file}`). If no complexity command is configured, the check is skipped.
+
 ### What you need to know
 
-- **Nothing to configure.** `/pipeline-setup` installs the hook scripts, registers them in `.claude/settings.json`, and customizes the config file with your project's directory paths. It all happens during setup.
+- **Nothing to configure.** `/pipeline-setup` installs the hook scripts, registers them in `.claude/settings.json`, and customizes the config file with your project's directory paths, test command, and complexity command. It all happens during setup.
 - **jq is required.** The hooks use `jq` to parse tool input. If `jq` is not installed, the hooks degrade gracefully (they allow everything rather than blocking). Install it with `brew install jq` (macOS) or `apt install jq` (Linux).
 - **Brain usage warnings.** A separate hook warns (without blocking) when an agent completes work without evidence of brain tool usage. This is a visibility aid, not a hard gate.
 
@@ -665,7 +678,7 @@ your-project/
       investigator.md            # Poirot (blind investigator)
       distillator.md             # Compression engine
       ellis.md                   # Commit manager
-      documentation-expert.md    # Agatha (documentation)
+      agatha.md                  # Agatha (documentation)
     commands/                    # Loaded on slash command
       pm.md, ux.md, architect.md, debug.md,
       pipeline.md, devops.md, docs.md
@@ -674,11 +687,13 @@ your-project/
       retro-lessons.md           # Shared lessons from past runs
       invocation-templates.md    # Subagent invocation examples
       pipeline-operations.md     # Operational procedures
-    hooks/                       # Mechanical enforcement (PreToolUse/PostToolUse)
+    hooks/                       # Mechanical enforcement (PreToolUse/PostToolUse/Stop)
       enforce-paths.sh           # Blocks Write/Edit outside agent's allowed paths
       enforce-sequencing.sh      # Blocks out-of-order agent invocations
       enforce-git.sh             # Blocks git write ops from main thread
       check-brain-usage.sh       # Warns when agents skip brain tools
+      quality-gate.sh            # Blocks agent from finishing if tests fail
+      check-complexity.sh        # Warns on file complexity after edits
       enforcement-config.json    # Project-specific paths and rules
     settings.json                # Hook registration
   docs/

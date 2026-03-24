@@ -220,7 +220,7 @@ your-project/
       investigator.md            # Poirot (blind investigator)
       distillator.md             # Compression engine
       ellis.md                   # Commit manager
-      documentation-expert.md    # Agatha (documentation)
+      agatha.md                  # Agatha (documentation)
     commands/                    # Loaded when user types slash command
       pm.md                      # /pm (Robert)
       ux.md                      # /ux (Sable)

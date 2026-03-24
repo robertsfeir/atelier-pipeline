@@ -486,7 +486,7 @@ tool with their persona files in `.claude/agents/`:
 |-------|------|-----------|
 | Cal (ADR production) | `.claude/agents/cal.md` | Agent tool -- subagent (after conversational clarification) |
 | Colby (build) | `.claude/agents/colby.md` | Agent tool -- subagent |
-| Agatha (write) | `.claude/agents/documentation-expert.md` | Agent tool -- subagent (after final Roz sweep, before Ellis) |
+| Agatha (write) | `.claude/agents/agatha.md` | Agent tool -- subagent (after final Roz sweep, before Ellis) |
 | Roz | `.claude/agents/roz.md` | Agent tool -- subagent |
 | Robert (acceptance) | `.claude/agents/robert.md` | Agent tool -- subagent (parallel with Roz final, + doc review) |
 | Sable (acceptance) | `.claude/agents/sable.md` | Agent tool -- subagent (mockup verify + Large final) |

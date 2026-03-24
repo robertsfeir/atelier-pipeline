@@ -48,7 +48,7 @@ plugins/atelier-pipeline/source/
     investigator.md               # Poirot (blind investigator) subagent
     distillator.md                # Compression engine subagent
     ellis.md                      # Commit manager subagent
-    documentation-expert.md       # Documentation subagent
+    agatha.md                     # Documentation subagent
   commands/
     pm.md                         # /pm -- Robert (product)
     ux.md                         # /ux -- Sable (UX design)
@@ -88,7 +88,7 @@ Copy each template to its destination in the user's project, customizing placeho
 | `source/agents/investigator.md` | `.claude/agents/investigator.md` | Blind investigator subagent persona |
 | `source/agents/distillator.md` | `.claude/agents/distillator.md` | Compression engine subagent persona |
 | `source/agents/ellis.md` | `.claude/agents/ellis.md` | Commit manager subagent persona |
-| `source/agents/documentation-expert.md` | `.claude/agents/documentation-expert.md` | Documentation subagent persona |
+| `source/agents/agatha.md` | `.claude/agents/agatha.md` | Documentation subagent persona |
 | `source/commands/pm.md` | `.claude/commands/pm.md` | /pm slash command |
 | `source/commands/ux.md` | `.claude/commands/ux.md` | /ux slash command |
 | `source/commands/architect.md` | `.claude/commands/architect.md` | /architect slash command |

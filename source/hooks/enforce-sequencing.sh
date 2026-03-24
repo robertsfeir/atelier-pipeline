@@ -51,7 +51,7 @@ fi
 
 # ─── Gate 2: Agatha after Roz, not during build ─────────────────────
 # "Agatha writes docs after final Roz sweep, not during build."
-if [ "$SUBAGENT_TYPE" = "documentation-expert" ] || [ "$SUBAGENT_TYPE" = "agatha" ]; then
+if [ "$SUBAGENT_TYPE" = "agatha" ]; then
   if [ -f "$STATE_FILE" ]; then
     CURRENT_PHASE=$(grep -i "current.*phase\|phase:" "$STATE_FILE" 2>/dev/null | tail -1 | tr '[:upper:]' '[:lower:]')
     if echo "$CURRENT_PHASE" | grep -qi "build\|implement" 2>/dev/null; then

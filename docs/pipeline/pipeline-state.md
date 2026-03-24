@@ -1,7 +1,7 @@
 # Pipeline State
 
 ## Current Pipeline
-**Feature:** Quality gate hooks (Stop + complexity)
+**Feature:** Rename documentation-expert to agatha + quality gate docs
 **Size:** Small
 **Phase:** Commit
 **Status:** Active
@@ -9,8 +9,9 @@
 ## Phase History
 | Phase | Agent | Status | Notes |
 |-------|-------|--------|-------|
-| Build | Colby | Done | Added quality-gate.sh, check-complexity.sh, updated config and setup |
-| QA | Roz | PASS | Non-code changes — hook scripts and config, verified against requirements |
+| Build | Colby | Done | Renamed files, updated refs in source/hooks/rules/setup |
+| Docs | Agatha | Done | Updated docs refs, added quality gate + complexity docs |
+| QA | Roz | PASS | File rename + doc updates — verified refs updated |
 | Commit | Ellis | Pending | |
 
 ## Brain

@@ -96,7 +96,7 @@ case "$AGENT_TYPE" in
     exit 0
     ;;
 
-  documentation-expert|agatha)
+  agatha)
     path_matches "$FILE_PATH" "docs/" || {
       echo "BLOCKED: Agatha can only write to docs/. Source code and config changes go to Colby. Attempted: $FILE_PATH" >&2
       exit 2
