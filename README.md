@@ -10,6 +10,8 @@ Atelier Pipeline has two core systems:
 
 **Atelier Brain.** A persistent memory layer backed by PostgreSQL and vector embeddings that gives your agents institutional memory across sessions. Without it, every time you close a terminal you lose the architectural decisions that shaped your implementation, the user corrections that steered scope, the rejected alternatives that explain why you didn't go a different way, and the QA lessons that prevent recurring bugs. The brain captures all of this during pipeline runs and surfaces it automatically when agents need context. It includes write-time conflict detection, TTL-based knowledge decay, and background consolidation that synthesizes raw observations into higher-level insights. The pipeline works without the brain — but with it, session 12 of a feature build has the same context as session 1.
 
+For full documentation, see the [User Guide](docs/guide/user-guide.md) and [Technical Reference](docs/guide/technical-reference.md).
+
 ## Getting Started
 
 ### 1. Install the Plugin
