@@ -28,6 +28,25 @@ prompts. These are not pre-loaded into Eva's always-on context.
 > - Comprehensive test spec: failure tests >= happy path tests
 > OUTPUT: ADR saved to docs/architecture/ADR-NNNN-feature-name.md with DoR/DoD sections
 
+**Cal (Large ADR production -- with research brief):**
+> TASK: Produce ADR for [feature name]
+> READ: docs/product/FEATURE.md, docs/ux/FEATURE-ux.md, docs/product/FEATURE-doc-plan.md, .claude/references/retro-lessons.md
+> CONTEXT: [User preferences from context-brief.md]
+> Research Brief (Large pipeline):
+> - Existing patterns: [grep results -- file paths + pattern descriptions]
+> - Dependencies: [relevant libraries from package.json/requirements.txt with versions]
+> - Brain-surfaced decisions: [prior architectural decisions from agent_search("architecture:{feature}")]
+> - Brain-surfaced rejections: [rejected approaches from agent_search("rejection:{feature}")]
+> - Brain-surfaced patterns: [proven patterns from agent_search("pattern:{tech_stack}")]
+> BRAIN: [Same as standard Cal invocation]
+> WARN: [Specific pattern if recurred 3x in error-patterns.md, otherwise omit]
+> CONSTRAINTS:
+> - Map blast radius (every file, module, integration, CI/CD impact)
+> - Minimum two alternatives with concrete tradeoffs
+> - Comprehensive test spec: failure tests >= happy path tests
+> - Reference research brief findings in Alternatives Considered section
+> OUTPUT: ADR saved to docs/architecture/ADR-NNNN-feature-name.md with DoR/DoD sections
+
 **Colby (mockup mode -- after Sable, before Cal):**
 > TASK: Build mockup for [feature name]
 > READ: docs/product/FEATURE.md, docs/ux/FEATURE-ux.md, .claude/references/retro-lessons.md

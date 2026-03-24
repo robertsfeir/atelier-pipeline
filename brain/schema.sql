@@ -15,7 +15,8 @@ CREATE EXTENSION IF NOT EXISTS ltree;
 
 CREATE TYPE thought_type AS ENUM (
   'decision', 'preference', 'lesson', 'rejection',
-  'drift', 'correction', 'insight', 'reflection', 'handoff'
+  'drift', 'correction', 'insight', 'reflection', 'handoff',
+  'pattern', 'seed'
 );
 
 CREATE TYPE source_agent AS ENUM (
@@ -57,7 +58,9 @@ INSERT INTO thought_type_config VALUES
   ('correction',  90,   0.7,  'Fixes applied after drift detection'),
   ('insight',     180,  0.6,  'Mid-task discoveries'),
   ('reflection',  NULL, 0.85, 'Consolidation-generated synthesis'),
-  ('handoff',     NULL, 0.9,  'Structured handoff briefs for team collaboration');
+  ('handoff',     NULL, 0.9,  'Structured handoff briefs for team collaboration'),
+  ('pattern',     365,  0.7,  'Reusable implementation patterns'),
+  ('seed',        NULL, 0.5,  'Out-of-scope ideas with trigger conditions');
 
 -- Brain configuration (singleton — CHECK constraint enforces single row)
 CREATE TABLE brain_config (

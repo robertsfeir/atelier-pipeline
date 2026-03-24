@@ -226,6 +226,7 @@ When brain IS available, these steps are mandatory, not optional.
 **Reads:**
 - Before writing tests: MUST call `agent_search` for recurring QA patterns on this module, known fragile areas, and test strategies that worked or failed.
 - During code QA: MUST call `agent_search` for prior findings on similar code patterns.
+- During code QA: MUST call `agent_search` with query `"pattern:{feature_area}"` filtered to `thought_type: 'pattern'` for known implementation patterns in the area under review. If a prior pattern exists and Colby deviated from it without explanation in her DoD, flag as MUST-FIX (pattern drift without rationale). Deviation with documented rationale is acceptable — the pattern may have evolved.
 
 **Writes:**
 - For recurring QA patterns: MUST call `agent_capture` with `thought_type: 'lesson'`, `source_agent: 'roz'`, `source_phase: 'qa'` — e.g., "auth module consistently fails on timeout edge cases."

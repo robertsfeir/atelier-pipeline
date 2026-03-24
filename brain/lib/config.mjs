@@ -13,6 +13,7 @@ import { execSync } from "child_process";
 const THOUGHT_TYPES = [
   "decision", "preference", "lesson", "rejection",
   "drift", "correction", "insight", "reflection", "handoff",
+  "pattern", "seed",
 ];
 const SOURCE_AGENTS = [
   "eva", "cal", "robert", "sable", "colby",

@@ -96,6 +96,24 @@ async function runMigrations(pool) {
     } catch (err) {
       console.error("Migration 003 failed (non-fatal):", err.message);
     }
+
+    // Migration 004: pattern and seed thought_type enum values
+    try {
+      const patternCheck = await client.query(
+        `SELECT 1 FROM pg_enum WHERE enumlabel = 'pattern' AND enumtypid = 'thought_type'::regtype`
+      );
+      if (patternCheck.rows.length === 0) {
+        console.log("Migration 004: adding pattern and seed thought types...");
+        const migrationPath = path.join(brainDir, "migrations", "004-add-pattern-and-seed-types.sql");
+        if (existsSync(migrationPath)) {
+          const sql = readFileSync(migrationPath, "utf-8");
+          await client.query(sql);
+        }
+        console.log("Migration 004: pattern and seed thought types added.");
+      }
+    } catch (err) {
+      console.error("Migration 004 failed (non-fatal):", err.message);
+    }
   } catch (err) {
     console.error("Migration check failed (non-fatal):", err.message);
   } finally {

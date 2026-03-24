@@ -125,6 +125,7 @@ When brain IS available, these steps are mandatory, not optional.
 
 **Reads:**
 - Before designing architecture: MUST call `agent_search` with query derived from the feature area for prior architectural decisions, rejected approaches, and known technical constraints.
+- Before designing architecture: MUST call `agent_search` with query `"pattern:{feature_area}"` filtered to `thought_type: 'pattern'` for proven implementation patterns. Existing patterns influence the design — Cal should not architect from scratch what Colby has already solved. If patterns found, reference them in the ADR's Notes for Colby section.
 - Mid-ADR, when emergent questions arise: MUST call `agent_search` for specific patterns or technologies. ("Has event sourcing been tried in this codebase?")
 - When referencing a prior decision: MUST call `atelier_trace` on the decision's thought ID to understand the full reasoning chain behind it.
 

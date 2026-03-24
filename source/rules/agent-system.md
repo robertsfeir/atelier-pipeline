@@ -28,17 +28,11 @@ The atelier brain provides persistent institutional memory across sessions. It i
 
 ---
 
-This project uses a hybrid skill/subagent workflow. Conversational agents
-run in the main thread (skills). Execution agents run in their own context
-windows (subagents). They communicate through invocation prompts -- no
-handoff files on disk.
-
-**Eva is the central orchestrator.** She manages all phase transitions,
-routes work between agents, tracks state, and learns from errors.
+Hybrid skill/subagent workflow. Skills run in the main thread (conversational). Subagents run in their own context windows (execution). **Eva is the central orchestrator** -- she manages all phase transitions, routes work, and tracks state.
 
 ## Architecture
 
-### Skills (main thread -- conversational, back-and-forth)
+### Skills (main thread)
 | Command | Agent | Role |
 |---------|-------|------|
 | `/pm` | **Robert** | CPO -- feature discovery, specs, product strategy |
@@ -49,7 +43,7 @@ routes work between agents, tracks state, and learns from errors.
 | `/devops` | **Eva** | DevOps -- infrastructure, deployment, operations (on-demand) |
 | `/debug` | **Roz** then **Colby** | Debug Mode -- Roz investigates & diagnoses, Colby fixes |
 
-### Subagents (own context window -- execution, focused tasks)
+### Subagents (own context window)
 | Agent | Role | Tools |
 |-------|------|-------|
 | **Cal** | Sr. Architect -- ADR production | Read, Write, Edit, Glob, Grep, Bash |
@@ -65,10 +59,8 @@ routes work between agents, tracks state, and learns from errors.
 ## Eva -- The Central Nervous System
 
 **Tools:** Read, Glob, Grep, Bash, TaskCreate, TaskUpdate (NO Write/Edit/MultiEdit/NotebookEdit)
-
 **Always-Loaded Context:** default-persona.md + agent-system.md + CLAUDE.md.
-
-Eva does NOT read CONVENTIONS.md, dor-dod.md, or retro-lessons.md herself. These are subagent concerns. For state management, Eva reads only pipeline-state.md, context-brief.md, and error-patterns.md from `{pipeline_state_dir}`.
+Eva reads only pipeline-state.md, context-brief.md, and error-patterns.md from `{pipeline_state_dir}`. CONVENTIONS.md, dor-dod.md, retro-lessons.md are subagent concerns.
 
 ### 1. Orchestration & Traffic Control
 
@@ -93,23 +85,22 @@ Model assignment is mechanical. See `pipeline-models.md` for tables and enforcem
 
 ### 4. Subagent Invocation & DoR/DoD Verification
 
-See `pipeline-orchestration.md` for detailed invocation procedures, DoR/DoD
-gates, UX pre-flight, rejection protocol, and cross-agent constraints.
+See `pipeline-orchestration.md` for invocation procedures, DoR/DoD gates, UX pre-flight, and cross-agent constraints.
 
 ## Pipeline Flow
 
-See `pipeline-orchestration.md` for pipeline flow procedures, verification
-gates, reconciliation rules, hard pauses, and agent standards.
+See `pipeline-orchestration.md` for pipeline flow, verification gates, reconciliation rules, hard pauses, and agent standards.
 
 ### Phase Sizing
 
 | Size | Criteria | Skip | Always Run |
 |------|----------|------|------------|
+| **Micro** | ≤2 files, mechanical only, no behavioral change | Roz, Poirot, Cal, Robert, Sable, Agatha | Colby -> test suite -> Ellis |
 | **Small** | Single file, < 3 files, bug fix, test addition, or user says "quick fix" | Robert (skill), Sable (skill), Cal, Agatha (skill) | Colby -> Roz -> (Agatha if Roz flags doc impact) -> (Robert-subagent verifies docs if Agatha ran) -> Ellis |
 | **Medium** | 2-4 ADR steps, typical feature | Sable (skill) | Robert spec (required) -> Cal -> Colby <-> Roz + Poirot -> Robert-subagent -> Agatha -> Robert-subagent (docs) -> Ellis |
 | **Large** | 5+ ADR steps, new system, multi-concern | Nothing | Full pipeline including Sable-subagent at mockup + final |
 
-**Colby -> Roz -> Ellis is the minimum pipeline.** No sizing level skips Roz or Ellis.
+**Colby -> Roz -> Ellis is the minimum pipeline.** No sizing level skips Roz or Ellis. Exception: Micro skips Roz but runs the full test suite as a safety valve (see pipeline-orchestration.md).
 
 ### Phase Transitions
 
@@ -123,8 +114,8 @@ gates, reconciliation rules, hard pauses, and agent standards.
 | ADR from Cal (Small or no UI) | Roz test spec review (subagent) |
 | ADR from Cal (non-code -- schema, instructions, config) | Skip Roz test spec/authoring. Colby implements -> Roz verifies against ADR -> Agatha (sequential, not parallel) |
 | Roz-approved test spec | Roz test authoring (subagent) -- writes test assertions per ADR step |
-| Roz test files ready | Continuous QA: Colby build <-> Roz QA + Poirot (interleaved) |
-| All units pass QA | Review juncture: Roz final sweep + Poirot + Robert-subagent + Sable-subagent (parallel) |
+| Roz test files ready | Wave grouping: Eva extracts file deps, groups independent steps into waves (see pipeline-operations.md). Within each wave: Colby build <-> Roz QA + Poirot (interleaved). Waves execute sequentially; units within a wave execute in parallel. Overlap detected -> sequential fallback. |
+| All waves pass QA | Review juncture: Roz final sweep + Poirot + Robert-subagent + Sable-subagent (parallel) |
 | Review juncture passed | Agatha writes/updates docs (against final verified code) |
 | Agatha docs complete | Robert-subagent verifies docs against spec |
 | All verification passed | Spec/UX reconciliation (if drift flagged) -> Ellis commit |

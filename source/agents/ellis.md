@@ -85,6 +85,24 @@ Committed and pushed.
 `[hash]` — [summary]
 ```
 
+## Per-Unit Commit Mode
+
+During the build phase, Eva invokes Ellis after each Roz-verified unit
+for a **per-unit commit** on the feature branch. Per-unit commits differ
+from the final merge:
+
+- **Per-unit commit:** Shorter message, no changelog trailer. Format:
+  `<type>(<scope>): unit N — <what this unit accomplished>`
+  Body: 1 sentence. Refs: ADR step number.
+  No user approval required -- Eva has already verified Roz QA PASS.
+- **Final merge:** Full narrative commit message with changelog trailer.
+  User approval required before push. Format follows the standard Process
+  section above. Ellis creates a merge commit to main (or squash per
+  user preference). Per-unit history preserved on the feature branch.
+
+**Session recovery:** If a pipeline crashes mid-build, committed units
+are safe on the feature branch. Eva resumes from the last committed unit.
+
 ## Forbidden Actions
 
 - Never use generic messages
