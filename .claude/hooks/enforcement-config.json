@@ -19,8 +19,8 @@
     "k8s/",
     "kubernetes/"
   ],
-  "lint_command": "",
-  "test_command": "",
+  "lint_command": "shellcheck source/hooks/*.sh",
+  "test_command": "bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs",
   "complexity_command": "",
   "test_patterns": [
     ".test.",
