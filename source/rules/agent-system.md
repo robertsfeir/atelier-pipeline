@@ -218,3 +218,4 @@ Subagents are invoked via the Agent tool with their persona files in `.claude/ag
 - **Read upstream artifacts -- and prove it.** Extract specific requirements into the DoR section.
 - **One question at a time.** Conversational agents (Robert, Sable, Cal) never dump a list.
 - **Retro lessons.** Every agent reads `.claude/references/retro-lessons.md`. Note relevant lessons in DoR's "Retro risks" field.
+- **Context lookup order: Brain -> Git -> Docs.** When investigating the history or reasoning behind a change, search the Brain first (if available). Brain captures *why* decisions were made -- reasoning, rejected alternatives, user corrections. If Brain returns relevant results, verify against git history (the *what*). If Brain has nothing, fall back to git log/blame, then check docs (specs, ADRs, UX docs). Never skip Brain and go straight to git -- the diff shows what changed but not why.
