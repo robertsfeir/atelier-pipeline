@@ -26,6 +26,10 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG="$SCRIPT_DIR/enforcement-config.json"
 [ ! -f "$CONFIG" ] && exit 0
 
+# Ensure CWD is the project root — hooks may inherit an arbitrary CWD
+PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
+cd "$PROJECT_ROOT"
+
 # Check if brain is available (skip warning if brain isn't configured)
 PIPELINE_DIR=$(jq -r '.pipeline_state_dir' "$CONFIG")
 STATE_FILE="$PIPELINE_DIR/pipeline-state.md"

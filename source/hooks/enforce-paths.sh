@@ -30,13 +30,17 @@ esac
 # Need a file path to check
 [ -z "$FILE_PATH" ] && exit 0
 
-# Normalize absolute paths to project-relative
-FILE_PATH="${FILE_PATH#$PWD/}"
-
 # Load config — allow if config missing (not yet set up)
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG="$SCRIPT_DIR/enforcement-config.json"
 [ ! -f "$CONFIG" ] && exit 0
+
+# Ensure CWD is the project root — hooks may inherit an arbitrary CWD
+PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
+cd "$PROJECT_ROOT"
+
+# Normalize absolute paths to project-relative
+FILE_PATH="${FILE_PATH#"$PWD"/}"
 
 PIPELINE_DIR=$(jq -r '.pipeline_state_dir' "$CONFIG")
 ARCH_DIR=$(jq -r '.architecture_dir' "$CONFIG")

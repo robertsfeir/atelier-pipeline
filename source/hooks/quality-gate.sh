@@ -16,6 +16,10 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG="$SCRIPT_DIR/enforcement-config.json"
 [ ! -f "$CONFIG" ] && exit 0
 
+# Ensure CWD is the project root — hooks may inherit an arbitrary CWD
+PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
+cd "$PROJECT_ROOT"
+
 if ! command -v jq &>/dev/null; then
   echo "ERROR: jq is required for atelier-pipeline hooks. Install: brew install jq" >&2
   exit 2
