@@ -61,6 +61,26 @@ async function runMigrations(pool) {
       console.error("Migration 001 failed (non-fatal):", err.message);
     }
 
+    // Migration 001b: Ensure match_thoughts_scored returns captured_by
+    try {
+      const funcCheck = await client.query(`
+        SELECT pg_get_function_result(oid) AS result_type
+        FROM pg_proc WHERE proname = 'match_thoughts_scored'
+      `);
+      const resultType = funcCheck.rows[0]?.result_type || '';
+      if (!resultType.includes('captured_by')) {
+        console.log("Migration 001b: updating match_thoughts_scored to include captured_by...");
+        const migrationPath = path.join(brainDir, "migrations", "001-add-captured-by.sql");
+        if (existsSync(migrationPath)) {
+          const sql = readFileSync(migrationPath, "utf-8");
+          await client.query(sql);
+        }
+        console.log("Migration 001b: function updated.");
+      }
+    } catch (err) {
+      console.error("Migration 001b failed (non-fatal):", err.message);
+    }
+
     // Migration 002: handoff enum values
     try {
       const handoffCheck = await client.query(
