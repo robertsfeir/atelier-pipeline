@@ -9,13 +9,15 @@
   docs/CONVENTIONS.md    = path to conventions doc (default: docs/CONVENTIONS.md)
   CHANGELOG.md      = path to changelog (default: CHANGELOG.md)
   echo "no test suite configured"        = command to run full test suite (e.g., npx vitest run, npm test, pytest)
-  shellcheck source/hooks/*.sh        = command to run linter (e.g., npm run lint, ruff check)
+  echo "no linter configured"        = command to run linter (e.g., npm run lint, ruff check)
   echo "no typecheck configured"   = command to run type checker (e.g., npm run typecheck, mypy .)
   echo "no fast tests configured"   = command for rapid inner-loop tests (e.g., npm run test:fast)
   source/          = project source directory (e.g., src/, lib/, app/)
   source/        = feature directory pattern (e.g., src/features/, app/domains/)
   /mock/ = route prefix for UAT mockups (default: /mock/)
 -->
+
+<section id="brain-config">
 
 ## Brain Configuration
 
@@ -27,9 +29,13 @@ The atelier brain provides persistent institutional memory across sessions. It i
 - **Brain writes are Eva's responsibility.** When an agent returns, Eva inspects the output for capturable knowledge (decisions, patterns, lessons, insights) and calls `agent_capture`. Agents surface knowledge in their `<output>` section; Eva captures it.
 - **Tools:** `agent_capture`, `agent_search`, `atelier_browse`, `atelier_stats`, `atelier_relation`, `atelier_trace` — separate from personal mybrain tools.
 
+</section>
+
 ---
 
 Hybrid skill/subagent workflow. Skills run in the main thread (conversational). Subagents run in their own context windows (execution). **Eva is the central orchestrator** -- she manages all phase transitions, routes work, and tracks state.
+
+<section id="architecture">
 
 ## Architecture
 
@@ -56,6 +62,10 @@ Hybrid skill/subagent workflow. Skills run in the main thread (conversational). 
 | **Poirot** | Blind code investigator -- diff-only review | Read, Glob, Grep, Bash (read-only) |
 | **Distillator** | Lossless document compression engine | Read, Glob, Grep, Bash (read-only) |
 | **Ellis** | Commit & Changelog | Read, Write, Edit, Glob, Grep, Bash |
+
+</section>
+
+<section id="eva-core">
 
 ## Eva -- The Central Nervous System
 
@@ -87,6 +97,10 @@ Model assignment is mechanical. See `pipeline-models.md` for tables and enforcem
 ### 4. Subagent Invocation & DoR/DoD Verification
 
 See `pipeline-orchestration.md` for invocation procedures, DoR/DoD gates, UX pre-flight, and cross-agent constraints.
+
+</section>
+
+<section id="pipeline-flow">
 
 ## Pipeline Flow
 
@@ -122,6 +136,10 @@ See `pipeline-orchestration.md` for pipeline flow, verification gates, reconcili
 | All verification passed | Spec/UX reconciliation (if drift flagged) -> Ellis commit |
 
 See `.claude/references/pipeline-operations.md` for continuous QA details, feedback loops, batch mode, and worktree rules.
+
+</section>
+
+<routing id="auto-routing">
 
 ## AUTO-ROUTING RULES
 
@@ -164,6 +182,10 @@ Before routing, check for existing artifacts:
 - **Ambiguous** -> ask ONE clarifying question, then route
 - Always mention that slash commands are available as manual overrides
 
+</routing>
+
+<protocol id="invocation-template">
+
 ## Subagent Invocation
 
 ### Standardized Template
@@ -202,7 +224,11 @@ and `<output>` are last.
 
 See `.claude/references/invocation-templates.md` for detailed examples per agent.
 
+</protocol>
+
 ---
+
+<gate id="no-skill-tool">
 
 ## CRITICAL: Custom Commands Are NOT Skills
 
@@ -232,6 +258,10 @@ Subagents are invoked via the Agent tool with their persona files in `.claude/ag
 | Distillator | `.claude/agents/distillator.md` |
 | Ellis | `.claude/agents/ellis.md` |
 
+</gate>
+
+<section id="shared-behaviors">
+
 ## Shared Agent Behaviors (apply to ALL agents)
 
 Agent persona files use XML tags for structure: `<identity>`, `<required-actions>`, `<workflow>`, `<examples>`, `<tools>`, `<constraints>`, `<output>`. See `.claude/references/xml-prompt-schema.md` for the full tag vocabulary.
@@ -242,3 +272,5 @@ Agent persona files use XML tags for structure: `<identity>`, `<required-actions
 - **Retro lessons.** Every agent reads `.claude/references/retro-lessons.md`. Note relevant lessons in DoR's "Retro risks" field.
 - **Brain context consumption.** Eva pre-fetches brain context and injects it via the `<brain-context>` tag in invocations. Agents review injected thoughts for relevant prior decisions, patterns, and lessons -- they do not call `agent_search` themselves. Eva captures knowledge from agent output after they return.
 - **Context lookup order: Brain -> Git -> Docs.** When investigating the history or reasoning behind a change, check injected brain context first (if provided). Brain captures *why* decisions were made -- reasoning, rejected alternatives, user corrections. Verify against git history (the *what*). If no brain context was provided, fall back to git log/blame, then check docs (specs, ADRs, UX docs).
+
+</section>

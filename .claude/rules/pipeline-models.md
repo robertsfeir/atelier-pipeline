@@ -16,6 +16,8 @@ tag. This makes model assignment visible to the agent itself and to anyone
 reading the file. The tables below remain the authoritative source for Eva's
 model selection at invocation time.
 
+<model-table id="fixed-models">
+
 ## Fixed-Model Agents (always the same, regardless of sizing)
 
 | Agent | Model | Rationale |
@@ -27,6 +29,10 @@ model selection at invocation time.
 | **Distillator** | Haiku | Mechanical compression with structured validation. No judgment required. |
 | **Ellis** | Sonnet | Reads diff, writes commit message, runs git. Zero ambiguity in the task. |
 
+</model-table>
+
+<model-table id="size-dependent">
+
 ## Size-Dependent Agents
 
 | Agent | Micro | Small | Medium | Large |
@@ -36,12 +42,20 @@ model selection at invocation time.
 | **Agatha** | _(skipped)_ | _(per doc type, Roz doc-impact trigger)_ | _(per doc type)_ | _(per doc type)_ |
 | **Ellis** | Sonnet | Sonnet | Sonnet | Sonnet |
 
+</model-table>
+
+<model-table id="agatha-model">
+
 ## Agatha's Model (doc-type-dependent, not size-dependent)
 
 | Doc type | Model | Examples |
 |----------|-------|----------|
 | Reference docs | Haiku | API docs, config references, setup guides, changelogs |
 | Conceptual docs | Sonnet | Architecture guides, onboarding, tutorials |
+
+</model-table>
+
+<model-table id="complexity-classifier">
 
 ## Task-Level Complexity Classifier (Colby Only)
 
@@ -73,6 +87,10 @@ all-Opus for Colby, so the classifier is skipped.
   `source_phase: 'build'`, content: "Colby model: [model] on
   [step description]. Roz verdict: [PASS/FAIL]. Issues: [count]."
 
+</model-table>
+
+<gate id="model-enforcement">
+
 ## Enforcement Rules
 
 1. **No discretion.** Eva does not choose models. The sizing + agent
@@ -94,3 +112,5 @@ all-Opus for Colby, so the classifier is skipped.
    mid-flight (e.g., Small escalates to Medium after discovering scope),
    all subsequent invocations use the new sizing's model assignments.
    Already-completed invocations are not re-run.
+
+</gate>
