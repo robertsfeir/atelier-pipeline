@@ -2,6 +2,38 @@
 
 Eva reads this file at pipeline start for detailed operational procedures.
 
+<section id="invocation-format">
+
+## Invocation Format
+
+All subagent invocations use XML tags. Eva constructs prompts with `<task>`,
+`<brain-context>`, `<context>`, `<hypotheses>`, `<read>`, `<warn>`,
+`<constraints>`, and `<output>` tags. See `.claude/references/xml-prompt-schema.md`
+and `.claude/references/invocation-templates.md` for the full tag vocabulary
+and per-agent examples.
+
+</section>
+
+<protocol id="brain-prefetch">
+
+## Brain Context Prefetch
+
+Eva is responsible for all brain interactions. Before invoking any agent, Eva:
+
+1. Calls `agent_search` with a query derived from the feature area
+2. Injects results into the `<brain-context>` tag in the invocation prompt
+3. Agents consume injected brain context as data -- they do not call
+   `agent_search` themselves
+
+After an agent returns, Eva inspects the output for capturable knowledge
+(decisions, patterns, lessons, insights noted in the agent's DoD) and calls
+`agent_capture`. Agents surface knowledge in their `<output>` section; Eva
+captures it.
+
+</protocol>
+
+<operations id="continuous-qa">
+
 ## Continuous QA (Interleaved Roz + Colby)
 
 Cal's ADR steps become work units. Roz writes tests first, Colby implements to pass them.
@@ -41,6 +73,10 @@ Cal's ADR steps become work units. Roz writes tests first, Colby implements to p
     ship as one merge. Per-unit history is preserved on the feature branch
     for `git bisect`.
 
+</operations>
+
+<matrix id="triage-consensus">
+
 ## Triage Consensus Matrix
 
 At every review juncture, Eva consults this matrix to determine the action.
@@ -72,6 +108,10 @@ into the upstream agent's next invocation. Example: persistent Roz-PASS +
 Poirot-flags-issue on the same module -> WARN to Roz: "Poirot has caught
 issues in this module that you've missed 3 times. Extra scrutiny warranted."
 
+</matrix>
+
+<section id="feedback-loops">
+
 ## Feedback Loops
 
 | Trigger | Route |
@@ -88,6 +128,10 @@ issues in this module that you've missed 3 times. Extra scrutiny warranted."
 | CI/CD issue | Colby (config) or Cal subagent (architectural) |
 | User reports a bug | Roz (investigate + diagnose) -> Colby (fix) -> Roz (verify) |
 
+</section>
+
+<section id="cross-agent-consultation">
+
 ## Cross-Agent Consultation
 
 If any agent raises a concern about another agent's domain, Eva asks the
@@ -95,6 +139,10 @@ user if they want to loop that agent back in:
 - Cal questions Robert's spec -> "Want me to check with Robert on this?"
 - Sable's design implies arch changes -> "Cal should weigh in. Loop him in?"
 - Roz finds a spec gap -> "This traces back to the spec. Want Robert to clarify?"
+
+</section>
+
+<operations id="batch-mode">
 
 ## Batch Mode (Multiple Issues)
 
@@ -105,6 +153,10 @@ Default execution model is **sequential with full pipeline per issue.**
 3. **Parallelization requires explicit user approval** and zero file overlap confirmation.
 4. **No silent reordering.** Eva announces dependency-driven reorders.
 
+</operations>
+
+<operations id="worktree-rules">
+
 ## Worktree Integration Rules
 
 Changes from isolated worktrees must be integrated using git operations -- **never naive file copying.**
@@ -113,6 +165,10 @@ Changes from isolated worktrees must be integrated using git operations -- **nev
 2. **Resolve conflicts before advancing.** Route to Colby for resolution, run Roz before advancing.
 3. **One worktree merges at a time.** Run the test suite between each merge.
 4. **Worktree agents do not see each other's changes.** Eva is responsible for the integration.
+
+</operations>
+
+<operations id="wave-execution">
 
 ## Wave Execution (Parallel Build Units)
 
@@ -153,6 +209,10 @@ parallel; waves execute sequentially.
   sequential is the fallback. Eva announces wave grouping to the user
   before execution begins.
 
+</operations>
+
+<section id="context-hygiene">
+
 ## Context Hygiene
 
 ### Compaction Strategy
@@ -173,3 +233,5 @@ parallel; waves execute sequentially.
 | retro-lessons.md | Never | Always (included in every READ) |
 | Feature spec | Never | Only if directly relevant |
 | ADR | Never | Only the relevant step |
+
+</section>

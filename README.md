@@ -1,5 +1,9 @@
 # Atelier Pipeline
 
+<p align="center">
+  <img src="docs/assets/logo.png" alt="Atelier Pipeline" width="400">
+</p>
+
 A Claude Code plugin that provides multi-agent orchestration with quality gates, continuous QA, and persistent institutional memory across sessions.
 
 ## What It Does
@@ -117,6 +121,10 @@ The plugin provides four skills:
 
 ## The Pipeline
 
+Eva sizes every request and runs the right amount of process. A large feature gets the full pipeline; a bug fix gets Colby, Roz, and Ellis.
+
+### Full pipeline (Large)
+
 ```
                        Idea
                         |
@@ -149,16 +157,34 @@ The plugin provides four skills:
               Ellis (commit + changelog)               --- one atomic commit
 ```
 
-**Phase sizing keeps it pragmatic:**
+### Phase sizing
 
-| Size | Criteria | What Runs |
-|------|----------|-----------|
-| **Micro** | ≤2 files, mechanical, no behavioral change | Colby → test suite → Ellis |
-| **Small** | Bug fix, single file, < 3 files | Colby -> Roz -> (Agatha if doc impact) -> Ellis |
-| **Medium** | 2-4 ADR steps, typical feature | Robert spec -> Cal -> Colby <-> Roz + Poirot -> Robert review -> Agatha -> Ellis |
-| **Large** | 5+ ADR steps, new system | Full pipeline including Sable mockup + UX acceptance |
+Not every feature runs every phase. Eva adjusts:
 
-v2.3 adds wave-based parallel execution, per-unit commits, Robert assumptions-mode for brownfield features, triage consensus matrix, task-level model routing, and Brain pattern/seed capture. See ADR-0004 for details.
+| Size | When | What runs |
+|------|------|-----------|
+| **Micro** | Rename, typo, import fix (≤2 files, mechanical only) | Colby -> test suite -> Ellis |
+| **Small** | Bug fix, <3 files, "quick fix" | Colby -> Roz -> Ellis (+ Agatha if doc impact) |
+| **Medium** | 2-4 ADR steps, typical feature | Robert -> Cal -> Colby/Roz interleaved -> review juncture -> Agatha -> Ellis |
+| **Large** | 5+ ADR steps, new system | Full pipeline above |
+
+### What's new in v2.4
+
+- **XML tag migration** (ADR-0006) — all agent-facing files use semantic XML tags for structural clarity per Anthropic's documentation
+- **Eva gate 11: one phase per turn** — Medium/Large pipelines advance one phase per response, preventing silent phase bleed
+- **Eva gate 12: loop-breaker** — 3 consecutive failures on the same task halt the pipeline with a Stuck Pipeline Analysis
+- **Delegation contracts** — Eva announces READ files + CONSTRAINTS before every agent invocation
+- **State diffing** — every pipeline-state.md update includes a "Changes since last state" section
+- **Context cleanup** — Eva suggests fresh sessions after 10+ agent handoffs to manage token bloat
+- **Cal anti-goals** — ADR DoR must list 3 things the design will NOT address
+- **Cal SPOF analysis** — identify the single point of failure and its graceful degradation path
+- **Cal migration/rollback** — DB/shared state changes require a migration plan and single-step rollback
+- **Cal telemetry** — every ADR step specifies what log/metric proves it succeeded in production
+- **Colby retrieval-led reasoning** — local project state takes priority over training data
+- **Colby failing test first** — verify tests fail correctly before implementing
+- **Colby minimal implementation** — no helpers or abstractions beyond what the ADR requires
+
+v2.3 added wave-based parallel execution, per-unit commits, Robert assumptions-mode, triage consensus matrix, task-level model routing, and Brain pattern/seed capture. See ADR-0004 and ADR-0006 for details.
 
 ## Agents
 
@@ -268,6 +294,8 @@ your-project/
 - **Four-layer investigation.** Debug flows check Application, Transport, Infrastructure, Environment. Two rejected hypotheses at one layer forces escalation.
 - **Living artifacts.** Specs and UX docs are updated at pipeline end. ADRs are immutable records.
 - **Retro lessons.** Error patterns recurring 3+ times get injected as warnings into future agent prompts.
+- **One phase per turn.** On Medium and Large pipelines, Eva performs one phase transition per response. No silent chaining through multiple phases.
+- **Loop-breaker.** Three consecutive failures on the same task halt the pipeline. Eva presents a Stuck Pipeline Analysis instead of retrying indefinitely.
 - **Mechanical enforcement.** PreToolUse hooks block agents from writing outside their designated paths, enforce pipeline sequencing (no commits without QA), and prevent Eva from running git operations directly. Behavioral guidance tells agents what to do; hooks ensure they can't do what they shouldn't.
 
 ## Customization

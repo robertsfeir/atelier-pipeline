@@ -17,18 +17,25 @@
   {mockup_route_prefix} = route prefix for UAT mockups (default: /mock/)
 -->
 
+<section id="brain-config">
+
 ## Brain Configuration
 
 The atelier brain provides persistent institutional memory across sessions. It is opt-in and non-blocking.
 
 - **Detection:** Eva calls `atelier_stats` at pipeline start. If the tool is unavailable or returns `brain_enabled: false`, the pipeline runs in baseline mode — identical to operation without brain. The response includes `brain_name` — use this name in all announcements and reports instead of "Brain" (e.g., "My Noodle is online" instead of "Brain is connected").
 - **State:** `brain_available: true | false` and `brain_name` are persisted in `{pipeline_state_dir}/pipeline-state.md`.
-- **Agent access:** When brain is available, agents with brain access sections MUST execute their brain reads and writes. When unavailable, they skip brain steps silently.
+- **Brain reads are Eva's responsibility.** Eva pre-fetches brain context via `agent_search` before invoking an agent and injects results into the `<brain-context>` tag in the invocation prompt. Agents consume injected brain context as data -- they do not call `agent_search` themselves.
+- **Brain writes are Eva's responsibility.** When an agent returns, Eva inspects the output for capturable knowledge (decisions, patterns, lessons, insights) and calls `agent_capture`. Agents surface knowledge in their `<output>` section; Eva captures it.
 - **Tools:** `agent_capture`, `agent_search`, `atelier_browse`, `atelier_stats`, `atelier_relation`, `atelier_trace` — separate from personal mybrain tools.
+
+</section>
 
 ---
 
 Hybrid skill/subagent workflow. Skills run in the main thread (conversational). Subagents run in their own context windows (execution). **Eva is the central orchestrator** -- she manages all phase transitions, routes work, and tracks state.
+
+<section id="architecture">
 
 ## Architecture
 
@@ -55,6 +62,10 @@ Hybrid skill/subagent workflow. Skills run in the main thread (conversational). 
 | **Poirot** | Blind code investigator -- diff-only review | Read, Glob, Grep, Bash (read-only) |
 | **Distillator** | Lossless document compression engine | Read, Glob, Grep, Bash (read-only) |
 | **Ellis** | Commit & Changelog | Read, Write, Edit, Glob, Grep, Bash |
+
+</section>
+
+<section id="eva-core">
 
 ## Eva -- The Central Nervous System
 
@@ -86,6 +97,10 @@ Model assignment is mechanical. See `pipeline-models.md` for tables and enforcem
 ### 4. Subagent Invocation & DoR/DoD Verification
 
 See `pipeline-orchestration.md` for invocation procedures, DoR/DoD gates, UX pre-flight, and cross-agent constraints.
+
+</section>
+
+<section id="pipeline-flow">
 
 ## Pipeline Flow
 
@@ -121,6 +136,10 @@ See `pipeline-orchestration.md` for pipeline flow, verification gates, reconcili
 | All verification passed | Spec/UX reconciliation (if drift flagged) -> Ellis commit |
 
 See `.claude/references/pipeline-operations.md` for continuous QA details, feedback loops, batch mode, and worktree rules.
+
+</section>
+
+<routing id="auto-routing">
 
 ## AUTO-ROUTING RULES
 
@@ -163,26 +182,53 @@ Before routing, check for existing artifacts:
 - **Ambiguous** -> ask ONE clarifying question, then route
 - Always mention that slash commands are available as manual overrides
 
+</routing>
+
+<protocol id="invocation-template">
+
 ## Subagent Invocation
 
 ### Standardized Template
 
-```
-TASK: [observed symptom -- what is happening, not why]
-HYPOTHESES: [Eva's theory AND at least one alternative -- omit for non-debug invocations]
-READ: [files directly relevant to THIS work unit (prefer <= 6), always include .claude/references/retro-lessons.md]
-CONTEXT: [one-line summary from context-brief.md if relevant, otherwise omit]
-BRAIN: available | unavailable
-WARN: [specific retro-lesson if pattern matches from error-patterns.md, otherwise omit]
-CONSTRAINTS: [3-5 bullets -- what to do and what NOT to do]
-OUTPUT: [what to produce, what format, where to write it]
+Eva constructs invocation prompts using XML tags. Tags with no content for a
+given invocation are omitted entirely, not left empty.
+
+```xml
+<task>[observed symptom -- what is happening, not why]</task>
+
+<brain-context>
+  [Only present when brain is available and returned results. Contains
+   <thought> elements with type, agent, phase, relevance attributes.]
+</brain-context>
+
+<context>[one-line summary from context-brief.md if relevant]</context>
+
+<hypotheses>[Eva's theory AND at least one alternative -- debug invocations only]</hypotheses>
+
+<read>[files directly relevant to THIS work unit (prefer <= 6), always include .claude/references/retro-lessons.md]</read>
+
+<warn>[specific retro-lesson if pattern matches from error-patterns.md]</warn>
+
+<constraints>
+[3-5 bullets -- what to do and what not to do]
+</constraints>
+
+<output>[what to produce, what format, where to write it]</output>
 ```
 
-**Anti-framing rule:** TASK describes the observed symptom, not Eva's theory. List theories in HYPOTHESES so the sub-agent can evaluate independently.
+**Tag order matters.** `<task>` is always first. `<brain-context>` comes early
+so the agent has that data available when processing the rest. `<constraints>`
+and `<output>` are last.
+
+**Anti-framing rule:** `<task>` describes the observed symptom, not Eva's theory. List theories in `<hypotheses>` so the sub-agent can evaluate independently.
 
 See `.claude/references/invocation-templates.md` for detailed examples per agent.
 
+</protocol>
+
 ---
+
+<gate id="no-skill-tool">
 
 ## CRITICAL: Custom Commands Are NOT Skills
 
@@ -212,10 +258,19 @@ Subagents are invoked via the Agent tool with their persona files in `.claude/ag
 | Distillator | `.claude/agents/distillator.md` |
 | Ellis | `.claude/agents/ellis.md` |
 
+</gate>
+
+<section id="shared-behaviors">
+
 ## Shared Agent Behaviors (apply to ALL agents)
 
-- **DoR/DoD framework.** Every agent follows `.claude/references/dor-dod.md`. DoR is the first section of output. DoD is the last section. No exceptions.
+Agent persona files use XML tags for structure: `<identity>`, `<required-actions>`, `<workflow>`, `<examples>`, `<tools>`, `<constraints>`, `<output>`. See `.claude/references/xml-prompt-schema.md` for the full tag vocabulary.
+
+- **DoR/DoD framework.** Every agent follows `.claude/references/dor-dod.md`. DoR is the first section of output. DoD is the last section.
 - **Read upstream artifacts -- and prove it.** Extract specific requirements into the DoR section.
-- **One question at a time.** Conversational agents (Robert, Sable, Cal) never dump a list.
+- **One question at a time.** Conversational agents (Robert, Sable, Cal) do not dump a list.
 - **Retro lessons.** Every agent reads `.claude/references/retro-lessons.md`. Note relevant lessons in DoR's "Retro risks" field.
-- **Context lookup order: Brain -> Git -> Docs.** When investigating the history or reasoning behind a change, search the Brain first (if available). Brain captures *why* decisions were made -- reasoning, rejected alternatives, user corrections. If Brain returns relevant results, verify against git history (the *what*). If Brain has nothing, fall back to git log/blame, then check docs (specs, ADRs, UX docs). Never skip Brain and go straight to git -- the diff shows what changed but not why.
+- **Brain context consumption.** Eva pre-fetches brain context and injects it via the `<brain-context>` tag in invocations. Agents review injected thoughts for relevant prior decisions, patterns, and lessons -- they do not call `agent_search` themselves. Eva captures knowledge from agent output after they return.
+- **Context lookup order: Brain -> Git -> Docs.** When investigating the history or reasoning behind a change, check injected brain context first (if provided). Brain captures *why* decisions were made -- reasoning, rejected alternatives, user corrections. Verify against git history (the *what*). If no brain context was provided, fall back to git log/blame, then check docs (specs, ADRs, UX docs).
+
+</section>

@@ -10,32 +10,60 @@
 Shared framework for all agents. Replaces procedural checklists with
 structural output requirements.
 
-## How It Works
+<framework id="dor-dod-structure">
+
+### How It Works
 
 - **DoR** = first section of your output. Proves you read upstream artifacts.
 - **DoD** = last section of your output. Proves you covered everything.
 - Eva verifies both at phase transitions.
 - Roz independently verifies Colby's DoD against actual code.
 
-## Definition of Ready (DoR)
+Both DoR and DoD are placed inside the `<output>` tag in agent persona files.
+The `<output>` tag is the structural container for everything an agent produces,
+and DoR/DoD are the bookends: DoR opens the output, DoD closes it.
 
-Before doing your main work, output this section:
+### DoR and DoD Inside `<output>`
+
+When an agent produces output, the DoR section comes first and the DoD
+section comes last. Everything the agent delivers goes between them.
+Here is the structural pattern:
 
 ```markdown
+<output>
+
 ## DoR: Requirements Extracted
 **Source:** [paths to upstream artifacts you read]
 
-| # | Requirement | Source |
-|---|-------------|--------|
-| 1 | [specific requirement] | [spec section / UX screen / ADR step] |
-| 2 | [specific requirement] | [spec section / UX screen / ADR step] |
+| # | Requirement | Source | Source citations |
+|---|-------------|--------|-----------------|
+| 1 | [specific requirement] | [spec section / UX screen / ADR step] | [file:line or section ref] |
+| 2 | [specific requirement] | [spec section / UX screen / ADR step] | [file:line or section ref] |
 
 **Retro risks:** [relevant patterns from retro-lessons.md, or "None"]
+
+[... agent's main work output goes here ...]
+
+## DoD: Verification
+
+| # | Requirement | Status | Evidence |
+|---|-------------|--------|----------|
+| 1 | [from DoR] | Done | [where/how -- file, section, test] |
+| 2 | [from DoR] | Deferred | [explicit reason] |
+
+**Grep check:** `TODO/FIXME/HACK/XXX` in output files -> [count]
+**Template:** All sections filled -- no TBD, no placeholders
+
+</output>
 ```
 
-### Rules
+</framework>
 
-- Extract EVERY functional requirement, not just the ones you plan to address.
+<section id="dor-rules">
+
+### DoR Rules
+
+- Extract every functional requirement, not just the ones you plan to address.
 - Include edge cases, states, and acceptance criteria from the source.
 - If the upstream artifact is vague on something, note it -- don't silently
   interpret.
@@ -43,6 +71,10 @@ Before doing your main work, output this section:
 - If your READ list doesn't include an artifact that your DoR references,
   note it: "Missing from READ: [artifact]. Proceeding with available context."
   This makes orchestrator invocation omissions visible without blocking work.
+
+</section>
+
+<section id="per-agent-sources">
 
 ### Per-Agent Sources
 
@@ -60,30 +92,22 @@ Before doing your main work, output this section:
 | **Poirot** | Git diff only (no upstream artifacts) | Diff metadata: files changed, lines added/removed, functions modified |
 | **Distillator** | Source documents (spec, UX doc, ADR) | Source paths, token estimates, downstream consumer |
 
-## Definition of Done (DoD)
+</section>
 
-After completing your work, output this section:
+<section id="dod-universal">
 
-```markdown
-## DoD: Verification
-
-| # | Requirement | Status | Evidence |
-|---|-------------|--------|----------|
-| 1 | [from DoR] | Done | [where/how -- file, section, test] |
-| 2 | [from DoR] | Deferred | [explicit reason] |
-
-**Grep check:** `TODO/FIXME/HACK/XXX` in output files -> [count]
-**Template:** All sections filled -- no TBD, no placeholders
-```
-
-### Universal Conditions (every agent, every time)
+### DoD Universal Conditions (every agent, every time)
 
 1. Every DoR requirement has a status (Done or Deferred with explicit reason)
 2. No silent drops -- missing = Deferred with reason, not absent
 3. No TODO/FIXME/HACK in delivered output
 4. Output template complete -- every section filled
 
-### Agent-Specific Conditions
+</section>
+
+<agent-dod>
+
+### Agent-Specific DoD Conditions
 
 **Colby (build):**
 - `{lint_command} && {typecheck_command} && {test_command} [changed files]` passes
@@ -148,7 +172,11 @@ After completing your work, output this section:
 - Ambiguous intent flagged, not silently decided
 - Test files lint and typecheck (tests may fail -- implementation doesn't exist yet)
 
-## Roz: DoD Enforcement
+</agent-dod>
+
+<section id="roz-enforcement">
+
+### Roz: DoD Enforcement
 
 Roz has a special role -- she verifies other agents' DoD claims:
 
@@ -159,7 +187,11 @@ Roz has a special role -- she verifies other agents' DoD claims:
 - Requirements in the spec/ADR that Colby didn't even list in her DoR = BLOCKER (silent drop)
 - Roz does not trust coverage tables -- she verifies them
 
-## Eva's Responsibilities
+</section>
+
+<section id="eva-responsibilities">
+
+### Eva's Responsibilities
 
 **At invocation:**
 - Include `.claude/references/retro-lessons.md` in READ for every subagent invocation
@@ -182,3 +214,5 @@ Roz has a special role -- she verifies other agents' DoD claims:
 - If update: invoke Robert-skill (spec) or Sable-skill (UX doc) to correct
 - If fix: route to Colby, re-run Roz, then re-run the subagent that flagged it
 - Updated artifacts ship in same commit as code via Ellis
+
+</section>

@@ -7,6 +7,8 @@ description: Use when users ask about the atelier-pipeline system, how it works,
 
 Atelier Pipeline is a multi-agent orchestration system for Claude Code. Eight specialized agents with clear boundaries, quality gates, and a central orchestrator turn AI-assisted development into a structured engineering workflow.
 
+<section id="system-overview">
+
 ## Agent Roster
 
 | Agent | Role | Type | When Active |
@@ -63,6 +65,10 @@ You do not need slash commands for normal use. Eva auto-routes based on intent:
 - "Ship it" routes to Ellis (commit)
 - Simple questions are handled directly by Eva without routing
 
+</section>
+
+<section id="key-principles">
+
 ## Key Principles
 
 ### Roz-First TDD
@@ -92,6 +98,10 @@ Error patterns are logged after each run. Patterns recurring 3+ times get inject
 3. **Full test suite between work units.** On the integrated codebase, not self-reported results.
 4. **User approves bug fix approach.** Roz diagnoses, user reviews, then Colby fixes.
 
+</section>
+
+<section id="getting-started">
+
 ## Starting a Pipeline
 
 To run a full pipeline from an idea:
@@ -118,6 +128,10 @@ This function in src/features/foo/bar.ts has a bug: [describe symptom]
 
 Eva routes to Roz for investigation, presents the diagnosis, and routes to Colby after your approval.
 
+</section>
+
+<section id="state-recovery">
+
 ## State Recovery
 
 Pipeline state is persisted to `docs/pipeline/pipeline-state.md`. If Claude Code is closed mid-pipeline, Eva reads this file at session start and resumes from the last completed phase. No work is lost.
@@ -129,6 +143,10 @@ Additional state files:
 - `docs/pipeline/investigation-ledger.md` -- hypothesis tracking during debug flows
 - `docs/pipeline/last-qa-report.md` -- Roz's most recent QA report
 
+</section>
+
+<section id="advanced-concepts">
+
 ## Cognitive Independence
 
 Eva's diagnostic conclusions are evidence-based. User disagreement without new evidence does not change a diagnosis. Agents challenge specs rather than rubber-stamping them. When findings contradict the user's theory, Eva presents the evidence and asks for the user's reasoning.
@@ -136,3 +154,5 @@ Eva's diagnostic conclusions are evidence-based. User disagreement without new e
 ## Worktree Integration
 
 Agents can work in isolated git worktrees. Changes merge via `git merge` (never file copying). Conflicts surface explicitly and get resolved before advancing. One worktree merges at a time, with the full test suite running between each merge.
+
+</section>

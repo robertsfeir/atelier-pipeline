@@ -1,9 +1,12 @@
 #!/bin/bash
-# Phase 3: Brain usage visibility
+# Phase 3: Brain context consumption visibility
 # PostToolUse hook on Agent
 #
 # After a subagent completes, checks if the agent has brain access
-# requirements and whether brain tools appear in the output.
+# requirements and whether brain context was consumed in the output.
+# Brain reads are now Eva's responsibility (pre-fetched and injected
+# via <brain-context> tag). This hook checks for evidence that agents
+# consumed the injected context, not that they called brain tools.
 # Non-blocking — emits warnings only (exit 0 always).
 
 set -euo pipefail
@@ -66,11 +69,14 @@ TOOL_RESULT=$(echo "$INPUT" | jq -r '
   end
 ')
 
-# Check for evidence of brain tool usage in the output
-BRAIN_PATTERNS="agent_search|agent_capture|atelier_trace|atelier_relation|atelier_browse|brain.*search|brain.*capture|searched.*brain|captured.*brain"
+# Check for evidence of brain context consumption in the output.
+# Since brain reads are now Eva-injected data (via <brain-context> tag),
+# we look for evidence that the agent referenced or consumed the injected
+# context — not that the agent called brain tools directly.
+CONSUMPTION_PATTERNS="brain.context|brain context|brain-context|prior.*decision|prior.*pattern|injected.*thought|provided.*brain|thought.*type|Brain context"
 
-if ! echo "$TOOL_RESULT" | grep -qiE "$BRAIN_PATTERNS" 2>/dev/null; then
-  echo "WARNING: $SUBAGENT_TYPE completed without evidence of brain tool usage. Brain access is MANDATORY when brain is available. Verify that $SUBAGENT_TYPE performed required brain reads (agent_search) and writes (agent_capture) per its Brain Access section." >&2
+if ! echo "$TOOL_RESULT" | grep -qiE "$CONSUMPTION_PATTERNS" 2>/dev/null; then
+  echo "WARNING: $SUBAGENT_TYPE completed without evidence of brain context consumption. Eva injected brain context via <brain-context> tag — verify that $SUBAGENT_TYPE reviewed the injected thoughts for relevant prior decisions, patterns, and lessons." >&2
 fi
 
 # Always non-blocking

@@ -7,13 +7,19 @@ description: Use when users want to bootstrap the brain with existing project kn
 
 This skill reads existing project artifacts and git history, extracts reasoning and decisions, and captures them as brain thoughts with proper types, importance scores, and relations. Run this conversationally -- present the scan results, get approval, then execute.
 
+<gate id="extraction-principles">
+
 ## Core Principle
 
 **Extract the WHY, never the WHAT.** Artifacts on disk are the source of truth for current state. Git is the source of truth for what changed and when. The brain captures reasoning, rejected alternatives, evolution context, and lessons -- the knowledge layer that no file or commit preserves.
 
 **Never duplicate artifact content.** A decision thought references the ADR it came from but does not restate the ADR. A lesson thought captures the insight, not the code that was fixed.
 
+</gate>
+
 ---
+
+<procedure id="scan-inventory">
 
 ## Phase 1: Scan & Inventory
 
@@ -65,7 +71,11 @@ Ready to hydrate?
 
 The user may exclude sources ("skip git history", "only ADRs") or adjust the time window. Respect their scope.
 
+</procedure>
+
 ---
+
+<procedure id="extract-capture">
 
 ## Phase 2: Extract & Capture
 
@@ -207,7 +217,11 @@ For significant commits (those with narrative bodies explaining WHY):
 
 3. **Relations**: Create `triggered_by` from fix commits back to the error pattern they address (if matchable).
 
+</procedure>
+
 ---
+
+<section id="progress-summary">
 
 ## Phase 3: Progress & Summary
 
@@ -253,7 +267,11 @@ user preferences. Agents will surface this context
 automatically during pipeline runs.
 ```
 
+</section>
+
 ---
+
+<protocol id="incremental-rehydration">
 
 ## Incremental Re-Hydration
 
@@ -268,7 +286,11 @@ If the user runs `/brain-hydrate` on a project that was previously hydrated:
 
 This makes re-hydration safe to run multiple times. The brain's write-time conflict detection provides a second safety net.
 
+</protocol>
+
 ---
+
+<section id="scope-controls">
 
 ## Scope Controls
 
@@ -282,7 +304,11 @@ The user can narrow scope at any point:
 | "just docs/product/feature-x.md" | Single-file extraction |
 | "dry run" | Scan and show what WOULD be captured, but don't write |
 
+</section>
+
 ---
+
+<gate id="hydration-guardrails">
 
 ## Guardrails
 
@@ -300,7 +326,11 @@ These rules are mandatory:
 
 6. **Always verify at the end.** Call `atelier_stats` after hydration to confirm thought count increased as expected.
 
+</gate>
+
 ---
+
+<section id="hydration-notes">
 
 ## Important Notes
 
@@ -308,3 +338,5 @@ These rules are mandatory:
 - **First hydration on a new project is the primary use case.** Incremental re-hydration is the secondary use case for catching up after work done outside the pipeline.
 - **Quality over quantity.** 30 high-signal thoughts are worth more than 200 noisy ones. When in doubt, skip the extraction — the brain should be a curated reasoning ledger, not a dump.
 - **The user can abort at any time.** Thoughts already captured remain (they're individually valid). The brain is append-only — partial hydration is fine.
+
+</section>

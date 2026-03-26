@@ -1,6 +1,6 @@
 # Atelier Pipeline -- Technical Reference
 
-Version: 2.1.0
+Version: 2.4.0
 
 This document is the comprehensive technical reference for the atelier-pipeline Claude Code plugin. It covers plugin architecture, agent system design, orchestration logic, brain infrastructure, and customization points. For usage-oriented documentation, see [the user guide](user-guide.md).
 
@@ -42,7 +42,7 @@ The plugin itself lives in the Claude Code plugin directory (typically `~/.claud
 ```
 atelier-pipeline/                         # Plugin root (CLAUDE_PLUGIN_ROOT)
   .claude-plugin/
-    plugin.json                           # Plugin metadata, hooks, version (2.1.0)
+    plugin.json                           # Plugin metadata, hooks, version (2.4.0)
   source/                                 # Template files -- copied to target project
     rules/
       default-persona.md
@@ -199,6 +199,21 @@ Operations files use a `paths: ["docs/pipeline/**"]` frontmatter declaration. Cl
 - **Context efficiency.** Casual Eva (no active pipeline) carries only identity + routing (~350 lines). Active-pipeline Eva gets the full operational ruleset (~430 additional lines) loaded on demand.
 - **Feature isolation.** New pipeline features (wave execution, triage matrix, model routing) land in the operations files, not the always-loaded identity files.
 
+### XML Tag Structure (v2.4 -- ADR-0006)
+
+All agent-facing instruction files use semantic XML tags per Anthropic's recommendation. Tags wrap logical sections that benefit from unambiguous boundaries: gates, protocols, routing tables, operation blocks. Short, self-contained sections that are already clear from their `##` headers do not need wrapping.
+
+**Tag vocabulary by file type:**
+
+| File type | Tags used | Purpose |
+|-----------|-----------|---------|
+| Rules files (`rules/*.md`) | `<gate>`, `<protocol>`, `<routing>`, `<model-table>`, `<section>` | Mandatory gates, ordered procedures, lookup tables, protocol definitions |
+| Reference files (`references/*.md`) | `<framework>`, `<agent-dod>`, `<template>`, `<operations>`, `<matrix>`, `<section>` | Framework definitions, per-agent DoD blocks, invocation templates, operation procedures, decision matrices |
+| Agent personas (`agents/*.md`) | `<identity>`, `<required-actions>`, `<workflow>`, `<examples>`, `<tools>`, `<constraints>`, `<output>` | Persona structure (unchanged from ADR-0005) |
+| Skill commands (`commands/*.md`) | `<procedure>`, `<gate>`, `<error-handling>`, `<protocol>`, `<section>` | Skill structure (unchanged from ADR-0005) |
+
+The full tag vocabulary is documented in `.claude/references/xml-prompt-schema.md`. This is a structural change only -- no behavioral changes were made during the migration.
+
 ---
 
 ## Agent System Design
@@ -253,12 +268,32 @@ Agent persona files use `disallowedTools` (denylist) in their frontmatter rather
 | **Eva** | Write/Edit/MultiEdit/NotebookEdit on ANY file outside `docs/pipeline/`. Never writes code. Never runs `git add`/`commit`/`push`. Never investigates user-reported bugs (Roz does). Never embeds root cause in TASK field. |
 | **Robert** (subagent) | Read ADR files, UX docs, or Roz reports. Write/Edit anything. Ask for more context. Produce blanket approvals. Decide whether to update spec or fix code (reports delta, human decides). |
 | **Sable** (subagent) | Read ADR files, product specs, or Roz reports. Write/Edit anything. Interpret ambiguous UX docs (HALTs instead). Decide whether to update UX doc or fix code. |
-| **Cal** | Write implementation code. Say "it depends" without deciding. Hand-wave ("best practice" is not a reason). Deliver ADR with placeholder steps. |
-| **Colby** | Modify Roz's test assertions. Leave TODO/FIXME/HACK. Report complete with unimplemented functionality. Move pages from `/mock/*` to production without real APIs. |
+| **Cal** | Write implementation code. Say "it depends" without deciding. Hand-wave ("best practice" is not a reason). Deliver ADR with placeholder steps. Omit anti-goals (must list 3). Omit SPOF identification for non-trivial designs. Skip migration and rollback sections when database schema or shared state is involved. Omit telemetry specification from ADR steps (except purely structural steps). |
+| **Colby** | Modify Roz's test assertions. Leave TODO/FIXME/HACK. Report complete with unimplemented functionality. Move pages from `/mock/*` to production without real APIs. Add helper functions or abstractions not required by the ADR step or failing test. Guess at function signatures or code structure from the ADR alone without reading actual project files first. |
 | **Roz** | Write to non-test files. Approve failing code. Skip checks. Trust self-reported coverage. Assert what code currently does when it contradicts domain intent. |
 | **Poirot** | Read spec/ADR/product/UX docs. Ask for context. Write/Edit anything. Produce fewer than 5 findings without HALT. Write prose paragraphs. |
 | **Distillator** | Drop decisions, rejected alternatives, or scope boundaries. Editorialize. Produce prose paragraphs. Modify source files. |
 | **Ellis** | Commit without QA passing. Use generic commit messages. Commit without user approval. Use `git add -A` or `git add .`. |
+
+### Cal: ADR Production Requirements (v2.4)
+
+Every ADR Cal produces must include these sections:
+
+**Anti-goals.** Cal lists exactly three things the design will NOT address, with reasoning and a "revisit when" condition. If Cal cannot name three anti-goals, the scope is either trivially small or dangerously unbounded. Eva uses this section to prevent scope creep during implementation.
+
+**SPOF identification.** After identifying the riskiest assumption in the spec, Cal identifies the single point of failure in the proposed design: the one component whose failure would cascade. The output states the failure mode and how the system degrades gracefully with reduced capability. If no graceful degradation path exists, Cal flags it in Consequences -- this is a finding, not something to omit.
+
+**Migration and rollback.** For changes that affect database schema, shared state, or cross-service contracts, Cal includes: (a) a migration plan with ordered steps including data backfill if applicable; (b) a single-step rollback strategy ("restore from backup" is not accepted); (c) a rollback window stating how long after deployment the rollback remains safe. Stateless changes (pure functions, UI components, config) skip this section.
+
+**Telemetry per step.** Each ADR implementation step specifies what log line, metric, or event proves the step succeeded in production. Format: "Telemetry: [what]. Trigger: [when emitted]. Absence means: [failure mode]." Purely structural steps (file moves, renames) may omit this.
+
+### Colby: Build Mode Requirements (v2.4)
+
+**Retrieval-led reasoning.** Colby reads actual project files before writing implementation. She never assumes code structure from the ADR alone, never guesses at function signatures, and does not rely on training-data patterns when the local codebase has an established convention. CLAUDE.md and the local project are primary sources; training data is a fallback.
+
+**Failing test first.** Before implementing any ADR step, Colby runs Roz's pre-written tests to confirm they fail for the right reason. A test that passes before any implementation is flagged -- either the test is wrong or the feature already exists.
+
+**Minimal implementation.** Colby implements the minimum code necessary to pass the current failing test. Helper functions, utility abstractions, and convenience wrappers not required by the ADR step or failing test are noted in the DoD under "Implementation decisions not in the ADR" -- not built.
 
 ---
 
@@ -348,6 +383,8 @@ When no pipeline is active, Eva classifies every user message against the intent
 8. Sable-subagent verifies every mockup before UAT
 9. Agatha writes docs after final Roz sweep, not during build
 10. Spec/UX reconciliation is continuous (living artifacts updated in same commit)
+11. One phase transition per turn on Medium/Large pipelines -- Eva announces, invokes, presents result, and stops. Phase bleed is the same class of violation as skipping Roz.
+12. Loop-breaker: 3 consecutive failures on the same task = halt. Eva presents a Stuck Pipeline Analysis (what was attempted, what changed, why it is not converging). User decides: intervene, re-scope, or abandon.
 
 ### Model Selection
 
@@ -385,7 +422,7 @@ Eva maintains five files in `docs/pipeline/`:
 
 | File | Purpose | Reset Behavior |
 |------|---------|----------------|
-| `pipeline-state.md` | Unit-by-unit progress tracker. Updated after each phase transition. Enables session recovery. | Never reset automatically |
+| `pipeline-state.md` | Unit-by-unit progress tracker. Updated after each phase transition. Enables session recovery. Every update includes a "Changes since last state" section: new files created, files modified, requirements closed, and the agent that produced the change. This makes transitions auditable and prevents silent drift. | Never reset automatically |
 | `context-brief.md` | Conversational decisions, corrections, user preferences, rejected alternatives. | Reset at start of each new feature pipeline |
 | `error-patterns.md` | Post-pipeline error log categorized by type. Recurrence tracking for WARN injection. | Append-only |
 | `investigation-ledger.md` | Debug hypothesis tracking. Records each theory, layer, evidence, outcome. | Reset at start of each new investigation |
@@ -415,6 +452,7 @@ OUTPUT: [what to produce, what format, where to write it -- must include DoR and
 - **DIFF section (Roz-specific):** Eva always runs `git diff --stat` and `git diff --name-only` and includes the output so Roz has a map of what changed.
 - **DIFF section (Poirot-specific):** Eva pastes the raw `git diff` output. Nothing else. No spec, no ADR, no framing.
 - **WARN injection:** When `error-patterns.md` shows a pattern recurring 3+ times, Eva adds a targeted warning to the relevant agent's invocation.
+- **Delegation contract (mandatory):** Before every subagent invocation, Eva announces: "Invoking [Agent] with READ: [file1], [file2], ... and CONSTRAINTS: [constraint1], [constraint2], ..." Every file referenced in the DoR's requirement sources must appear in the READ list or be explicitly noted as omitted with a reason. Silent invocation -- dispatching an agent without announcing what it will read and what rules it must follow -- is a transparency violation.
 
 The full invocation examples for each agent are in `.claude/references/invocation-templates.md`, loaded by Eva just-in-time when constructing prompts.
 
@@ -462,11 +500,12 @@ The continuous QA model replaces the old batch model (Colby builds everything, t
 ### Build + QA Interleaving
 
 1. Eva invokes Colby for unit 1 with Roz's test files as the target
-2. Colby implements to make Roz's tests pass (may add edge-case tests, but NEVER modifies Roz's assertions)
-3. When Colby finishes unit 1, Eva invokes **Roz** (full context) and **Poirot** (diff only) in PARALLEL
-4. Eva triages findings from both agents, deduplicates, classifies severity
-5. If Roz or Poirot flags issues, Eva queues fixes. Colby finishes current unit, then addresses fixes before starting the next unit
-6. Eva updates `pipeline-state.md` after each unit transition
+2. Colby runs Roz's tests first to confirm they fail for the right reason (missing implementation, not a test bug or environment issue). If a test passes before any implementation, Colby flags it.
+3. Colby implements to make Roz's tests pass (may add edge-case tests, but NEVER modifies Roz's assertions)
+4. When Colby finishes unit 1, Eva invokes **Roz** (full context) and **Poirot** (diff only) in PARALLEL
+5. Eva triages findings from both agents, deduplicates, classifies severity
+6. If Roz or Poirot flags issues, Eva queues fixes. Colby finishes current unit, then addresses fixes before starting the next unit
+7. Eva updates `pipeline-state.md` after each unit transition
 
 ### Post-Build Pipeline Tail
 
@@ -771,6 +810,10 @@ Eva manages context aggressively to prevent context window exhaustion:
 | ADR | Never | Only the relevant step |
 
 Between major phases, subagent sessions start fresh. Within Colby+Roz interleaving, each unit is a separate subagent invocation with fresh context. Eva never carries Roz reports in her context -- she reads the verdict (PASS/FAIL + blockers), not the full report.
+
+### Context Cleanup Advisory
+
+After each major phase crossing (Robert -> Sable, Cal -> Roz, review juncture -> Agatha), Eva checks estimated context usage. If the session has exceeded 10 major agent invocations, Eva suggests a fresh session: "This session has [N] agent handoffs. Consider starting a fresh session to clear context. Pipeline state is preserved in `docs/pipeline/pipeline-state.md` and `docs/pipeline/context-brief.md` -- I will resume exactly where we left off." This is advisory -- the user decides. Eva never forces a session break.
 
 ---
 

@@ -7,6 +7,8 @@ description: Use when users want to install or set up the atelier-pipeline multi
 
 This skill installs the full Atelier Pipeline multi-agent orchestration system into the user's project.
 
+<procedure id="setup">
+
 ## Setup Procedure
 
 ### Step 1: Gather Project Information
@@ -287,12 +289,20 @@ After printing the summary, ask the user:
 
 If the user says yes, invoke the `brain-setup` skill. If no, finish.
 
+</procedure>
+
+<gate id="setup-constraints">
+
 ## Important Notes
 
 - **Do not overwrite existing files without asking.** If `.claude/rules/` or `.claude/agents/` already exists with content, ask the user whether to merge or replace.
 - **Git-track the installed files.** Recommend the user commits the pipeline files so the system persists across clones and team members.
 - **Templates are the source of truth.** If a template file is missing from the plugin's templates directory, report which file is missing and skip it rather than generating content from scratch.
 - **Validate after install.** After writing all files, verify that Claude Code recognizes the slash commands by listing them. If the rules files are not being loaded, check that they are in `.claude/rules/` (Claude Code auto-loads all files in this directory).
+
+</gate>
+
+<section id="directory-map">
 
 ## What Each Directory Does
 
@@ -304,3 +314,5 @@ If the user says yes, invoke the `brain-setup` skill. If no, finish.
 | `.claude/references/` | Agents when they need shared knowledge | Quality framework, lessons, templates |
 | `.claude/hooks/` | Claude Code on every tool call (PreToolUse/PostToolUse) | Mechanical enforcement of agent boundaries, sequencing, and brain usage |
 | `docs/pipeline/` | Eva at session start | State recovery, context preservation, error tracking |
+
+</section>

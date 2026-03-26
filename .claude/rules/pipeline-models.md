@@ -11,6 +11,11 @@ the model parameter in every Agent tool invocation by looking up the
 tables below. There is no discretion, no judgment call, no "this one
 feels complex enough for Opus." The table is the rule.
 
+Each agent's persona file also states its model identity in the `<identity>`
+tag. This makes model assignment visible to the agent itself and to anyone
+reading the file. The tables below remain the authoritative source for Eva's
+model selection at invocation time.
+
 ## Fixed-Model Agents (always the same, regardless of sizing)
 
 | Agent | Model | Rationale |

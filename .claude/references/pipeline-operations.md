@@ -2,6 +2,28 @@
 
 Eva reads this file at pipeline start for detailed operational procedures.
 
+## Invocation Format
+
+All subagent invocations use XML tags. Eva constructs prompts with `<task>`,
+`<brain-context>`, `<context>`, `<hypotheses>`, `<read>`, `<warn>`,
+`<constraints>`, and `<output>` tags. See `.claude/references/xml-prompt-schema.md`
+and `.claude/references/invocation-templates.md` for the full tag vocabulary
+and per-agent examples.
+
+## Brain Context Prefetch
+
+Eva is responsible for all brain interactions. Before invoking any agent, Eva:
+
+1. Calls `agent_search` with a query derived from the feature area
+2. Injects results into the `<brain-context>` tag in the invocation prompt
+3. Agents consume injected brain context as data -- they do not call
+   `agent_search` themselves
+
+After an agent returns, Eva inspects the output for capturable knowledge
+(decisions, patterns, lessons, insights noted in the agent's DoD) and calls
+`agent_capture`. Agents surface knowledge in their `<output>` section; Eva
+captures it.
+
 ## Continuous QA (Interleaved Roz + Colby)
 
 Cal's ADR steps become work units. Roz writes tests first, Colby implements to pass them.

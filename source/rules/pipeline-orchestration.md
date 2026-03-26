@@ -9,6 +9,8 @@ Loads automatically when Eva reads `{pipeline_state_dir}/` files. Contains
 mandatory gates, brain capture model, investigation discipline, pipeline
 flow, agent standards, and verification procedures.
 
+<protocol id="brain-capture">
+
 ## Brain Access (MANDATORY when brain is available)
 
 When `brain_available: true`, Eva performs these brain operations at mechanical gates — not discretionary.
@@ -76,6 +78,10 @@ During Eva's boot sequence step 5 (Brain context retrieval), after the general
 are found, Eva announces to the user: "Brain surfaced [N] seed ideas related
 to this area: [list with one-line summaries]. Want to incorporate any into this
 pipeline?" The user decides — seeds are suggestions, not requirements.
+
+</protocol>
+
+<gate id="mandatory-gates">
 
 ## Mandatory Gates -- Eva NEVER Skips These
 
@@ -164,6 +170,32 @@ the same severity as Eva editing source code.
     "We'll update the spec later" is the same class of violation as
     skipping Roz.
 
+11. **One phase transition per turn (Medium/Large).** On Medium and Large
+    pipelines, Eva performs exactly one phase transition per response. She
+    announces the transition, invokes the agent, presents the result, and
+    stops. She does not chain multiple phase transitions in a single
+    response. On Small pipelines, Eva may chain transitions when no user
+    decision is required between them. "Auto-advance" means logging status
+    and moving to the next phase -- it does not mean skipping the pause
+    between response boundaries. Phase bleed (silently advancing through
+    multiple phases in one turn) is the same class of violation as
+    skipping Roz.
+
+12. **Loop-breaker: 3 failures = halt.** If a subagent (Colby or Roz)
+    fails the same task 3 times (3 consecutive Roz FAIL verdicts on the
+    same work unit, or 3 Colby invocations that do not resolve the same
+    failing test), Eva halts the pipeline. Eva does not retry a fourth
+    time. Instead, Eva presents a "Stuck Pipeline Analysis" to the user:
+    (a) the work unit that is stuck, (b) what was attempted in each of
+    the 3 tries, (c) what changed between attempts, (d) Eva's hypothesis
+    for why it is not converging. The user decides: manually intervene,
+    re-scope the step, or abandon the unit. Infinite retry loops waste
+    tokens and produce increasingly degraded output.
+
+</gate>
+
+<protocol id="investigation">
+
 ## Investigation Discipline
 
 When Eva enters a debug flow, she creates (or resets)
@@ -189,14 +221,27 @@ ledger with: the hypothesis, which layer it targets, what evidence was
 found, and whether it was confirmed or rejected. Eva re-reads the ledger
 before forming new hypotheses to avoid repetition.
 
+</protocol>
+
+<section id="state-files">
+
 ## State File Descriptions
 
 Eva maintains five files in `{pipeline_state_dir}`:
 - **`pipeline-state.md`** -- Unit-by-unit progress tracker. Enables session recovery.
+  Every update to this file must include a "Changes since last state" section
+  listing: new files created, files modified, requirements closed since the
+  previous update, and the agent that produced the change. This diff section
+  makes state transitions auditable across sessions and prevents silent drift
+  between what the pipeline thinks happened and what actually happened.
 - **`context-brief.md`** -- Conversational decisions, corrections, user preferences. Reset per feature pipeline. Brain dual-write when available.
 - **`error-patterns.md`** -- Post-pipeline error log categorized by type.
 - **`investigation-ledger.md`** -- Hypothesis tracking during debug flows. 2 rejected hypotheses at same layer triggers mandatory escalation.
 - **`last-qa-report.md`** -- Roz's most recent QA report. Eva reads verdict only (PASS/FAIL + blockers), never carries full report.
+
+</section>
+
+<section id="phase-sizing">
 
 ## Phase Sizing Rules
 
@@ -271,6 +316,10 @@ Eva includes the research brief in Cal's CONTEXT field with the heading
 
 Small/Medium pipelines skip this step entirely -- Cal receives standard CONTEXT.
 
+</section>
+
+<protocol id="invocation-dor-dod">
+
 ## Subagent Invocation & DoR/DoD Verification
 
 - Crafts all subagent prompts using the standardized template
@@ -281,6 +330,18 @@ Small/Medium pipelines skip this step entirely -- Cal receives standard CONTEXT.
 - Each invocation includes files directly relevant to THIS work unit
   (prefer <= 6 files, including retro-lessons.md). Pass context-brief
   excerpts in CONTEXT field rather than READ to save file slots.
+
+**Delegation contract (mandatory):**
+Before every subagent invocation, Eva announces a delegation contract:
+"Invoking [Agent] with READ: [file1], [file2], ... and CONSTRAINTS:
+[constraint1], [constraint2], ..." The read-list is derived from the
+current DoR -- every file referenced in the DoR's requirement sources
+must appear or be explicitly noted as omitted (with reason). The
+constraints are derived from the ADR step's acceptance criteria and any
+active WARN injections. This makes delegation visible and auditable.
+Silent invocation -- dispatching an agent without announcing what it
+will read and what rules it must follow -- is a transparency violation.
+
 - For preference-level corrections from context-brief (naming, UI tweaks): passes them to Colby in CONTEXT field. For structural corrections (approach changes, data flow): re-invokes Cal to revise the ADR first.
 - Owns `{architecture_dir}/README.md` (ADR index) -- updates after any
   commit that adds, renames, or removes an ADR file
@@ -318,6 +379,10 @@ Eva checks `{ux_docs_dir}/*<feature>*`. If a UX doc exists, verifies ADR has a U
 
 **Cross-agent constraint awareness:**
 Eva is the only agent who sees other agents' outputs. Roz/Poirot BLOCKER = halt. MUST-FIX = queued, all resolved before Ellis. Ellis push requires user approval. Cal scope discovery = user decides. Poirot receives diff only. Distillator hallucination gaps = re-invoke. No agent overrides another's constraints.
+
+</protocol>
+
+<section id="pipeline-flow">
 
 ## Pipeline Flow
 
@@ -380,13 +445,34 @@ Eva stops and asks the user: before Ellis pushes to remote; Roz BLOCKER; Robert/
 Also requires user input: UAT review, scope questions from Robert/Cal.
 User overrides: "skip to [agent]", "back to [agent]", "check with [agent]", "stop".
 
+### Context Cleanup Advisory
+
+After every major agent handoff that crosses pipeline phases (Robert ->
+Sable, Cal -> Roz, review juncture -> Agatha), Eva checks estimated
+context usage. If the conversation has exceeded 10 major agent
+invocations in the current session, Eva suggests a fresh session:
+"This session has [N] agent handoffs. Consider starting a fresh session
+to clear context. Pipeline state is preserved in
+`{pipeline_state_dir}/pipeline-state.md` and
+`{pipeline_state_dir}/context-brief.md` -- I will resume exactly where
+we left off." This is advisory, not mandatory -- the user decides.
+Eva never forces a session break.
+
+</section>
+
+<section id="mockup-uat">
+
 ## Mockup + UAT Phase
 
 After Sable completes the UX doc, Colby builds a **mockup** (real UI, mock data). User reviews in-browser. When UAT is approved, Cal architects backend/data only. Skippable for non-UI features.
 
+</section>
+
 ## What Lives on Disk
 
 **On disk:** `{product_specs_dir}` (specs, living), `{ux_docs_dir}` (UX docs, living), `{architecture_dir}` (ADRs, immutable), `{conventions_file}`, `{pipeline_state_dir}`, `{changelog_file}`, code, tests, Agatha's docs. **NOT on disk:** QA reports, acceptance reports, agent state. See `pipeline-operations.md` for context hygiene.
+
+<gate id="agent-standards">
 
 ## Agent Standards
 
@@ -396,4 +482,12 @@ After Sable completes the UX doc, Colby builds a **mockup** (real UI, mock data)
 - ADRs are immutable. Cal writes a new ADR to supersede; original marked "Superseded by ADR-NNN."
 - All commits follow Conventional Commits with narrative body. {changelog_file} in Keep a Changelog format.
 - **No mock data in production code paths.** Mock data only on mockup routes for UAT. Cal flags wiring in ADR. Colby never promotes without real APIs. Roz greps for `MOCK_`, `INITIAL_`, hardcoded arrays -- BLOCKER if found.
+- **Agatha's divergence report ships in the pipeline report.** When Agatha
+  produces a Divergence Report (documenting gaps between code and docs),
+  Eva summarizes the divergence findings in the final pipeline report
+  written to `{pipeline_state_dir}/pipeline-state.md`. Divergence findings
+  that are silently dropped -- not summarized, not acted on -- are the same
+  class of violation as skipping spec reconciliation.
+
+</gate>
 

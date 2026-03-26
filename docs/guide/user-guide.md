@@ -207,6 +207,7 @@ Eva stops and asks you before:
 - An ambiguous finding from Robert or Sable
 - A scope-changing discovery from Cal
 - Applying a bug fix (you approve Roz's diagnosis first)
+- A Stuck Pipeline Analysis (the same task has failed 3 consecutive times -- you decide whether to intervene, re-scope, or abandon)
 
 ---
 
@@ -261,9 +262,10 @@ After you approve the mockup, Cal architects only the backend and data wiring. T
 Colby and Roz work in lockstep. Each ADR step is a work unit:
 
 1. Roz writes test assertions for the step
-2. Colby implements to pass the tests
-3. Roz reviews Colby's output
-4. Issues are caught and fixed immediately, before the next step
+2. Colby runs those tests to confirm they fail (verifying the test is correct before implementing)
+3. Colby implements to pass the tests
+4. Roz reviews Colby's output
+5. Issues are caught and fixed immediately, before the next step
 
 This prevents a bad pattern in step 2 from spreading to steps 3 through 6.
 
@@ -373,6 +375,32 @@ Several capabilities improve pipeline velocity and institutional memory:
 **Task-level model routing.** Eva scores each ADR step's complexity before invoking Colby. High-complexity steps on Small and Medium pipelines get promoted to Opus. Low-complexity steps stay on Sonnet. Roz, Poirot, Robert, and Sable model assignments are never changed.
 
 **Brain pattern and seed types.** Two new Brain thought types: `pattern` (reusable implementation approaches captured by Colby, searched by all code-touching agents) and `seed` (out-of-scope ideas captured during any phase, surfaced at pipeline start when a related feature area begins).
+
+### New in v2.4
+
+**XML tag migration (ADR-0006).** All agent-facing instruction files now use semantic XML tags per Anthropic's recommendation. Tags wrap logical sections (gates, protocols, routing tables, operation blocks) rather than every paragraph. This improves model comprehension of boundaries between mandatory constraints and informational content. The change is structural only -- no behavioral changes.
+
+**Eva: two new mandatory gates.** Gate 11 prevents phase bleed: on Medium and Large pipelines, Eva performs exactly one phase transition per response, announces it, and stops. Gate 12 is a loop-breaker: if Colby or Roz fails the same task three consecutive times, Eva halts and presents a Stuck Pipeline Analysis to the user rather than retrying indefinitely.
+
+**Eva: delegation contracts.** Before every subagent invocation, Eva announces which files the agent will read and which constraints it must follow. Silent dispatch -- sending an agent without announcing what it will read and what rules it must follow -- is a transparency violation.
+
+**Eva: state diffing.** Every update to `pipeline-state.md` now includes a "Changes since last state" section listing new files created, files modified, requirements closed, and the agent that produced the change. This makes state transitions auditable across sessions.
+
+**Eva: context cleanup advisory.** After 10 or more major agent handoffs in a single session, Eva suggests starting a fresh session. Pipeline state is preserved on disk and Eva resumes exactly where you left off. This is advisory -- Eva never forces a session break.
+
+**Cal: anti-goals.** Cal explicitly lists three things the design will NOT address before beginning architecture. Anti-goals draw a hard boundary around scope and prevent scope creep during implementation.
+
+**Cal: SPOF identification.** After identifying the riskiest spec assumption, Cal identifies the single point of failure in the proposed design and states what graceful degradation looks like. If no graceful degradation path exists, that is a finding and it appears in Consequences.
+
+**Cal: migration and rollback.** For changes that affect database schema, shared state, or cross-service contracts, Cal includes a migration plan, a single-step rollback strategy, and a rollback window. "Restore from backup" is not a rollback strategy.
+
+**Cal: telemetry per step.** Every ADR step now includes a telemetry specification: what log line, metric, or event proves the step succeeded in production. Steps that are purely structural (file moves, renames) may skip this.
+
+**Colby: retrieval-led reasoning.** Colby prioritizes reading actual project files over training data. She reads the codebase before writing implementation -- never guesses at function signatures, never assumes structure from the ADR alone. CLAUDE.md and local project conventions are primary sources.
+
+**Colby: failing test first.** Before implementing any ADR step, Colby runs Roz's pre-written tests to verify they fail for the right reason. If a test passes before any code is written, Colby flags it -- either the test is wrong or the feature already exists.
+
+**Colby: minimal implementation.** Colby implements the minimum code necessary to pass the current failing test. Helper functions, utility abstractions, and convenience wrappers not required by the ADR step or failing test are noted in the DoD but not built.
 
 ---
 

@@ -7,6 +7,8 @@ description: Use when users want to set up or connect to the Atelier Brain -- th
 
 This skill guides the user through setting up the Atelier Brain persistent memory layer. Run this conversationally -- ask questions one at a time, not as a list.
 
+<protocol id="path-detection">
+
 ## Detection: Choose Path
 
 Before asking anything, check whether a project-level brain config already exists:
@@ -15,7 +17,11 @@ Before asking anything, check whether a project-level brain config already exist
 2. If it exists, go to **Path B -- Colleague Onboarding**.
 3. If it does not exist, go to **Path A -- First-Time Setup**.
 
+</protocol>
+
 ---
+
+<procedure id="first-time-setup">
 
 ## Path A -- First-Time Setup
 
@@ -168,7 +174,11 @@ Brain is live.
   Database: [Docker | Local PostgreSQL | Remote PostgreSQL]
 ```
 
+</procedure>
+
 ---
+
+<procedure id="colleague-onboarding">
 
 ## Path B -- Colleague Onboarding
 
@@ -210,7 +220,11 @@ Add them to your shell profile or .env file (not committed to git).
 
 Path B is non-interactive beyond env var guidance. Do not prompt for database setup, scope, or other configuration -- the shared config already has everything.
 
+</procedure>
+
 ---
+
+<gate id="security-constraints">
 
 ## Security Constraints
 
@@ -219,6 +233,10 @@ These rules are mandatory and never skippable:
 1. **Shared config never contains bare secrets.** Only `${ENV_VAR}` placeholders. If you detect a bare API key or password in a shared config file, refuse to write it and ask the user to set an environment variable instead.
 2. **Docker default password triggers a warning for team use.** If the user chose Docker + shared setup, always warn: "Set `ATELIER_BRAIN_DB_PASSWORD` for team use. The Docker default password is not secure for shared environments."
 3. **Personal config is never committed to git.** It is written to `${CLAUDE_PLUGIN_DATA}/brain-config.json`, which is outside the project repo.
+
+</gate>
+
+<error-handling id="setup-errors">
 
 ## Error Handling
 
@@ -238,6 +256,10 @@ Handle these failure cases with clear messages and retry guidance:
 | SSL connection failed | "SSL connection to the remote database failed. Verify that the server supports SSL, check your `sslmode` setting, and confirm whether the provider requires a specific CA certificate (e.g., `sslmode=verify-full&sslrootcert=path/to/ca.pem`)." |
 | Remote connection timed out | "Connection to `<host>:<port>` timed out. Check that the host and port are correct, your network can reach the server, and your IP is allowed through any firewall or security group rules." |
 
+</error-handling>
+
+<section id="setup-notes">
+
 ## Important Notes
 
 - **This skill is conversational.** Ask questions one at a time. Do not dump all questions at once.
@@ -245,3 +267,5 @@ Handle these failure cases with clear messages and retry guidance:
 - **Respect existing state.** If a database already exists with tables, do not drop and recreate. Verify and proceed.
 - **Scope path is required.** Do not default it silently -- always ask the user to confirm their scope.
 - **Config file is the single source of truth.** All brain tools read from the config file at the path determined by the setup type (personal or shared).
+
+</section>
