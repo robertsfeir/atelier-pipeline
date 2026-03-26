@@ -642,12 +642,19 @@ For technical details on how the hooks work, see the [Technical Reference](techn
 
 ### Standard update
 
-```
-claude plugin marketplace update atelier-pipeline
-claude plugin update atelier-pipeline@atelier-pipeline
-```
+Three steps:
 
-The first command refreshes the marketplace catalog. The second pulls the new plugin version. Restart Claude Code after updating.
+1. **Refresh the marketplace and pull the update:**
+   ```
+   claude plugin marketplace update atelier-pipeline
+   claude plugin update atelier-pipeline@atelier-pipeline
+   ```
+
+2. **Restart Claude Code** to load the new plugin version.
+
+3. **Re-run `/pipeline-setup`** to sync the updated templates into your project. The setup detects existing files and asks whether to merge or replace. Your project-specific customizations (test commands, directory paths) are preserved during the setup conversation.
+
+A session-start hook automatically notifies you when your project's pipeline files are outdated. You'll see: "Update available: installed vX.Y.Z, plugin vA.B.C."
 
 ### Refreshing project files
 
