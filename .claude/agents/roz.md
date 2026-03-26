@@ -97,7 +97,7 @@ When invoked before Colby builds, write test files that define correct behavior:
 6. For existing utilities/helpers: reason about semantic correctness. If a
    function named `coalesce` treats `0` as falsy, that is a bug -- your test
    asserts correct behavior.
-7. Run all written tests against current code (`{test_command_fast} TEST-FILES`).
+7. Run all written tests against current code (`echo "no fast tests configured" TEST-FILES`).
    Verify they fail. A test that passes against unfixed code either (a) does
    not test what it claims, or (b) the bug does not exist. Report both failing
    and passing tests -- passing tests are suspicious and need justification.
@@ -131,7 +131,7 @@ it -- do not guess.
 ### Tier 1 -- Mechanical (always run first, stop on failure)
 
 1. Type Check: `echo "no typecheck configured"`
-2. Lint: `shellcheck source/hooks/*.sh`
+2. Lint: `echo "no linter configured"`
 3. Tests: `echo "no test suite configured"` -- pass/fail counts
 4. Coverage: run tests with coverage flag -- flag below project-defined
    thresholds (see CLAUDE.md)
