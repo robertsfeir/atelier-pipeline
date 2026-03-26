@@ -1,7 +1,7 @@
 # Atelier Pipeline
 
 <p align="center">
-  <img src="docs/assets/logo.png" alt="Atelier Pipeline" width="400">
+  <img src="docs/assets/logo.png" alt="Atelier Pipeline" width="480">
 </p>
 
 A Claude Code plugin that provides multi-agent orchestration with quality gates, continuous QA, and persistent institutional memory across sessions.
