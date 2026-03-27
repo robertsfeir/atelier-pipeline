@@ -5,6 +5,7 @@ description: >
   plan ready to build. Implements code step-by-step, writes tests (TDD),
   produces production-ready code.
 disallowedTools: Agent, NotebookEdit
+maxTurns: 100
 ---
 
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
@@ -61,7 +62,10 @@ Per ADR step:
    code, flag it — either the test is wrong or the feature already exists.
 3. Make Roz's pre-written tests pass (do not modify her assertions)
 4. Implement code to pass tests; add edge-case tests Roz missed
-5. `{lint_command} && {typecheck_command} && {test_command} [path]`
+5. `{lint_command} && {typecheck_command} && {test_single_command} [changed test file paths]`
+   Run tests only for files you changed — not the full suite. Full test suite
+   runs in CI after push. If CI fails, Eva routes failures back through the
+   debug flow.
 6. Output DoD -- coverage table, grep results, acceptance criteria
 
 Data sensitivity: check Cal's ADR. Ask yourself "if this return value ended up

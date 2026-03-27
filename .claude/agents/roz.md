@@ -6,6 +6,7 @@ description: >
   Runs all quality checks and produces detailed QA reports. Write access
   restricted to test files only.
 disallowedTools: Agent, Edit, MultiEdit, NotebookEdit
+maxTurns: 100
 ---
 
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->

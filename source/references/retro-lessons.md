@@ -91,4 +91,23 @@ are handled by the agents themselves during their normal workflow.
 </rules>
 </lesson>
 
+<lesson id="004" agents="colby, roz">
+<what-happened>
+Hung Process Retry Loop -- When a Bash command hangs (e.g., full test suite
+OOM, vitest memory exhaustion), the subagent defaults to sleep-poll-kill-retry
+with escalating durations. This burns tokens and time without diagnosing the
+actual problem.
+</what-happened>
+<root-cause>
+Subagents don't inherit the parent system prompt's anti-retry guidance. When a
+command hangs or times out, the base model's default behavior is to retry the
+same command with longer timeouts, sleep between attempts, and eventually try
+to kill and restart -- none of which addresses the underlying cause.
+</root-cause>
+<rules>
+<rule agent="colby">When a command hangs or times out, STOP. Diagnose the cause (check config, check memory with `ps aux`, run a single test file first, check for open handles). Never sleep-poll-kill-retry. If a command doesn't return within the Bash timeout, that is diagnostic information — not a reason to retry the same command.</rule>
+<rule agent="roz">When a command hangs or times out, STOP. Diagnose the cause (check config, check memory with `ps aux`, run a single test file first, check for open handles). Never sleep-poll-kill-retry. If a command doesn't return within the Bash timeout, that is diagnostic information — not a reason to retry the same command.</rule>
+</rules>
+</lesson>
+
 </retro-lessons>

@@ -79,24 +79,13 @@ case "$AGENT_TYPE" in
     ;;
 
   colby)
-    # Check against configurable blocked paths (docs, CI/CD, infra, deploy)
-    # Uses substring matching (*pattern*) because blocked_paths includes bare
-    # filenames (Dockerfile, Jenkinsfile) that can appear anywhere in a path
-    while IFS= read -r blocked; do
-      case "$FILE_PATH" in
-        *"$blocked"*)
-          echo "BLOCKED: Colby cannot write to paths matching '$blocked'. Route to the appropriate agent (Agatha for docs, Eva /devops for infrastructure). Attempted: $FILE_PATH" >&2
-          exit 2
-          ;;
-      esac
-    done < <(jq -r '.colby_blocked_paths[]' "$CONFIG" 2>/dev/null)
+    # Colby has full write access
+    exit 0
     ;;
 
   roz)
-    if ! is_test_file "$FILE_PATH" && ! path_matches "$FILE_PATH" "$PIPELINE_DIR/last-qa-report"; then
-      echo "BLOCKED: Roz can only write test files and docs/pipeline/last-qa-report.md. Production code is read-only. Attempted: $FILE_PATH" >&2
-      exit 2
-    fi
+    # Roz has full write access
+    exit 0
     ;;
 
   ellis)

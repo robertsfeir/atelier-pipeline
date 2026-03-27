@@ -20,4 +20,4 @@
 ## Queue
 (empty)
 
-<!-- PIPELINE_STATUS: {"roz_qa": "PASS", "phase": "commit", "timestamp": "2026-03-27"} -->
+<!-- PIPELINE_STATUS: {"roz_qa": "PASS", "phase": "commit", "timestamp": "2026-03-27T18:30:00Z"} -->
