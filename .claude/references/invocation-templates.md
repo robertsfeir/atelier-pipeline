@@ -6,15 +6,17 @@
   docs/ux         = directory for UX design docs (default: docs/ux/)
   docs/architecture    = directory for ADR files (default: docs/architecture/)
   source/        = feature directory pattern (e.g., src/features/, app/domains/)
-  tests/            = test directory pattern (e.g., tests/, __tests__/, spec/)
-  echo "no fast tests configured"   = command for rapid inner-loop tests (e.g., npm run test:fast)
-  echo "no test suite configured"        = command to run full test suite (e.g., npx vitest run, npm test)
+  {test_dir}            = test directory pattern (e.g., tests/, __tests__/, spec/)
+  bats tests/hooks/   = command for rapid inner-loop tests (e.g., npm run test:fast)
+  bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs        = command to run full test suite (e.g., npx vitest run, npm test)
 -->
 
 Eva loads this file just-in-time when constructing sub-agent invocation
 prompts. These are not pre-loaded into Eva's always-on context.
 
 ---
+
+<template id="cal-adr">
 
 ### Cal (ADR Production)
 
@@ -44,6 +46,10 @@ If brain is available, Eva pre-fetches and injects relevant context here:
 
 <output>ADR saved to docs/architecture/ADR-NNNN-feature-name.md with DoR/DoD sections</output>
 
+</template>
+
+<template id="cal-adr-large">
+
 ### Cal (Large ADR Production -- With Research Brief)
 
 For large pipelines, Eva provides a research brief with pre-gathered context.
@@ -53,7 +59,7 @@ For large pipelines, Eva provides a research brief with pre-gathered context.
 <brain-context>
 <thought type="decision" agent="cal" phase="design" relevance="0.85">Prior architectural decisions from agent_search("architecture:{feature}")</thought>
 <thought type="rejection" agent="cal" phase="design" relevance="0.80">Rejected approaches from agent_search("rejection:{feature}")</thought>
-<thought type="pattern" agent="colby" phase="build" relevance="0.75">Proven patterns from agent_search("pattern:{tech_stack}")</thought>
+<thought type="pattern" agent="colby" phase="build" relevance="0.75">Proven patterns from agent_search("pattern:Bash shell scripts, Node.js (brain MCP server), Markdown agent personas")</thought>
 </brain-context>
 
 <context>[User preferences from context-brief.md]
@@ -78,6 +84,10 @@ Research Brief (Large pipeline):
 
 <output>ADR saved to docs/architecture/ADR-NNNN-feature-name.md with DoR/DoD sections</output>
 
+</template>
+
+<template id="colby-mockup">
+
 ### Colby Mockup (After Sable, Before Cal)
 
 <task>Build mockup for [feature name]</task>
@@ -100,6 +110,10 @@ Research Brief (Large pipeline):
 
 <output>Route path, list of files created, state switching instructions, with DoR/DoD sections</output>
 
+</template>
+
+<template id="colby-build">
+
 ### Colby Build (Unit N)
 
 <task>Implement ADR-NNNN Step N -- [description]</task>
@@ -115,13 +129,17 @@ Research Brief (Large pipeline):
 
 <constraints>
 - Make Roz's pre-written tests pass -- do not modify her assertions
-- Inner loop: `echo "no fast tests configured"` for rapid iteration. Full suite at unit completion.
+- Inner loop: `bats tests/hooks/` for rapid iteration. Full suite at unit completion.
 - If a Roz test fails against existing code, the code has a bug -- fix it
 - When fixing a shared utility bug, grep for all instances codebase-wide
 - Zero TODO/FIXME/HACK in delivered code
 </constraints>
 
 <output>Step N complete report with DoR/DoD sections, Bugs Discovered section, files changed</output>
+
+</template>
+
+<template id="roz-investigation">
 
 ### Roz Investigation (User Reports a Bug)
 
@@ -146,6 +164,10 @@ Research Brief (Large pipeline):
 
 <output>Bug report with: symptom, root cause (file:line), affected code path, fix description, related issues</output>
 
+</template>
+
+<template id="roz-test-spec-review">
+
 ### Roz Test Spec Review (After Cal, Before Colby Build)
 
 <task>Review test spec for ADR-NNNN</task>
@@ -166,6 +188,10 @@ Research Brief (Large pipeline):
 
 <output>Category coverage table, gaps found, missing tests, Cal DoR verification, verdict (APPROVED / REVISE)</output>
 
+</template>
+
+<template id="roz-test-authoring">
+
 ### Roz Test Authoring (Pre-Build, Per ADR Step)
 
 <task>Write test assertions for ADR-NNNN Step N -- [step description]</task>
@@ -185,7 +211,11 @@ Research Brief (Large pipeline):
 - Flag any ambiguous domain intent for Eva
 </constraints>
 
-<output>Test files in tests// matching ADR step scope, with DoR/DoD sections</output>
+<output>Test files in {test_dir}/ matching ADR step scope, with DoR/DoD sections</output>
+
+</template>
+
+<template id="roz-code-qa">
 
 ### Roz Code QA (First Pass, After Colby Build)
 
@@ -207,6 +237,10 @@ Research Brief (Large pipeline):
 
 <output>QA Report with verdict, check table, requirements verification, issues found</output>
 
+</template>
+
+<template id="roz-scoped-rerun">
+
 ### Roz Scoped Re-Run (After Colby Fix)
 
 <task>Scoped QA re-run on ADR-NNNN fix</task>
@@ -222,6 +256,10 @@ Research Brief (Large pipeline):
 </constraints>
 
 <output>Scoped QA Report with re-run header, updated requirements verification</output>
+
+</template>
+
+<template id="ellis-commit">
 
 ### Ellis (Commit)
 
@@ -241,6 +279,10 @@ Research Brief (Large pipeline):
 </constraints>
 
 <output>Proposed commit message, then commit + push after confirmation</output>
+
+</template>
+
+<template id="agatha-writing">
 
 ### Agatha (Writing Mode)
 
@@ -262,6 +304,10 @@ Research Brief (Large pipeline):
 
 <output>Documentation files per doc plan with DoR/DoD sections, list of files written/updated</output>
 
+</template>
+
+<template id="robert-acceptance">
+
 ### Robert (Acceptance Review)
 
 <task>Review ADR-NNNN implementation against product spec</task>
@@ -281,6 +327,10 @@ Research Brief (Large pipeline):
 </constraints>
 
 <output>Acceptance review with per-criterion verdicts, evidence table, overall verdict</output>
+
+</template>
+
+<template id="sable-acceptance">
 
 ### Sable (UX Acceptance Review)
 
@@ -302,6 +352,10 @@ Research Brief (Large pipeline):
 
 <output>UX acceptance review with per-item verdicts, five-state audit, accessibility audit, overall verdict</output>
 
+</template>
+
+<template id="poirot-blind">
+
 ### Poirot (Blind Review)
 
 <task>Blind review of Colby's build output for ADR-NNNN Step N</task>
@@ -315,6 +369,10 @@ Research Brief (Large pipeline):
 </constraints>
 
 <output>Findings table (location, severity, category, description, suggested fix) with DoR/DoD sections</output>
+
+</template>
+
+<template id="distillator-compress">
 
 ### Distillator (Compress Between Phases)
 
@@ -335,6 +393,10 @@ them for downstream consumption.
 
 <output>Compressed distillate with YAML frontmatter, DoR/DoD sections, preservation checklist</output>
 
+</template>
+
+<template id="distillator-validate">
+
 ### Distillator (With Round-Trip Validation)
 
 <task>Compress ADR for downstream consumption by Colby -- with validation</task>
@@ -348,3 +410,5 @@ them for downstream consumption.
 </constraints>
 
 <output>Distillate + reconstruction, YAML frontmatter, DoR/DoD sections, preservation checklist</output>
+
+</template>

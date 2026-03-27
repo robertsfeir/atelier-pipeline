@@ -20,16 +20,15 @@ Before installing, ask the user about their project. Ask these questions convers
 1. **Tech stack** -- Language, framework, runtime (e.g., "React 19 with Vite, Express.js backend, PostgreSQL")
 2. **Test framework** -- What testing library/runner (e.g., "Vitest", "Jest", "pytest", "cargo test")
 3. **Test commands** -- The exact commands for:
-   - **Lint command** -- fast lint/typecheck checks with no DB or external dependencies, used by the Stop hook on every agent completion (e.g., `npm run lint && tsc --noEmit`, `black --check . && ruff check . && mypy .`). Should complete in under 10 seconds.
-   - **Full test suite** -- the complete test suite including DB-dependent and integration tests, used by Roz for QA verification (e.g., `npm test`, `pytest --cov`). Runs once per work unit, not on every stop.
+   - **Lint command** -- fast lint/typecheck checks with no DB or external dependencies, used by agents during their workflow (e.g., `npm run lint && tsc --noEmit`, `black --check . && ruff check . && mypy .`).
+   - **Full test suite** -- the complete test suite including DB-dependent and integration tests, used by Roz for QA verification (e.g., `npm test`, `pytest --cov`). Runs once per work unit.
    - Running a single test file (e.g., `npx vitest run path/to/file`)
 4. **Source structure** -- Where features, components, services, and routes live (e.g., "src/features/<feature>/ for frontend, services/api/ for backend")
 5. **Database/store pattern** -- How database access is structured (e.g., "Factory functions with closures over DB client", "Prisma ORM", "raw SQL with pg")
 6. **Build/deploy commands** -- How the project builds and ships (e.g., `npm run build`, Docker, Podman Compose)
 7. **Coverage thresholds** -- If they have existing targets (statement, branch, function, line percentages)
-8. **Complexity limits** -- If they have cyclomatic complexity thresholds (e.g., TSX CCN <= 18)
 
-If the user does not have answers for optional items (coverage, complexity), use sensible defaults.
+If the user does not have answers for optional items (coverage), use sensible defaults.
 
 ### Step 1b: Branching Strategy Selection
 
@@ -141,7 +140,7 @@ Copy each template to its destination in the user's project, customizing placeho
 | `source/pipeline/pipeline-config.json` | `.claude/pipeline-config.json` | Branching strategy configuration |
 | `source/variants/branch-lifecycle-{strategy}.md` | `.claude/rules/branch-lifecycle.md` | Branch lifecycle rules (selected variant only) |
 
-**Total: 31 files across 5 directories (before hooks).**
+**Total: 31 files across 5 directories (before hooks and config).**
 
 ### Step 3a: Install Enforcement Hooks
 
@@ -154,9 +153,6 @@ optional and must be installed for the pipeline to function correctly.
 | `source/hooks/enforce-paths.sh` | `.claude/hooks/enforce-paths.sh` | Blocks Write/Edit outside each agent's allowed file paths |
 | `source/hooks/enforce-sequencing.sh` | `.claude/hooks/enforce-sequencing.sh` | Blocks out-of-order agent invocations (e.g., Ellis without Roz QA) |
 | `source/hooks/enforce-git.sh` | `.claude/hooks/enforce-git.sh` | Blocks git write operations from main thread (must go through Ellis) |
-| `source/hooks/check-brain-usage.sh` | `.claude/hooks/check-brain-usage.sh` | Warns when agents with brain access don't use brain tools |
-| `source/hooks/quality-gate.sh` | `.claude/hooks/quality-gate.sh` | Runs fast lint/typecheck checks when agent tries to stop — blocks if checks fail |
-| `source/hooks/check-complexity.sh` | `.claude/hooks/check-complexity.sh` | Warns when edited files exceed complexity thresholds |
 | `source/hooks/enforcement-config.json` | `.claude/hooks/enforcement-config.json` | Project-specific paths and agent rules |
 
 After copying, make the `.sh` files executable: `chmod +x .claude/hooks/*.sh`
@@ -167,9 +163,7 @@ After copying, make the `.sh` files executable: `chmod +x .claude/hooks/*.sh`
 - `product_specs_dir`: the specs directory (default: `docs/product`)
 - `ux_docs_dir`: the UX docs directory (default: `docs/ux`)
 - `test_patterns`: array of patterns matching the project's test files (e.g., `[".test.", ".spec.", "/tests/", "conftest"]`)
-- `lint_command`: fast lint/typecheck command from Step 1 -- runs on every agent Stop (e.g., `npm run lint && tsc --noEmit`, `black --check . && ruff check . && mypy .`)
 - `test_command`: full test suite command from Step 1 -- used by Roz for QA verification (e.g., `npm test`, `pytest`)
-- `complexity_command`: optional complexity checker with `{file}` placeholder (e.g., `npx escomplex {file}`, `radon cc {file} -nc`)
 
 **Register hooks in `.claude/settings.json`** — merge with existing settings if the
 file already exists. Add this hooks section:
@@ -190,21 +184,6 @@ file already exists. Add this hooks section:
         "matcher": "Bash",
         "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-git.sh"}]
       }
-    ],
-    "Stop": [
-      {
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/quality-gate.sh"}]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Agent",
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-brain-usage.sh"}]
-      },
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-complexity.sh"}]
-      }
     ]
   }
 }
@@ -214,7 +193,7 @@ file already exists. Add this hooks section:
 If `jq` is not available, tell the user: "Install jq for pipeline enforcement hooks:
 `brew install jq` (macOS) or `apt install jq` (Linux)."
 
-**Total with hooks: 38 files across 7 directories.**
+**Total with hooks: 35 files across 7 directories.**
 
 ### Step 3b: Write Version Marker
 
@@ -244,7 +223,6 @@ The following placeholders in template files must be replaced with project-speci
 | `{{DB_PATTERN}}` | Database access pattern | "Factory functions with closures over DB client" |
 | `{{BUILD_COMMAND}}` | Build command | `npm run build` |
 | `{{COVERAGE_THRESHOLDS}}` | Coverage targets | "stmt=70, branch=65, fn=75, lines=70" |
-| `{{COMPLEXITY_THRESHOLDS}}` | Complexity limits | "TSX CCN <= 18, TS/JS CCN <= 12" |
 
 ### Step 5: Update CLAUDE.md
 
@@ -274,7 +252,7 @@ This project uses a multi-agent orchestration pipeline for structured developmen
 
 After installation, print:
 
-1. A count of files installed (38 files across 7 directories)
+1. A count of files installed (35 files across 7 directories)
 2. The directory tree showing what was created
 3. The configured branching strategy and any CI recommendations
 4. A reminder of available slash commands
@@ -286,12 +264,12 @@ After installation, print:
 ```
 Atelier Pipeline installed successfully.
 
-Files installed: 38
+Files installed: 35
   .claude/rules/       -- 5 files (Eva persona, orchestration rules, pipeline operations, model selection, branch lifecycle)
   .claude/agents/      -- 9 files (Cal, Colby, Roz, Robert, Sable, Poirot, Distillator, Ellis, Agatha)
   .claude/commands/    -- 7 files (/pm, /ux, /architect, /debug, /pipeline, /devops, /docs)
   .claude/references/  -- 4 files (quality framework, retro lessons, invocation templates, pipeline operations)
-  .claude/hooks/       -- 7 files (path enforcement, sequencing, git guard, brain usage, quality gate, complexity check, config)
+  .claude/hooks/       -- 4 files (path enforcement, sequencing, git guard, config)
   docs/pipeline/       -- 5 files (state tracking for session recovery)
   .claude/pipeline-config.json -- branching strategy configuration
   .claude/settings.json -- updated with hook registration
@@ -370,7 +348,7 @@ No other files are modified during reconfig.
 | `.claude/agents/` | Claude Code when subagents are invoked | Agent personas for execution tasks |
 | `.claude/commands/` | Claude Code when user types a slash command | Manual agent invocation overrides |
 | `.claude/references/` | Agents when they need shared knowledge | Quality framework, lessons, templates |
-| `.claude/hooks/` | Claude Code on every tool call (PreToolUse/PostToolUse) | Mechanical enforcement of agent boundaries, sequencing, and brain usage |
+| `.claude/hooks/` | Claude Code on every tool call (PreToolUse) | Mechanical enforcement of agent boundaries, sequencing, and git operations |
 | `docs/pipeline/` | Eva at session start | State recovery, context preservation, error tracking |
 
 </section>

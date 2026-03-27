@@ -78,16 +78,16 @@ per session (on every subagent completion), making the full test suite
 prohibitively slow and fragile as a gate.
 </what-happened>
 <root-cause>
-Single `test_command` field used for both the Stop hook (fires frequently,
-needs to be fast) and Roz QA (fires once per unit, can be thorough). The
-Stop hook needs checks that complete in seconds with no external
-dependencies. The full test suite belongs in QA, not in a hook that fires
-on every stop.
+The Stop hook duplicated quality checks already performed by pipeline agents
+(Colby runs lint, Roz runs QA, Ellis verifies before commit). It also caused
+infinite loops for subagents (stop -> blocked -> retry -> stop -> blocked).
+The quality-gate Stop hook was removed entirely. Lint and complexity checks
+are handled by the agents themselves during their normal workflow.
 </root-cause>
 <rules>
-<rule agent="eva">Always configure `lint_command` (fast, no DB) separately from `test_command` (full suite). The Stop hook uses `lint_command`. Roz uses `test_command`.</rule>
-<rule agent="colby">Do not put DB-dependent or slow commands in `lint_command`. Lint, typecheck, format checks only. If it needs a running service, it belongs in `test_command`.</rule>
-<rule agent="roz">The Stop hook is not a substitute for QA. It catches formatting and type errors early. Full test verification is Roz's job, not the hook's job.</rule>
+<rule agent="eva">Quality checks are handled by pipeline agents, not hooks. Colby runs lint during implementation, Roz runs the full test suite during QA, and Ellis verifies before commit.</rule>
+<rule agent="colby">Run lint and typecheck as part of implementation workflow. Do not rely on external hooks to catch formatting or type errors.</rule>
+<rule agent="roz">Full test verification is Roz's job. No Stop hook exists to pre-filter -- Roz is the single quality gate for test results.</rule>
 </rules>
 </lesson>
 

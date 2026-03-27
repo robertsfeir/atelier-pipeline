@@ -127,3 +127,65 @@ The `retro-lessons.md` file uses these tags:
 - `<rule agent="cal">` -- the `agent` attribute matches one of the agents
   listed in the parent `<lesson>`'s `agents` attribute. Every agent listed
   in `agents` should have a corresponding `<rule>` child.
+
+## Rules File Tags
+
+Rules files (`source/rules/*.md`) use these tags to wrap logical sections.
+Unlike persona files (which have a fixed 7-tag structure), rules files use
+tags selectively -- only sections that benefit from unambiguous boundaries
+get wrapped.
+
+**Wrapping criteria:** A section gets an XML tag when it meets one or more of:
+1. It contains a gate or constraint that must not be missed (mandatory gates, forbidden actions)
+2. It contains a procedure with ordered steps (boot sequence, investigation protocol)
+3. It contains a lookup table that agents reference mechanically (model tables, routing tables, triage matrix)
+4. It defines a protocol with multiple interacting rules (brain capture model, wave execution)
+
+Short, self-contained sections (1-3 paragraphs) that are already clear from
+their markdown header do NOT need wrapping.
+
+| Tag | Purpose | Attributes |
+|-----|---------|------------|
+| `<gate>` | A mandatory behavioral gate -- something Eva or agents must never skip | `id` (kebab-case) |
+| `<protocol>` | An ordered operational procedure with numbered steps or a defined sequence | `id` (kebab-case) |
+| `<routing>` | Intent detection tables and routing rules | `id` (kebab-case) |
+| `<model-table>` | Model selection tables and classifier rules | `id` (kebab-case) |
+| `<section>` | General-purpose semantic section for content that benefits from boundaries but does not fit gate/protocol/routing/model-table categories | `id` (kebab-case) |
+
+### Attribute Convention (Rules and Reference Files)
+
+Tags use an `id` attribute for filtering and identification:
+- `<gate id="mandatory-gates">` -- enables grep-based lookup of specific gates
+- `<template id="cal-adr">` -- enables lookup of specific invocation templates
+- `<protocol id="boot-sequence">` -- enables lookup of specific procedures
+
+The `id` attribute is kebab-case, descriptive, and unique within a file.
+
+## Reference File Tags
+
+Reference files (`source/references/*.md`) use these tags:
+
+| Tag | Purpose | Attributes |
+|-----|---------|------------|
+| `<framework>` | The core framework definition (DoR/DoD structure, how-it-works) | `id` (kebab-case) |
+| `<agent-dod>` | Per-agent DoD conditions block | None |
+| `<template>` | A single invocation template for one agent scenario | `id` (kebab-case) |
+| `<operations>` | An operational procedure block (QA flow, batch mode, wave execution) | `id` (kebab-case) |
+| `<matrix>` | A decision matrix used mechanically (triage consensus) | `id` (kebab-case) |
+| `<section>` | General-purpose semantic section (shared with rules files) | `id` (kebab-case) |
+
+## Plugin Skill Tags
+
+Plugin skill files (`skills/*/SKILL.md`) use these tags to wrap logical sections.
+These are procedural instruction files consumed by Claude when a skill is invoked.
+They contain ordered procedures, conditional paths, error handling tables, guardrails,
+and scope controls. Like rules files, skill files use tags selectively -- only sections
+that benefit from unambiguous boundaries get wrapped.
+
+| Tag | Purpose | Attributes |
+|-----|---------|------------|
+| `<procedure>` | An ordered multi-step setup or execution procedure | `id` (kebab-case) |
+| `<gate>` | Security constraints, guardrails, mandatory rules (reused from rules vocabulary) | `id` (kebab-case) |
+| `<error-handling>` | Error conditions table with messages and recovery guidance | `id` (kebab-case) |
+| `<protocol>` | A routing decision or conditional execution path (reused from rules vocabulary) | `id` (kebab-case) |
+| `<section>` | General-purpose semantic section (shared across all file types) | `id` (kebab-case) |

@@ -43,7 +43,7 @@ Claude walks you through project configuration one question at a time:
 - Source structure and database patterns
 - Coverage and complexity thresholds
 
-It then installs 38 files into your project (agent personas, commands, references, enforcement hooks, pipeline state). At the end, it offers to set up the Atelier Brain.
+It then installs 35 files into your project (agent personas, commands, references, enforcement hooks, pipeline state). At the end, it offers to set up the Atelier Brain.
 
 ### 3. Set Up the Brain (optional but recommended)
 
@@ -245,7 +245,7 @@ Agents capture thoughts during pipeline runs and search for relevant context bef
 
 ## What Gets Installed
 
-`/pipeline-setup` installs 38 files into your project:
+`/pipeline-setup` installs 35 files into your project:
 
 ```
 your-project/
@@ -279,11 +279,10 @@ your-project/
       retro-lessons.md           # Shared lessons (starts empty)
       invocation-templates.md    # Subagent invocation examples
       pipeline-operations.md     # Model selection, QA flow, feedback loops
-    hooks/                       # Mechanical enforcement (PreToolUse/PostToolUse)
+    hooks/                       # Mechanical enforcement (PreToolUse)
       enforce-paths.sh           # Blocks Write/Edit outside agent's allowed paths
       enforce-sequencing.sh      # Blocks out-of-order agent invocations
       enforce-git.sh             # Blocks git write ops from main thread
-      check-brain-usage.sh       # Warns when agents skip brain tools
       enforcement-config.json    # Project-specific paths and rules
     settings.json                # Hook registration
   docs/

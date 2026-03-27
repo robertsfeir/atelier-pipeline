@@ -19,9 +19,7 @@
     "k8s/",
     "kubernetes/"
   ],
-  "lint_command": "shellcheck source/hooks/*.sh",
   "test_command": "bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs",
-  "complexity_command": "",
   "test_patterns": [
     ".test.",
     ".spec.",
@@ -30,14 +28,5 @@
     "/test_",
     "_test.",
     "conftest"
-  ],
-  "brain_required_agents": [
-    "cal",
-    "colby",
-    "roz",
-    "agatha",
-    "sable",
-    "robert"
-  ],
-  "brain_required_agents_note": "Eva (main thread) is not listed because hooks only fire for subagents. Eva's brain access is enforced by her persona rules in default-persona.md."
+  ]
 }

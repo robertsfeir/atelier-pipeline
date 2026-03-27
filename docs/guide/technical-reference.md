@@ -73,9 +73,6 @@ atelier-pipeline/                         # Plugin root (CLAUDE_PLUGIN_ROOT)
       enforce-paths.sh                    # File path enforcement per agent
       enforce-sequencing.sh               # Pipeline sequencing gates
       enforce-git.sh                      # Git write operation guard
-      check-brain-usage.sh                # Brain usage visibility (non-blocking)
-      quality-gate.sh                     # Stop hook -- runs lint checks before agent finishes
-      check-complexity.sh                 # PostToolUse -- warns on file complexity after edits
       enforcement-config.json             # Project-specific paths and rules
   brain/                                  # MCP server -- runs as sidecar
     start.sh                              # Wrapper script -- installs node_modules then starts server
@@ -107,7 +104,7 @@ The plugin registers a `SessionStart` hook in `plugin.json` that runs two comman
 
 ## File Tree -- What Lives Where
 
-After running `/pipeline-setup`, 38 files are installed into the target project. The plugin templates remain in the plugin directory and are never modified.
+After running `/pipeline-setup`, 35 files are installed into the target project. The plugin templates remain in the plugin directory and are never modified.
 
 ### Target Project (installed by /pipeline-setup)
 
@@ -144,13 +141,10 @@ your-project/
       retro-lessons.md                    # Shared lessons (starts empty)
       invocation-templates.md             # Subagent invocation examples
       pipeline-operations.md              # Model selection, QA flow, feedback loops
-    hooks/                                # Mechanical enforcement (PreToolUse/PostToolUse/Stop)
+    hooks/                                # Mechanical enforcement (PreToolUse)
       enforce-paths.sh                    # Blocks Write/Edit outside agent's allowed paths
       enforce-sequencing.sh               # Blocks out-of-order agent invocations
       enforce-git.sh                      # Blocks git write ops from main thread
-      check-brain-usage.sh                # Warns when agents skip brain tools
-      quality-gate.sh                     # Stop hook -- blocks agent from finishing if lint checks fail
-      check-complexity.sh                 # PostToolUse -- warns on file complexity after edits
       enforcement-config.json             # Project-specific paths and rules
     pipeline-config.json                    # Branching strategy configuration
     settings.json                         # Hook registration
@@ -163,7 +157,7 @@ your-project/
       last-qa-report.md                   # Roz's most recent QA report
 ```
 
-**Total: 38 files across 6 directories, plus the `.atelier-version` marker and an update to `CLAUDE.md`.** The two additional files compared to prior versions are `.claude/pipeline-config.json` (branching strategy configuration) and `.claude/rules/branch-lifecycle.md` (selected strategy's lifecycle rules).
+**Total: 35 files across 6 directories, plus the `.atelier-version` marker and an update to `CLAUDE.md`.** The two additional files compared to prior versions are `.claude/pipeline-config.json` (branching strategy configuration) and `.claude/rules/branch-lifecycle.md` (selected strategy's lifecycle rules).
 
 ### What Does NOT Live on Disk
 
@@ -835,8 +829,8 @@ The `pipeline-setup` skill is conversational. It:
 
 1. **Gathers project information** one question at a time: tech stack, test framework, test commands, source structure, database patterns, build/deploy commands, coverage thresholds, complexity limits, and branching strategy.
 2. **Reads template files** from `source/` in the plugin directory.
-3. **Copies 38 files** to the target project (27 template files + 3 path-scoped rules + 7 enforcement hooks + 1 branching config), replacing placeholders with project-specific values. The branching strategy variant file is selected from `source/variants/` and installed as `.claude/rules/branch-lifecycle.md`.
-4. **Customizes enforcement hooks** in `.claude/hooks/` -- sets project-specific paths and test/complexity commands in `enforcement-config.json`, registers hooks in `.claude/settings.json`, and makes scripts executable.
+3. **Copies 35 files** to the target project (27 template files + 3 path-scoped rules + 4 enforcement hooks + 1 branching config), replacing placeholders with project-specific values. The branching strategy variant file is selected from `source/variants/` and installed as `.claude/rules/branch-lifecycle.md`.
+4. **Customizes enforcement hooks** in `.claude/hooks/` -- sets project-specific paths and test commands in `enforcement-config.json`, registers hooks in `.claude/settings.json`, and makes scripts executable.
 5. **Writes version marker** to `.claude/.atelier-version` for update detection.
 6. **Updates `CLAUDE.md`** with a pipeline section.
 7. **Offers brain setup** at the end.
@@ -974,20 +968,17 @@ Only these two files are modified during reconfig.
 
 ### Overview
 
-The enforcement hooks are shell scripts registered as Claude Code PreToolUse, PostToolUse, and Stop hooks. They run automatically on every tool invocation (or agent stop attempt) and mechanically enforce agent boundaries that persona instructions describe but cannot guarantee. Behavioral guidance tells agents what to do; hooks ensure they cannot do what they should not.
+The enforcement hooks are shell scripts registered as Claude Code PreToolUse hooks. They run automatically on every tool invocation and mechanically enforce agent boundaries that persona instructions describe but cannot guarantee. Behavioral guidance tells agents what to do; hooks ensure they cannot do what they should not.
 
-All seven scripts require `jq` for JSON parsing. If `jq` is not installed, the hooks degrade gracefully (exit 0, allowing the action) rather than blocking all tool calls.
+All three scripts require `jq` for JSON parsing. If `jq` is not installed, the hooks degrade gracefully (exit 0, allowing the action) rather than blocking all tool calls.
 
-### The Seven Hook Scripts
+### The Three Hook Scripts
 
 | Script | Hook Type | Trigger | Purpose |
 |--------|-----------|---------|---------|
 | `enforce-paths.sh` | PreToolUse | `Write\|Edit\|MultiEdit` | Blocks file writes outside each agent's allowed directory paths |
 | `enforce-sequencing.sh` | PreToolUse | `Agent` | Blocks out-of-order agent invocations from the main thread |
 | `enforce-git.sh` | PreToolUse | `Bash` | Blocks git write operations (`add`, `commit`, `push`, `reset`, `checkout --`, `restore`, `clean`) from the main thread |
-| `check-brain-usage.sh` | PostToolUse | `Agent` | Warns (non-blocking) when an agent with brain access requirements completes without evidence of brain tool usage |
-| `quality-gate.sh` | Stop | (all agents) | Runs the project's lint checks (`lint_command`) when an agent tries to finish. Blocks completion (exit 2) if checks fail, forcing the agent to fix before stopping. Falls back to `test_command` if `lint_command` is not configured. |
-| `check-complexity.sh` | PostToolUse | `Edit\|Write\|MultiEdit` | Runs the project's complexity checker against the edited file. Non-blocking (warning only). Skips non-source files. |
 
 ### How Hooks Identify the Caller
 
@@ -1032,39 +1023,6 @@ This hook intercepts Bash tool calls from the main thread and blocks git write o
 
 Ellis, running as a subagent (non-empty `agent_id`), is not affected by this hook. This ensures that all code commits flow through Ellis, who applies Conventional Commits formatting and verifies QA status.
 
-### Brain Usage Visibility (`check-brain-usage.sh`)
-
-This PostToolUse hook runs after a subagent completes. It checks whether the agent is listed in the `brain_required_agents` array in `enforcement-config.json` and, if so, whether the agent's output contains evidence of brain tool usage (patterns like `agent_search`, `agent_capture`, `searched.*brain`, `captured.*brain`).
-
-If no evidence is found, the hook emits a warning to stderr. This is non-blocking (always exits 0) -- it alerts Eva that the agent may have skipped its required brain reads or writes, but does not prevent the pipeline from advancing.
-
-The hook skips the check entirely when `pipeline-state.md` does not indicate `brain.*available.*true`, since there is nothing to warn about when the brain is not configured.
-
-### Quality Gate (`quality-gate.sh`)
-
-This Stop hook fires whenever an agent attempts to finish its work. It reads `lint_command` from `enforcement-config.json` and runs it. If lint checks fail, the hook exits 2, which blocks the agent from stopping and forces it to fix the errors before completing. If `lint_command` is not configured, the hook falls back to `test_command` for backward compatibility. The full test suite (`test_command`) is used separately by Roz for QA verification -- the Stop hook is designed for fast, frequent checks (lint, typecheck) that run on every agent stop.
-
-**Behavior:**
-
-- If `lint_command` is empty, falls back to `test_command`. If both are empty, `"null"`, or a placeholder value (contains "no test", "no lint", "not configured", or "echo"), the hook exits 0 and the agent finishes normally.
-- If the command runs and passes, the hook exits 0.
-- If the command runs and fails, the hook exits 2 with a message: "BLOCKED: Lint checks failed. Fix lint/typecheck errors before finishing."
-
-**Infinite loop guard:** The hook sets the `ATELIER_STOP_HOOK_ACTIVE` environment variable to `1` before running tests. If the hook re-enters (because the agent's fix attempt triggers another stop), it detects the variable and exits 0 immediately. This prevents the hook from recursively running the test suite on every retry.
-
-### Complexity Check (`check-complexity.sh`)
-
-This PostToolUse hook fires after any Edit, Write, or MultiEdit call. It reads `complexity_command` from `enforcement-config.json`, substitutes the `{file}` placeholder with the edited file path, and runs the resulting command.
-
-**Behavior:**
-
-- If `complexity_command` is empty or `"null"`, the hook exits 0 silently.
-- Non-source files are skipped based on extension: `.md`, `.json`, `.yml`, `.yaml`, `.toml`, `.cfg`, `.ini`, `.txt`, `.sh`.
-- If the complexity tool produces output (indicating threshold violations), it is emitted as a warning to stderr.
-- The hook is always non-blocking (exit 0). Complexity warnings are advisory -- they surface potential issues without halting the agent.
-
-**Command format:** The `{file}` placeholder is replaced with the absolute path of the edited file. For example, a `complexity_command` of `npx escomplex {file}` becomes `npx escomplex /path/to/project/src/components/Widget.tsx`.
-
 ### Configuration (`enforcement-config.json`)
 
 The configuration file lives at `.claude/hooks/enforcement-config.json` and is customized during `/pipeline-setup` with project-specific values:
@@ -1081,15 +1039,10 @@ The configuration file lives at `.claude/hooks/enforcement-config.json` and is c
     ".gitlab/", "deploy/", "infra/", "terraform/",
     "pulumi/", "k8s/", "kubernetes/"
   ],
-  "lint_command": "npm run lint",
   "test_command": "npm test",
-  "complexity_command": "npx escomplex {file}",
   "test_patterns": [
     ".test.", ".spec.", "/tests/", "/__tests__/",
     "/test_", "_test.", "conftest"
-  ],
-  "brain_required_agents": [
-    "cal", "colby", "roz", "agatha", "sable", "robert"
   ]
 }
 ```
@@ -1101,11 +1054,8 @@ The configuration file lives at `.claude/hooks/enforcement-config.json` and is c
 | `product_specs_dir` | `enforce-paths.sh` | Robert-skill's write boundary (main thread) |
 | `ux_docs_dir` | `enforce-paths.sh` | Sable-skill's write boundary (main thread) |
 | `colby_blocked_paths` | `enforce-paths.sh` | Array of path prefixes Colby cannot write to. Default includes `docs/`, CI/CD paths, container files, and infra directories. Customized during `/pipeline-setup`. |
-| `lint_command` | `quality-gate.sh` | Fast lint/typecheck command (e.g., `npm run lint`, `ruff check .`). The Stop hook runs this before allowing an agent to finish. Falls back to `test_command` if not configured. Empty string or placeholder values are skipped. |
-| `test_command` | Roz (QA verification) | Full test suite command (e.g., `npm test`, `pytest`). Used by Roz for QA verification, not by the Stop hook (unless `lint_command` is absent). |
-| `complexity_command` | `check-complexity.sh` | Complexity checker command with `{file}` placeholder (e.g., `npx escomplex {file}`, `radon cc {file} -nc`). The PostToolUse hook substitutes the edited file path. Empty string is skipped. |
+| `test_command` | Roz (QA verification) | Full test suite command (e.g., `npm test`, `pytest`). Used by Roz for QA verification. |
 | `test_patterns` | `enforce-paths.sh` | Patterns identifying test files for Roz's write boundary |
-| `brain_required_agents` | `check-brain-usage.sh` | Agents expected to use brain tools when brain is available |
 
 ### Hook Registration in `.claude/settings.json`
 
@@ -1127,27 +1077,12 @@ The configuration file lives at `.claude/hooks/enforcement-config.json` and is c
         "matcher": "Bash",
         "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-git.sh"}]
       }
-    ],
-    "Stop": [
-      {
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/quality-gate.sh"}]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Agent",
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-brain-usage.sh"}]
-      },
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-complexity.sh"}]
-      }
     ]
   }
 }
 ```
 
-Each matcher determines which tool invocations trigger the hook. The pipe-separated `Write|Edit|MultiEdit` matcher fires `enforce-paths.sh` on any file write operation. The `Stop` hook has no matcher -- it fires whenever an agent attempts to finish. Existing settings in the file are preserved during the merge.
+Each matcher determines which tool invocations trigger the hook. The pipe-separated `Write|Edit|MultiEdit` matcher fires `enforce-paths.sh` on any file write operation. Existing settings in the file are preserved during the merge.
 
 ### Blocking vs. Non-Blocking
 
@@ -1156,9 +1091,9 @@ Hooks signal their result via exit code:
 - **Exit 0** -- action allowed (or hook not applicable)
 - **Exit 2** -- action blocked; the reason message on stderr is shown to the agent
 
-The three PreToolUse hooks (`enforce-paths.sh`, `enforce-sequencing.sh`, `enforce-git.sh`) exit 2 on violations. The Stop hook (`quality-gate.sh`) also exits 2 when lint checks fail, which blocks the agent from finishing and forces it to fix the errors. The two PostToolUse hooks (`check-brain-usage.sh`, `check-complexity.sh`) always exit 0 -- they emit warnings but never block.
+All three PreToolUse hooks (`enforce-paths.sh`, `enforce-sequencing.sh`, `enforce-git.sh`) exit 2 on violations.
 
-All seven hooks exit 0 immediately when `jq` is not installed, when the config file is missing, or when the tool call is not one they care about. This ensures the hooks never interfere with unrelated tool usage or with projects that have not yet run `/pipeline-setup`.
+All three hooks exit 0 immediately when `jq` is not installed, when the config file is missing, or when the tool call is not one they care about. This ensures the hooks never interfere with unrelated tool usage or with projects that have not yet run `/pipeline-setup`.
 
 ---
 

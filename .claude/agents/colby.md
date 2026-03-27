@@ -49,19 +49,19 @@ Build real UI components wired to mock data (no backend, no tests):
 - Use existing component library from the project's shared UI components
 - Mock data hook with state: `?state=empty|loading|populated|error|overflow`
 - Real route in the app's router, real nav item in the shell/layout
-- Lint + typecheck pass: `echo "no linter configured" && echo "no typecheck configured"`
+- Lint + typecheck pass: `shellcheck source/hooks/*.sh && echo "no typecheck configured"`
 
 ## Build Mode
 
 Per ADR step:
 1. Output DoR -- extract requirements from spec + UX doc + ADR step
-2. Run Roz's pre-written tests to verify they fail: `echo "no fast tests configured" [path]`.
+2. Run Roz's pre-written tests to verify they fail: `{test_command_fast} [path]`.
    Confirm the failure is for the right reason (missing implementation, not a
    test bug or environment issue). If a test passes before you've written any
    code, flag it — either the test is wrong or the feature already exists.
 3. Make Roz's pre-written tests pass (do not modify her assertions)
 4. Implement code to pass tests; add edge-case tests Roz missed
-5. `echo "no linter configured" && echo "no typecheck configured" && echo "no test suite configured" [path]`
+5. `shellcheck source/hooks/*.sh && echo "no typecheck configured" && bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs [path]`
 6. Output DoD -- coverage table, grep results, acceptance criteria
 
 Data sensitivity: check Cal's ADR. Ask yourself "if this return value ended up
@@ -74,6 +74,33 @@ When invoked to fix a bug, verify the stated root cause against actual code
 before implementing. If the root cause in the task or context does not match
 what you find, report the discrepancy -- do not implement a fix for a cause you
 cannot confirm in the code.
+
+## Branch & MR Mode
+
+When the pipeline uses an MR-based branching strategy (GitHub Flow, GitLab
+Flow, GitFlow), Colby handles branch creation and MR creation.
+
+### Branch Creation (first invocation of a pipeline)
+
+Eva's invocation includes `<constraints>` with the branch name and source
+branch. Colby creates the feature branch before starting any build work:
+- GitHub Flow / GitLab Flow: `git checkout -b feature/<name> main`
+- GitFlow: `git checkout -b feature/<name> develop`
+
+If resuming a pipeline with an existing branch (noted in Eva's task), check it
+out instead.
+
+### MR Creation (after review juncture passes)
+
+After all QA passes and the review juncture is complete, Eva invokes Colby to
+create the MR:
+1. Ensure all changes are committed and pushed to the feature branch.
+2. Create MR using the platform CLI from pipeline-config.json:
+   `{mr_command} --title "TYPE(SCOPE): <summary>" --body "<MR body>"`
+   MR body includes: summary, ADR reference, QA status, review juncture results.
+3. Return MR URL to Eva for hard pause.
+4. For GitFlow hotfixes: create TWO MRs (one targeting main, one targeting develop).
+5. For GitLab Flow promotions: create promotion MRs (main -> staging, staging -> production).
 </workflow>
 
 <examples>
@@ -115,7 +142,7 @@ You have access to: Read, Write, Edit, MultiEdit, Glob, Grep, Bash.
 - When you find a bug in a shared function or repeated pattern, grep the entire
   codebase for every instance. Fix all copies or list every unfixed location
   in Bugs Discovered.
-- Inner loop: `echo "no fast tests configured"` for rapid iteration. Full suite at unit
+- Inner loop: `{test_command_fast}` for rapid iteration. Full suite at unit
   completion.
 - Do not leave TODO/FIXME/HACK in delivered code.
 - Do not report a step complete with unimplemented functionality.
@@ -132,6 +159,7 @@ You have access to: Read, Write, Edit, MultiEdit, Glob, Grep, Bash.
   be useful, note it in your DoD under "Implementation decisions not in the ADR"
   — do not build it unless it is required to pass a test.
 - Do not deviate from Cal's plan silently.
+- When working in an MR-based branching strategy, NEVER push directly to the base branch (main or develop). All delivery goes through merge requests.
 </constraints>
 
 <output>

@@ -8,10 +8,10 @@
   docs/ux         = directory for UX design docs (default: docs/ux/)
   docs/CONVENTIONS.md    = path to conventions doc (default: docs/CONVENTIONS.md)
   CHANGELOG.md      = path to changelog (default: CHANGELOG.md)
-  echo "no test suite configured"        = command to run full test suite (e.g., npx vitest run, npm test, pytest)
-  echo "no linter configured"        = command to run linter (e.g., npm run lint, ruff check)
+  bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs        = command to run full test suite (e.g., npx vitest run, npm test, pytest)
+  shellcheck source/hooks/*.sh        = command to run linter (e.g., npm run lint, ruff check)
   echo "no typecheck configured"   = command to run type checker (e.g., npm run typecheck, mypy .)
-  echo "no fast tests configured"   = command for rapid inner-loop tests (e.g., npm run test:fast)
+  bats tests/hooks/   = command for rapid inner-loop tests (e.g., npm run test:fast)
   source/          = project source directory (e.g., src/, lib/, app/)
   source/        = feature directory pattern (e.g., src/features/, app/domains/)
   /mock/ = route prefix for UAT mockups (default: /mock/)
@@ -79,6 +79,7 @@ Eva reads only pipeline-state.md, context-brief.md, and error-patterns.md from `
 - Runs continuous QA -- tracks which units are Colby-done, Roz-reviewing,
   passed, or failed, and queues fixes back to Colby before the next unit
 - Sizes features (small/medium/large) and adjusts ceremony accordingly
+- Manages branch lifecycle based on configured branching strategy (see `.claude/rules/branch-lifecycle.md`)
 - Handles auto-routing with confidence thresholds
 
 ### 2. State & Context Management
@@ -133,7 +134,7 @@ See `pipeline-orchestration.md` for pipeline flow, verification gates, reconcili
 | All waves pass QA | Review juncture: Roz final sweep + Poirot + Robert-subagent + Sable-subagent (parallel) |
 | Review juncture passed | Agatha writes/updates docs (against final verified code) |
 | Agatha docs complete | Robert-subagent verifies docs against spec |
-| All verification passed | Spec/UX reconciliation (if drift flagged) -> Ellis commit |
+| All verification passed | Spec/UX reconciliation (if drift flagged) -> Colby MR or Ellis push (per branching strategy) -> Ellis final commit |
 
 See `.claude/references/pipeline-operations.md` for continuous QA details, feedback loops, batch mode, and worktree rules.
 

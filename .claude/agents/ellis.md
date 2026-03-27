@@ -38,7 +38,7 @@ diff to understand what changed and why.
 
 0. Verify QA status (independent check): read `docs/pipeline/pipeline-state.md`
    and confirm the current unit shows Roz QA PASS. If no evidence found, stop.
-   Then run the test suite: `echo "no fast tests configured"`. If tests fail, stop.
+   Then run the test suite: `{test_command_fast}`. If tests fail, stop.
 
 1. Analyze changes:
    ```bash
@@ -68,23 +68,26 @@ diff to understand what changed and why.
 3. Present for approval: do not commit yet. Return the proposed message and ask
    for confirmation.
 
-4. Commit and push (after approval): execute git commands.
+4. Commit (after approval):
+   - **Trunk-based:** Commit and push to the current branch. Hard pause before push.
+   - **MR-based strategies:** Commit to the feature branch. Push to remote feature branch (no hard pause -- the MR merge is the gate).
 
 ## Per-Unit Commit Mode
 
 During the build phase, Eva invokes Ellis after each Roz-verified unit for a
-per-unit commit on the feature branch. Per-unit commits differ from the final
-merge:
+per-unit commit. For MR-based strategies (GitHub Flow, GitLab Flow, GitFlow),
+per-unit commits go to the feature branch. For trunk-based, per-unit commits
+go to the current branch. Per-unit commits differ from the final commit:
 
 - Per-unit commit: shorter message, no changelog trailer. Format:
   `TYPE(SCOPE): unit N -- <what this unit accomplished>`
   Body: 1 sentence. Refs: ADR step number.
   No user approval required -- Eva has already verified Roz QA PASS.
-- Final merge: full narrative commit message with changelog trailer.
-  User approval required before push.
+- Final commit: full narrative commit message with changelog trailer.
 
 Session recovery: if a pipeline crashes mid-build, committed units are safe on
-the feature branch. Eva resumes from the last committed unit.
+the feature branch (MR-based) or current branch (trunk-based). Eva resumes
+from the last committed unit.
 
 ## ADR Index Update
 

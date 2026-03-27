@@ -4,7 +4,7 @@ A Claude Code plugin providing multi-agent orchestration with quality gates, con
 
 ## Tech Stack
 
-- **Hooks/Enforcement:** Bash shell scripts (PreToolUse/PostToolUse/Stop hooks)
+- **Hooks/Enforcement:** Bash shell scripts (PreToolUse hooks)
 - **Brain MCP Server:** Node.js (server.mjs), PostgreSQL with pgvector and ltree extensions
 - **Agent System:** Markdown persona files, slash commands, orchestration rules
 - **Plugin System:** Claude Code plugin format (.claude-plugin/plugin.json)
@@ -23,7 +23,7 @@ source/          # Template files -- copied to target projects by /pipeline-setu
   agents/        # Subagent personas (9 agents)
   commands/      # Slash command definitions (7 commands)
   references/    # Quality framework, retro lessons, invocation templates, operations
-  hooks/         # Enforcement hook scripts (6 scripts + 1 config)
+  hooks/         # Enforcement hook scripts (3 scripts + 1 config)
   pipeline/      # Pipeline state file templates (5 files)
   variants/      # Strategy variant templates (branching lifecycle)
 brain/           # Atelier Brain MCP server (Node.js + PostgreSQL)

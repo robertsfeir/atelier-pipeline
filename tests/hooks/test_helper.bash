@@ -58,7 +58,6 @@ create_default_config() {
     "kubernetes/"
   ],
   "test_command": "",
-  "complexity_command": "",
   "test_patterns": [
     ".test.",
     ".spec.",
@@ -67,14 +66,6 @@ create_default_config() {
     "/test_",
     "_test.",
     "conftest"
-  ],
-  "brain_required_agents": [
-    "cal",
-    "colby",
-    "roz",
-    "agatha",
-    "sable",
-    "robert"
   ]
 }
 CFGEOF
@@ -126,16 +117,6 @@ build_bash_input() {
     printf '{"tool_name":"Bash","tool_input":{"command":"%s"}}' \
       "$command"
   fi
-}
-
-# Build a PostToolUse-style JSON input for check-brain-usage
-# Usage: build_brain_check_input "colby" "agent_search found 3 results"
-build_brain_check_input() {
-  local subagent_type="${1:-}"
-  local tool_result_text="${2:-}"
-
-  printf '{"tool_name":"Agent","tool_input":{"subagent_type":"%s"},"tool_result":{"content":[{"text":"%s"}]}}' \
-    "$subagent_type" "$tool_result_text"
 }
 
 # ── jq Manipulation ─────────────────────────────────────────────────

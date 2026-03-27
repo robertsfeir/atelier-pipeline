@@ -132,6 +132,91 @@ Requires `output: 'standalone'` in `next.config.js`.
 
 ---
 
+<section id="podman-compatibility">
+
+## Podman Compatibility
+
+Podman is a drop-in replacement for Docker with a similar CLI but important differences. Use this section when running containers on systems with Podman instead of Docker.
+
+### CLI Differences
+
+| Task | Docker | Podman |
+|------|--------|--------|
+| Start services | `docker compose up` | `podman-compose up` or `docker compose up` (if Podman emulation enabled) |
+| Build image | `docker build` | `podman build` |
+| Run container | `docker run` | `podman run` |
+| List containers | `docker ps` | `podman ps` |
+| Push to registry | `docker push` | `podman push` |
+
+**Note:** Podman v4.0+ includes `docker` command emulation. If available on your system, `docker compose` works directly. Otherwise, use `podman-compose` (Python wrapper or native Go implementation).
+
+### Rootless by Default
+
+Podman runs rootless (non-root user) by default — a security advantage over Docker:
+- No daemon requiring root privilege.
+- Containers run as the invoking user.
+- **Implication:** Bind mounts use user-namespace mappings. Files created inside a container may have unexpected UID/GID on the host.
+  - Solution: Use named volumes for persistent data instead of bind mounts in production.
+  - Development: Bind mounts work but ownership may require `chown` post-container.
+
+### Pod Concepts
+
+Podman's "pod" is a group of containers sharing network namespace (like Kubernetes pods):
+- Useful for multi-container services on a single machine.
+- `podman pod create` → `podman run --pod=<name>` for each service.
+- For most uses, stick with `podman-compose` (manages pods under the hood).
+
+### Systemd Integration
+
+Podman containers can be managed by systemd for automatic restart and service management:
+```bash
+# Generate systemd unit file
+podman generate systemd --name <container> > /etc/systemd/user/container.service
+
+# Enable and start
+systemctl --user enable container.service
+systemctl --user start container.service
+```
+
+**Benefit:** Containers restart on system reboot or failure — useful for production single-server deployments.
+
+### Compose Spec Compatibility
+
+`podman-compose` supports Docker Compose v3.x syntax but with limitations:
+- `depends_on` with `condition: service_healthy` — supported.
+- `profiles` — supported (Podman 4.0+).
+- `deploy.resources.limits` — **not fully supported** (Podman respects but reports differ).
+- `healthcheck` — supported.
+
+**Recommendation:** Test your `docker-compose.yml` with Podman before production. Most standard files work without changes.
+
+### Common Gotchas When Switching from Docker
+
+1. **Container networking:** Podman rootless containers use a user-space network. DNS resolution works, but host-to-container port access requires explicit binding (always use `ports: ["8000:8000"]` in Compose; omitting it breaks access from the host).
+
+2. **Volume permissions:** Rootless user can't read files owned by root (UID 0). If you have existing Docker volumes owned by root, copy data to a new Podman volume first.
+
+3. **Build cache:** Podman's build cache is separate from Docker's. `podman build` may rebuild layers Docker would cache.
+
+4. **Registry credentials:** Podman stores credentials in `~/.local/share/containers/auth.json` (user-level), not `/root/.docker/config.json`. Use `podman login` to authenticate to registries.
+
+5. **Systemd socket activation:** Podman supports `podman.socket` (similar to Docker's daemon.sock) but requires explicit enablement. For CI/CD, use direct `podman` commands instead of socket access.
+
+6. **Container images:** Images are stored in `~/.local/share/containers/storage/` (user rootless) vs `/var/lib/docker` (Docker daemon). Keep in mind when estimating disk usage.
+
+### Migration Path
+
+To migrate a Docker Compose stack to Podman:
+1. Use the same `docker-compose.yml` file.
+2. Replace `docker compose` with `podman-compose` (or `docker compose` if emulation is available).
+3. Test `up`, `down`, `logs`, and service health checks.
+4. For production, generate systemd units and test restart behavior.
+5. Adjust volume bind mounts to use named volumes if running rootless.
+
+</section>
+
+---
+
 <section id="postgresql-architecture">
 
 ## PostgreSQL Architecture

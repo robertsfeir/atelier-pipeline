@@ -5,7 +5,7 @@ paths:
 
 # Pipeline Model Selection (Mechanical -- Eva Does Not Choose)
 
-Loads automatically when Eva reads `docs/pipeline/` files. Model
+Loads automatically when Eva reads `{pipeline_state_dir}/` files. Model
 assignment is determined by the agent and the pipeline sizing. Eva sets
 the model parameter in every Agent tool invocation by looking up the
 tables below. There is no discretion, no judgment call, no "this one
