@@ -54,6 +54,10 @@ All other reference files are loaded by subagents when relevant, not by Eva. Eva
    If it references a different feature, it's stale. Reset it before proceeding.
 3. **Scan `{pipeline_state_dir}/error-patterns.md`** -- any entries with Recurrence count >= 3?
    Note which agents need WARN injection for this run.
+3b. **Read branching strategy** from `.claude/pipeline-config.json`. Set
+    `branching_strategy` in session state. If no config found, default to
+    trunk-based (backward compatible). Announce: "Branching strategy:
+    {strategy}."
 4. **Brain health check** -- call `atelier_stats`. Two gates:
    - Gate 1: Is the tool available? (If not → brain not configured, skip)
    - Gate 2: Does it return `brain_enabled: true`? (If not → brain disabled by user)

@@ -392,7 +392,7 @@ Idea -> Robert spec -> Sable UX + Agatha doc plan (parallel)
 -> Roz test spec -> Roz test authoring -> [Colby build -> Roz QA + Poirot -> Ellis per-unit commit] (repeat)
 -> Review juncture: Roz sweep + Poirot + Robert-subagent + Sable-subagent (parallel, triage matrix)
 -> Agatha docs -> Robert-subagent verifies docs
--> Spec/UX reconciliation -> Ellis final merge/squash
+-> Spec/UX reconciliation -> Colby MR (if MR-based strategy) or Ellis push (if TBD) -> Ellis final commit
 ```
 
 ### Spec Requirement (Medium/Large)
@@ -418,9 +418,11 @@ After Cal delivers an ADR, Eva does NOT advance to Roz immediately. Eva:
 ### Per-Unit Commits During Build
 
 After each Roz QA PASS on a build unit, Eva invokes Ellis for a per-unit
-commit on the feature branch (per-unit commit mode). The feature branch
-accumulates granular commits. After the review juncture, Ellis creates
-a merge commit to main (or squash per user preference).
+commit. For MR-based strategies (GitHub Flow, GitLab Flow, GitFlow), per-unit
+commits go to the feature branch. For trunk-based, per-unit commits go to main
+(or the current branch). The feature branch accumulates granular commits.
+After the review juncture, delivery depends on the branching strategy (see
+`.claude/rules/branch-lifecycle.md`).
 
 ### Review Juncture (after all Colby units pass QA)
 
@@ -440,7 +442,14 @@ After completing any phase, Eva logs a one-line status and auto-advances. No "sa
 
 ### Hard Pauses
 
-Eva stops and asks the user: before Ellis pushes to remote; Roz BLOCKER; Robert/Sable AMBIGUOUS or DRIFT; Cal scope-changing discovery; user says "stop"/"hold"; after Roz diagnosis on a **user-reported bug** (not pipeline-internal findings).
+Eva stops and asks the user at these points (strategy-dependent):
+- **Trunk-based:** before Ellis pushes to remote
+- **MR-based strategies (GitHub Flow, GitLab Flow, GitFlow):** before MR merge (user reviews CI + approves)
+- **GitLab Flow additional:** before each environment promotion
+- **GitFlow additional:** before release merge to main
+- **All strategies:** Roz BLOCKER; Robert/Sable AMBIGUOUS or DRIFT; Cal scope-changing discovery; user says "stop"/"hold"; after Roz diagnosis on a **user-reported bug** (not pipeline-internal findings)
+
+Branch lifecycle details are in `.claude/rules/branch-lifecycle.md` (strategy-specific, installed at setup time).
 
 Also requires user input: UAT review, scope questions from Robert/Cal.
 User overrides: "skip to [agent]", "back to [agent]", "check with [agent]", "stop".

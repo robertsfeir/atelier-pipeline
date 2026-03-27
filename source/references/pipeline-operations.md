@@ -68,10 +68,19 @@ Cal's ADR steps become work units. Roz writes tests first, Colby implements to p
 10. Eva invokes Robert-subagent in doc review mode to verify Agatha's output
 11. If Robert-subagent or Sable-subagent flagged DRIFT: hard pause. Human
     decides fix code or update spec/UX.
-12. Eva invokes Ellis in final merge mode. Ellis creates a merge commit to
-    main (or squash per user preference). Code + docs + updated specs/UX
-    ship as one merge. Per-unit history is preserved on the feature branch
-    for `git bisect`.
+12. Final delivery (strategy-dependent, see `.claude/rules/branch-lifecycle.md`):
+    - **Trunk-based:** Eva invokes Ellis in standard mode. Ellis commits and
+      pushes to main. Hard pause before push to remote.
+    - **MR-based strategies (GitHub Flow, GitLab Flow, GitFlow):** Eva invokes
+      Colby to create an MR via the configured platform CLI, targeting the
+      integration branch. MR body includes: ADR reference, QA status, review
+      juncture results. Hard pause -- user reviews CI and merges.
+    - **GitLab Flow additional:** After MR merges, Eva offers environment
+      promotion. Hard pause at each environment boundary.
+    - After merge/push: Eva handles branch cleanup (deletes feature branch
+      local + remote for MR-based strategies). Code + docs + updated specs/UX
+      ship as one merge. Per-unit history is preserved on the feature branch
+      for `git bisect`.
 
 </operations>
 

@@ -31,6 +31,30 @@ Before installing, ask the user about their project. Ask these questions convers
 
 If the user does not have answers for optional items (coverage, complexity), use sensible defaults.
 
+### Step 1b: Branching Strategy Selection
+
+**Pre-checks (before asking):**
+
+1. Check `git rev-parse --git-dir` -- if no git repo, skip branching question entirely. Default to trunk-based, do not write pipeline-config.json.
+2. Check `git remote get-url origin` -- if no remote, auto-select trunk-based with message: "No remote detected -- defaulting to trunk-based. Run setup again after adding a remote to configure MR-based flows." Skip to next step.
+
+**If git + remote exist, ask the user (one question, not a list dump):**
+
+> Which branching strategy should the pipeline use?
+> - **Trunk-Based Development** (Recommended for solo/small teams) -- Commit directly to main. Simplest setup.
+> - **GitHub Flow** -- Feature branches + merge requests. Main is always deployable.
+> - **GitLab Flow** -- GitHub Flow + environment branches (staging, production). For staged deployments.
+> - **GitFlow** -- Formal release cycle with develop + main. For versioned software with scheduled releases.
+
+**Follow-up per strategy:**
+
+- **Trunk-based:** No follow-up needed.
+- **GitHub Flow / GitLab Flow / GitFlow:** Detect platform from remote URL (github -> `gh`, gitlab -> `glab`). If unrecognizable, ask user. Then check CLI availability (`which gh` or `which glab`). If missing, detect package manager (try `which brew`, `which apt-get`, `which dnf` in order). If package manager found, offer: "[Strategy] requires `[cli]` CLI, which isn't installed. Install with `[pm] install [cli]`?" Options: "Install it for me" / "I'll install it later". If no package manager found: "Please install `[cli]` CLI before running the pipeline. See [install URL]."
+- **GitLab Flow additional:** Ask "What are your environment branch names?" Default: staging, production.
+- **GitFlow:** Platform detection only, no additional questions (conventions are standardized). Integration branch is `develop`.
+
+**Store selection:** Write `.claude/pipeline-config.json` with the appropriate values from `source/pipeline/pipeline-config.json` as the template, filled with the user's selections.
+
 ### Step 2: Read Templates
 
 Read the template files from the plugin's templates directory. These serve as the base for each installed file:
@@ -69,6 +93,12 @@ plugins/atelier-pipeline/source/
     error-patterns.md             # Error pattern log template
     investigation-ledger.md       # Debug hypothesis tracking template
     last-qa-report.md             # QA report template
+    pipeline-config.json          # Branching strategy configuration
+  variants/
+    branch-lifecycle-trunk-based.md   # Trunk-based branch lifecycle
+    branch-lifecycle-github-flow.md   # GitHub Flow branch lifecycle
+    branch-lifecycle-gitlab-flow.md   # GitLab Flow branch lifecycle
+    branch-lifecycle-gitflow.md       # GitFlow branch lifecycle
 ```
 
 ### Step 3: Install Files
@@ -108,8 +138,10 @@ Copy each template to its destination in the user's project, customizing placeho
 | `source/pipeline/error-patterns.md` | `docs/pipeline/error-patterns.md` | Error pattern tracking |
 | `source/pipeline/investigation-ledger.md` | `docs/pipeline/investigation-ledger.md` | Debug hypothesis tracking |
 | `source/pipeline/last-qa-report.md` | `docs/pipeline/last-qa-report.md` | QA report persistence |
+| `source/pipeline/pipeline-config.json` | `.claude/pipeline-config.json` | Branching strategy configuration |
+| `source/variants/branch-lifecycle-{strategy}.md` | `.claude/rules/branch-lifecycle.md` | Branch lifecycle rules (selected variant only) |
 
-**Total: 29 files across 5 directories (before hooks).**
+**Total: 31 files across 5 directories (before hooks).**
 
 ### Step 3a: Install Enforcement Hooks
 
@@ -182,7 +214,7 @@ file already exists. Add this hooks section:
 If `jq` is not available, tell the user: "Install jq for pipeline enforcement hooks:
 `brew install jq` (macOS) or `apt install jq` (Linux)."
 
-**Total with hooks: 36 files across 6 directories.**
+**Total with hooks: 38 files across 7 directories.**
 
 ### Step 3b: Write Version Marker
 
@@ -242,26 +274,35 @@ This project uses a multi-agent orchestration pipeline for structured developmen
 
 After installation, print:
 
-1. A count of files installed (36 files across 6 directories)
+1. A count of files installed (38 files across 7 directories)
 2. The directory tree showing what was created
-3. A reminder of available slash commands
-4. Instructions to start their first pipeline run
-5. **Offer to set up the Atelier Brain** -- persistent memory across sessions
+3. The configured branching strategy and any CI recommendations
+4. A reminder of available slash commands
+5. Instructions to start their first pipeline run
+6. **Offer to set up the Atelier Brain** -- persistent memory across sessions
 
 **Example summary:**
 
 ```
 Atelier Pipeline installed successfully.
 
-Files installed: 36
-  .claude/rules/       -- 4 files (Eva persona, orchestration rules, pipeline operations, model selection)
+Files installed: 38
+  .claude/rules/       -- 5 files (Eva persona, orchestration rules, pipeline operations, model selection, branch lifecycle)
   .claude/agents/      -- 9 files (Cal, Colby, Roz, Robert, Sable, Poirot, Distillator, Ellis, Agatha)
   .claude/commands/    -- 7 files (/pm, /ux, /architect, /debug, /pipeline, /devops, /docs)
   .claude/references/  -- 4 files (quality framework, retro lessons, invocation templates, pipeline operations)
   .claude/hooks/       -- 7 files (path enforcement, sequencing, git guard, brain usage, quality gate, complexity check, config)
   docs/pipeline/       -- 5 files (state tracking for session recovery)
+  .claude/pipeline-config.json -- branching strategy configuration
   .claude/settings.json -- updated with hook registration
   CLAUDE.md            -- updated with pipeline section
+
+Branching strategy: [selected strategy]
+  [CI template recommendations -- advisory, printed not written to files:
+   - Trunk-based: Run CI on every push to main.
+   - GitHub Flow: Run CI on MR events + push to main. Protect main.
+   - GitLab Flow: Same + CI on push to staging/production. Protect all env branches.
+   - GitFlow: CI on MR events for develop AND main. Protect both.]
 
 Available commands:
   /pm          -- Feature discovery and product spec (Robert)
@@ -288,6 +329,23 @@ After printing the summary, ask the user:
 > without it.
 
 If the user says yes, invoke the `brain-setup` skill. If no, finish.
+
+### Step 7: Lightweight Reconfig
+
+Users can change branching strategy without full reinstall by asking Eva to
+"change branching strategy" or "switch to GitHub Flow".
+
+**Procedure:**
+1. Eva reads `.claude/pipeline-config.json`
+2. Eva confirms no active pipeline. If active, return error: "Cannot change
+   branching strategy mid-pipeline. Complete or abandon the current pipeline
+   first."
+3. Eva asks the new strategy question (same as Step 1b)
+4. Eva rewrites `.claude/pipeline-config.json` and
+   `.claude/rules/branch-lifecycle.md` only (installs the selected variant)
+5. Eva announces the change and any new CI recommendations
+
+No other files are modified during reconfig.
 
 </procedure>
 
