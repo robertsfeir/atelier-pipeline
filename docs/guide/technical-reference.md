@@ -1,6 +1,6 @@
 # Atelier Pipeline -- Technical Reference
 
-Version: 2.4.0
+Version: 3.1.0
 
 This document is the comprehensive technical reference for the atelier-pipeline Claude Code plugin. It covers plugin architecture, agent system design, orchestration logic, brain infrastructure, and customization points. For usage-oriented documentation, see [the user guide](user-guide.md).
 
@@ -23,8 +23,9 @@ This document is the comprehensive technical reference for the atelier-pipeline 
 13. [Team Collaboration Internals](#team-collaboration-internals)
 14. [Pipeline State Files and Session Recovery](#pipeline-state-files-and-session-recovery)
 15. [Setup and Install System](#setup-and-install-system)
-16. [Enforcement Hooks](#enforcement-hooks)
-17. [Customization Points](#customization-points)
+16. [Branching Strategy Variants](#branching-strategy-variants)
+17. [Enforcement Hooks](#enforcement-hooks)
+18. [Customization Points](#customization-points)
 
 ---
 
@@ -42,7 +43,7 @@ The plugin itself lives in the Claude Code plugin directory (typically `~/.claud
 ```
 atelier-pipeline/                         # Plugin root (CLAUDE_PLUGIN_ROOT)
   .claude-plugin/
-    plugin.json                           # Plugin metadata, hooks, version (2.4.0)
+    plugin.json                           # Plugin metadata, hooks, version (3.1.0)
   source/                                 # Template files -- copied to target project
     rules/
       default-persona.md
@@ -61,7 +62,13 @@ atelier-pipeline/                         # Plugin root (CLAUDE_PLUGIN_ROOT)
       invocation-templates.md, pipeline-operations.md
     pipeline/
       pipeline-state.md, context-brief.md, error-patterns.md,
-      investigation-ledger.md, last-qa-report.md
+      investigation-ledger.md, last-qa-report.md,
+      pipeline-config.json                # Branching strategy configuration template
+    variants/                             # Branch lifecycle strategy variants
+      branch-lifecycle-trunk-based.md     # Trunk-based (default)
+      branch-lifecycle-github-flow.md     # GitHub Flow
+      branch-lifecycle-gitlab-flow.md     # GitLab Flow
+      branch-lifecycle-gitflow.md         # GitFlow
     hooks/                                # Enforcement hook templates
       enforce-paths.sh                    # File path enforcement per agent
       enforce-sequencing.sh               # Pipeline sequencing gates
@@ -100,7 +107,7 @@ The plugin registers a `SessionStart` hook in `plugin.json` that runs two comman
 
 ## File Tree -- What Lives Where
 
-After running `/pipeline-setup`, 36 files are installed into the target project. The plugin templates remain in the plugin directory and are never modified.
+After running `/pipeline-setup`, 38 files are installed into the target project. The plugin templates remain in the plugin directory and are never modified.
 
 ### Target Project (installed by /pipeline-setup)
 
@@ -113,6 +120,7 @@ your-project/
       agent-system.md                     # Orchestration rules, routing (identity)
       pipeline-orchestration.md           # Mandatory gates, triage, wave execution (path-scoped: docs/pipeline/**)
       pipeline-models.md                  # Model selection, Micro tier, complexity classifier (path-scoped: docs/pipeline/**)
+      branch-lifecycle.md                 # Branch lifecycle rules for selected strategy (path-scoped: docs/pipeline/**)
     agents/                               # Loaded when subagents are invoked
       cal.md                              # Architect
       colby.md                            # Engineer
@@ -144,6 +152,7 @@ your-project/
       quality-gate.sh                     # Stop hook -- blocks agent from finishing if lint checks fail
       check-complexity.sh                 # PostToolUse -- warns on file complexity after edits
       enforcement-config.json             # Project-specific paths and rules
+    pipeline-config.json                    # Branching strategy configuration
     settings.json                         # Hook registration
   docs/
     pipeline/                             # Eva reads at session start for recovery
@@ -154,7 +163,7 @@ your-project/
       last-qa-report.md                   # Roz's most recent QA report
 ```
 
-**Total: 36 files across 6 directories, plus the `.atelier-version` marker and an update to `CLAUDE.md`.**
+**Total: 38 files across 6 directories, plus the `.atelier-version` marker and an update to `CLAUDE.md`.** The two additional files compared to prior versions are `.claude/pipeline-config.json` (branching strategy configuration) and `.claude/rules/branch-lifecycle.md` (selected strategy's lifecycle rules).
 
 ### What Does NOT Live on Disk
 
@@ -191,6 +200,7 @@ Eva's rules are split into two categories to stay under Anthropic's recommended 
 **Operations files** (path-scoped via YAML frontmatter):
 - `pipeline-orchestration.md` -- mandatory gates, triage consensus matrix, wave execution, per-unit commit flow, investigation discipline, agent standards, review juncture, reconciliation
 - `pipeline-models.md` -- model selection tables, Micro-tier criteria, Colby complexity classifier
+- `branch-lifecycle.md` -- branching strategy lifecycle rules (selected variant only: trunk-based, github-flow, gitlab-flow, or gitflow)
 
 Operations files use a `paths: ["docs/pipeline/**"]` frontmatter declaration. Claude Code loads them automatically when any file matching that glob is read. Since Eva's boot sequence reads `docs/pipeline/pipeline-state.md` on every session with an active pipeline, the operational rules load exactly when needed.
 
@@ -823,9 +833,9 @@ After each major phase crossing (Robert -> Sable, Cal -> Roz, review juncture ->
 
 The `pipeline-setup` skill is conversational. It:
 
-1. **Gathers project information** one question at a time: tech stack, test framework, test commands, source structure, database patterns, build/deploy commands, coverage thresholds, complexity limits.
+1. **Gathers project information** one question at a time: tech stack, test framework, test commands, source structure, database patterns, build/deploy commands, coverage thresholds, complexity limits, and branching strategy.
 2. **Reads template files** from `source/` in the plugin directory.
-3. **Copies 36 files** to the target project (27 template files + 2 path-scoped rules + 7 enforcement hooks), replacing placeholders with project-specific values.
+3. **Copies 38 files** to the target project (27 template files + 3 path-scoped rules + 7 enforcement hooks + 1 branching config), replacing placeholders with project-specific values. The branching strategy variant file is selected from `source/variants/` and installed as `.claude/rules/branch-lifecycle.md`.
 4. **Customizes enforcement hooks** in `.claude/hooks/` -- sets project-specific paths and test/complexity commands in `enforcement-config.json`, registers hooks in `.claude/settings.json`, and makes scripts executable.
 5. **Writes version marker** to `.claude/.atelier-version` for update detection.
 6. **Updates `CLAUDE.md`** with a pipeline section.
@@ -877,6 +887,86 @@ Seeds the brain with existing project knowledge:
 3. **Extract** -- reads each artifact, synthesizes reasoning (never verbatim content), captures as brain thoughts with proper types, importance scores, and relations
 4. **Incremental** -- safe to re-run. Duplicate detection (>0.85 similarity = skip, 0.7-0.85 = new thought with `evolves_from` relation)
 5. **Capped** -- maximum 100 thoughts per hydration run
+
+---
+
+## Branching Strategy Variants
+
+### Variant System
+
+The branching strategy feature uses a variant installation pattern. Four strategy-specific Markdown files exist in `source/variants/` in the plugin directory:
+
+```
+source/variants/
+  branch-lifecycle-trunk-based.md
+  branch-lifecycle-github-flow.md
+  branch-lifecycle-gitlab-flow.md
+  branch-lifecycle-gitflow.md
+```
+
+During `/pipeline-setup`, the user selects a strategy. The setup copies only the selected variant file to `.claude/rules/branch-lifecycle.md` in the target project. The other three variants are never installed. This means the installed rules contain only the lifecycle rules relevant to the project's chosen strategy -- agents never see conflicting instructions from other strategies.
+
+All four variant files are path-scoped to `docs/pipeline/**`, which means they load automatically when Eva reads pipeline state at session start.
+
+### Configuration File
+
+The selected strategy is persisted in `.claude/pipeline-config.json`:
+
+```json
+{
+  "branching_strategy": "trunk-based",
+  "platform": "",
+  "platform_cli": "",
+  "mr_command": "",
+  "merge_command": "",
+  "environment_branches": [],
+  "base_branch": "main",
+  "integration_branch": "main"
+}
+```
+
+| Field | Purpose |
+|-------|---------|
+| `branching_strategy` | Strategy identifier: `trunk-based`, `github-flow`, `gitlab-flow`, `gitflow` |
+| `platform` | Detected platform: `github`, `gitlab`, or empty |
+| `platform_cli` | CLI tool for MR operations: `gh`, `glab`, or empty |
+| `mr_command` | Command to create merge requests (populated by setup) |
+| `merge_command` | Command to merge (populated by setup) |
+| `environment_branches` | GitLab Flow only: list of environment branch names (e.g., `["staging", "production"]`) |
+| `base_branch` | Primary branch name (default: `main`) |
+| `integration_branch` | Branch that receives feature work. Same as `base_branch` for most strategies; `develop` for GitFlow |
+
+Eva reads this file during the session boot sequence. Colby reads it to determine branch naming conventions and merge targets. Ellis reads it to determine commit targets.
+
+### Lightweight Reconfig
+
+Users can change strategies without re-running full setup. Eva's reconfig procedure:
+
+1. Reads `.claude/pipeline-config.json`
+2. Confirms no active pipeline (blocks if one is running)
+3. Asks the user for the new strategy
+4. Rewrites `.claude/pipeline-config.json` with updated values
+5. Installs the new variant file to `.claude/rules/branch-lifecycle.md`
+
+Only these two files are modified during reconfig.
+
+### Agent Responsibilities
+
+| Agent | Branching Role |
+|-------|---------------|
+| **Colby** | Creates feature/hotfix/release branches. Creates merge requests via platform CLI. |
+| **Ellis** | Commits to the current branch (feature branch or main, depending on strategy). Never pushes to main directly when using an MR-based strategy. |
+| **Eva** | Reads strategy at boot. Cleans up branches after merge. Offers environment promotion (GitLab Flow). |
+
+### Strategy-Specific Behaviors
+
+**Trunk-Based Development.** No branch creation by default. Ellis pushes to main. Optional short-lived branches on user request.
+
+**GitHub Flow.** Colby creates `feature/<name>` before building. Ellis commits to the feature branch. Colby creates a merge request after the review juncture. Hard pause before merge. Eva deletes the branch after merge.
+
+**GitLab Flow.** Same as GitHub Flow, plus environment promotion. After MR merges to main, Eva offers promotion to staging, then production. Each promotion is a hard pause.
+
+**GitFlow.** Feature branches branch from `develop`, not `main`. Release branches (`release/<version>`) are created from develop. Hotfix branches merge to both main and develop. Eva tags releases and back-merges to develop.
 
 ---
 

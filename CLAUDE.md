@@ -25,6 +25,7 @@ source/          # Template files -- copied to target projects by /pipeline-setu
   references/    # Quality framework, retro lessons, invocation templates, operations
   hooks/         # Enforcement hook scripts (6 scripts + 1 config)
   pipeline/      # Pipeline state file templates (5 files)
+  variants/      # Strategy variant templates (branching lifecycle)
 brain/           # Atelier Brain MCP server (Node.js + PostgreSQL)
 skills/          # Plugin skills (pipeline-setup, brain-setup, brain-hydrate, pipeline-overview)
 .claude/         # Installed pipeline files (this project eats its own cooking)

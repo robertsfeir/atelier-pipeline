@@ -43,7 +43,7 @@ Claude walks you through project configuration one question at a time:
 - Source structure and database patterns
 - Coverage and complexity thresholds
 
-It then installs 36 files into your project (agent personas, commands, references, enforcement hooks, pipeline state). At the end, it offers to set up the Atelier Brain.
+It then installs 38 files into your project (agent personas, commands, references, enforcement hooks, pipeline state). At the end, it offers to set up the Atelier Brain.
 
 ### 3. Set Up the Brain (optional but recommended)
 
@@ -175,6 +175,10 @@ Not every feature runs every phase. Eva adjusts:
 | **Medium** | 2-4 ADR steps, typical feature | Robert -> Cal -> Colby/Roz interleaved -> review juncture -> Agatha -> Ellis |
 | **Large** | 5+ ADR steps, new system | Full pipeline above |
 
+### What's new in v3.1
+
+- **Configurable branching strategy** -- `/pipeline-setup` now asks which branching strategy your project uses (trunk-based, GitHub Flow, GitLab Flow, or GitFlow). The selected strategy installs as `branch-lifecycle.md` with branch naming conventions, lifecycle rules, and merge policies that Colby and Ellis follow automatically.
+
 ### What's new in v2.4
 
 - **XML tag migration** (ADR-0006) — all agent-facing files use semantic XML tags for structural clarity per Anthropic's documentation
@@ -241,7 +245,7 @@ Agents capture thoughts during pipeline runs and search for relevant context bef
 
 ## What Gets Installed
 
-`/pipeline-setup` installs 36 files into your project:
+`/pipeline-setup` installs 38 files into your project:
 
 ```
 your-project/
@@ -251,6 +255,7 @@ your-project/
       agent-system.md            # Orchestration rules, routing, gates
       pipeline-orchestration.md  # Pipeline operations (path-scoped, loads during active pipelines)
       pipeline-models.md         # Model selection tables (path-scoped)
+      branch-lifecycle.md        # Branch lifecycle rules (selected strategy variant)
     agents/                      # Loaded when subagents are invoked
       cal.md                     # Architect
       colby.md                   # Engineer
@@ -288,6 +293,7 @@ your-project/
       error-patterns.md          # Error pattern tracking
       investigation-ledger.md    # Debug hypothesis tracking
       last-qa-report.md          # Roz's most recent QA report
+    pipeline-config.json         # Branching strategy configuration
 ```
 
 **Requires:** `jq` for hook enforcement (`brew install jq` on macOS, `apt install jq` on Linux).

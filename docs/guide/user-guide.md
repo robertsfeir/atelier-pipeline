@@ -17,6 +17,7 @@ A structured, multi-agent development workflow for Claude Code. Ten specialized 
 - [Team Collaboration](#team-collaboration)
 - [State Recovery](#state-recovery)
 - [Customization](#customization)
+- [Branching Strategy](#branching-strategy)
 - [Mechanical Enforcement](#mechanical-enforcement)
 - [Updating the Plugin](#updating-the-plugin)
 - [Troubleshooting](#troubleshooting)
@@ -43,7 +44,7 @@ Open Claude Code in your project directory and run:
 /pipeline-setup
 ```
 
-The setup asks about your project one question at a time: tech stack, test commands, source structure, coverage thresholds. It then installs 36 files into your project (agent personas, commands, references, enforcement hooks, path-scoped rules, state tracking).
+The setup asks about your project one question at a time: tech stack, test commands, source structure, coverage thresholds, and branching strategy. It then installs 38 files into your project (agent personas, commands, references, enforcement hooks, path-scoped rules, branch lifecycle rules, and state tracking).
 
 ### 3. Build something
 
@@ -402,6 +403,14 @@ Several capabilities improve pipeline velocity and institutional memory:
 
 **Colby: minimal implementation.** Colby implements the minimum code necessary to pass the current failing test. Helper functions, utility abstractions, and convenience wrappers not required by the ADR step or failing test are noted in the DoD but not built.
 
+### New in v3.1
+
+**Configurable branching strategy.** During `/pipeline-setup`, you now choose a branching strategy: Trunk-Based Development, GitHub Flow, GitLab Flow, or GitFlow. The selected strategy installs tailored branch lifecycle rules that govern how Colby creates branches, how Ellis commits, and how Eva handles cleanup after merges. Existing projects default to trunk-based with no config change required. See [Branching Strategy](#branching-strategy) for details.
+
+**Lightweight reconfig.** You can change your branching strategy without re-running the full setup. Ask Eva to "change branching strategy" -- she updates two files and announces the change. No pipeline restart needed.
+
+**Platform CLI detection.** For strategies that use merge requests, setup detects your platform from the git remote URL and checks whether the required CLI (`gh` or `glab`) is installed.
+
 ---
 
 ## The Atelier Brain
@@ -579,6 +588,7 @@ Colby build (Step 2 of 4). Roz passed Steps 1-2. Starting Colby on Step 3.
 | Build command | `npm run build` |
 | Coverage thresholds | stmt=70, branch=65, fn=75, lines=70 |
 | Complexity limits | TSX CCN <= 18, TS/JS CCN <= 12 |
+| Branching strategy | Trunk-based, GitHub Flow, GitLab Flow, or GitFlow |
 
 ### What you can adjust after setup
 
@@ -592,6 +602,65 @@ The pipeline files live in your project and are plain Markdown. You can edit the
 ### What is stack-agnostic
 
 The orchestration patterns, quality gates, agent boundaries, and pipeline flow work regardless of your tech stack. The only project-specific values are test commands, directory paths, and threshold numbers.
+
+---
+
+## Branching Strategy
+
+During `/pipeline-setup`, you choose how the pipeline manages branches. The selected strategy determines how Colby creates branches, how Ellis commits, and how Eva handles cleanup after merges.
+
+### Available strategies
+
+| Strategy | Best for | How it works |
+|----------|----------|-------------|
+| **Trunk-Based Development** | Solo developers, small teams | Commits go directly to main. No branch management overhead. Simplest setup. |
+| **GitHub Flow** | Teams using GitHub | Feature branches + merge requests. Main is always deployable. |
+| **GitLab Flow** | Teams with staged deployments | GitHub Flow + environment branches (staging, production). Promotion between environments requires approval. |
+| **GitFlow** | Versioned software with scheduled releases | Formal release cycle with develop + main branches. Feature branches merge to develop, release branches merge to main. |
+
+### What happens per strategy
+
+**Trunk-Based Development.** Ellis pushes directly to main (or the current branch). No merge requests. If you want a short-lived branch for a specific feature, ask Colby to create one -- this is opt-in, not default.
+
+**GitHub Flow.** Colby creates a feature branch (e.g., `feature/dark-mode`) before building. Per-unit commits go to the feature branch. After the review juncture passes, Colby creates a merge request via the platform CLI (`gh` for GitHub, `glab` for GitLab). Eva asks for your approval before merging. After merge, Eva deletes the feature branch.
+
+**GitLab Flow.** Same feature branch workflow as GitHub Flow, plus environment promotion. After a merge request merges to main, Eva offers to promote: "MR merged to main. Promote to staging?" Each promotion step is a hard pause -- Eva never auto-promotes between environments.
+
+**GitFlow.** Feature branches are created from develop (not main). Colby creates merge requests to develop. Release branches (`release/<version>`) are created from develop when you are ready to release. Hotfix branches are created from main and merge to both main and develop.
+
+### Hotfix flows
+
+All MR-based strategies (GitHub Flow, GitLab Flow, GitFlow) support hotfix branches. When you report a production bug, Colby creates `hotfix/<name>` from main (or the production branch in GitLab Flow). The normal debug pipeline runs: Roz diagnoses, Colby fixes, Roz verifies. Colby then creates a merge request back to the appropriate branch.
+
+### Platform CLI detection
+
+For strategies that use merge requests, setup detects your platform from the git remote URL (GitHub -> `gh`, GitLab -> `glab`). If the CLI is not installed, setup offers to install it for you or tells you how to install it manually.
+
+### Changing your branching strategy
+
+You can switch strategies without re-running the full setup. Ask Eva to "change branching strategy" or "switch to GitHub Flow." Eva will:
+
+1. Confirm no pipeline is currently active
+2. Ask which strategy you want
+3. Update `.claude/pipeline-config.json` and `.claude/rules/branch-lifecycle.md`
+
+No other files are modified. This takes a few seconds.
+
+### Configuration file
+
+The selected strategy is stored in `.claude/pipeline-config.json`:
+
+```json
+{
+  "branching_strategy": "github-flow",
+  "platform": "github",
+  "platform_cli": "gh",
+  "base_branch": "main",
+  "integration_branch": "main"
+}
+```
+
+Eva reads this file at session start. Agents reference it to determine branch naming conventions, merge targets, and cleanup procedures.
 
 ---
 
@@ -733,6 +802,7 @@ your-project/
       agent-system.md            # Orchestration rules and routing
       pipeline-orchestration.md  # Path-scoped: mandatory gates, triage, wave execution (loads on docs/pipeline/**)
       pipeline-models.md         # Path-scoped: model selection tables, Micro tier, complexity classifier (loads on docs/pipeline/**)
+      branch-lifecycle.md        # Path-scoped: branching strategy rules (selected variant only)
     agents/                      # Loaded when subagents are invoked
       cal.md                     # Architect
       colby.md                   # Engineer
@@ -759,6 +829,7 @@ your-project/
       quality-gate.sh            # Blocks agent from finishing if tests fail
       check-complexity.sh        # Warns on file complexity after edits
       enforcement-config.json    # Project-specific paths and rules
+    pipeline-config.json           # Branching strategy configuration
     settings.json                # Hook registration
   docs/
     pipeline/                    # Eva reads at session start
