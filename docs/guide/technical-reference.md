@@ -1035,7 +1035,7 @@ Test files are identified by patterns configured in `enforcement-config.json` (e
 
 This hook intercepts Agent tool calls from the main thread and enforces two mandatory gates by reading `docs/pipeline/pipeline-state.md`:
 
-**Gate 1 -- Ellis requires Roz QA PASS.** Eva cannot invoke Ellis unless `pipeline-state.md` contains evidence of a Roz QA pass (matched by patterns like `roz.*pass`, `qa.*pass`, `verdict.*pass`). This prevents commits without QA verification.
+**Gate 1 -- Ellis requires Roz QA PASS (active pipelines only).** During an active pipeline (phase is `build`, `implement`, `review`, `qa`, `test-authoring`, etc.), Eva cannot invoke Ellis unless the `PIPELINE_STATUS` JSON marker in `pipeline-state.md` has `roz_qa` set to `"PASS"`. When no pipeline is active -- missing state file, missing `PIPELINE_STATUS` marker, or phase is `idle`/`complete` -- Ellis is allowed through for infrastructure, doc-only, and setup commits.
 
 **Gate 2 -- Agatha blocked during build phase.** Eva cannot invoke Agatha (or `agatha`) while `pipeline-state.md` indicates the current phase is `build` or `implement`. Agatha writes docs after Roz's final sweep against verified code, not during active construction.
 

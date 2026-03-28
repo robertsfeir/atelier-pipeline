@@ -677,7 +677,7 @@ The pipeline does not rely solely on instructions to keep agents in their lanes.
 | Eva tries to edit source code | "BLOCKED: Main thread (Eva/Robert/Sable) can only write to docs/pipeline/, docs/product/, or docs/ux/. Route source code changes to Colby, architecture to Cal, documentation to Agatha." |
 | Colby tries to edit a doc file | "BLOCKED: Colby cannot write to docs/. Route documentation changes to Agatha." |
 | Eva runs `git commit` directly | "BLOCKED: Eva cannot run git write operations directly. Route commits through Ellis." |
-| Eva invokes Ellis before Roz passes QA | "BLOCKED: Cannot invoke Ellis -- no Roz QA PASS found in pipeline-state.md. Roz must verify Colby's output before committing." |
+| Eva invokes Ellis during an active pipeline before Roz passes QA | "BLOCKED: Cannot invoke Ellis — pipeline is active (phase: build) but no Roz QA PASS found. Roz must verify Colby's output before committing." |
 | Eva invokes Agatha during the build phase | "BLOCKED: Cannot invoke Agatha during the build phase. Agatha writes docs after Roz's final sweep against verified code." |
 When an agent sees a block message, it adjusts: Eva routes the work to the correct agent, or waits until the prerequisite gate is satisfied. You do not need to intervene.
 
@@ -754,7 +754,7 @@ instructions to install the pipeline in this project
 | `jq: command not found` or hooks silently pass everything | `jq` is not installed | macOS: `brew install jq`. Linux: `sudo apt install jq`. The enforcement hooks require `jq` to parse tool input. Without it, hooks cannot inspect arguments and allow all operations through. |
 | Hook blocks an action unexpectedly | The agent is attempting an operation outside its allowed boundaries | Read the block message -- it explains which rule was violated and which agent should handle the action instead. Common cases: Eva trying to edit source code (route to Colby), Colby trying to edit docs (route to Agatha), Eva trying to `git commit` (route to Ellis). |
 | Hook blocks with a path error for a valid file | The file path matches a blocked prefix in `enforcement-config.json` | Check `.claude/hooks/enforcement-config.json` for `colby_blocked_paths` and other path rules. Adjust if your project structure differs from the defaults. |
-| Sequencing hook blocks Ellis invocation | No Roz QA PASS found in pipeline state | Roz must verify Colby's output before Ellis can commit. If Roz already passed but the state file was not updated, check `docs/pipeline/pipeline-state.md` for the QA verdict. |
+| Sequencing hook blocks Ellis invocation | Active pipeline with no Roz QA PASS | Ellis is only gated during active pipeline phases (build, review, qa). For non-pipeline commits (infrastructure, docs, setup), ensure `pipeline-state.md` has no active phase or set phase to `idle`. If Roz already passed but the state file was not updated, check `docs/pipeline/pipeline-state.md` for the QA verdict. |
 
 ### Brain issues
 
