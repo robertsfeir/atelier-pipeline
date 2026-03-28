@@ -1,6 +1,6 @@
 {
   "name": "atelier-pipeline",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "description": "Multi-agent orchestration with quality gates, continuous QA, and persistent institutional memory across sessions",
   "license": "Apache-2.0",
   "author": {

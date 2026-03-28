@@ -34,7 +34,7 @@ If brain is available, Eva pre-fetches and injects relevant context here:
 
 <context>[User preferences and decisions from context-brief.md]</context>
 
-<read>{product_specs_dir}/FEATURE.md, {ux_docs_dir}/FEATURE-ux.md, {product_specs_dir}/FEATURE-doc-plan.md, .claude/references/retro-lessons.md</read>
+<read>{product_specs_dir}/FEATURE.md, {ux_docs_dir}/FEATURE-ux.md, {product_specs_dir}/FEATURE-doc-plan.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <warn>[Specific pattern if recurred 3x in error-patterns.md, otherwise omit this tag]</warn>
 
@@ -71,7 +71,7 @@ Research Brief (Large pipeline):
 - Brain-surfaced rejections: [rejected approaches]
 - Brain-surfaced patterns: [proven patterns]</context>
 
-<read>{product_specs_dir}/FEATURE.md, {ux_docs_dir}/FEATURE-ux.md, {product_specs_dir}/FEATURE-doc-plan.md, .claude/references/retro-lessons.md</read>
+<read>{product_specs_dir}/FEATURE.md, {ux_docs_dir}/FEATURE-ux.md, {product_specs_dir}/FEATURE-doc-plan.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <warn>[Specific pattern if recurred 3x in error-patterns.md, otherwise omit this tag]</warn>
 
@@ -99,7 +99,7 @@ Research Brief (Large pipeline):
 
 <context>[User preferences from context-brief.md]</context>
 
-<read>{product_specs_dir}/FEATURE.md, {ux_docs_dir}/FEATURE-ux.md, .claude/references/retro-lessons.md</read>
+<read>{product_specs_dir}/FEATURE.md, {ux_docs_dir}/FEATURE-ux.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <constraints>
 - Real components in {features_dir}/feature-name/ using existing component library
@@ -127,7 +127,7 @@ Research Brief (Large pipeline):
 [When this step consumes a contract from a prior step, Eva includes the prior
 step's Contracts Produced table here so Colby has the exact response shapes.]</context>
 
-<read>{architecture_dir}/ADR-NNNN-feature-name.md, [Roz-authored test files], .claude/references/retro-lessons.md</read>
+<read>{architecture_dir}/ADR-NNNN-feature-name.md, [Roz-authored test files], .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <constraints>
 - Make Roz's pre-written tests pass -- do not modify her assertions
@@ -154,7 +154,7 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 <thought type="lesson" agent="eva" phase="retro" relevance="0.70">Retro lessons relevant to this area</thought>
 </brain-context>
 
-<read>[relevant feature and API files], .claude/references/retro-lessons.md</read>
+<read>[relevant feature and API files], .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <constraints>
 - Trace the full request path: frontend call -> API route -> handler -> data access
@@ -179,7 +179,7 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 <thought type="lesson" agent="eva" phase="retro" relevance="0.70">Retro lessons relevant to this area</thought>
 </brain-context>
 
-<read>{architecture_dir}/ADR-NNNN-feature-name.md, {product_specs_dir}/FEATURE.md, .claude/references/retro-lessons.md</read>
+<read>{architecture_dir}/ADR-NNNN-feature-name.md, {product_specs_dir}/FEATURE.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md, .claude/references/qa-checks.md</read>
 
 <constraints>
 - Check failure:happy ratio (failure >= happy, hard rule)
@@ -203,7 +203,7 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 <thought type="lesson" agent="eva" phase="retro" relevance="0.70">Retro lessons relevant to this area</thought>
 </brain-context>
 
-<read>{architecture_dir}/ADR-NNNN-feature-name.md (Step N), {product_specs_dir}/FEATURE.md, [relevant source files], .claude/references/retro-lessons.md</read>
+<read>{architecture_dir}/ADR-NNNN-feature-name.md (Step N), {product_specs_dir}/FEATURE.md, [relevant source files], .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <constraints>
 - Write concrete test assertions, not descriptions
@@ -228,7 +228,7 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 <thought type="lesson" agent="eva" phase="retro" relevance="0.70">Retro lessons relevant to this area</thought>
 </brain-context>
 
-<read>{architecture_dir}/ADR-NNNN-feature-name.md, {product_specs_dir}/FEATURE.md, {ux_docs_dir}/FEATURE-ux.md, .claude/references/retro-lessons.md</read>
+<read>{architecture_dir}/ADR-NNNN-feature-name.md, {product_specs_dir}/FEATURE.md, {ux_docs_dir}/FEATURE-ux.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md, .claude/references/qa-checks.md</read>
 
 <constraints>
 - Run all QA checks in order (per your persona file)
@@ -247,7 +247,7 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 
 <task>Scoped QA re-run on ADR-NNNN fix</task>
 
-<read>{architecture_dir}/ADR-NNNN-feature-name.md, .claude/references/retro-lessons.md</read>
+<read>{architecture_dir}/ADR-NNNN-feature-name.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md, .claude/references/qa-checks.md</read>
 
 <constraints>
 - Failed checks from first pass: [list specific failed checks]
@@ -271,7 +271,7 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 <thought type="decision" agent="colby" phase="build" relevance="0.75">Key implementation decisions for commit context</thought>
 </brain-context>
 
-<read>{architecture_dir}/ADR-NNNN-feature-name.md, .claude/references/retro-lessons.md</read>
+<read>{architecture_dir}/ADR-NNNN-feature-name.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <constraints>
 - Analyze the full diff, not just the last commit
@@ -295,7 +295,7 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 <thought type="lesson" agent="eva" phase="retro" relevance="0.70">Retro lessons relevant to this area</thought>
 </brain-context>
 
-<read>{product_specs_dir}/FEATURE.md, {ux_docs_dir}/FEATURE-ux.md, {architecture_dir}/ADR-NNNN-feature-name.md, {product_specs_dir}/FEATURE-doc-plan.md, .claude/references/retro-lessons.md</read>
+<read>{product_specs_dir}/FEATURE.md, {ux_docs_dir}/FEATURE-ux.md, {architecture_dir}/ADR-NNNN-feature-name.md, {product_specs_dir}/FEATURE-doc-plan.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <constraints>
 - Follow doc plan
@@ -318,7 +318,7 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 <thought type="decision" agent="robert" phase="review" relevance="0.80">Prior acceptance review patterns and decisions</thought>
 </brain-context>
 
-<read>{product_specs_dir}/FEATURE.md, [implementation file paths], .claude/references/retro-lessons.md</read>
+<read>{product_specs_dir}/FEATURE.md, [implementation file paths], .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <constraints>
 - Verify every acceptance criterion from the spec against the actual code
@@ -342,7 +342,7 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 <thought type="decision" agent="sable" phase="review" relevance="0.80">Prior UX review patterns and decisions</thought>
 </brain-context>
 
-<read>{ux_docs_dir}/FEATURE-ux.md, [implementation file paths], .claude/references/retro-lessons.md</read>
+<read>{ux_docs_dir}/FEATURE-ux.md, [implementation file paths], .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <constraints>
 - Verify every screen, state, interaction, a11y requirement, and copy item

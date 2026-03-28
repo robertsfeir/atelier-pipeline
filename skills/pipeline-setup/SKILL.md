@@ -86,6 +86,9 @@ plugins/atelier-pipeline/source/
     retro-lessons.md              # Retro lessons template (starts empty)
     invocation-templates.md       # Subagent invocation examples
     pipeline-operations.md        # Operational procedures (model selection, QA flow, feedback loops)
+    agent-preamble.md             # Shared agent required actions (DoR/DoD, retro, brain)
+    qa-checks.md                  # Roz QA check procedures (Tier 1, Tier 2, test spec review, scoped re-run)
+    branch-mr-mode.md             # Colby branch/MR procedures for MR-based strategies
   pipeline/
     pipeline-state.md             # Session recovery state template
     context-brief.md              # Context preservation template
@@ -132,6 +135,9 @@ Copy each template to its destination in the user's project, customizing placeho
 | `source/references/retro-lessons.md` | `.claude/references/retro-lessons.md` | Shared lessons (empty template) |
 | `source/references/invocation-templates.md` | `.claude/references/invocation-templates.md` | Subagent invocation examples |
 | `source/references/pipeline-operations.md` | `.claude/references/pipeline-operations.md` | Operational procedures (model selection, QA, feedback, batch, worktree, context) |
+| `source/references/agent-preamble.md` | `.claude/references/agent-preamble.md` | Shared agent required actions |
+| `source/references/qa-checks.md` | `.claude/references/qa-checks.md` | Roz QA check procedures |
+| `source/references/branch-mr-mode.md` | `.claude/references/branch-mr-mode.md` | Colby branch/MR procedures |
 | `source/pipeline/pipeline-state.md` | `docs/pipeline/pipeline-state.md` | Session recovery state |
 | `source/pipeline/context-brief.md` | `docs/pipeline/context-brief.md` | Context preservation |
 | `source/pipeline/error-patterns.md` | `docs/pipeline/error-patterns.md` | Error pattern tracking |
@@ -140,7 +146,17 @@ Copy each template to its destination in the user's project, customizing placeho
 | `source/pipeline/pipeline-config.json` | `.claude/pipeline-config.json` | Branching strategy configuration |
 | `source/variants/branch-lifecycle-{strategy}.md` | `.claude/rules/branch-lifecycle.md` | Branch lifecycle rules (selected variant only) |
 
-**Total: 31 files across 5 directories (before hooks and config).**
+**Optional tech-stack references (install based on Step 1 tech stack answers):**
+
+| Template Source | Destination | Install When |
+|----------------|-------------|-------------|
+| `source/references/docker-infrastructure.md` | `.claude/references/docker-infrastructure.md` | Docker or Podman in build/deploy |
+| `source/references/python-fastapi.md` | `.claude/references/python-fastapi.md` | Python + FastAPI in tech stack |
+| `source/references/nextjs-app-router.md` | `.claude/references/nextjs-app-router.md` | Next.js in tech stack |
+| `source/references/react-frontend.md` | `.claude/references/react-frontend.md` | React in tech stack |
+| `source/references/cloud-architecture.md` | `.claude/references/cloud-architecture.md` | Cloud deployment mentioned |
+
+**Total: 34 mandatory files across 5 directories (before hooks and config), plus up to 5 optional tech-stack references.**
 
 ### Step 3a: Install Enforcement Hooks
 
@@ -193,7 +209,7 @@ file already exists. Add this hooks section:
 If `jq` is not available, tell the user: "Install jq for pipeline enforcement hooks:
 `brew install jq` (macOS) or `apt install jq` (Linux)."
 
-**Total with hooks: 35 files across 7 directories.**
+**Total with hooks: 38 mandatory files across 7 directories (plus up to 5 optional tech-stack references).**
 
 ### Step 3b: Write Version Marker
 
@@ -252,7 +268,7 @@ This project uses a multi-agent orchestration pipeline for structured developmen
 
 After installation, print:
 
-1. A count of files installed (35 files across 7 directories)
+1. A count of files installed (38 mandatory files across 7 directories, plus any optional tech-stack references)
 2. The directory tree showing what was created
 3. The configured branching strategy and any CI recommendations
 4. A reminder of available slash commands
@@ -264,11 +280,11 @@ After installation, print:
 ```
 Atelier Pipeline installed successfully.
 
-Files installed: 35
+Files installed: 38 (mandatory) + optional tech-stack references
   .claude/rules/       -- 5 files (Eva persona, orchestration rules, pipeline operations, model selection, branch lifecycle)
   .claude/agents/      -- 9 files (Cal, Colby, Roz, Robert, Sable, Poirot, Distillator, Ellis, Agatha)
   .claude/commands/    -- 7 files (/pm, /ux, /architect, /debug, /pipeline, /devops, /docs)
-  .claude/references/  -- 4 files (quality framework, retro lessons, invocation templates, pipeline operations)
+  .claude/references/  -- 7 files (quality framework, retro lessons, invocation templates, pipeline operations, agent preamble, QA checks, branch/MR mode)
   .claude/hooks/       -- 4 files (path enforcement, sequencing, git guard, config)
   docs/pipeline/       -- 5 files (state tracking for session recovery)
   .claude/pipeline-config.json -- branching strategy configuration
