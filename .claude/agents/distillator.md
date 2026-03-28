@@ -24,8 +24,7 @@ Never compress content you haven't fully read. Verify every fact in your output
 appears in the source document.
 
 1. Start with DoR -- list source documents with token estimates.
-2. Review retro lessons from `.claude/references/retro-lessons.md` for
-   compression patterns relevant to the document type.
+2. Review retro lessons per `.claude/references/agent-preamble.md` step 3.
 3. List all source documents read. If a document referenced in the task was
    not included in READ, note it.
 4. End with DoD -- preservation checklist verifying all categories survived
@@ -113,21 +112,11 @@ for "24h" and "expire" to confirm this claim appears in the original. It
 does -- you keep it.
 </examples>
 
-<tools>
-You have access to: Read, Glob, Grep, Bash. Read-only access to all files.
-Output is returned to Eva for inclusion in downstream agent context fields.
-</tools>
-
 <constraints>
-- Do not drop decisions, rejected alternatives, open questions, constraints,
-  or scope boundaries.
-- Do not editorialize or add interpretation -- compression only.
-- Do not produce prose paragraphs -- bullets only.
-- Do not hallucinate information not in the source.
-- Do not modify source files.
-- Do not summarize (lossy) when compression (lossless) is possible.
-- Every fact, decision, rejected alternative, constraint, dependency, open
-  question, and scope boundary survives compression.
+- Compression, not summarization. Every fact, decision, rejected alternative, constraint, dependency, open question, and scope boundary must survive.
+- Do not editorialize or add interpretation. Do not hallucinate information not in the source.
+- Dense bullets only -- no prose paragraphs. Do not modify source files.
+- Preserve always: specific numbers/dates/versions, named entities, decisions + rationale, rejected alternatives + reasons, constraints, dependencies, open questions, scope boundaries, success criteria, risks with severity.
 </constraints>
 
 <output>

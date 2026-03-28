@@ -1,0 +1,86 @@
+# QA Check Procedures
+
+<!-- Part of atelier-pipeline. Referenced by Roz during Code QA, Test Spec Review, and Scoped Re-Run modes. -->
+<!-- CONFIGURE: Update the placeholders below to match your project -->
+<!--
+  {typecheck_command} = command to run type checker (e.g., npm run typecheck, mypy .)
+  {lint_command}      = command to run linter (e.g., npm run lint, ruff check)
+  {test_command}      = command to run full test suite (e.g., npx vitest run, npm test)
+  {ux_docs_dir}       = directory for UX design docs (default: docs/ux/)
+-->
+
+## Code QA Checks
+
+### Tier 1 -- Mechanical (always run first, stop on failure)
+
+1. Type Check: `{typecheck_command}`
+2. Lint: `{lint_command}`
+3. Tests: `{test_command}` -- pass/fail counts
+4. Coverage: run tests with coverage flag -- flag below project-defined
+   thresholds (see CLAUDE.md)
+5. Complexity: Functions exceeding project-defined thresholds; files with
+   excessive length; nesting greater than 3
+6. Unfinished markers: Grep for TODO/FIXME/HACK/XXX in all changed files.
+   Non-test match is a blocker.
+
+If any Tier 1 check fails, stop and report. Do not run Tier 2 on code that
+does not compile or pass tests.
+
+### Tier 2 -- Judgment (run after Tier 1 passes)
+
+7. DB Migrations: reversible? safe for rolling deploy? (if applicable)
+8. Security: hardcoded secrets, injection, unvalidated input, missing auth,
+   sensitive data in logs
+9. CI/CD Compat: conditional when diff touches auth, RBAC, env vars, middleware
+10. Docs Impact (mandatory assessment): evaluate whether the diff changes
+    user-facing behavior, endpoints, env vars, configuration, or error messages.
+    Include a `Doc Impact: YES | NO` verdict. If YES, list which existing docs
+    are affected. This triggers Agatha on Small pipelines.
+11. Dependencies: new deps -> publish date, vulns, license, necessity
+12. UX Flow Verification (blocker when UX doc exists): run
+    `ls {ux_docs_dir}/*FEATURE*`. If a UX doc exists, trace every surface
+    it specifies against the implementation. Missing UI for a UX-specified
+    surface is a blocker.
+13. Exploratory: unexpected inputs, realistic volumes, a11y
+14. Semantic Correctness: verify expected values match domain intent, not just
+    current code behavior. A test that codifies a bug is worse than no test.
+15. Contract Coverage: conditional when diff touches job kinds, dynamic imports,
+    cross-module mapping
+16. State machine completeness: verify all reachable state pairs have test
+    coverage and no stuck states exist without recovery paths. Grep for silent
+    upsert patterns -- each instance needs a test that exercises the conflict
+    path.
+17. Silent failure audit: Grep changed worker/handler files for catch blocks
+    that log warnings but do not transition state. Any new instance is a
+    blocker. Existing instances get flagged as tech debt.
+18. Wiring verification (blocker on features with both FE and BE changes):
+    For each API endpoint in the diff, grep frontend code for its URL/path.
+    For each frontend fetch/API call in the diff, grep backend code for the
+    matching route. Orphan endpoints (backend route nothing calls) or phantom
+    calls (frontend calling a non-existent endpoint) = BLOCKER. Also verify
+    that the response shape consumed by the frontend matches the shape
+    returned by the backend (check TypeScript types, interface definitions,
+    or destructuring patterns).
+
+## ADR Test Spec Review Mode
+
+When reviewing a test spec (no code yet):
+1. Category coverage -- all mandatory categories per step
+2. Failure:happy ratio -- failure >= happy
+3. Description quality -- specific enough to write test without seeing source
+4. Contract boundaries -- all dynamic imports, shape dependencies, status
+   consumers identified?
+5. Independently identify cases Cal missed
+6. UX doc completeness gate (blocker): run `ls {ux_docs_dir}/*FEATURE*`. If
+   a UX doc exists, verify every surface has a corresponding ADR step with test
+   coverage. Missing steps mean the ADR goes back to Cal.
+
+Output: Coverage table, gaps, missing tests, verdict (APPROVED / REVISE).
+
+## Scoped Re-Run Mode
+
+When invoked after a fix: read `docs/pipeline/last-qa-report.md` (your own
+previous report) to verify full findings from the previous pass. Run failed
+checks + full test suite + post-fix verification + security re-check if
+auth/stores touched + verify all inherited issues are resolved. Same report
+format with Re-Run header.

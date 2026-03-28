@@ -110,4 +110,28 @@ to kill and restart -- none of which addresses the underlying cause.
 </rules>
 </lesson>
 
+<lesson id="005" agents="cal, colby, roz, poirot">
+<what-happened>
+Frontend Wiring Omission -- Colby consistently produced strong backend code
+(API endpoints, store methods, data access) but forgot to wire the frontend
+consumer. The pattern recurred across multiple pipelines. Backend passed all
+unit tests, Roz QA passed per-step, but the UI was never connected to the
+real APIs.
+</what-happened>
+<root-cause>
+Three structural causes: (1) Cal's ADR steps were layer-oriented (all APIs
+first, then all UI), so by the time Colby reached UI steps the backend
+context was lost across subagent boundaries. (2) Each Colby invocation is a
+fresh context window with no memory of prior step's response shapes. (3) No
+pipeline gate verified end-to-end wiring -- Roz QA'd each unit against its
+ADR step but nobody traced user click -> API call -> response -> UI render.
+</root-cause>
+<rules>
+<rule agent="cal">Design ADR steps as vertical slices. Every step that creates a data contract (endpoint, store method) must include the primary consumer in the same step. Orphan producers = incomplete plan. Include a Wiring Coverage section mapping every producer to its consumer.</rule>
+<rule agent="colby">Document exact response/return shapes in a Contracts Produced table in your DoD. When consuming a prior step's contract, verify the actual shape matches what was documented. Shape mismatches are blockers -- do not silently adapt.</rule>
+<rule agent="roz">Wiring verification is a Tier 2 blocker: grep for orphan endpoints (backend routes nothing calls) and phantom calls (frontend calling non-existent endpoints). Verify response shape alignment between producer and consumer.</rule>
+<rule agent="poirot">Cross-layer wiring check: flag API endpoints in the diff that nothing calls, frontend calls to endpoints not in the diff (grep to verify), and type mismatches between backend response shapes and frontend expectations.</rule>
+</rules>
+</lesson>
+
 </retro-lessons>

@@ -57,7 +57,7 @@ Cal's ADR steps become work units. Roz writes tests first, Colby implements to p
 6. **Eva invokes Ellis for a per-unit commit** on the feature branch after
    Roz QA PASS. Ellis uses per-unit commit mode (shorter message, no
    changelog trailer). The feature branch accumulates granular commits.
-7. Eva updates `docs/pipeline/pipeline-state.md` after each unit transition
+7. Eva updates `{pipeline_state_dir}/pipeline-state.md` after each unit transition
 
 **Post-build pipeline tail (after all units pass individual QA):**
 8. Eva invokes the review juncture: Roz final sweep + Poirot + Robert-subagent

@@ -2,9 +2,9 @@
 
 <!-- CONFIGURE: Update the placeholders below to match your project -->
 <!--
-  shellcheck source/hooks/*.sh      = command to run linter (e.g., npm run lint, ruff check)
-  echo "no typecheck configured" = command to run type checker (e.g., npm run typecheck, mypy .)
-  bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs      = command to run tests for changed files (e.g., npm test [path], pytest [path])
+  {lint_command}      = command to run linter (e.g., npm run lint, ruff check)
+  {typecheck_command} = command to run type checker (e.g., npm run typecheck, mypy .)
+  {test_command}      = command to run tests for changed files (e.g., npm test [path], pytest [path])
 -->
 
 Shared framework for all agents. Replaces procedural checklists with
@@ -110,7 +110,7 @@ Here is the structural pattern:
 ### Agent-Specific DoD Conditions
 
 **Colby (build):**
-- `shellcheck source/hooks/*.sh && echo "no typecheck configured" && bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs [changed files]` passes
+- `{lint_command} && {typecheck_command} && {test_command} [changed files]` passes
 - Grep for TODO/FIXME/HACK across changed files -- show results
 - Every ADR step acceptance criterion listed with pass evidence
 

@@ -2,13 +2,13 @@
 
 <!-- CONFIGURE: Update the placeholders below to match your project -->
 <!--
-  docs/product   = directory for product specs (default: docs/product/)
-  docs/ux         = directory for UX design docs (default: docs/ux/)
-  docs/architecture    = directory for ADR files (default: docs/architecture/)
-  source/        = feature directory pattern (e.g., src/features/, app/domains/)
+  {product_specs_dir}   = directory for product specs (default: docs/product/)
+  {ux_docs_dir}         = directory for UX design docs (default: docs/ux/)
+  {architecture_dir}    = directory for ADR files (default: docs/architecture/)
+  {features_dir}        = feature directory pattern (e.g., src/features/, app/domains/)
   {test_dir}            = test directory pattern (e.g., tests/, __tests__/, spec/)
-  bats tests/hooks/   = command for rapid inner-loop tests (e.g., npm run test:fast)
-  bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs        = command to run full test suite (e.g., npx vitest run, npm test)
+  {fast_test_command}   = command for rapid inner-loop tests (e.g., npm run test:fast)
+  {test_command}        = command to run full test suite (e.g., npx vitest run, npm test)
 -->
 
 Eva loads this file just-in-time when constructing sub-agent invocation
@@ -34,7 +34,7 @@ If brain is available, Eva pre-fetches and injects relevant context here:
 
 <context>[User preferences and decisions from context-brief.md]</context>
 
-<read>docs/product/FEATURE.md, docs/ux/FEATURE-ux.md, docs/product/FEATURE-doc-plan.md, .claude/references/retro-lessons.md</read>
+<read>{product_specs_dir}/FEATURE.md, {ux_docs_dir}/FEATURE-ux.md, {product_specs_dir}/FEATURE-doc-plan.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <warn>[Specific pattern if recurred 3x in error-patterns.md, otherwise omit this tag]</warn>
 
@@ -44,7 +44,7 @@ If brain is available, Eva pre-fetches and injects relevant context here:
 - Comprehensive test spec: failure tests >= happy path tests
 </constraints>
 
-<output>ADR saved to docs/architecture/ADR-NNNN-feature-name.md with DoR/DoD sections</output>
+<output>ADR saved to {architecture_dir}/ADR-NNNN-feature-name.md with DoR/DoD sections</output>
 
 </template>
 
@@ -59,7 +59,7 @@ For large pipelines, Eva provides a research brief with pre-gathered context.
 <brain-context>
 <thought type="decision" agent="cal" phase="design" relevance="0.85">Prior architectural decisions from agent_search("architecture:{feature}")</thought>
 <thought type="rejection" agent="cal" phase="design" relevance="0.80">Rejected approaches from agent_search("rejection:{feature}")</thought>
-<thought type="pattern" agent="colby" phase="build" relevance="0.75">Proven patterns from agent_search("pattern:Bash shell scripts, Node.js (brain MCP server), Markdown agent personas")</thought>
+<thought type="pattern" agent="colby" phase="build" relevance="0.75">Proven patterns from agent_search("pattern:{tech_stack}")</thought>
 </brain-context>
 
 <context>[User preferences from context-brief.md]
@@ -71,7 +71,7 @@ Research Brief (Large pipeline):
 - Brain-surfaced rejections: [rejected approaches]
 - Brain-surfaced patterns: [proven patterns]</context>
 
-<read>docs/product/FEATURE.md, docs/ux/FEATURE-ux.md, docs/product/FEATURE-doc-plan.md, .claude/references/retro-lessons.md</read>
+<read>{product_specs_dir}/FEATURE.md, {ux_docs_dir}/FEATURE-ux.md, {product_specs_dir}/FEATURE-doc-plan.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <warn>[Specific pattern if recurred 3x in error-patterns.md, otherwise omit this tag]</warn>
 
@@ -82,7 +82,7 @@ Research Brief (Large pipeline):
 - Reference research brief findings in Alternatives Considered section
 </constraints>
 
-<output>ADR saved to docs/architecture/ADR-NNNN-feature-name.md with DoR/DoD sections</output>
+<output>ADR saved to {architecture_dir}/ADR-NNNN-feature-name.md with DoR/DoD sections</output>
 
 </template>
 
@@ -99,10 +99,10 @@ Research Brief (Large pipeline):
 
 <context>[User preferences from context-brief.md]</context>
 
-<read>docs/product/FEATURE.md, docs/ux/FEATURE-ux.md, .claude/references/retro-lessons.md</read>
+<read>{product_specs_dir}/FEATURE.md, {ux_docs_dir}/FEATURE-ux.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <constraints>
-- Real components in source//feature-name/ using existing component library
+- Real components in {features_dir}/feature-name/ using existing component library
 - Wire to mock data hook, not API calls
 - Implement all states from Sable's doc (empty, loading, populated, error, overflow)
 - Add route and nav item. No backend, no tests.
@@ -123,13 +123,15 @@ Research Brief (Large pipeline):
 <thought type="lesson" agent="eva" phase="retro" relevance="0.70">Retro lessons relevant to this area</thought>
 </brain-context>
 
-<context>Roz's test files define correct behavior. Make them pass. Do not modify Roz's assertions.</context>
+<context>Roz's test files define correct behavior. Make them pass. Do not modify Roz's assertions.
+[When this step consumes a contract from a prior step, Eva includes the prior
+step's Contracts Produced table here so Colby has the exact response shapes.]</context>
 
-<read>docs/architecture/ADR-NNNN-feature-name.md, [Roz-authored test files], .claude/references/retro-lessons.md</read>
+<read>{architecture_dir}/ADR-NNNN-feature-name.md, [Roz-authored test files], .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <constraints>
 - Make Roz's pre-written tests pass -- do not modify her assertions
-- Inner loop: `bats tests/hooks/` for rapid iteration. Full suite at unit completion.
+- Inner loop: `{fast_test_command}` for rapid iteration. Full suite at unit completion.
 - If a Roz test fails against existing code, the code has a bug -- fix it
 - When fixing a shared utility bug, grep for all instances codebase-wide
 - Zero TODO/FIXME/HACK in delivered code
@@ -152,7 +154,7 @@ Research Brief (Large pipeline):
 <thought type="lesson" agent="eva" phase="retro" relevance="0.70">Retro lessons relevant to this area</thought>
 </brain-context>
 
-<read>[relevant feature and API files], .claude/references/retro-lessons.md</read>
+<read>[relevant feature and API files], .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <constraints>
 - Trace the full request path: frontend call -> API route -> handler -> data access
@@ -177,7 +179,7 @@ Research Brief (Large pipeline):
 <thought type="lesson" agent="eva" phase="retro" relevance="0.70">Retro lessons relevant to this area</thought>
 </brain-context>
 
-<read>docs/architecture/ADR-NNNN-feature-name.md, docs/product/FEATURE.md, .claude/references/retro-lessons.md</read>
+<read>{architecture_dir}/ADR-NNNN-feature-name.md, {product_specs_dir}/FEATURE.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md, .claude/references/qa-checks.md</read>
 
 <constraints>
 - Check failure:happy ratio (failure >= happy, hard rule)
@@ -201,7 +203,7 @@ Research Brief (Large pipeline):
 <thought type="lesson" agent="eva" phase="retro" relevance="0.70">Retro lessons relevant to this area</thought>
 </brain-context>
 
-<read>docs/architecture/ADR-NNNN-feature-name.md (Step N), docs/product/FEATURE.md, [relevant source files], .claude/references/retro-lessons.md</read>
+<read>{architecture_dir}/ADR-NNNN-feature-name.md (Step N), {product_specs_dir}/FEATURE.md, [relevant source files], .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <constraints>
 - Write concrete test assertions, not descriptions
@@ -226,7 +228,7 @@ Research Brief (Large pipeline):
 <thought type="lesson" agent="eva" phase="retro" relevance="0.70">Retro lessons relevant to this area</thought>
 </brain-context>
 
-<read>docs/architecture/ADR-NNNN-feature-name.md, docs/product/FEATURE.md, docs/ux/FEATURE-ux.md, .claude/references/retro-lessons.md</read>
+<read>{architecture_dir}/ADR-NNNN-feature-name.md, {product_specs_dir}/FEATURE.md, {ux_docs_dir}/FEATURE-ux.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md, .claude/references/qa-checks.md</read>
 
 <constraints>
 - Run all QA checks in order (per your persona file)
@@ -245,7 +247,7 @@ Research Brief (Large pipeline):
 
 <task>Scoped QA re-run on ADR-NNNN fix</task>
 
-<read>docs/architecture/ADR-NNNN-feature-name.md, .claude/references/retro-lessons.md</read>
+<read>{architecture_dir}/ADR-NNNN-feature-name.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md, .claude/references/qa-checks.md</read>
 
 <constraints>
 - Failed checks from first pass: [list specific failed checks]
@@ -269,7 +271,7 @@ Research Brief (Large pipeline):
 <thought type="decision" agent="colby" phase="build" relevance="0.75">Key implementation decisions for commit context</thought>
 </brain-context>
 
-<read>docs/architecture/ADR-NNNN-feature-name.md, .claude/references/retro-lessons.md</read>
+<read>{architecture_dir}/ADR-NNNN-feature-name.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <constraints>
 - Analyze the full diff, not just the last commit
@@ -293,7 +295,7 @@ Research Brief (Large pipeline):
 <thought type="lesson" agent="eva" phase="retro" relevance="0.70">Retro lessons relevant to this area</thought>
 </brain-context>
 
-<read>docs/product/FEATURE.md, docs/ux/FEATURE-ux.md, docs/architecture/ADR-NNNN-feature-name.md, docs/product/FEATURE-doc-plan.md, .claude/references/retro-lessons.md</read>
+<read>{product_specs_dir}/FEATURE.md, {ux_docs_dir}/FEATURE-ux.md, {architecture_dir}/ADR-NNNN-feature-name.md, {product_specs_dir}/FEATURE-doc-plan.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <constraints>
 - Follow doc plan
@@ -316,7 +318,7 @@ Research Brief (Large pipeline):
 <thought type="decision" agent="robert" phase="review" relevance="0.80">Prior acceptance review patterns and decisions</thought>
 </brain-context>
 
-<read>docs/product/FEATURE.md, [implementation file paths], .claude/references/retro-lessons.md</read>
+<read>{product_specs_dir}/FEATURE.md, [implementation file paths], .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <constraints>
 - Verify every acceptance criterion from the spec against the actual code
@@ -340,7 +342,7 @@ Research Brief (Large pipeline):
 <thought type="decision" agent="sable" phase="review" relevance="0.80">Prior UX review patterns and decisions</thought>
 </brain-context>
 
-<read>docs/ux/FEATURE-ux.md, [implementation file paths], .claude/references/retro-lessons.md</read>
+<read>{ux_docs_dir}/FEATURE-ux.md, [implementation file paths], .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <constraints>
 - Verify every screen, state, interaction, a11y requirement, and copy item
@@ -381,7 +383,7 @@ them for downstream consumption.
 
 <task>Compress spec + UX doc for downstream consumption by Cal</task>
 
-<read>docs/product/FEATURE.md, docs/ux/FEATURE-ux.md</read>
+<read>{product_specs_dir}/FEATURE.md, {ux_docs_dir}/FEATURE-ux.md</read>
 
 <constraints>
 - Lossless compression -- every decision, constraint, rejected alternative, open question, scope boundary survives
@@ -401,7 +403,7 @@ them for downstream consumption.
 
 <task>Compress ADR for downstream consumption by Colby -- with validation</task>
 
-<read>docs/architecture/ADR-NNNN-feature-name.md</read>
+<read>{architecture_dir}/ADR-NNNN-feature-name.md</read>
 
 <constraints>
 - Same lossless rules as above
