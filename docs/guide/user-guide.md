@@ -44,7 +44,7 @@ Open Claude Code in your project directory and run:
 /pipeline-setup
 ```
 
-The setup asks about your project one question at a time: tech stack, test commands, source structure, coverage thresholds, and branching strategy. It then installs 35 files into your project (agent personas, commands, references, enforcement hooks, path-scoped rules, branch lifecycle rules, and state tracking).
+The setup asks about your project one question at a time: tech stack, test commands, source structure, coverage thresholds, and branching strategy. It then installs 38 files into your project (agent personas, commands, references, enforcement hooks, path-scoped rules, branch lifecycle rules, and state tracking).
 
 ### 3. Build something
 
@@ -598,6 +598,8 @@ The pipeline files live in your project and are plain Markdown. You can edit the
 - **Commands** (`.claude/commands/*.md`) -- modify slash command behavior
 - **Quality thresholds** (`.claude/references/dor-dod.md`) -- change coverage or complexity targets
 - **Retro lessons** (`.claude/references/retro-lessons.md`) -- add manual lessons for agents to reference
+- **Shared agent actions** (`.claude/references/agent-preamble.md`) -- customize the shared DoR/DoD and retro lesson protocols
+- **QA check procedures** (`.claude/references/qa-checks.md`) -- add or modify Roz's quality checks
 
 ### What is stack-agnostic
 
@@ -807,6 +809,9 @@ your-project/
       retro-lessons.md           # Shared lessons from past runs
       invocation-templates.md    # Subagent invocation examples
       pipeline-operations.md     # Operational procedures
+      agent-preamble.md          # Shared agent required actions
+      qa-checks.md               # Roz QA check procedures
+      branch-mr-mode.md          # Colby branch/MR procedures
     hooks/                       # Mechanical enforcement (PreToolUse)
       enforce-paths.sh           # Blocks Write/Edit outside agent's allowed paths
       enforce-sequencing.sh      # Blocks out-of-order agent invocations

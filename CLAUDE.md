@@ -22,7 +22,7 @@ source/          # Template files -- copied to target projects by /pipeline-setu
   rules/         # Eva persona, orchestration rules (always-loaded by Claude Code)
   agents/        # Subagent personas (9 agents)
   commands/      # Slash command definitions (7 commands)
-  references/    # Quality framework, retro lessons, invocation templates, operations
+  references/    # Quality framework, retro lessons, invocation templates, operations, agent preamble, QA checks, branch/MR mode
   hooks/         # Enforcement hook scripts (3 scripts + 1 config)
   pipeline/      # Pipeline state file templates (5 files)
   variants/      # Strategy variant templates (branching lifecycle)
@@ -41,6 +41,8 @@ scripts/         # Plugin lifecycle scripts (update checks)
 - **ADR immutability:** ADRs are never updated in place. New ADRs supersede old ones.
 - **Mechanical enforcement:** PreToolUse hooks block agents from writing outside their designated paths. Behavioral guidance is backed by shell-script enforcement.
 - **Living artifacts:** Specs and UX docs are updated at pipeline end. Pipeline state files track session recovery.
+- **Shared preamble:** Agent personas reference `agent-preamble.md` for shared DoR/DoD, retro, and brain protocols. Domain-specific behavior stays in persona files.
+- **Cross-layer wiring:** Cal designs vertical slices (producer + consumer per step). Colby documents contract shapes. Roz and Poirot verify wiring. Orphan endpoints are blockers.
 
 ## Eva Rules Split
 

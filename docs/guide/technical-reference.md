@@ -1,6 +1,6 @@
 # Atelier Pipeline -- Technical Reference
 
-Version: 3.1.0
+Version: 3.4.0
 
 This document is the comprehensive technical reference for the atelier-pipeline Claude Code plugin. It covers plugin architecture, agent system design, orchestration logic, brain infrastructure, and customization points. For usage-oriented documentation, see [the user guide](user-guide.md).
 
@@ -43,7 +43,7 @@ The plugin itself lives in the Claude Code plugin directory (typically `~/.claud
 ```
 atelier-pipeline/                         # Plugin root (CLAUDE_PLUGIN_ROOT)
   .claude-plugin/
-    plugin.json                           # Plugin metadata, hooks, version (3.1.0)
+    plugin.json                           # Plugin metadata, hooks, version (3.4.0)
   source/                                 # Template files -- copied to target project
     rules/
       default-persona.md
@@ -59,7 +59,9 @@ atelier-pipeline/                         # Plugin root (CLAUDE_PLUGIN_ROOT)
       pipeline.md, devops.md, docs.md
     references/
       dor-dod.md, retro-lessons.md,
-      invocation-templates.md, pipeline-operations.md
+      invocation-templates.md, pipeline-operations.md,
+      agent-preamble.md, qa-checks.md,
+      branch-mr-mode.md
     pipeline/
       pipeline-state.md, context-brief.md, error-patterns.md,
       investigation-ledger.md, last-qa-report.md,
@@ -104,7 +106,7 @@ The plugin registers a `SessionStart` hook in `plugin.json` that runs two comman
 
 ## File Tree -- What Lives Where
 
-After running `/pipeline-setup`, 35 files are installed into the target project. The plugin templates remain in the plugin directory and are never modified.
+After running `/pipeline-setup`, 38 files are installed into the target project. The plugin templates remain in the plugin directory and are never modified.
 
 ### Target Project (installed by /pipeline-setup)
 
@@ -141,6 +143,9 @@ your-project/
       retro-lessons.md                    # Shared lessons (starts empty)
       invocation-templates.md             # Subagent invocation examples
       pipeline-operations.md              # Model selection, QA flow, feedback loops
+      agent-preamble.md                   # Shared required actions (DoR/DoD, retro, brain)
+      qa-checks.md                        # Roz QA check procedures (Tier 1 + Tier 2)
+      branch-mr-mode.md                   # Colby branch creation and MR procedures
     hooks/                                # Mechanical enforcement (PreToolUse)
       enforce-paths.sh                    # Blocks Write/Edit outside agent's allowed paths
       enforce-sequencing.sh               # Blocks out-of-order agent invocations
@@ -157,7 +162,7 @@ your-project/
       last-qa-report.md                   # Roz's most recent QA report
 ```
 
-**Total: 35 files across 6 directories, plus the `.atelier-version` marker and an update to `CLAUDE.md`.** The two additional files compared to prior versions are `.claude/pipeline-config.json` (branching strategy configuration) and `.claude/rules/branch-lifecycle.md` (selected strategy's lifecycle rules).
+**Total: 38 files across 6 directories, plus the `.atelier-version` marker and an update to `CLAUDE.md`.** Three new reference files (`agent-preamble.md`, `qa-checks.md`, `branch-mr-mode.md`) extract shared behaviors from agent persona files to reduce duplication. The two additional files compared to v3.0 are `.claude/pipeline-config.json` (branching strategy configuration) and `.claude/rules/branch-lifecycle.md` (selected strategy's lifecycle rules).
 
 ### What Does NOT Live on Disk
 
@@ -452,7 +457,7 @@ OUTPUT: [what to produce, what format, where to write it -- must include DoR and
 ### Key Design Rules
 
 - **Anti-framing rule:** TASK describes the observed symptom, not Eva's theory. Embedding a root cause theory in TASK anchors the subagent to Eva's framing (sycophancy risk). Theories go in HYPOTHESES.
-- **READ budget:** Prefer <= 6 files. Always include `retro-lessons.md`. Pass context-brief excerpts in CONTEXT, not READ, to save file slots.
+- **READ budget:** Prefer <= 6 files. Always include `retro-lessons.md`. Pass context-brief excerpts in CONTEXT, not READ, to save file slots. Eva also includes `agent-preamble.md` in READ for all non-asymmetry agents, and `qa-checks.md` for Roz QA invocations.
 - **DIFF section (Roz-specific):** Eva always runs `git diff --stat` and `git diff --name-only` and includes the output so Roz has a map of what changed.
 - **DIFF section (Poirot-specific):** Eva pastes the raw `git diff` output. Nothing else. No spec, no ADR, no framing.
 - **WARN injection:** When `error-patterns.md` shows a pattern recurring 3+ times, Eva adds a targeted warning to the relevant agent's invocation.
@@ -486,6 +491,14 @@ Roz does not trust self-reported coverage. Eva includes the requirements list in
 - Self-reported "Done" that doesn't match code = BLOCKER
 - Requirements in the spec/ADR that Colby didn't even list in her DoR = BLOCKER (silent drop)
 - Roz does not trust coverage tables -- she verifies them
+
+### Shared Agent Preamble (`.claude/references/agent-preamble.md`)
+
+Agent persona files reference a shared preamble for the five standard required actions (DoR, read upstream, retro lessons, brain context, DoD). Each agent keeps only its unique cognitive directive and domain-specific actions in its persona file. This eliminates ~100 lines of duplication across 9 agents while keeping critical behavioral instructions in the high-attention system prompt position.
+
+### QA Check Procedures (`.claude/references/qa-checks.md`)
+
+Roz's 18 QA checks (6 Tier 1 mechanical + 12 Tier 2 judgment) are extracted to a dedicated reference file. Roz's persona retains her investigation mode, test authoring mode, and identity -- the procedural checklist loads on demand via Eva's invocation `<read>` tag. This reduces Roz's persona from 290 to 200 lines.
 
 ---
 
@@ -576,6 +589,17 @@ When a pipeline reveals a systemic lesson, Eva writes it to two places:
 2. **If brain is available:** Also call `agent_capture` with `thought_type: 'lesson'`, `source_agent: 'eva'`, `source_phase: 'retro'`
 
 This ensures lessons are both version-controlled and brain-searchable. Agents search the brain first (if available) for relevant retro lessons, then also read the markdown file as a fallback.
+
+### Cross-Layer Wiring Enforcement
+
+A recurring pattern where Colby built strong backends but forgot to wire frontend consumers led to four structural safeguards (v3.3.0):
+
+1. **Cal: Vertical slice design.** ADR steps must include both producer (API/store) and consumer (UI/caller) in the same step. A new Hard Gate (#4) rejects plans with orphan producers. A Wiring Coverage section maps every endpoint to its consumer.
+2. **Colby: Contract artifacts.** DoD includes Contracts Produced and Contracts Consumed tables documenting exact response shapes. Eva injects prior step's contracts into downstream invocations.
+3. **Roz: Wiring verification (QA check #18).** Greps for orphan endpoints (backend routes nothing calls) and phantom calls (frontend calling non-existent endpoints). Blocker severity.
+4. **Poirot: Cross-layer check.** Flags API endpoints in the diff that nothing calls, frontend calls to missing endpoints, and type mismatches between response shapes and UI expectations.
+
+Root cause analysis and external research (CleanAim, APImatic, Addy Osmani) documented in retro lesson #005. A FE/BE Colby split (separate frontend and backend agents) is held in reserve if the pattern persists.
 
 The same dual-write pattern applies to context brief entries. Eva always writes to `context-brief.md` and, when brain is available, also captures the entry to the brain with the appropriate `thought_type` (`preference`, `correction`, or `rejection`). See [Team Collaboration Internals](#team-collaboration-internals) for the classification table and capture parameters.
 
@@ -1170,5 +1194,8 @@ When agents work in isolated git worktrees:
 - **Quality framework (installed):** `.claude/references/dor-dod.md`
 - **Operational procedures (installed):** `.claude/references/pipeline-operations.md`
 - **Invocation templates (installed):** `.claude/references/invocation-templates.md`
+- **Shared agent preamble (installed):** `.claude/references/agent-preamble.md`
+- **QA check procedures (installed):** `.claude/references/qa-checks.md`
+- **Branch/MR procedures (installed):** `.claude/references/branch-mr-mode.md`
 - **Brain schema:** `brain/schema.sql` (in plugin directory)
 - **Plugin metadata:** `.claude-plugin/plugin.json`
