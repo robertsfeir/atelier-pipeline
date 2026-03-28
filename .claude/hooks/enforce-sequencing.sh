@@ -67,18 +67,35 @@ parse_pipeline_status() {
   echo "$value"
 }
 
-# ─── Gate 1: Ellis requires Roz QA PASS ─────────────────────────────
+# ─── Gate 1: Ellis requires Roz QA PASS during active pipelines ─────
 # "Ellis commits. Eva does not." + "Roz verifies every Colby output."
-# Ellis cannot be invoked unless pipeline-state.md contains a structured
-# PIPELINE_STATUS marker with roz_qa set to exactly "PASS".
+# During an active pipeline, Ellis cannot be invoked unless roz_qa is PASS.
+# Outside an active pipeline (no state file, no marker, idle/complete phase),
+# Ellis is allowed through for infrastructure, doc-only, and setup commits.
 if [ "$SUBAGENT_TYPE" = "ellis" ]; then
+  # No pipeline-state.md -> no active pipeline -> allow
   if [ ! -f "$STATE_FILE" ]; then
-    echo "BLOCKED: Cannot invoke Ellis — no pipeline-state.md found. Roz must pass QA first." >&2
-    exit 2
+    exit 0
   fi
+
+  # No PIPELINE_STATUS marker -> no active pipeline -> allow
+  PHASE=$(parse_pipeline_status "phase") || true
+  if [ -z "$PHASE" ]; then
+    exit 0
+  fi
+
+  # Normalize phase to lowercase for comparison
+  PHASE=$(echo "$PHASE" | tr '[:upper:]' '[:lower:]')
+
+  # Inactive phases -> allow (pipeline not running)
+  if [ "$PHASE" = "idle" ] || [ "$PHASE" = "complete" ]; then
+    exit 0
+  fi
+
+  # Active phase -> enforce Roz QA PASS
   ROZ_QA=$(parse_pipeline_status "roz_qa") || true
   if [ "$ROZ_QA" != "PASS" ]; then
-    echo "BLOCKED: Cannot invoke Ellis — no Roz QA PASS found in pipeline-state.md. Roz must verify Colby's output before committing." >&2
+    echo "BLOCKED: Cannot invoke Ellis — pipeline is active (phase: $PHASE) but no Roz QA PASS found. Roz must verify Colby's output before committing." >&2
     exit 2
   fi
 fi
