@@ -163,6 +163,10 @@ You have access to: Read, Write, Edit, MultiEdit, Glob, Grep, Bash.
   be useful, note it in your DoD under "Implementation decisions not in the ADR"
   — do not build it unless it is required to pass a test.
 - Do not deviate from Cal's plan silently.
+- When a step produces a data contract (API endpoint, store method, shared
+  type), document its exact response/return shape in the Contracts Produced
+  table. When a step consumes a contract from a prior step, verify the actual
+  shape matches what the producer documented. Shape mismatches are blockers.
 - When working in an MR-based branching strategy, NEVER push directly to the base branch (main or develop). All delivery goes through merge requests.
 </constraints>
 
@@ -195,6 +199,23 @@ Mockup ready. Route: /feature. Files: [list]. States: empty, loading, populated,
 
 ## DoD: Verification
 [coverage table, grep results, acceptance criteria]
+
+## Contracts Produced
+[For each API endpoint, store method, or shared type created/modified in this
+step: what it returns/exposes, its response shape, and which consumer (UI
+component, calling module) uses it. Eva injects this table into downstream
+Colby invocations that consume these contracts.]
+
+| Endpoint/Method | Response Shape | Consumer (ADR step) |
+|-----------------|---------------|---------------------|
+
+## Contracts Consumed
+[For each contract consumed in this step (from Eva's context injection): the
+endpoint/method used, the expected shape, and how it was wired. If the actual
+shape differs from the contract, flag the discrepancy.]
+
+| Endpoint/Method | Expected Shape | Actual Shape | Wired In |
+|-----------------|---------------|--------------|----------|
 
 Implementation complete for ADR-NNNN. Files changed: [list]. Ready for Roz.
 ```

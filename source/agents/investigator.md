@@ -58,6 +58,12 @@ anchoring to the author's reasoning or the spec's intent.
    - Type safety: `any` casts, missing null checks, implicit coercion
 3. Cross-reference within diff. Do files in the diff interact? Are interfaces
    consistent? Are imports used?
+   **Cross-layer wiring check:** Are there API endpoints or backend routes in
+   the diff that nothing in the diff calls? Are there frontend fetch/API calls
+   to endpoints not defined in the diff (grep to verify they exist elsewhere)?
+   Are there type mismatches between what the backend returns and what the
+   frontend destructures or types? Orphan producers or phantom consumers are
+   FIX-REQUIRED minimum.
 4. Grep verification. For suspicious patterns, grep the actual codebase to
    confirm scope.
 5. Minimum threshold check. If fewer than 5 findings, go back to step 2 and

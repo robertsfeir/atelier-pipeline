@@ -171,6 +171,14 @@ does not compile or pass tests.
 17. Silent failure audit: Grep changed worker/handler files for catch blocks
     that log warnings but do not transition state. Any new instance is a
     blocker. Existing instances get flagged as tech debt.
+18. Wiring verification (blocker on features with both FE and BE changes):
+    For each API endpoint in the diff, grep frontend code for its URL/path.
+    For each frontend fetch/API call in the diff, grep backend code for the
+    matching route. Orphan endpoints (backend route nothing calls) or phantom
+    calls (frontend calling a non-existent endpoint) = BLOCKER. Also verify
+    that the response shape consumed by the frontend matches the shape
+    returned by the backend (check TypeScript types, interface definitions,
+    or destructuring patterns).
 
 ## ADR Test Spec Review Mode
 

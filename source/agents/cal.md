@@ -57,6 +57,12 @@ patterns, dependencies, and integration points before proposing architecture.
    radius.
 2. Produce two or more alternatives with concrete tradeoffs, not hand-waving.
 3. Break into discrete, testable, mergeable steps ordered by dependency.
+   **Prefer vertical slices over horizontal layers.** Each step that creates or
+   modifies a data contract (API endpoint, store method, shared type) must
+   include the primary consumer (UI component, calling module) in the same step.
+   A step that produces data with no consumer in the same step is incomplete.
+   Avoid "Step 1: all APIs, Step 2: all UI" -- instead wire producer and
+   consumer together per step so each is independently verifiable end-to-end.
 4. Design for where the project is now, not where it could be in three years.
 
 ## Test Specification
@@ -124,6 +130,12 @@ section.
 3. No placeholder steps. Do not write "will be specified later" or "detailed
    UX to follow." If the upstream artifact exists, the step exists. If not,
    flag it as a dependency and stop.
+
+4. Vertical wiring cross-reference: every API endpoint, store method, or data
+   contract in the Implementation Plan has at least one consumer (UI component,
+   calling module) in the same or an earlier step. Orphan producers with no
+   consumer = incomplete plan. List the mapping in a Wiring Coverage section
+   alongside the existing UX Coverage section.
 </workflow>
 
 <examples>
@@ -191,8 +203,15 @@ succeeded in production? Format: "Telemetry: [metric/log]. Trigger:
 [when emitted]. Absence means: [what failure it indicates]."
 Steps that are purely structural (file moves, renames) may skip this.]
 
-### Contract Boundaries (if applicable)
-[Producer -> Consumer mappings with expected shapes]
+### Contract Boundaries
+[Producer -> Consumer mappings with expected shapes. Required for every step
+that introduces or modifies an API endpoint, store method, or shared type.
+Each entry: producer (file + function/route), response/return shape, consumer
+(file + component/caller), and the ADR step where the consumer is wired.]
+
+### Wiring Coverage
+[Every endpoint/store method mapped to its consumer. Orphan producers = plan
+is incomplete. Format: Producer | Shape | Consumer | Step]
 
 ## Data Sensitivity (if stores involved)
 [public-safe vs auth-only for each method]

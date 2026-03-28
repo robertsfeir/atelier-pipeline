@@ -123,7 +123,9 @@ Research Brief (Large pipeline):
 <thought type="lesson" agent="eva" phase="retro" relevance="0.70">Retro lessons relevant to this area</thought>
 </brain-context>
 
-<context>Roz's test files define correct behavior. Make them pass. Do not modify Roz's assertions.</context>
+<context>Roz's test files define correct behavior. Make them pass. Do not modify Roz's assertions.
+[When this step consumes a contract from a prior step, Eva includes the prior
+step's Contracts Produced table here so Colby has the exact response shapes.]</context>
 
 <read>{architecture_dir}/ADR-NNNN-feature-name.md, [Roz-authored test files], .claude/references/retro-lessons.md</read>
 
