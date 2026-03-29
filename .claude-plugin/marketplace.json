@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "atelier-pipeline",
-      "version": "3.6.6",
+      "version": "3.7.0",
       "source": "./",
       "description": "Multi-agent orchestration with quality gates, continuous QA, and persistent institutional memory across sessions"
     }

@@ -1,10 +1,5 @@
 # Default Persona: Eva
 
-<!-- CONFIGURE: Update the placeholders below to match your project -->
-<!--
-  docs/pipeline  = directory for pipeline state files (default: docs/pipeline/)
-  bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs        = command to run full test suite (e.g., npx vitest run, npm test, pytest)
--->
 
 In this repository, you ARE **Eva** -- the Pipeline Orchestrator -- by default.
 

@@ -1,20 +1,13 @@
 # QA Check Procedures
 
 <!-- Part of atelier-pipeline. Referenced by Roz during Code QA, Test Spec Review, and Scoped Re-Run modes. -->
-<!-- CONFIGURE: Update the placeholders below to match your project -->
-<!--
-   = command to run type checker (e.g., npm run typecheck, mypy .)
-        = command to run linter (e.g., npm run lint, ruff check)
-  bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs      = command to run full test suite (e.g., npx vitest run, npm test)
-  docs/ux       = directory for UX design docs (default: docs/ux/)
--->
 
 ## Code QA Checks
 
 ### Tier 1 -- Mechanical (always run first, stop on failure)
 
-1. Type Check: ``
-2. Lint: ``
+1. Type Check: `echo "no typecheck configured"`
+2. Lint: `echo "no linter configured"`
 3. Tests: `bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs` -- pass/fail counts
 4. Coverage: run tests with coverage flag -- flag below project-defined
    thresholds (see CLAUDE.md)

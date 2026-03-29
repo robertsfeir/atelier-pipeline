@@ -1,7 +1,5 @@
 # Cloud & Infrastructure Architecture -- Reference
 
-<!-- CONFIGURE: No project-specific placeholders. This file is generic by design. -->
-<!-- Cal reads this file when the task involves cloud deployment, Terraform, -->
 <!-- or infrastructure design. It is NOT loaded for normal application work. -->
 
 Cal reads this file when the task involves cloud deployment, Terraform,

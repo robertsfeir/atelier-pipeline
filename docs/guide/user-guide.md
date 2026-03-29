@@ -23,6 +23,7 @@ A structured, multi-agent development workflow for Claude Code. Eleven specializ
 - [Agent Discovery](#agent-discovery)
 - [Context Management](#context-management)
 - [Mechanical Enforcement](#mechanical-enforcement)
+- [Uninstalling](#uninstalling)
 - [Updating the Plugin](#updating-the-plugin)
 - [Troubleshooting](#troubleshooting)
 - [Reference](#reference)
@@ -407,6 +408,12 @@ Several capabilities improve pipeline velocity and institutional memory:
 **Colby: failing test first.** Before implementing any ADR step, Colby runs Roz's pre-written tests to verify they fail for the right reason. If a test passes before any code is written, Colby flags it -- either the test is wrong or the feature already exists.
 
 **Colby: minimal implementation.** Colby implements the minimum code necessary to pass the current failing test. Helper functions, utility abstractions, and convenience wrappers not required by the ADR step or failing test are noted in the DoD but not built.
+
+### New in v3.7
+
+**Uninstall skills.** Two new skills for clean removal: `/pipeline-uninstall` removes all pipeline files from a project (agent personas, commands, references, hooks, state files) while preserving custom agents and offering to back up retro lessons. `/brain-uninstall` removes or disconnects the Atelier Brain -- it offers a disconnect-only option (remove config, keep the database intact) or a full uninstall that also cleans up the database (Docker container/volume, local PostgreSQL database, or remote tables). Both skills present a full removal plan and require explicit confirmation before touching anything.
+
+**Installation location clarity.** `/pipeline-setup` now explains where files are installed before gathering project information. All installed files are project-local (inside the project directory), committed to git, and shared with team members on clone. Nothing is written to `~/.claude/` or other user-level locations. The plugin itself (installed via `claude plugin add`) is user-level, but the project files it generates are project-level.
 
 ### New in v3.6
 
@@ -860,6 +867,37 @@ When an agent sees a block message, it adjusts: Eva routes the work to the corre
 Behavioral guidance tells agents what to do. Hooks ensure they cannot do what they should not. A Colby that tries to write documentation gets stopped before the write reaches disk. An Eva that tries to commit code gets redirected to Ellis. The enforcement is mechanical, not discretionary.
 
 For technical details on how the hooks work, see the [Technical Reference](technical-reference.md#enforcement-hooks).
+
+---
+
+## Uninstalling
+
+### Removing pipeline files from a project
+
+Run `/pipeline-uninstall` in Claude Code. The skill:
+
+1. **Inventories** all installed pipeline files (rules, agents, commands, references, hooks, state files)
+2. **Presents** a full removal plan showing what will be removed, modified, and preserved
+3. **Preserves** user-created custom agents (any `.md` files in `.claude/agents/` that are not core pipeline agents)
+4. **Offers to back up** retro lessons if the file contains accumulated knowledge
+5. **Asks for confirmation** before removing anything
+6. **Removes** core pipeline files, cleans up hook registrations from `.claude/settings.json`, and removes the pipeline section from `CLAUDE.md`
+
+After uninstalling, the atelier-pipeline plugin itself remains registered with Claude Code. To fully remove the plugin: `claude plugin remove atelier-pipeline`. To reinstall later: `/pipeline-setup`.
+
+### Disconnecting or removing the brain
+
+Run `/brain-uninstall` in Claude Code. The skill detects your brain configuration and offers two paths:
+
+- **Disconnect only** -- removes the config file but leaves the database untouched. You can reconnect later with `/brain-setup`.
+- **Full uninstall** -- removes the config file and cleans up the database. The cleanup procedure depends on how the brain was set up:
+  - **Docker:** stops the container and optionally deletes the Docker volume
+  - **Local PostgreSQL:** optionally drops the database
+  - **Remote PostgreSQL:** optionally drops all brain tables (preserves the database itself)
+
+Both paths require explicit confirmation before any destructive action. Database passwords are masked in all output.
+
+The `brain/` directory inside the plugin is not removed -- it contains plugin code, not your data.
 
 ---
 

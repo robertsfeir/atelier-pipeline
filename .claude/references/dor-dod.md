@@ -1,11 +1,5 @@
 # Definition of Ready / Definition of Done
 
-<!-- CONFIGURE: Update the placeholders below to match your project -->
-<!--
-        = command to run linter (e.g., npm run lint, ruff check)
-   = command to run type checker (e.g., npm run typecheck, mypy .)
-  bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs      = command to run tests for changed files (e.g., npm test [path], pytest [path])
--->
 
 Shared framework for all agents. Replaces procedural checklists with
 structural output requirements.
@@ -110,7 +104,7 @@ Here is the structural pattern:
 ### Agent-Specific DoD Conditions
 
 **Colby (build):**
-- ` &&  && bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs [changed files]` passes
+- `echo "no linter configured" && echo "no typecheck configured" && bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs [changed files]` passes
 - Grep for TODO/FIXME/HACK across changed files -- show results
 - Every ADR step acceptance criterion listed with pass evidence
 

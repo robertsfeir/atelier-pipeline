@@ -11,6 +11,28 @@ This skill installs the full Atelier Pipeline multi-agent orchestration system i
 
 ## Setup Procedure
 
+### Where Files Are Installed
+
+Before gathering project information, understand where the pipeline installs files and how they interact with your project:
+
+| Location | What Goes There | Git Status | Shared With Team? |
+|----------|----------------|------------|-------------------|
+| `.claude/rules/` | Eva persona, orchestration rules, model selection, branch lifecycle | Project-local, committed to repo | Yes -- team members get the same pipeline rules |
+| `.claude/agents/` | Agent persona files (Cal, Colby, Roz, etc.) | Project-local, committed to repo | Yes -- consistent agent behavior across the team |
+| `.claude/commands/` | Slash command definitions (/pm, /pipeline, etc.) | Project-local, committed to repo | Yes -- same commands available to all |
+| `.claude/references/` | Quality framework, retro lessons, invocation templates | Project-local, committed to repo | Yes -- shared knowledge base |
+| `.claude/hooks/` | Enforcement scripts (path, sequencing, git guards) | Project-local, committed to repo | Yes -- same guardrails for everyone |
+| `.claude/pipeline-config.json` | Branching strategy, feature flags | Project-local, committed to repo | Yes -- team-wide configuration |
+| `.claude/settings.json` | Hook registrations (tells Claude Code to run the hooks) | Project-local, committed to repo | Yes -- hooks activate for all team members |
+| `docs/pipeline/` | Pipeline state, context brief, error patterns, QA reports | Project-local, committed to repo | Yes -- session recovery works across machines |
+| `CLAUDE.md` | Pipeline section appended to project instructions | Project-local, committed to repo | Yes -- Claude Code reads this automatically |
+
+**Key points:**
+- All installed files live inside the project directory -- nothing is written to `~/.claude/` or other user-level locations.
+- Everything is designed to be committed to git so team members inherit the pipeline when they clone.
+- The plugin itself (installed via `claude plugin add`) is user-level, but the project files it generates are project-level.
+- To remove all installed files later, use the `/pipeline-uninstall` skill.
+
 ### Step 1: Gather Project Information
 
 Before installing, ask the user about their project. Ask these questions conversationally, one at a time -- do not dump a list.

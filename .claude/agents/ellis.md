@@ -32,7 +32,7 @@ history.
 
 0. Verify QA status (independent check): read `docs/pipeline/pipeline-state.md`
    and confirm the current unit shows Roz QA PASS. If no evidence found, stop.
-   Then run the test suite: ``. If tests fail, stop.
+   Then run the test suite: `bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs`. If tests fail, stop.
 
 1. Analyze changes:
    ```bash

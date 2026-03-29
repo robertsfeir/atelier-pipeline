@@ -1,6 +1,6 @@
 # Atelier Pipeline -- Technical Reference
 
-Version: 3.6.0
+Version: 3.7.0
 
 This document is the comprehensive technical reference for the atelier-pipeline Claude Code plugin. It covers plugin architecture, agent system design, orchestration logic, brain infrastructure, and customization points. For usage-oriented documentation, see [the user guide](user-guide.md).
 
@@ -48,7 +48,7 @@ The plugin itself lives in the Claude Code plugin directory (typically `~/.claud
 ```
 atelier-pipeline/                         # Plugin root (CLAUDE_PLUGIN_ROOT)
   .claude-plugin/
-    plugin.json                           # Plugin metadata, hooks, version (3.6.0)
+    plugin.json                           # Plugin metadata, hooks, version (3.7.0)
   source/                                 # Template files -- copied to target project
     rules/
       default-persona.md
@@ -94,7 +94,9 @@ atelier-pipeline/                         # Plugin root (CLAUDE_PLUGIN_ROOT)
     ui/                                   # Settings UI (Phase 2)
   skills/                                 # Plugin skills (run in main thread)
     pipeline-setup/SKILL.md               # /pipeline-setup
+    pipeline-uninstall/SKILL.md           # /pipeline-uninstall
     brain-setup/SKILL.md                  # /brain-setup
+    brain-uninstall/SKILL.md              # /brain-uninstall
     brain-hydrate/SKILL.md                # /brain-hydrate
   scripts/
     check-updates.sh                      # SessionStart hook -- detects plugin updates
@@ -252,7 +254,7 @@ Some agents operate in both modes:
 
 The slash commands (`/pm`, `/ux`, `/docs`, `/architect`, `/debug`, `/pipeline`, `/devops`) are **custom agent persona commands**, not Claude Code skills. The `Skill` tool must not be invoked for them. When the user types one, Eva reads the corresponding `.claude/commands/*.md` file and adopts that agent's persona. This distinction matters because skills use the `Skill` tool invocation path, while custom commands trigger persona adoption in the main thread.
 
-The four actual plugin skills (`/pipeline-setup`, `/pipeline-overview`, `/brain-setup`, `/brain-hydrate`) live in the plugin's `skills/` directory and are invoked through the `Skill` tool.
+The six actual plugin skills (`/pipeline-setup`, `/pipeline-uninstall`, `/pipeline-overview`, `/brain-setup`, `/brain-uninstall`, `/brain-hydrate`) live in the plugin's `skills/` directory and are invoked through the `Skill` tool.
 
 ---
 
@@ -869,7 +871,9 @@ The PreCompact hook (`pre-compact.sh`) appends a timestamped `<!-- COMPACTION: .
 
 ### /pipeline-setup
 
-The `pipeline-setup` skill is conversational. It:
+The `pipeline-setup` skill is conversational. All files it installs are project-local (inside the project directory), committed to git, and shared with team members when they clone the repository. Nothing is written to `~/.claude/` or other user-level locations. The plugin itself (installed via `claude plugin add`) is user-level, but the project files it generates are project-level.
+
+The skill:
 
 1. **Gathers project information** one question at a time: tech stack, test framework, test commands, source structure, database patterns, build/deploy commands, coverage thresholds, complexity limits, and branching strategy.
 2. **Reads template files** from `source/` in the plugin directory.
@@ -925,6 +929,30 @@ Seeds the brain with existing project knowledge:
 3. **Extract** -- reads each artifact, synthesizes reasoning (never verbatim content), captures as brain thoughts with proper types, importance scores, and relations
 4. **Incremental** -- safe to re-run. Duplicate detection (>0.85 similarity = skip, 0.7-0.85 = new thought with `evolves_from` relation)
 5. **Capped** -- maximum 100 thoughts per hydration run
+
+### /pipeline-uninstall
+
+Removes all pipeline files installed by `/pipeline-setup`. The skill:
+
+1. **Inventories** installed files against the core pipeline manifest (rules, agents, commands, references, hooks, state files, config, version marker)
+2. **Separates** user-created custom agents (non-core `.md` files in `.claude/agents/`) -- these are never removed
+3. **Presents** a full removal plan before touching any files
+4. **Offers to back up** `retro-lessons.md` if it contains accumulated knowledge (copies to `docs/retro-lessons-backup.md`)
+5. **Requires explicit confirmation** before proceeding
+6. **Removes** files in order: hook registrations from `.claude/settings.json`, pipeline section from `CLAUDE.md`, core pipeline files, then empty directories
+7. **Does not remove** the plugin itself (`claude plugin remove atelier-pipeline` is separate) or the Atelier Brain database
+
+### /brain-uninstall
+
+Removes or disconnects the Atelier Brain persistent memory layer. The skill:
+
+1. **Detects** the brain config file (shared in `.claude/brain-config.json` or personal in `${CLAUDE_PLUGIN_DATA}/brain-config.json`) and infers the database strategy from the `database_url` field
+2. **Offers two paths:**
+   - **Disconnect only** -- removes the config file, leaves the database untouched
+   - **Full uninstall** -- removes the config file and cleans up the database (Docker: stops container, optionally removes volume; Local PG: optionally drops database; Remote PG: optionally drops brain tables)
+3. **Requires explicit confirmation** for every destructive database operation
+4. **Handles unreachable databases** gracefully -- removes config and provides manual cleanup instructions
+5. **Does not remove** the `brain/` directory (plugin code, not user data) or the plugin itself
 
 ---
 

@@ -1,15 +1,5 @@
 # Invocation Templates
 
-<!-- CONFIGURE: Update the placeholders below to match your project -->
-<!--
-  docs/product   = directory for product specs (default: docs/product/)
-  docs/ux         = directory for UX design docs (default: docs/ux/)
-  docs/architecture    = directory for ADR files (default: docs/architecture/)
-          = feature directory pattern (e.g., src/features/, app/domains/)
-  tests/            = test directory pattern (e.g., tests/, __tests__/, spec/)
-     = command for rapid inner-loop tests (e.g., npm run test:fast)
-  bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs        = command to run full test suite (e.g., npx vitest run, npm test)
--->
 
 Eva loads this file just-in-time when constructing sub-agent invocation
 prompts. These are not pre-loaded into Eva's always-on context.
@@ -102,7 +92,7 @@ Research Brief (Large pipeline):
 <read>docs/product/FEATURE.md, docs/ux/FEATURE-ux.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <constraints>
-- Real components in /feature-name/ using existing component library
+- Real components in source//feature-name/ using existing component library
 - Wire to mock data hook, not API calls
 - Implement all states from Sable's doc (empty, loading, populated, error, overflow)
 - Add route and nav item. No backend, no tests.
@@ -131,7 +121,7 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 
 <constraints>
 - Make Roz's pre-written tests pass -- do not modify her assertions
-- Inner loop: `` for rapid iteration. Full suite at unit completion.
+- Inner loop: `bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs` for rapid iteration. Full suite at unit completion.
 - If a Roz test fails against existing code, the code has a bug -- fix it
 - When fixing a shared utility bug, grep for all instances codebase-wide
 - Zero TODO/FIXME/HACK in delivered code
@@ -213,7 +203,7 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 - Flag any ambiguous domain intent for Eva
 </constraints>
 
-<output>Test files in tests// matching ADR step scope, with DoR/DoD sections</output>
+<output>Test files in {test_dir}/ matching ADR step scope, with DoR/DoD sections</output>
 
 </template>
 
@@ -479,7 +469,7 @@ Acceptance criteria (from ADR step):
 - [criterion N]
 
 Constraints:
-- Run lint after implementation: 
+- Run lint after implementation: echo "no linter configured"
 - Do NOT run the full test suite -- Eva runs it after merge
 - Do NOT commit -- Eva merges and routes to Ellis
 - Do NOT modify files outside your assigned scope above
