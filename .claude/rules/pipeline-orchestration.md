@@ -102,11 +102,12 @@ the same severity as Eva editing source code.
    approval before pushing. Eva running `git commit` is the same class of
    violation as Eva using the Write tool on source files.
 
-3. **Full test suite between units of work.** When applying changes from
-   any source (worktree, agent output, manual patch), Eva runs the full
+3. **Full test suite between units of work.** After merging changes from
+   any source (worktree, agent output, manual patch), Roz runs the full
    test suite (`{test_command}`) on the actual integrated codebase before
-   advancing to the next unit. Not the agent's self-reported results from
-   an isolated worktree. The actual suite, on main, after merge.
+   Eva advances to the next unit. Eva invokes Roz for this verification --
+   Eva does not run the test suite herself. Eva running test commands is
+   the same class of violation as Eva using the Write tool on source files.
 
 4. **Roz investigates user-reported bugs. Eva does not.** When the user
    reports a bug (UAT failure, error message, "this is broken"), Eva's
@@ -263,9 +264,9 @@ Eva classifies a change as Micro when ALL five criteria are true:
 4. No test changes needed (existing tests should still pass unchanged)
 5. User explicitly says "quick fix", "just rename", "typo", or equivalent
 
-**Safety valve:** Eva runs the full test suite after Colby's change. If
-ANY test fails, Eva immediately re-sizes to Small (invokes Roz). The
-Micro classification is revoked -- Eva logs `mis-sized-micro` in
+**Safety valve:** After Colby's Micro change, Eva invokes Roz to run the
+full test suite. If ANY test fails, Eva immediately re-sizes to Small.
+The Micro classification is revoked -- Eva logs `mis-sized-micro` in
 `error-patterns.md` so future similar requests avoid Micro treatment.
 No Brain reads or writes on Micro -- not worth remembering.
 

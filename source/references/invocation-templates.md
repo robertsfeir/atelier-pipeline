@@ -439,3 +439,62 @@ them for downstream consumption.
 <output>Distillate + reconstruction, YAML frontmatter, DoR/DoD sections, preservation checklist</output>
 
 </template>
+
+<template id="agent-teams-task">
+
+### Agent Teams Teammate Task (Experimental)
+
+Eva uses this format when creating tasks for Colby Teammates during Agent
+Teams wave execution (when `agent_teams_available: true`). This is the
+task description written to TaskCreate -- not an Agent tool invocation
+prompt. Teammates load Colby's persona from `.claude/agents/colby.md`
+and project rules from `.claude/rules/` automatically via their worktree.
+
+**Task description format (Eva writes this to TaskCreate):**
+
+```
+ADR: ADR-NNNN Step N -- [step description]
+Wave: N of M, Unit: K of L
+maxTurns: 25
+
+Files to create:
+- [path/to/new-file.ext]
+
+Files to modify:
+- [path/to/existing-file.ext]
+
+Test files:
+- [path/to/test-file.ext]
+
+Acceptance criteria (from ADR step):
+- [criterion 1]
+- [criterion 2]
+- [criterion N]
+
+Constraints:
+- Run lint after implementation: {lint_command}
+- Do NOT run the full test suite -- Eva runs it after merge
+- Do NOT commit -- Eva merges and routes to Ellis
+- Do NOT modify files outside your assigned scope above
+- If a file that should exist does not exist (missing dependency from
+  another step), mark this task as blocked with a description of
+  what is missing rather than attempting to work around it
+- Make Roz's pre-written tests pass -- do not modify her assertions
+- Zero TODO/FIXME/HACK in delivered code
+```
+
+**Notes for Eva:**
+
+- One task per wave unit. Tasks are created for all units in the wave
+  before any Teammate begins execution.
+- `maxTurns: 25` is the default. Adjust per unit complexity if needed.
+  This is the only hard limit on runaway Teammate iterations (retro #004).
+- Eva processes `TaskCompleted` events sequentially -- one at a time --
+  to avoid race conditions in `pipeline-state.md` updates (retro #003).
+- After all Teammates in the wave complete, Eva merges worktrees in task
+  creation order (deterministic merge sequence).
+- If a Teammate marks its task blocked: Eva falls back to sequential
+  execution for that unit, resolves the missing dependency, then
+  re-invokes Colby as a standard subagent.
+
+</template>

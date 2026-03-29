@@ -295,7 +295,7 @@ After installation, print:
 3. The configured branching strategy and any CI recommendations
 4. A reminder of available slash commands
 5. Instructions to start their first pipeline run
-6. **Offer to set up the Atelier Brain** -- persistent memory across sessions
+6. **Offer optional features** -- Sentinel security agent (Step 6a), Agent Teams parallel execution (Step 6b), and Atelier Brain persistent memory
 
 **Example summary:**
 
@@ -319,6 +319,9 @@ Branching strategy: [selected strategy]
    - GitHub Flow: Run CI on MR events + push to main. Protect main.
    - GitLab Flow: Same + CI on push to staging/production. Protect all env branches.
    - GitFlow: CI on MR events for develop AND main. Protect both.]
+
+Sentinel security agent: [enabled (Semgrep MCP) | not enabled]
+Agent Teams: [enabled (experimental) | not enabled]
 
 Available commands:
   /pm          -- Feature discovery and product spec (Robert)
@@ -363,9 +366,35 @@ After printing the summary, offer the optional Sentinel security agent:
 |----------------|-------------|-------------|
 | `source/agents/sentinel.md` | `.claude/agents/sentinel.md` | User enables Sentinel in Step 6a |
 
+### Step 6b: Agent Teams Opt-In (Experimental)
+
+After the Sentinel offer (whether user said yes or no), offer the optional Agent Teams feature:
+
+> Would you also like to enable **Agent Teams** -- experimental parallel wave execution?
+> When Claude Code's Agent Teams feature is active (`CLAUDE_AGENT_TEAMS=1`), Eva can run
+> multiple Colby build units in parallel using git worktrees. This is experimental and the
+> pipeline works identically without it.
+
+**If user says yes:**
+
+1. Set `agent_teams_enabled: true` in `.claude/pipeline-config.json`.
+2. Print: "Agent Teams: enabled (experimental). Set `CLAUDE_AGENT_TEAMS=1` in your environment
+   to activate. The pipeline will fall back to sequential execution if the env var is unset."
+
+**Idempotency:** If `agent_teams_enabled` already exists in `pipeline-config.json` and is `true`, skip the mutation and inform the user: "Agent Teams is already enabled." If it exists and is `false`, confirm with the user before changing.
+
+**If user says no:** Skip entirely. `agent_teams_enabled` remains `false` in
+`pipeline-config.json`. Print: "Agent Teams: not enabled"
+
+**No dependency checks needed** -- unlike Sentinel (pip) or Brain (PostgreSQL), Agent Teams
+has no external tools to install. The feature is entirely runtime-activated via the env var.
+
+**No installation manifest expansion** -- Agent Teams uses the existing Colby persona
+(`.claude/agents/colby.md`). No new files are installed.
+
 **Brain setup offer (always ask):**
 
-After printing the summary, ask the user:
+After the Agent Teams offer (whether user said yes or no), ask the user:
 
 > The pipeline is ready. Would you also like to set up the **Atelier Brain**?
 > It gives your agents persistent memory across sessions -- architectural

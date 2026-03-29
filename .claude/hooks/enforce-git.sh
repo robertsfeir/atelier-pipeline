@@ -1,10 +1,11 @@
 #!/bin/bash
-# Phase 2 supplement: Prevent Eva from running git commit/push directly
+# Phase 2 supplement: Prevent Eva from running git write operations or test suites directly
 # PreToolUse hook on Bash
 #
 # Eva must route commits through Ellis. This hook blocks git add,
 # git commit, and git push from the main thread. Subagents (Ellis)
-# are allowed.
+# are allowed. Eva must also route test suite execution through Roz --
+# this hook blocks test commands from the main thread.
 
 set -euo pipefail
 
@@ -32,4 +33,14 @@ if echo "$COMMAND" | grep -qE "git\s+(add|commit|push|reset|checkout\s+--|restor
   exit 2
 fi
 
+# Block test execution from main thread -- Roz owns QA verification
+if echo "$COMMAND" | grep -qE "(bats|pytest|jest|vitest|mocha|rspec|phpunit|npm\s+test|yarn\s+test|pnpm\s+test|node\s+--test|go\s+test|cargo\s+test|make\s+test|dotnet\s+test|gradle\s+test|mvn\s+test)" 2>/dev/null; then
+  echo "BLOCKED: Eva cannot run test suites directly. Route QA verification through Roz." >&2
+  exit 2
+fi
+
+# Note: Both blocks above are defense-in-depth. They catch direct invocations
+# of git/test commands but can be bypassed via indirection (bash -c, env, wrapper
+# scripts). The behavioral rules in pipeline-orchestration.md are the primary
+# constraint; these hooks are the mechanical backstop.
 exit 0

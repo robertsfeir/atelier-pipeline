@@ -7,5 +7,6 @@
   "environment_branches": [],
   "base_branch": "main",
   "integration_branch": "main",
-  "sentinel_enabled": false
+  "sentinel_enabled": false,
+  "agent_teams_enabled": false
 }

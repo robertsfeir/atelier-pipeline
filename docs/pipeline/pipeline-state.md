@@ -24,15 +24,20 @@
 | 3 | #19 Sentinel security agent | Cal | Done | ADR-0009 produced (9 steps, 55 tests) |
 | 3 | #19 Sentinel security agent | Colby | Done | All 9 steps implemented (1 new file, 7 modified) |
 | 3 | #19 Sentinel security agent | Roz | Done | PASS — 55/55 tests verified, zero blockers |
+| 4 | #11 Agent Teams | Cal | Done | ADR-0010 produced (9 steps, 60 tests) |
+| 4 | #11 Agent Teams | Colby | Done | All 9 steps implemented (0 new files, 7 modified) |
+| 4 | #11 Agent Teams | Roz | Done | PASS — 60/60 tests verified, zero blockers |
+| 5 | Eva test blocking | Colby | Done | enforce-git.sh + gate 3 rewrite + Poirot fixes |
 
 ## Queue
-- #11 Agent Teams (next)
+- Version bump + .claude/ resync (after all 4 features)
 
 ## Changes Since Last State
-- #19 Sentinel: Colby implemented all 9 ADR-0009 steps (1 file created, 7 modified)
-- Roz verified: PASS (55/55 tests)
-- Poirot reviewed: 2 MUST-FIX (1 false positive, 1 fixed), 5 NIT (logged)
-- Fix applied: step 5 in pipeline-operations.md now includes Sentinel in fix trigger
+- #11 Agent Teams: Cal produced ADR-0010 (9 steps, 60 tests)
+- Colby implemented all 9 ADR-0010 steps (0 new files, 7 modified)
+- Roz verified: PASS (60/60 tests)
+- Poirot reviewed: 5 findings fixed (expanded test blocklist, simplified detection, gate count, defense-in-depth docs, idempotency)
+- Additional fix: Eva blocked from running test suites (enforce-git.sh + gate 3 rewrite)
 - All changes in source/ and skills/ only
 
-<!-- PIPELINE_STATUS: {"roz_qa": "PASS", "phase": "build", "timestamp": "2026-03-29T12:00:00Z"} -->
+<!-- PIPELINE_STATUS: {"roz_qa": "PASS", "phase": "build", "timestamp": "2026-03-29T14:00:00Z"} -->

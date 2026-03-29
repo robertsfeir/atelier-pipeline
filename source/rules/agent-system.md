@@ -71,7 +71,7 @@ Hybrid skill/subagent workflow. Skills run in the main thread (conversational). 
 
 ## Eva -- The Central Nervous System
 
-**Tools:** Read, Glob, Grep, Bash, TaskCreate, TaskUpdate (NO Write/Edit/MultiEdit/NotebookEdit)
+**Tools:** Read, Glob, Grep, Bash, TaskCreate, TaskGet, TaskUpdate (NO Write/Edit/MultiEdit/NotebookEdit)
 **Always-Loaded Context:** default-persona.md + agent-system.md + CLAUDE.md.
 Eva reads only pipeline-state.md, context-brief.md, and error-patterns.md from `{pipeline_state_dir}`. CONVENTIONS.md, dor-dod.md, retro-lessons.md are subagent concerns.
 
@@ -409,5 +409,73 @@ convert it to a pipeline agent?"
    new agent immediately.
 8. **Enforcement note:** Eva announces: "[agent-name] has read-only access by
    default. To grant write access, add a case to `.claude/hooks/enforce-paths.sh`."
+
+</section>
+
+<section id="agent-teams">
+
+## Agent Teams (Experimental)
+
+> **This section describes an experimental feature.** Agent Teams is subject
+> to change as Claude Code's Agent Teams feature evolves. The pipeline works
+> identically when Agent Teams is disabled -- zero behavioral change.
+
+When `agent_teams_available: true`, Eva operates as Team Lead and creates
+Colby Teammate instances to execute build units within a wave in parallel.
+
+### Activation (Two Gates -- Both Must Pass)
+
+1. **Environment gate:** `CLAUDE_AGENT_TEAMS=1` must be set in the environment
+   (Claude Code feature flag that enables the Agent Teams runtime).
+2. **Config gate:** `agent_teams_enabled: true` in `.claude/pipeline-config.json`
+   (pipeline-level opt-in, set during `/pipeline-setup`).
+
+Eva checks both gates at session boot (step 3d). If either fails,
+`agent_teams_available` is set to `false` and Eva uses sequential subagent
+invocation with zero behavioral change.
+
+### Scope: Wave Execution Only
+
+Agent Teams applies exclusively to Colby build units within a wave. Agent
+Teams does NOT replace subagent invocations for any other agent:
+
+- Roz, Poirot, Robert, Sable, Ellis, Agatha, Cal, Sentinel, and all
+  discovered agents are invoked sequentially (existing behavior, unchanged).
+- Agent Teams is not used for read-only verification agents, doc writers,
+  commit agents, or any phase outside the Colby build step.
+
+Revisit: if Agent Teams supports non-worktree Teammates for parallel
+read-only review in a future version.
+
+### Teammate Identity
+
+Teammates are Colby instances. They are NOT a new agent type. Teammates load
+Colby's persona from `.claude/agents/colby.md` and project rules from
+`.claude/rules/`. No new persona file exists for Teammates. Teammates match
+the `colby` case in `enforce-paths.sh` and have full write access to the
+codebase (same as a standard Colby subagent invocation).
+
+### Task Lifecycle
+
+1. Eva creates one task per wave unit via `TaskCreate` with a structured
+   task description (see `invocation-templates.md`, template `agent-teams-task`).
+2. Teammate instances pick up tasks and execute the build units.
+3. Each Teammate marks its task complete via `TaskUpdate` when done.
+4. `TaskCompleted` events fire on Eva (Team Lead). Eva processes them
+   sequentially -- one at a time, not in parallel -- to avoid race
+   conditions in state updates to `pipeline-state.md`.
+5. After all Teammates in the wave complete (all TaskCompleted events
+   received), Eva merges each worktree sequentially (see Worktree
+   Integration Rules -- Agent Teams Worktrees subsection).
+6. Roz QA + Poirot blind review run per unit after merge (unchanged).
+
+Eva uses `TaskGet` to check Teammate task status during wave execution.
+
+### Fallback Behavior
+
+When `agent_teams_available: false` (config flag off, env var unset, or
+runtime detection fails), Eva falls back to sequential subagent invocation.
+The pipeline output is identical -- Agent Teams affects execution speed, not
+correctness or quality.
 
 </section>

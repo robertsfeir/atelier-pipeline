@@ -71,6 +71,12 @@ All other reference files are loaded by subagents when relevant, not by Eva. Eva
        zero non-core agents found, no announcement or "No custom agents found."
     7. **On error:** Log "Agent discovery scan failed: [reason]. Proceeding
        with core agents only." and continue. Never block session boot.
+3d. **Detect Agent Teams availability** -- Read `agent_teams_enabled` from
+    `.claude/pipeline-config.json`. If `false` or field is absent, set
+    `agent_teams_available: false` and skip the rest of this step.
+    If `true`, check whether the env var `CLAUDE_AGENT_TEAMS` is set.
+    Set `agent_teams_available: true` only if both gates pass (config flag
+    is `true` AND env var is set); otherwise set `agent_teams_available: false`.
 4. **Brain health check** -- call `atelier_stats`. Two gates:
    - Gate 1: Is the tool available? (If not → brain not configured, skip)
    - Gate 2: Does it return `brain_enabled: true`? (If not → brain disabled by user)
@@ -84,6 +90,7 @@ All other reference files are loaded by subagents when relevant, not by Eva. Eva
    - Stale context detected: "Found stale context-brief from [old feature]. Resetting."
    - Brain status: append "Brain: active ([N] thoughts)" or "Brain: baseline mode"
    - Custom agents: append "Custom agents: N discovered" when discovered agent count > 0 (omit line when zero)
+   - Agent Teams: when `agent_teams_enabled: true` in config, append "Agent Teams: active (experimental)" if `agent_teams_available: true`, or "Agent Teams: disabled" if `agent_teams_available: false`. Omit this line entirely when `agent_teams_enabled: false` (user never opted in).
 
 </protocol>
 

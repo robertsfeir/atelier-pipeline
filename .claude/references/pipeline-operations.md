@@ -158,7 +158,7 @@ user if they want to loop that agent back in:
 Default execution model is **sequential with full pipeline per issue.**
 
 1. **One issue at a time.** Eva does not start issue N+1 until issue N is committed and verified.
-2. **Full test suite between issues.** If tests fail, Eva halts and routes the failure.
+2. **Roz runs the full test suite between issues.** Eva invokes Roz between issues. If tests fail, Eva halts and routes the failure.
 3. **Parallelization requires explicit user approval** and zero file overlap confirmation.
 4. **No silent reordering.** Eva announces dependency-driven reorders.
 
@@ -172,7 +172,7 @@ Changes from isolated worktrees must be integrated using git operations -- **nev
 
 1. **Use `git merge` or `git cherry-pick`** to bring worktree changes into the working branch.
 2. **Resolve conflicts before advancing.** Route to Colby for resolution, run Roz before advancing.
-3. **One worktree merges at a time.** Run the test suite between each merge.
+3. **One worktree merges at a time.** Eva invokes Roz to run the test suite between each merge.
 4. **Worktree agents do not see each other's changes.** Eva is responsible for the integration.
 
 </operations>

@@ -169,7 +169,7 @@ user if they want to loop that agent back in:
 Default execution model is **sequential with full pipeline per issue.**
 
 1. **One issue at a time.** Eva does not start issue N+1 until issue N is committed and verified.
-2. **Full test suite between issues.** If tests fail, Eva halts and routes the failure.
+2. **Roz runs the full test suite between issues.** Eva invokes Roz between issues. If tests fail, Eva halts and routes the failure.
 3. **Parallelization requires explicit user approval** and zero file overlap confirmation.
 4. **No silent reordering.** Eva announces dependency-driven reorders.
 
@@ -183,8 +183,29 @@ Changes from isolated worktrees must be integrated using git operations -- **nev
 
 1. **Use `git merge` or `git cherry-pick`** to bring worktree changes into the working branch.
 2. **Resolve conflicts before advancing.** Route to Colby for resolution, run Roz before advancing.
-3. **One worktree merges at a time.** Run the test suite between each merge.
+3. **One worktree merges at a time.** Eva invokes Roz to run the test suite between each merge.
 4. **Worktree agents do not see each other's changes.** Eva is responsible for the integration.
+
+**Agent Teams Worktrees (when `agent_teams_available: true`, experimental):**
+
+Agent Teams worktrees are managed by Claude Code, not by Eva via Bash. Eva
+does not create or delete worktrees manually -- the Agent Teams runtime
+handles worktree lifecycle.
+
+- **Merge order:** Eva merges Teammates' worktrees one at a time, in the
+  order tasks were created (deterministic merge order matches task creation
+  order). This ensures reproducible integration regardless of Teammate
+  completion order.
+- **Test suite between merges:** Rule 3 applies unchanged -- Eva invokes
+  Roz to run the full test suite on the integrated codebase between each
+  Teammate merge.
+- **Merge conflict handling:** If a conflict is detected during a Teammate
+  merge, Eva falls back to sequential for the conflicting unit. Eva routes
+  conflict resolution to Colby, runs Roz before advancing (Rule 2 applies).
+- **Worktree cleanup:** Claude Code manages worktree lifecycle. Eva does not
+  delete worktrees via Bash. After a successful merge and Roz QA PASS, the
+  worktree is no longer needed -- Eva signals completion to the Agent Teams
+  runtime rather than manually removing the directory.
 
 </operations>
 
@@ -216,11 +237,59 @@ parallel; waves execute sequentially.
 - **Write gate:** After grouping, `agent_capture` with
   `thought_type: 'decision'`, `source_agent: 'eva'`,
   `source_phase: 'build'`, content: "ADR-NNNN wave grouping:
-  Wave 1 [steps ...], Wave 2 [steps ...]. Rationale: [file overlap]."
+  Wave 1 [steps ...], Wave 2 [steps ...]. Rationale: [file overlap].
+  Execution: [sequential | agent-teams]."
+
+**Wave execution backend:**
+
+After the wave extraction algorithm completes, Eva executes the wave using
+one of two backends:
+
+**Sequential (default -- when `agent_teams_available: false`):**
+Eva invokes one Colby subagent per unit, one at a time, waiting for each
+to complete before starting the next. Current behavior -- no change.
+
+**Agent Teams (when `agent_teams_available: true`, experimental):**
+Eva creates one Teammate (Colby instance in a dedicated worktree) per wave
+unit using `TaskCreate`. Each Teammate receives a structured task description
+(see `invocation-templates.md`, template `agent-teams-task`). Eva then waits
+for TaskCompleted events from all Teammates in the wave.
+
+Teammate task contract format:
+```
+ADR: ADR-NNNN Step N
+Files to create: [list]
+Files to modify: [list]
+Test files: [list]
+Constraints: [from ADR step acceptance criteria]
+Wave: N of M, Unit: K of L
+maxTurns: 25
+```
+
+Teammates run Colby's persona (`.claude/agents/colby.md`). They run lint
+after implementation. They do NOT run the full test suite and do NOT commit.
+
+After all TaskCompleted events arrive for the wave, Eva merges each worktree
+sequentially -- one merge at a time, in the order tasks were created (see
+Worktree Integration Rules). Eva invokes Roz to run the full test suite
+between each merge.
+
+**Timeout and failure handling (Agent Teams):**
+- Default `maxTurns: 25` per Teammate. If a Teammate does not complete
+  within its turn limit, Eva marks the unit as failed.
+- If any Teammate in a wave fails or times out: Eva completes the merges
+  for successful Teammates, then runs the failed unit sequentially as a
+  normal Colby subagent invocation.
+- Eva announces at wave start: "Wave N executing via Agent Teams:
+  [K teammates]" or "Wave N executing sequentially."
+- 3-failure loop-breaker (gate 12) applies per unit, not per Teammate.
 
 **Constraint preservation within waves:**
 - Each unit within a wave still follows: Colby build -> Roz QA + Poirot
-  blind review (per unit). All 10 mandatory gates apply per unit.
+  blind review (per unit). All mandatory gates apply per unit.
+- When Agent Teams is active, Roz and Poirot run after each Teammate's
+  worktree is merged -- not per-Teammate in isolation. They review the
+  integrated result, not the isolated worktree diff.
 - Roz and Poirot run independently per unit -- no cross-unit review
   within a wave. Cross-unit integration is the final review juncture.
 - The final review juncture (Roz sweep + Poirot + Robert + Sable) runs
@@ -240,6 +309,11 @@ parallel; waves execute sequentially.
 - **Between major phases:** start fresh subagent sessions. Pipeline-state.md is the recovery mechanism.
 - **Within Colby+Roz interleaving:** Each unit is a separate subagent invocation (fresh context).
 - **Eva herself:** At 60% context usage, summarize to pipeline-state.md and recommend a fresh session.
+  When Agent Teams is active, Eva's context load increases because she processes multiple
+  `TaskCompleted` events per wave. The context cleanup advisory threshold (10 major handoffs)
+  counts each Teammate completion individually toward this threshold.
+- **Agent Teams Teammates have inherently fresh context per task.** Each Teammate is a new Claude
+  Code instance -- no compaction needed. Teammates start fresh regardless of wave width.
 - **Never carry Roz reports in Eva's context.** Read the verdict only.
 
 ### What Eva Carries vs. What Subagents Carry
@@ -253,5 +327,6 @@ parallel; waves execute sequentially.
 | retro-lessons.md | Never | Always (included in every READ) |
 | Feature spec | Never | Only if directly relevant |
 | ADR | Never | Only the relevant step |
+| Teammate task description | Creates (via TaskCreate) | Consumes (read from task) |
 
 </section>
