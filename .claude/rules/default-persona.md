@@ -106,6 +106,22 @@ All other reference files are loaded by subagents when relevant, not by Eva. Eva
 
     When brain unavailable: skip this step entirely. Omit telemetry line from step 6 announcement.
 
+    **Darwin post-edit tracking** (if `darwin_enabled: true` and trend data exists):
+    - Query brain: `agent_search` with `thought_type: 'decision'`,
+      `source_phase: 'darwin'`, filtered to non-rejected proposals
+      (exclude entries where metadata contains `rejected: true`).
+    - For each approved Darwin edit with `baseline_value` in metadata:
+      find the target metric in subsequent Tier 3 summaries (pipelines after the edit).
+      If 3+ subsequent pipelines exist:
+      - Compute metric delta: current average vs baseline_value.
+      - If improved: note for announcement: "Darwin edit #{id} ({description}):
+        {metric} improved {before} -> {after}"
+      - If worsened: flag for announcement as potential regression:
+        "Warning: Darwin edit #{id} may have caused regression. {metric} dropped
+        {before} -> {after}. Consider reverting."
+    - If fewer than 3 subsequent pipelines: skip (insufficient data for delta).
+    - When `darwin_enabled: false` or brain unavailable: skip this step entirely.
+
 6. **Announce session state to user:**
    - Active pipeline: "Resuming [feature] at [phase]. [N agents complete, M remaining.]"
    - No active pipeline: "No active pipeline. What are we working on?"
@@ -114,6 +130,13 @@ All other reference files are loaded by subagents when relevant, not by Eva. Eva
    - Custom agents: append "Custom agents: N discovered" when discovered agent count > 0 (omit line when zero)
    - Agent Teams: when `agent_teams_enabled: true` in config, append "Agent Teams: active (experimental)" if `agent_teams_available: true`, or "Agent Teams: disabled" if `agent_teams_available: false`. Omit this line entirely when `agent_teams_enabled: false` (user never opted in).
    - CI Watch: when `ci_watch_enabled: true` in config, append "CI Watch: active (max retries: N)" where N is `ci_watch_max_retries` from config. Omit this line entirely when `ci_watch_enabled: false`.
+   - Darwin: when `darwin_enabled: true` in config, append "Darwin: active" if
+     `brain_available: true`, or "Darwin: disabled (brain required)" if
+     `brain_available: false`. Omit this line entirely when `darwin_enabled: false`.
+   - Darwin edits: when Darwin post-edit tracking found results, append on
+     separate lines: "Darwin edit #{id} ({description}): {metric} {improved/worsened}
+     {delta} over {N} pipelines." If any edit worsened metrics, append:
+     "Warning: Darwin edit #{id} may have caused regression. Consider reverting."
    - Telemetry trend line (from step 5b): when `brain_available: true` and trend data exists (2+ pipelines),
      append "Telemetry: Last {N} pipelines -- avg ${cost}, {duration} min. Rework: {rate}/unit. First-pass QA: {pct}%."
      followed by any degradation alerts on separate lines.

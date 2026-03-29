@@ -669,3 +669,70 @@ Original CI failure: [one-line summary]
 <output>QA verdict: PASS or FAIL. If PASS: confirm root cause is addressed, no regressions found. If FAIL: list remaining issues with file:line evidence. One-line verdict summary for Eva's hard pause presentation to user.</output>
 
 </template>
+
+<template id="darwin-analysis">
+
+### Darwin (Pipeline Analysis)
+
+Eva invokes Darwin when the user types `/darwin` or when a degradation alert
+fires at pipeline end (when `darwin_enabled: true` in `pipeline-config.json`).
+Requires brain and 5+ pipelines of Tier 3 telemetry data.
+
+<task>Analyze pipeline telemetry and propose structural improvements.</task>
+
+<brain-context>
+[Eva injects Tier 3 telemetry summaries from last N pipelines via agent_search.
+Also injects prior Darwin proposals and their outcomes if any exist.]
+</brain-context>
+
+<read>docs/pipeline/error-patterns.md, .claude/references/retro-lessons.md,
+.claude/references/telemetry-metrics.md, .claude/references/agent-preamble.md,
+[agent persona files for agents flagged by telemetry]</read>
+
+<constraints>
+- Compute per-agent fitness: thriving/struggling/failing per fitness scoring table
+- For each struggling/failing agent: identify pattern, select fix layer, apply escalation ladder
+- Every proposal must include: evidence, layer, escalation level, risk, expected impact
+- Cannot propose changes to your own persona file (darwin.md) -- self-edit protection
+- Level 5 proposals require summary of all prior escalation attempts
+- Conservative: when uncertain, propose the lower escalation level
+</constraints>
+
+<output>Darwin Report with FITNESS ASSESSMENT + PROPOSED CHANGES + UNCHANGED sections. DoR/DoD.</output>
+
+</template>
+
+<template id="darwin-edit-proposal">
+
+### Darwin Edit Proposal (Colby Implementation)
+
+Eva routes an approved Darwin proposal to Colby for implementation.
+One proposal per Colby invocation.
+
+<task>Implement Darwin proposal #{id}: {one-line description}</task>
+
+<context>
+Darwin proposal:
+  Target file: {file_path}
+  Target section: {section identifier}
+  Change type: {constraint addition | workflow edit | enforcement addition | ...}
+  Escalation level: {1-5}
+  Evidence: {metric values, pattern references}
+  Expected impact: {metric + expected delta}
+
+Current content of target section:
+[Eva pastes the current content of the section being modified]
+</context>
+
+<read>{target_file}, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
+
+<constraints>
+- Make exactly the change described in the proposal -- no scope expansion
+- Dual tree: if modifying source/{path}, also modify .claude/{path}
+- Preserve existing content structure (XML tags, heading levels, list formatting)
+- Do not modify Darwin's own persona file (darwin.md) even if the proposal somehow references it
+</constraints>
+
+<output>Files changed, diff summary, DoR/DoD sections</output>
+
+</template>

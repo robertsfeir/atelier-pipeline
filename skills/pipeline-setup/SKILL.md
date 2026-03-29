@@ -314,7 +314,7 @@ After installation, print:
 3. The configured branching strategy and any CI recommendations
 4. A reminder of available slash commands
 5. Instructions to start their first pipeline run
-6. **Offer optional features** -- Sentinel security agent, Agent Teams parallel execution, CI Watch automated CI monitoring, Deps Agent dependency scanning, and Atelier Brain persistent memory (Steps 6a through 6d)
+6. **Offer optional features** -- Sentinel security agent, Agent Teams parallel execution, CI Watch automated CI monitoring, Deps Agent dependency scanning, Darwin self-evolving pipeline, and Atelier Brain persistent memory (Steps 6a through 6e)
 
 **Example summary:**
 
@@ -343,6 +343,7 @@ Sentinel security agent: [enabled (Semgrep MCP) | not enabled]
 Agent Teams: [enabled (experimental) | not enabled]
 CI Watch: [enabled (max retries: N) | not enabled]
 Deps agent: [enabled | not enabled]
+Darwin: [enabled | not enabled]
 Compaction API: PreCompact hook installed for pipeline state preservation
 
 Available commands:
@@ -485,9 +486,46 @@ Print: "Deps agent: not enabled"
 | `source/agents/deps.md` | `.claude/agents/deps.md` | User enables Deps in Step 6d |
 | `source/commands/deps.md` | `.claude/commands/deps.md` | User enables Deps in Step 6d |
 
+### Step 6e: Darwin Self-Evolving Pipeline (Opt-In)
+
+After the Deps Agent offer (whether user said yes or no), offer the optional Darwin agent:
+
+> Would you also like to enable **Darwin** -- the self-evolving pipeline engine?
+> It analyzes your pipeline telemetry to identify underperforming agents and proposes
+> structural fixes (persona edits, rule changes, enforcement additions) backed by evidence.
+> Requires persistent memory with 5+ pipelines of telemetry data. Optional -- the
+> pipeline works fine without it.
+
+**If user says yes:**
+
+1. Set `darwin_enabled: true` in `.claude/pipeline-config.json`.
+2. Copy `source/agents/darwin.md` to `.claude/agents/darwin.md`.
+3. Copy `source/commands/darwin.md` to `.claude/commands/darwin.md`.
+4. Print: "Darwin: enabled. Use /darwin to analyze pipeline performance, or Darwin will auto-trigger when degradation is detected."
+
+**Idempotency:** If `darwin_enabled` already exists in `pipeline-config.json`
+and is `true`, skip mutation and inform: "Darwin is already enabled." If it
+exists and is `false`, confirm before changing. If the key is absent (missing from
+the config), treat as `false` (default false) and proceed with the offer.
+
+**If user says no:** Skip entirely. `darwin_enabled` remains `false`.
+Print: "Darwin: not enabled"
+
+**Dependency:** Darwin requires the Atelier Brain for telemetry data. If no
+brain is configured (`.claude/brain-config.json` absent), inform user: "Darwin
+requires the Atelier Brain for telemetry data. Set up brain first, then re-run
+setup."
+
+**Installation manifest addition (conditional):**
+
+| Template Source | Destination | Install When |
+|----------------|-------------|-------------|
+| `source/agents/darwin.md` | `.claude/agents/darwin.md` | User enables Darwin in Step 6e |
+| `source/commands/darwin.md` | `.claude/commands/darwin.md` | User enables Darwin in Step 6e |
+
 **Brain setup offer (always ask):**
 
-After the Deps Agent offer (whether user said yes or no), ask the user:
+After the Darwin offer (whether user said yes or no), ask the user:
 
 > The pipeline is ready. Would you also like to set up the **Atelier Brain**?
 > It gives your agents persistent memory across sessions -- architectural

@@ -13,5 +13,6 @@
   "ci_watch_max_retries": 3,
   "ci_watch_poll_command": "",
   "ci_watch_log_command": "",
-  "deps_agent_enabled": false
+  "deps_agent_enabled": false,
+  "darwin_enabled": false
 }

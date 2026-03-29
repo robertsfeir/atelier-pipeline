@@ -43,6 +43,8 @@
 - History rewrite: scrubbed all Clairvoyant references from 111 commits
 - Agatha docs complete, Robert docs verification done
 - Specs reconciled, version bumped to 3.8.0
+- Darwin (#7, ADR-0016) complete — 98/98 tests, 359/359 total, review juncture PASS
+- Dashboard (#25) built and tested locally — user approved
 - Routing to Ellis for commit and push
 
-<!-- PIPELINE_STATUS: {"roz_qa": "PASS", "phase": "complete", "sizing": "medium", "timestamp": "2026-03-30T06:00:00Z"} -->
+<!-- PIPELINE_STATUS: {"roz_qa": "PASS", "phase": "complete", "sizing": "medium", "timestamp": "2026-03-30T08:00:00Z"} -->

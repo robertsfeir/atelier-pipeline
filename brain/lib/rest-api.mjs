@@ -55,6 +55,15 @@ function createRestHandler(pool, cfg) {
       if (urlPath === "/api/stats" && req.method === "GET") {
         return await handleStats(res, pool);
       }
+      if (urlPath === "/api/telemetry/scopes" && req.method === "GET") {
+        return await handleTelemetryScopes(res, pool);
+      }
+      if (urlPath === "/api/telemetry/summary" && req.method === "GET") {
+        return await handleTelemetrySummary(req, res, pool);
+      }
+      if (urlPath === "/api/telemetry/agents" && req.method === "GET") {
+        return await handleTelemetryAgents(req, res, pool);
+      }
 
       return false;
     } catch (err) {
@@ -245,6 +254,94 @@ async function handleStats(res, pool) {
     by_agent: Object.fromEntries(byAgent.rows.map(r => [r.source_agent, r.count])),
     by_human: Object.fromEntries(byHuman.rows.map(r => [r.captured_by, r.count])),
   }));
+  return true;
+}
+
+// =============================================================================
+// Telemetry Handlers
+// =============================================================================
+
+async function handleTelemetryScopes(res, pool) {
+  const result = await pool.query(
+    `SELECT DISTINCT unnest(scope)::text AS scope
+     FROM thoughts
+     WHERE thought_type = 'insight'
+       AND source_phase = 'telemetry'
+     ORDER BY scope`
+  );
+  const scopes = result.rows.map(r => r.scope);
+  res.writeHead(200, {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*",
+  });
+  res.end(JSON.stringify(scopes));
+  return true;
+}
+
+function parseScopeFilter(req) {
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const scope = url.searchParams.get("scope");
+  if (scope && scope !== "all") return scope;
+  return null;
+}
+
+async function handleTelemetrySummary(req, res, pool) {
+  const scope = parseScopeFilter(req);
+  const params = [];
+  let scopeClause = "";
+  if (scope) {
+    params.push(scope);
+    scopeClause = ` AND scope @> ARRAY[$${params.length}]::ltree[]`;
+  }
+
+  const result = await pool.query(
+    `SELECT content, metadata, created_at
+     FROM thoughts
+     WHERE thought_type = 'insight'
+       AND source_phase = 'telemetry'
+       AND metadata->>'telemetry_tier' = '3'${scopeClause}
+     ORDER BY created_at DESC
+     LIMIT 10`,
+    params
+  );
+  res.writeHead(200, {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*",
+  });
+  res.end(JSON.stringify(result.rows));
+  return true;
+}
+
+async function handleTelemetryAgents(req, res, pool) {
+  const scope = parseScopeFilter(req);
+  const params = [];
+  let scopeClause = "";
+  if (scope) {
+    params.push(scope);
+    scopeClause = ` AND scope @> ARRAY[$${params.length}]::ltree[]`;
+  }
+
+  const result = await pool.query(
+    `SELECT
+       metadata->>'agent_name' as agent,
+       count(*)::int as invocations,
+       avg((metadata->>'duration_ms')::numeric)::int as avg_duration_ms,
+       sum((metadata->>'cost_usd')::numeric)::numeric(10,4) as total_cost,
+       avg((metadata->>'input_tokens')::numeric)::int as avg_input_tokens,
+       avg((metadata->>'output_tokens')::numeric)::int as avg_output_tokens
+     FROM thoughts
+     WHERE thought_type = 'insight'
+       AND source_phase = 'telemetry'
+       AND metadata->>'telemetry_tier' = '1'${scopeClause}
+     GROUP BY metadata->>'agent_name'
+     ORDER BY total_cost DESC`,
+    params
+  );
+  res.writeHead(200, {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*",
+  });
+  res.end(JSON.stringify(result.rows));
   return true;
 }
 

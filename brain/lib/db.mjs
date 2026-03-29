@@ -134,6 +134,24 @@ async function runMigrations(pool) {
     } catch (err) {
       console.error("Migration 004 failed (non-fatal):", err.message);
     }
+
+    // Migration 005: telemetry and ci-watch source_phase enum values
+    try {
+      const telemetryCheck = await client.query(
+        `SELECT 1 FROM pg_enum WHERE enumlabel = 'telemetry' AND enumtypid = 'source_phase'::regtype`
+      );
+      if (telemetryCheck.rows.length === 0) {
+        console.log("Migration 005: adding telemetry and ci-watch phases...");
+        const migrationPath = path.join(brainDir, "migrations", "005-add-telemetry-phases.sql");
+        if (existsSync(migrationPath)) {
+          const sql = readFileSync(migrationPath, "utf-8");
+          await client.query(sql);
+        }
+        console.log("Migration 005: telemetry and ci-watch phases added.");
+      }
+    } catch (err) {
+      console.error("Migration 005 failed (non-fatal):", err.message);
+    }
   } catch (err) {
     console.error("Migration check failed (non-fatal):", err.message);
   } finally {

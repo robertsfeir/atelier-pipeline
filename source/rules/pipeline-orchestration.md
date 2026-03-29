@@ -46,18 +46,6 @@ When Eva operates in /devops mode, `agent_capture` fires after: every deploy att
 
 When brain is unavailable, Eva skips all brain steps. No pipeline run fails because of the brain.
 
-### Pattern Staleness Check (pipeline end)
-
-After each pipeline completes, Eva checks all `thought_type: 'pattern'` thoughts
-whose `metadata.files` reference files modified in this pipeline. For each pattern:
-1. Run `git log --stat --since="<pattern.created_at>" -- <metadata.files>` to measure churn.
-2. If >50% of lines in the referenced files changed since the pattern was captured,
-   the pattern is stale. Eva invalidates it via `agent_capture` with a new thought
-   that `supersedes` the original (using `atelier_relation`), and logs:
-   "Pattern [id] invalidated — source files changed significantly since capture."
-3. If churn is moderate (20-50%), Eva appends a warning to the pattern's next
-   surfacing: "Pattern may be outdated — source files have been modified."
-
 ### Seed Capture (shared agent behavior)
 
 Any agent can capture a seed when an out-of-scope idea surfaces during work.
@@ -146,7 +134,7 @@ After each work unit passes Roz QA, Eva:
 
 ### Tier 3 Gate (per-pipeline) -- At Pipeline End After Ellis Final Commit
 
-At pipeline end, after Ellis final commit and before the pattern staleness check, Eva:
+At pipeline end, after Ellis final commit and before end-of-pipeline checks, Eva:
 
 1. Aggregates from in-memory accumulators + Tier 2 captures.
 2. Computes `phase_durations` from Tier 1 timestamps grouped by `pipeline_phase`.
@@ -191,6 +179,75 @@ Micro pipelines print invocation count and duration only -- no rework, EvoScore,
 **Fallback rules:**
 - Cost unavailable (token counts not exposed by Agent tool): print "Cost: unavailable (token counts not exposed)"
 - Brain unavailable: in-memory accumulator fallback -- summary still prints; finding details may be approximate
+
+### Darwin Auto-Trigger (at pipeline end)
+
+After the pipeline-end telemetry summary, if ALL of the following conditions are true:
+1. `darwin_enabled: true` in `pipeline-config.json`
+2. `brain_available: true`
+3. At least one degradation alert fired in the telemetry summary
+4. Pipeline sizing is not Micro (Micro pipelines skip Darwin auto-trigger)
+
+Then Eva announces: "Degradation detected. Running Darwin analysis..." and invokes
+Darwin using the `darwin-analysis` invocation template.
+
+When `darwin_enabled: false` or absent (absent treated as false): skip this section entirely.
+
+Eva pre-fetches brain context for Darwin:
+- `agent_search` with `source_phase: 'telemetry'`, `telemetry_tier: 3`, limit 10
+- `agent_search` with `thought_type: 'decision'`, metadata filter for
+  `darwin_proposal_id` (prior Darwin proposals and outcomes)
+- Error-patterns.md content (read from disk, not brain)
+
+After Darwin returns its report, Eva presents it to the user. The user
+approves, rejects (with reason), or modifies each proposal individually.
+**Modify** is a reject-then-repropose cycle: Eva captures the rejection with
+the user's modification feedback, then re-invokes Darwin for a revised proposal
+on the same target. This is a hard pause -- Eva does not auto-advance past
+Darwin proposals.
+
+For each approved proposal:
+1. Eva captures the approval via `agent_capture`:
+   - `thought_type: 'decision'`
+   - `source_agent: 'eva'`
+   - `source_phase: 'darwin'`
+   - `importance: 0.7`
+   - `content`: "Darwin edit approved: {one-line description}"
+   - `metadata`: `{ darwin_proposal_id: "{pipeline_id}_{proposal_number}",
+     target_file: "{path}", target_metric: "{metric_name}",
+     escalation_level: {N}, expected_impact: "{description}",
+     baseline_value: {current_metric_value} }`
+2. Eva routes to Colby with the `darwin-edit-proposal` invocation template.
+   One Colby invocation per approved proposal -- each proposal is atomic and
+   implemented separately.
+3. Roz verifies Colby's edit (mandatory gate 1 applies).
+4. Ellis commits the approved edit.
+
+For each rejected proposal:
+- Eva captures the rejection via `agent_capture`:
+  - `thought_type: 'decision'`
+  - `source_agent: 'eva'`
+  - `source_phase: 'darwin'`
+  - `importance: 0.5`
+  - `content`: "Darwin edit rejected: {one-line description}. Reason: {user's reason}"
+  - `metadata`: `{ darwin_proposal_id: "{pipeline_id}_{proposal_number}",
+    rejected: true, rejection_reason: "{reason}" }`
+
+Darwin auto-trigger does not block pipeline completion. If the user dismisses
+all proposals or says "skip Darwin", Eva proceeds to the pattern staleness check.
+
+### Pattern Staleness Check (pipeline end)
+
+After each pipeline completes (and after the Darwin auto-trigger if applicable),
+Eva checks all `thought_type: 'pattern'` thoughts whose `metadata.files`
+reference files modified in this pipeline. For each pattern:
+1. Run `git log --stat --since="<pattern.created_at>" -- <metadata.files>` to measure churn.
+2. If >50% of lines in the referenced files changed since the pattern was captured,
+   the pattern is stale. Eva invalidates it via `agent_capture` with a new thought
+   that `supersedes` the original (using `atelier_relation`), and logs:
+   "Pattern [id] invalidated — source files changed significantly since capture."
+3. If churn is moderate (20-50%), Eva appends a warning to the pattern's next
+   surfacing: "Pattern may be outdated — source files have been modified."
 
 </protocol>
 

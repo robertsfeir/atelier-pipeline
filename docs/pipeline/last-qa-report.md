@@ -1,157 +1,117 @@
-# QA Report -- 2026-03-29 (Final Sweep: ADR-0014 + ADR-0015)
-
+# QA Report -- 2026-03-29
 *Reviewed by Roz*
 
-### Verdict: FAIL
-
-5 test failures in ADR-0014 tests, 1 in ADR-0015 tests, 7 pre-existing in hooks tests. Brain tests: 92/92 pass.
-
-## Tier 1 -- Mechanical Checks
+## Verdict: PASS
 
 | Check | Status | Details |
 |-------|--------|---------|
-| Type check | SKIP | No typecheck configured |
-| Lint | SKIP | No linter configured |
-| ADR-0014 tests | FAIL | 57/62 pass, 5 fail (3 test bugs, 2 missing doc index entries) |
-| ADR-0015 tests | FAIL | 63/64 pass, 1 fail (test regex bug) |
-| Hooks tests | FAIL | 36/43 pass, 7 fail (ALL pre-existing, not introduced by this feature) |
-| Brain tests | PASS | 92/92 pass |
-| Coverage | N/A | No coverage tooling configured |
-| Complexity | PASS | No excessive nesting or length in changed files |
-| Unfinished markers | PASS | Zero TODO/FIXME/HACK/XXX in changed non-test files |
+| **Tier 1** | | |
+| 1. Type Check | N/A | No typecheck configured |
+| 2. Lint | N/A | No linter configured |
+| 3. Tests (ADR-0016 Darwin) | PASS | 98/98 passing, 0 failing |
+| 3. Tests (ADR-0014 Telemetry) | PASS | 62/62 passing, 0 failing |
+| 3. Tests (ADR-0015 Deps) | PASS | 64/64 passing, 0 failing |
+| 3. Tests (Hooks) | PASS | 43/43 passing, 0 failing |
+| 3. Tests (Brain) | PASS | 92/92 passing, 0 failing |
+| 4. Coverage | N/A | No coverage thresholds configured |
+| 5. Complexity | PASS | All deliverables are markdown files -- no function complexity applies |
+| 6. Unfinished markers | PASS | 0 TODO/FIXME/HACK/XXX found in changed files |
+| **Tier 2** | | |
+| 7. DB Migrations | N/A | No database changes |
+| 8. Security | PASS | Darwin is read-only (disallowedTools enforced, catch-all hook verified by T-0016-019/020). No secrets, no injection surface. |
+| 9. CI/CD Compat | N/A | No auth/middleware changes |
+| 10. Docs Impact | NO | Pipeline infrastructure feature -- no user-facing docs affected. ADR-0016 is the architectural record. |
+| 11. Dependencies | N/A | No new dependencies |
+| 12. UX Flow Verification | N/A | No UX doc for pipeline infrastructure |
+| 13. Exploratory | PASS | Edge cases covered by tests: absent config key (T-0016-100), all-thriving report (T-0016-075), Level 5 double confirm (T-0016-076), self-edit protection (T-0016-077), modify=reject+repropose (T-0016-099), acceptance rate self-adjustment deferred (T-0016-104) |
+| 14. Semantic Correctness | PASS | Tests assert domain intent (fitness thresholds, escalation levels, gate conditions) not just structural presence |
+| 15. Contract Coverage | PASS | All producer-consumer contracts verified (see Wiring section below) |
+| 16. State machine completeness | N/A | No state machine changes |
+| 17. Silent failure audit | N/A | No worker/handler code |
+| 18. Wiring verification | PASS | No orphan producers or phantom consumers (see below) |
 
-### Test Failure Analysis
+## Requirements Verification
 
-#### ADR-0014 Failures
+| # | Requirement | Colby Claims | Roz Verified | Finding |
+|---|-------------|-------------|-------------|---------|
+| R1 | Agent persona exists (dual tree) | Done | Verified | T-0016-001, T-0016-002: both files exist and are identical |
+| R2 | Config flag defaults false | Done | Verified | T-0016-031, T-0016-032: both configs have `darwin_enabled: false` |
+| R3 | Setup Step 6e opt-in | Done | Verified | T-0016-083 through T-0016-097: Step 6e present, correctly positioned |
+| R4 | /darwin command with triple gate | Done | Verified | T-0016-023 through T-0016-030: command exists, all three gates documented |
+| R5 | Reads brain telemetry | Done | Verified | T-0016-049, T-0016-057: telemetry read references present |
+| R6 | Fitness assessment | Done | Verified | T-0016-009: thriving/struggling/failing thresholds encoded |
+| R7 | Multi-layer fix proposals | Done | Verified | T-0016-011: all 7 fix layers present in workflow |
+| R8 | Evidence + risk in proposals | Done | Verified | T-0016-014: all 5 proposal fields present in output spec |
+| R9 | Individual approval flow | Done | Verified | T-0016-028, T-0016-060, T-0016-098: individual presentation confirmed |
+| R10 | Approved changes routed to Colby | Done | Verified | T-0016-029, T-0016-050-053: Colby routing with edit-proposal template |
+| R11 | Post-edit tracking | Done | Verified | T-0016-062-065: boot step 5b tracks Darwin edits with metric delta |
+| R12 | Auto-trigger on degradation | Done | Verified | T-0016-055-061, T-0016-067-070: auto-trigger with 4 conditions |
+| R13 | 5-level escalation ladder | Done | Verified | T-0016-010: WARN, constraint, workflow edit, rewrite, removal |
+| R14 | Read-only enforcement | Done | Verified | T-0016-017-020: disallowedTools + enforce-paths.sh catch-all |
+| R15 | Self-edit protection | Done | Verified | T-0016-005, T-0016-077: cannot propose changes to darwin.md |
+| R16 | 5+ pipeline minimum | Done | Verified | T-0016-006, T-0016-027, T-0016-071 |
+| R17 | Discovered agent (not core) | Done | Verified | T-0016-021, T-0016-022, T-0016-044: not in core constant list |
+| R18 | Dual tree sync | Done | Verified | T-0016-002, T-0016-024, T-0016-037, T-0016-046, T-0016-081, T-0016-082 |
+| R19 | Two invocation templates | Done | Verified | T-0016-045-054: darwin-analysis + darwin-edit-proposal present |
+| R20 | Level 5 double confirmation | Done | Verified | T-0016-076: documented in persona |
+| R21 | Post-edit regression flagging | Done | Verified | T-0016-065: flags worsened edits |
+| R22 | All-thriving report | Done | Verified | T-0016-075: "No changes proposed" documented |
+| R23 | Rejection recording | Done | Verified | T-0016-059, T-0016-078: captured with rejection_reason |
+| R9a | Modify path | Done | Verified | T-0016-099: reject + repropose cycle |
+| R2a | Absent config key handling | Done | Verified | T-0016-100: treated as false |
+| R8a | Conflicting proposals | Done | Verified | T-0016-098: presented individually, no merge |
+| R1a | Darwin Report contract | Done | Verified | T-0016-101: report shape validated |
+| R12a | Auto-trigger ordering | Done | Verified | T-0016-102: after telemetry, before staleness |
+| R10a | One Colby per proposal | Done | Verified | T-0016-103: no batching |
 
-| Test | Root Cause | Category |
-|------|-----------|----------|
-| T-0014-043 (Mask section lists Tier 1 telemetry) | **Test bug.** awk `/^### Mask/,/^###/` self-terminates on the header line because `### Mask (Replace with Placeholder)` matches both start and end patterns. Code at line 493 of pipeline-operations.md correctly contains "Tier 1 `agent_capture` responses" in the Mask section. | Test regex |
-| T-0014-046 (roz_qa in PIPELINE_STATUS) | **Test bug.** Test looks for `roz_qa` in pipeline-operations.md, but `roz_qa` lives in pipeline-orchestration.md (CI Watch protocol section). The PIPELINE_STATUS fields in pipeline-operations.md are CI Watch and Telemetry fields only. | Wrong file |
-| T-0014-051 (Never Mask lists telemetry accumulators) | **Test bug.** Same awk extraction bug as T-0014-043. Code at line 480 of pipeline-operations.md correctly contains "Telemetry accumulators in PIPELINE_STATUS". | Test regex |
-| T-0014-048 (ADR-0014 in README.md) | **Missing implementation.** `docs/architecture/README.md` has no ADR-0014 entry. Eva owns README.md updates per pipeline-orchestration.md. | Missing |
-| T-0014-049 (ADR-0014 index title) | **Missing implementation.** Same as T-0014-048. | Missing |
+## Unfinished Markers
 
-#### ADR-0015 Failures
+`grep -r "TODO|FIXME|HACK|XXX"`: 0 matches in changed files.
 
-| Test | Root Cause | Category |
-|------|-----------|----------|
-| T-0015-039 (Sentinel row unchanged) | **Test bug.** Uses `grep -qiE "Sentinel.*security.*audit\|Sentinel.*Semgrep"`. In ERE mode (`-E`), `\|` is a literal pipe character, not alternation. The correct ERE alternation is bare `|`. Code is correct -- Sentinel row at line 49 of agent-system.md is unchanged. | Test regex |
+## Wiring Verification
 
-#### Pre-Existing Hook Failures (7 tests, not introduced by ADR-0014/0015)
+| Producer | Consumer(s) | Status |
+|----------|------------|--------|
+| `source/agents/darwin.md` (persona) | Eva subagent invocation via `darwin-analysis` template | Wired |
+| `source/commands/darwin.md` (command) | Eva reads on `/darwin` | Wired |
+| `darwin_enabled` config flag | routing gate, command gate, auto-trigger gate, boot announcement, SKILL.md Step 6e | Wired (6 files reference it) |
+| `darwin-analysis` template | commands/darwin.md, pipeline-orchestration.md | Wired (3 files) |
+| `darwin-edit-proposal` template | commands/darwin.md, pipeline-orchestration.md | Wired (3 files) |
+| `darwin_proposal_id` metadata | pipeline-orchestration.md (capture), commands/darwin.md (reference) | Wired |
+| Auto-trigger protocol | pipeline-orchestration.md (self-contained) | Wired |
+| Boot announcement Darwin line | default-persona.md (self-contained) | Wired |
+| Step 6e setup | SKILL.md (self-contained) | Wired |
 
-T-0003-018, T-0003-021, T-0003-028, T-0003-029 (enforce-paths.bats), T-0003-044, T-0003-045, T-0003-057 (enforce-sequencing.bats). Last modified in ADR-0013 commit `339fc8c`. These are known failures unrelated to the current feature.
+No orphan producers. No phantom consumers.
 
-## Tier 2 -- Judgment Checks
+## Dual-Tree Parity
 
-| Check | Status | Details |
-|-------|--------|---------|
-| DB Migrations | N/A | No DB changes |
-| Security | PASS | No secrets, no auth changes, no injection surfaces |
-| CI/CD Compat | N/A | No middleware/env var changes |
-| Docs Impact | YES | ADR-0014 and ADR-0015 entries missing from `docs/architecture/README.md` |
-| Dependencies | N/A | No new dependencies |
-| UX Flow | N/A | No UI changes |
-| Exploratory | PASS | Edge cases documented (brain unavailable, Micro pipelines, missing tools) |
-| Semantic Correctness | PASS | Domain intent correctly encoded in all deliverables |
-| Contract Coverage | PASS | All telemetry tiers have defined schemas, triggers, and consumers |
-| State Machine | N/A | No state machine changes |
-| Silent Failure Audit | PASS | All capture gates document log-and-continue failure handling |
-| Wiring Verification | PASS | Every producer has a consumer (see below) |
-
-### Wiring Verification Detail
-
-| Producer | Consumer | Verified |
-|----------|----------|----------|
-| telemetry-metrics.md (schemas) | pipeline-orchestration.md (capture protocol), default-persona.md (boot query) | Yes |
-| Tier 1 capture (per-invocation) | Tier 2 aggregation (unit_cost_usd), Tier 3 aggregation (total_cost_usd), pipeline-end summary | Yes |
-| Tier 2 capture (per-unit) | Tier 3 aggregation (rework_rate, first_pass_qa_rate), pipeline-end summary | Yes |
-| Tier 3 capture (per-pipeline) | Boot trend query (step 5b), degradation alerts | Yes |
-| deps_agent_enabled config | /deps command gate, auto-routing gate, SKILL.md Step 6d | Yes |
-| deps-scan template | /deps command, Eva auto-routing | Yes |
-| deps-migration-brief template | /deps command (migration flow) | Yes |
-| deps.md persona | agent-system.md subagent table, no-skill-tool gate, enforce-paths.sh catch-all | Yes |
-
-### Dual-Tree Sync Verification
-
-| File Pair | Status |
-|-----------|--------|
-| source/references/telemetry-metrics.md <-> .claude/references/telemetry-metrics.md | Identical |
-| source/agents/deps.md <-> .claude/agents/deps.md | Identical |
-| source/commands/deps.md <-> .claude/commands/deps.md | Identical |
-| source/rules/pipeline-orchestration.md <-> .claude/rules/pipeline-orchestration.md | Both contain telemetry-capture protocol |
-| source/rules/default-persona.md <-> .claude/rules/default-persona.md | Both contain step 5b (source uses placeholder, installed uses literal) |
-| source/rules/agent-system.md <-> .claude/rules/agent-system.md | Both contain Deps row in subagent table |
-| source/references/invocation-templates.md <-> .claude/references/invocation-templates.md | Both contain deps-scan template |
-| source/pipeline/pipeline-config.json <-> .claude/pipeline-config.json | Both contain deps_agent_enabled: false |
-
-### Requirements Verification
-
-| # | ADR-0014 Requirement | Verified | Finding |
-|---|---------------------|----------|---------|
-| R1 | Tier 1 per-invocation metrics | Yes | All 14 fields present in telemetry-metrics.md |
-| R2 | Tier 2 per-unit metrics | Yes | All 6 fields present |
-| R3 | Tier 3 per-pipeline metrics | Yes | All 10 fields present |
-| R4 | Tier 4 over-time trends | Yes | Boot step 5b queries brain for Tier 3 data |
-| R5 | Eva surfaces trend at boot | Yes | Step 5b + step 6 announcement format |
-| R6 | Metrics stored via agent_capture | Yes | Capture protocol uses insight/eva/telemetry |
-| R7 | Degradation alerts 3+ consecutive | Yes | Documented in both default-persona.md and telemetry-metrics.md |
-| R8 | Pipeline-end summary | Yes | Format documented in pipeline-orchestration.md |
-| R9 | Non-blocking | Yes | Every gate has log-and-continue handling |
-| R10 | Token counts unavailable | Yes | Documented in capture protocol |
-| R11 | First pipeline no-data case | Yes | "No prior pipeline data" documented |
-| R12 | Micro Tier 1 only | Yes | Documented in capture protocol |
-| R15 | Dual-tree sync | Yes | All pairs verified |
-| R20 | No external dashboard | Yes | Brain queries + Eva summary only |
-
-| # | ADR-0015 Requirement | Verified | Finding |
-|---|---------------------|----------|---------|
-| R1 | Agent persona deps.md | Yes | Both trees, identical |
-| R2 | deps_agent_enabled config | Yes | Default false in both configs |
-| R3 | SKILL.md Step 6d | Yes | Positioned after 6c, before Brain |
-| R4 | /deps slash command | Yes | Both trees, identical |
-| R5-R8 | Workflow phases | Yes | Detect, Scan, Report + migration brief |
-| R9 | Read-only enforcement | Yes | disallowedTools + catch-all in enforce-paths.sh |
-| R10 | Auto-routing | Yes | Intent row with gate condition |
-| R11 | Risk-grouped output | Yes | 4 sections in output format |
-| R12 | Edge case handling | Yes | 5 edge cases in workflow |
-| R14 | Invocation templates | Yes | deps-scan + deps-migration-brief |
-| R15 | agent-system.md updated | Yes | Subagent table + no-skill-tool gate |
-
-### Unfinished Markers
-
-`grep -r "TODO|FIXME|HACK|XXX"` in changed non-test files: 0 matches. All occurrences are in documentation describing the marker-checking process itself.
+| File Pair | Parity | Method |
+|-----------|--------|--------|
+| agents/darwin.md | Identical | `diff -q` (T-0016-002) |
+| commands/darwin.md | Identical | `diff -q` (T-0016-024) |
+| rules/agent-system.md | Matching Darwin references (4 each) | grep count |
+| rules/pipeline-orchestration.md | Matching Darwin references (9 each) | grep count + T-0016-081 |
+| rules/default-persona.md | Matching Darwin references (5 each) | grep count + T-0016-082 |
+| references/invocation-templates.md | Matching Darwin references (6 each) | grep count + T-0016-046 |
+| pipeline-config.json | Both have `darwin_enabled: false` | jq + T-0016-031/032 |
 
 ## Issues Found
 
-**BLOCKER** (pipeline halts -- fix before advancing):
+No blockers. No fix-required items.
 
-1. **`docs/architecture/README.md` missing ADR-0014 and ADR-0015 entries.** Per pipeline-orchestration.md, Eva owns the ADR index and must update it after any commit that adds an ADR file. Both ADR-0014 and ADR-0015 .md files exist in `docs/architecture/` but have no corresponding index entries. Tests T-0014-048, T-0014-049 fail.
+## Doc Impact: NO
 
-**FIX-REQUIRED** (queued -- all resolved before Ellis commits):
+Pipeline infrastructure feature. All deliverables are agent system files (personas, commands, rules, references, config). No user-facing documentation is affected. ADR-0016 serves as the architectural record.
 
-1. **Test T-0014-043 awk extraction bug.** The awk pattern `/^### Mask/,/^###/` self-terminates because the start line also matches the end pattern. Fix: use `/^### Mask/{ found=1; next } found && /^###/{ exit } found` or equivalent. File: `tests/adr-0014-telemetry/telemetry-structural.test.bats`, line 604.
+## Roz's Assessment
 
-2. **Test T-0014-046 checks wrong file.** Looks for `roz_qa` in pipeline-operations.md; the field is in pipeline-orchestration.md. Fix: change `$INSTALLED_REFS/pipeline-operations.md` to `$INSTALLED_RULES/pipeline-orchestration.md`. File: `tests/adr-0014-telemetry/telemetry-structural.test.bats`, line 635.
+Clean sweep. All 98 ADR-0016 Darwin structural tests pass. All regression test suites (ADR-0014: 62/62, ADR-0015: 64/64, hooks: 43/43, brain: 92/92) pass with zero failures across the board. Total: 359 tests, 0 failures.
 
-3. **Test T-0014-051 same awk extraction bug as T-0014-043.** File: `tests/adr-0014-telemetry/telemetry-structural.test.bats`, line 669.
+Dual-tree parity is verified across all 7 file pairs. Wiring coverage is complete -- every producer has at least one consumer, no orphans. Zero unfinished markers in any changed file.
 
-4. **Test T-0015-039 ERE regex bug.** Uses `\|` for alternation in ERE mode (`-E`), which matches a literal pipe. Fix: change `\|` to `|`. File: `tests/adr-0015-deps/deps-structural.test.bats`, line 518.
+The implementation follows the established opt-in agent pattern (Sentinel, Deps) faithfully: config flag, setup step, persona, command, routing, invocation templates, pipeline integration. The self-edit protection and read-only enforcement are both behavioral (persona constraints) and mechanical (disallowedTools frontmatter + enforce-paths.sh catch-all), consistent with the project's defense-in-depth principle.
 
-### Doc Impact: YES
+Test coverage is thorough: 98 tests covering happy paths (Steps 1-4), failure modes (gates, enforcement), boundary conditions (5-pipeline minimum, all-thriving, Level 5, absent config key, modify path), regression checks (existing agents, templates, config fields unchanged), and contract verification (producer-consumer wiring).
 
-- `docs/architecture/README.md` must be updated with ADR-0014 and ADR-0015 entries.
-
-### Roz's Assessment
-
-The implementation deliverables are solid. All ADR-0014 telemetry protocol content is correctly placed in the right files with proper dual-tree sync. All ADR-0015 deps agent artifacts are complete and correctly wired. The wiring is clean -- every producer has a consumer, every config flag has a gate, every template has a caller.
-
-The 4 test bugs (3 awk extraction, 1 ERE regex) are authoring defects in my own test files from the pre-build round. They need fixing. The 1 blocker (missing ADR index entries) is a gap that should have been caught during the build phase -- Eva owns README.md updates.
-
-The 7 pre-existing hook test failures are tech debt from prior work and are outside the scope of this feature.
-
-### Recurring QA Patterns
-
-- **awk section extraction on macOS:** The `/^### X/,/^###/` range pattern fails when the start line itself matches the end pattern. This is the second time I have seen this (noted during test authoring hardening). Future tests should use the `found` flag approach instead of range patterns for markdown section extraction.
-
-- **ERE vs BRE alternation:** Using `\|` with `grep -E` is a recurring mistake. ERE uses `|` for alternation; BRE uses `\|`. Future tests should be validated with a quick manual check before commit.
+Recurring QA pattern worth capturing: the opt-in agent pattern (Sentinel -> Deps -> Darwin) is now a well-established template. Each iteration adds the same structural components (persona, command, config flag, routing, templates, setup step) with agent-specific behavior encoded in the persona. This pattern should be captured as a brain lesson for future agents.
