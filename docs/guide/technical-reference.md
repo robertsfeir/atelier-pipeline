@@ -106,7 +106,7 @@ The plugin registers a `SessionStart` hook in `plugin.json` that runs two comman
 
 ## File Tree -- What Lives Where
 
-After running `/pipeline-setup`, 38 files are installed into the target project. The plugin templates remain in the plugin directory and are never modified.
+After running `/pipeline-setup`, 40 files are installed into the target project. The plugin templates remain in the plugin directory and are never modified.
 
 ### Target Project (installed by /pipeline-setup)
 
@@ -146,10 +146,12 @@ your-project/
       agent-preamble.md                   # Shared required actions (DoR/DoD, retro, brain)
       qa-checks.md                        # Roz QA check procedures (Tier 1 + Tier 2)
       branch-mr-mode.md                   # Colby branch creation and MR procedures
-    hooks/                                # Mechanical enforcement (PreToolUse)
+    hooks/                                # Mechanical enforcement (PreToolUse + SubagentStop + PreCompact)
       enforce-paths.sh                    # Blocks Write/Edit outside agent's allowed paths
       enforce-sequencing.sh               # Blocks out-of-order agent invocations
       enforce-git.sh                      # Blocks git write ops from main thread
+      warn-dor-dod.sh                     # Warns when agent output is missing DoR/DoD sections
+      pre-compact.sh                      # Writes compaction marker to pipeline-state.md before compaction
       enforcement-config.json             # Project-specific paths and rules
     pipeline-config.json                    # Branching strategy configuration
     settings.json                         # Hook registration
@@ -162,7 +164,7 @@ your-project/
       last-qa-report.md                   # Roz's most recent QA report
 ```
 
-**Total: 38 files across 6 directories, plus the `.atelier-version` marker and an update to `CLAUDE.md`.** Three new reference files (`agent-preamble.md`, `qa-checks.md`, `branch-mr-mode.md`) extract shared behaviors from agent persona files to reduce duplication. The two additional files compared to v3.0 are `.claude/pipeline-config.json` (branching strategy configuration) and `.claude/rules/branch-lifecycle.md` (selected strategy's lifecycle rules).
+**Total: 40 files across 7 directories, plus the `.atelier-version` marker and an update to `CLAUDE.md`.** Three new reference files (`agent-preamble.md`, `qa-checks.md`, `branch-mr-mode.md`) extract shared behaviors from agent persona files to reduce duplication. The two additional files compared to v3.0 are `.claude/pipeline-config.json` (branching strategy configuration) and `.claude/rules/branch-lifecycle.md` (selected strategy's lifecycle rules).
 
 ### What Does NOT Live on Disk
 
@@ -841,7 +843,13 @@ Between major phases, subagent sessions start fresh. Within Colby+Roz interleavi
 
 ### Context Cleanup Advisory
 
-After each major phase crossing (Robert -> Sable, Cal -> Roz, review juncture -> Agatha), Eva checks estimated context usage. If the session has exceeded 10 major agent invocations, Eva suggests a fresh session: "This session has [N] agent handoffs. Consider starting a fresh session to clear context. Pipeline state is preserved in `docs/pipeline/pipeline-state.md` and `docs/pipeline/context-brief.md` -- I will resume exactly where we left off." This is advisory -- the user decides. Eva never forces a session break.
+Server-side compaction (Compaction API) manages Eva's context window automatically during long pipeline sessions. Eva no longer counts agent handoffs or estimates context usage percentage -- the Compaction API handles context management transparently.
+
+Eva still suggests a fresh session when response quality visibly degrades (repetitive, contradictory, or missing obvious pipeline state) or when a pipeline spans multiple days. This is a quality-based signal, not a count. Pipeline state is preserved in `docs/pipeline/pipeline-state.md` and `docs/pipeline/context-brief.md` -- Eva resumes exactly where you left off. This is advisory -- Eva never forces a session break. The user decides.
+
+Path-scoped rules (`pipeline-orchestration.md`, `pipeline-models.md`) survive compaction because Claude Code re-injects them from disk on every turn (ADR-0004 design). Mandatory gates and triage logic are always intact after compaction.
+
+The PreCompact hook (`pre-compact.sh`) appends a timestamped `<!-- COMPACTION: ... -->` marker to `pipeline-state.md` before compaction fires. This marker is visible during debugging -- it signals that context was compacted between phase transitions.
 
 ---
 
@@ -853,7 +861,7 @@ The `pipeline-setup` skill is conversational. It:
 
 1. **Gathers project information** one question at a time: tech stack, test framework, test commands, source structure, database patterns, build/deploy commands, coverage thresholds, complexity limits, and branching strategy.
 2. **Reads template files** from `source/` in the plugin directory.
-3. **Copies 35 files** to the target project (27 template files + 3 path-scoped rules + 4 enforcement hooks + 1 branching config), replacing placeholders with project-specific values. The branching strategy variant file is selected from `source/variants/` and installed as `.claude/rules/branch-lifecycle.md`.
+3. **Copies 40 files** to the target project (27 template files + 3 path-scoped rules + 6 enforcement hooks + 1 branching config + 1 branching variant + settings + version marker), replacing placeholders with project-specific values. The branching strategy variant file is selected from `source/variants/` and installed as `.claude/rules/branch-lifecycle.md`.
 4. **Customizes enforcement hooks** in `.claude/hooks/` -- sets project-specific paths and test commands in `enforcement-config.json`, registers hooks in `.claude/settings.json`, and makes scripts executable.
 5. **Writes version marker** to `.claude/.atelier-version` for update detection.
 6. **Updates `CLAUDE.md`** with a pipeline section.
@@ -996,13 +1004,15 @@ The enforcement hooks are shell scripts registered as Claude Code PreToolUse hoo
 
 All three scripts require `jq` for JSON parsing. If `jq` is not installed, the hooks degrade gracefully (exit 0, allowing the action) rather than blocking all tool calls.
 
-### The Three Hook Scripts
+### The Six Hook Scripts
 
 | Script | Hook Type | Trigger | Purpose |
 |--------|-----------|---------|---------|
 | `enforce-paths.sh` | PreToolUse | `Write\|Edit\|MultiEdit` | Blocks file writes outside each agent's allowed directory paths |
 | `enforce-sequencing.sh` | PreToolUse | `Agent` | Blocks out-of-order agent invocations from the main thread |
 | `enforce-git.sh` | PreToolUse | `Bash` | Blocks git write operations (`add`, `commit`, `push`, `reset`, `checkout --`, `restore`, `clean`) from the main thread |
+| `warn-dor-dod.sh` | SubagentStop | *(all subagent completions)* | Warns when a Colby or Roz subagent output is missing DoR/DoD sections |
+| `pre-compact.sh` | PreCompact | *(compaction events)* | Writes a timestamped compaction marker to `pipeline-state.md` before context is compacted |
 
 ### How Hooks Identify the Caller
 
@@ -1115,9 +1125,9 @@ Hooks signal their result via exit code:
 - **Exit 0** -- action allowed (or hook not applicable)
 - **Exit 2** -- action blocked; the reason message on stderr is shown to the agent
 
-All three PreToolUse hooks (`enforce-paths.sh`, `enforce-sequencing.sh`, `enforce-git.sh`) exit 2 on violations.
+The three PreToolUse hooks (`enforce-paths.sh`, `enforce-sequencing.sh`, `enforce-git.sh`) exit 2 on violations. The SubagentStop hook (`warn-dor-dod.sh`) exits 0 always -- it is advisory only and never blocks. The PreCompact hook (`pre-compact.sh`) exits 0 always -- it is a side-effect hook, not a gate.
 
-All three hooks exit 0 immediately when `jq` is not installed, when the config file is missing, or when the tool call is not one they care about. This ensures the hooks never interfere with unrelated tool usage or with projects that have not yet run `/pipeline-setup`.
+The three PreToolUse hooks exit 0 immediately when `jq` is not installed, when the config file is missing, or when the tool call is not one they care about. This ensures the hooks never interfere with unrelated tool usage or with projects that have not yet run `/pipeline-setup`.
 
 ---
 

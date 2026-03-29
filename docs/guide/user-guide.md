@@ -387,7 +387,7 @@ Several capabilities improve pipeline velocity and institutional memory:
 
 **Eva: state diffing.** Every update to `pipeline-state.md` now includes a "Changes since last state" section listing new files created, files modified, requirements closed, and the agent that produced the change. This makes state transitions auditable across sessions.
 
-**Eva: context cleanup advisory.** After 10 or more major agent handoffs in a single session, Eva suggests starting a fresh session. Pipeline state is preserved on disk and Eva resumes exactly where you left off. This is advisory -- Eva never forces a session break.
+**Eva: context cleanup advisory.** Server-side compaction (Compaction API) manages context automatically during long pipeline sessions. Eva no longer suggests session breaks based on handoff counts. Eva may still suggest a fresh session when response quality visibly degrades or when a pipeline spans multiple days. Pipeline state is preserved in `docs/pipeline/pipeline-state.md` and `docs/pipeline/context-brief.md` -- Eva resumes exactly where you left off. This is advisory -- Eva never forces a session break. Path-scoped rules (`pipeline-orchestration.md`, `pipeline-models.md`) reload automatically after compaction -- they are tied to file access, not conversation history (see ADR-0004).
 
 **Cal: anti-goals.** Cal explicitly lists three things the design will NOT address before beginning architecture. Anti-goals draw a hard boundary around scope and prevent scope creep during implementation.
 

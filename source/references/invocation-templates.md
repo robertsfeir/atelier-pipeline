@@ -399,12 +399,19 @@ Eva invokes Sentinel at the review juncture and after each Colby build unit
 
 </template>
 
+<!-- Distillator scope: Eva invokes Distillator only for cross-phase artifact
+     compression (spec, UX doc, ADR exceeding ~5K tokens at a phase boundary).
+     Within-session tool outputs (file reads, grep results, bash outputs) are
+     handled by observation masking -- see pipeline-operations.md
+     <protocol id="observation-masking">. Do not invoke Distillator for
+     routine within-session context cleanup. -->
+
 <template id="distillator-compress">
 
 ### Distillator (Compress Between Phases)
 
-When artifacts exceed ~5K tokens, Eva invokes the Distillator to compress
-them for downstream consumption.
+When cross-phase artifacts exceed ~5K tokens, Eva invokes the Distillator to
+compress them for downstream consumption at a phase boundary.
 
 <task>Compress spec + UX doc for downstream consumption by Cal</task>
 

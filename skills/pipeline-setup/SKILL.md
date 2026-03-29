@@ -170,6 +170,7 @@ optional and must be installed for the pipeline to function correctly.
 | `source/hooks/enforce-sequencing.sh` | `.claude/hooks/enforce-sequencing.sh` | Blocks out-of-order agent invocations (e.g., Ellis without Roz QA) |
 | `source/hooks/enforce-git.sh` | `.claude/hooks/enforce-git.sh` | Blocks git write operations from main thread (must go through Ellis) |
 | `source/hooks/warn-dor-dod.sh` | `.claude/hooks/warn-dor-dod.sh` | Warns when Colby/Roz output missing DoR/DoD sections (SubagentStop) |
+| `source/hooks/pre-compact.sh` | `.claude/hooks/pre-compact.sh` | Writes compaction marker to pipeline-state.md before context is compacted (PreCompact) |
 | `source/hooks/enforcement-config.json` | `.claude/hooks/enforcement-config.json` | Project-specific paths and agent rules |
 
 After copying, make the `.sh` files executable: `chmod +x .claude/hooks/*.sh`
@@ -206,6 +207,11 @@ file already exists. Add this hooks section:
       {
         "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/warn-dor-dod.sh"}]
       }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-compact.sh"}]
+      }
     ]
   }
 }
@@ -215,7 +221,7 @@ file already exists. Add this hooks section:
 If `jq` is not available, tell the user: "Install jq for pipeline enforcement hooks:
 `brew install jq` (macOS) or `apt install jq` (Linux)."
 
-**Total with hooks: 39 mandatory files across 7 directories (plus up to 5 optional tech-stack references).**
+**Total with hooks: 40 mandatory files across 7 directories (plus up to 5 optional tech-stack references).**
 
 #### Custom Agent Discovery
 
@@ -290,7 +296,7 @@ This project uses a multi-agent orchestration pipeline for structured developmen
 
 After installation, print:
 
-1. A count of files installed (39 mandatory files across 7 directories, plus any optional tech-stack references)
+1. A count of files installed (40 mandatory files across 7 directories, plus any optional tech-stack references)
 2. The directory tree showing what was created
 3. The configured branching strategy and any CI recommendations
 4. A reminder of available slash commands
@@ -302,12 +308,12 @@ After installation, print:
 ```
 Atelier Pipeline installed successfully.
 
-Files installed: 39 (mandatory) + optional tech-stack references
+Files installed: 40 (mandatory) + optional tech-stack references
   .claude/rules/       -- 5 files (Eva persona, orchestration rules, pipeline operations, model selection, branch lifecycle)
   .claude/agents/      -- 9 files (Cal, Colby, Roz, Robert, Sable, Poirot, Distillator, Ellis, Agatha)
   .claude/commands/    -- 7 files (/pm, /ux, /architect, /debug, /pipeline, /devops, /docs)
   .claude/references/  -- 7 files (quality framework, retro lessons, invocation templates, pipeline operations, agent preamble, QA checks, branch/MR mode)
-  .claude/hooks/       -- 5 files (path enforcement, sequencing, git guard, DoR/DoD warning, config)
+  .claude/hooks/       -- 6 files (path enforcement, sequencing, git guard, DoR/DoD warning, pre-compact, config)
   docs/pipeline/       -- 5 files (state tracking for session recovery)
   .claude/pipeline-config.json -- branching strategy configuration
   .claude/settings.json -- updated with hook registration
@@ -322,6 +328,7 @@ Branching strategy: [selected strategy]
 
 Sentinel security agent: [enabled (Semgrep MCP) | not enabled]
 Agent Teams: [enabled (experimental) | not enabled]
+Compaction API: PreCompact hook installed for pipeline state preservation
 
 Available commands:
   /pm          -- Feature discovery and product spec (Robert)

@@ -86,12 +86,20 @@ distillate is lossy -- re-compress with missing information restored.
 
 ## How Distillator Fits the Pipeline
 
-Eva invokes Distillator between major phases when upstream artifacts exceed
-~5K tokens. Primary integration points:
+Eva invokes Distillator for cross-phase artifact compression when upstream
+documents (spec, UX doc, ADR) exceed ~5K tokens at a phase boundary. Primary
+integration points:
 
 1. After Robert (spec) + Sable (UX doc) -> compress before passing to Cal
 2. After Cal (ADR) -> compress per-step excerpts before passing to Colby/Roz
-3. After any phase producing large output that feeds downstream
+3. After any phase producing large structured output that feeds downstream
+
+Within-session tool outputs (file reads, grep results, bash command output)
+are handled by Eva's observation masking procedure -- Distillator is not
+invoked for these. Distillator's strength is lossless preservation of
+decisions, constraints, and relationships in structured documents at phase
+boundaries. For routine within-session context cleanup, observation masking
+is cheaper and avoids the subagent invocation overhead.
 
 Eva passes: source file paths + `downstream_consumer`. Distillator returns:
 compressed output + compression ratio. Eva includes the distillate in

@@ -150,16 +150,22 @@ the same severity as Eva editing source code.
    review happens after each Teammate's worktree is merged into the working
    branch, ensuring Poirot sees the integrated result, not a partial view.
 
-6. **Distillator compresses upstream artifacts when they exceed ~5K tokens.**
+6. **Distillator compresses cross-phase artifacts when they exceed ~5K tokens.**
    Before passing upstream artifacts (spec, UX doc, ADR) to a downstream
-   agent, Eva checks total token count. If >5K tokens, Eva MUST invoke
-   Distillator first. Eva passes the distillate in the downstream agent's
-   CONTEXT field, not the raw files. This is mechanical -- Eva does not
-   decide whether compression is "needed." If tokens > 5K, compress.
-   Period. On the first pipeline run with Distillator, Eva MUST use
-   `VALIDATE: true` to verify the round-trip. After the first successful
-   validation, VALIDATE is optional for subsequent compressions in the
-   same pipeline.
+   agent at a phase boundary, Eva checks total token count. If >5K tokens,
+   Eva MUST invoke Distillator first. Eva passes the distillate in the
+   downstream agent's CONTEXT field, not the raw files. This is mechanical
+   -- Eva does not decide whether compression is "needed." If tokens > 5K,
+   compress. Period. On the first pipeline run with Distillator, Eva MUST
+   use `VALIDATE: true` to verify the round-trip. After the first successful
+   validation, VALIDATE is optional for subsequent compressions in the same
+   pipeline.
+
+   Within-session tool outputs (file reads, grep results, bash outputs) are
+   handled by observation masking (see `pipeline-operations.md`
+   `<protocol id="observation-masking">`), not Distillator. Distillator is
+   reserved for structured document compression at phase boundaries where
+   lossless preservation of decisions, constraints, and relationships matters.
 
 7. **Robert-subagent reviews at the review juncture (Medium/Large).** After
    all Colby build units pass individual QA, Eva invokes Robert-subagent
@@ -479,16 +485,22 @@ User overrides: "skip to [agent]", "back to [agent]", "check with [agent]", "sto
 
 ### Context Cleanup Advisory
 
-After every major agent handoff that crosses pipeline phases (Robert ->
-Sable, Cal -> Roz, review juncture -> Agatha), Eva checks estimated
-context usage. If the conversation has exceeded 10 major agent
-invocations in the current session, Eva suggests a fresh session:
-"This session has [N] agent handoffs. Consider starting a fresh session
-to clear context. Pipeline state is preserved in
-`{pipeline_state_dir}/pipeline-state.md` and
-`{pipeline_state_dir}/context-brief.md` -- I will resume exactly where
-we left off." This is advisory, not mandatory -- the user decides.
-Eva never forces a session break.
+Server-side compaction (Compaction API) manages Eva's context window
+automatically during long pipeline sessions. Eva does not suggest session
+breaks based on handoff counts.
+
+Eva still suggests a fresh session when:
+- **(a) Response quality visibly degrades** -- Eva's own output becomes
+  repetitive, contradictory, or misses obvious pipeline state. This is a
+  quality signal, not a count. Eva does not track handoff numbers.
+- **(b) The pipeline spans multiple days** -- pipeline-state.md and
+  context-brief.md provide sufficient recovery context to resume cleanly
+  in a new session.
+
+Pipeline state is preserved in `{pipeline_state_dir}/pipeline-state.md`
+and `{pipeline_state_dir}/context-brief.md` -- Eva resumes exactly where
+the pipeline left off after any session break. This is advisory, not
+mandatory -- Eva never forces a session break. The user decides.
 
 </section>
 

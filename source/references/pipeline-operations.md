@@ -306,12 +306,29 @@ between each merge.
 
 ### Compaction Strategy
 
+When the Compaction API is active (`context_management.edits` enabled), server-side compaction
+manages Eva's context automatically. Eva does not need to track context usage percentage or
+suggest session breaks for context reasons.
+
+- **Primary within-session mechanism: observation masking.** Before each subagent invocation and at phase transitions, Eva replaces superseded tool outputs (file reads, grep results, bash outputs) with structured placeholders. See `<protocol id="observation-masking">` below for the full procedure.
+- **Cross-phase artifact compression: Distillator.** When upstream documents (spec, UX doc, ADR) exceed ~5K tokens at a phase boundary, Eva invokes Distillator. See gate 6 in `pipeline-orchestration.md`.
 - **Between major phases:** start fresh subagent sessions. Pipeline-state.md is the recovery mechanism.
 - **Within Colby+Roz interleaving:** Each unit is a separate subagent invocation (fresh context).
-- **Eva herself:** At 60% context usage, summarize to pipeline-state.md and recommend a fresh session.
-  When Agent Teams is active, Eva's context load increases because she processes multiple
-  `TaskCompleted` events per wave. The context cleanup advisory threshold (10 major handoffs)
-  counts each Teammate completion individually toward this threshold.
+- **Eva herself:** Compaction API manages context automatically. Eva no longer tracks context usage
+  percentage. For very large pipelines (20+ agent handoffs), Eva may still suggest a fresh session
+  if response quality visibly degrades -- but this is a quality signal, not a context-counting
+  heuristic.
+- **Path-scoped rules survive compaction.** `pipeline-orchestration.md` and `pipeline-models.md`
+  are re-injected from disk on every turn (ADR-0004 design). Mandatory gates and triage logic are
+  protected from lossy summarization regardless of compaction events.
+- **Eva writes pipeline-state.md at every phase transition (existing behavior).** This is the
+  primary compaction safety net -- if compaction summarizes away in-progress details, Eva can
+  recover from the last recorded phase. The PreCompact hook provides an additional safety net by
+  appending a timestamped compaction marker to pipeline-state.md before compaction fires.
+- **Brain captures provide a secondary recovery path** (when `brain_available: true`). Decisions,
+  findings, and lessons captured during the pipeline are queryable after compaction via
+  `agent_search`. Compaction may summarize Eva's accumulated context about agent outputs and triage
+  findings; brain captures preserve the decisions that matter most.
 - **Agent Teams Teammates have inherently fresh context per task.** Each Teammate is a new Claude
   Code instance -- no compaction needed. Teammates start fresh regardless of wave width.
 - **Never carry Roz reports in Eva's context.** Read the verdict only.
@@ -328,5 +345,99 @@ between each merge.
 | Feature spec | Never | Only if directly relevant |
 | ADR | Never | Only the relevant step |
 | Teammate task description | Creates (via TaskCreate) | Consumes (read from task) |
+| Masked observations | Placeholders with re-read metadata | Never (they get fresh context) |
 
 </section>
+
+<protocol id="observation-masking">
+
+## Observation Masking
+
+Observation masking is Eva's primary within-session context hygiene procedure.
+It replaces superseded tool outputs with structured placeholders while
+preserving all agent reasoning text verbatim.
+
+**Design principle:** Mechanical substitution, not intelligent compression.
+Replacing an old grep result with a placeholder requires no judgment. Masking
+operates forward -- Eva controls what she carries into state files and
+invocations, not backward (Claude Code's conversation history is append-only).
+
+### Never Mask (Preserved Verbatim)
+
+1. All agent reasoning, analysis, decisions, and conclusions -- any text an
+   agent produced as output (not tool output). Test: did an LLM produce it
+   (never mask) or did a tool produce it (maskable)?
+2. The most recent instance of each unique file read (keyed by file path)
+3. The most recent Bash output for each distinct command
+4. The most recent Grep result for each distinct query
+5. Any tool output referenced in an active BLOCKER or MUST-FIX finding
+6. Content of `pipeline-state.md` and `context-brief.md` (always-live state)
+
+### Mask (Replace with Placeholder)
+
+1. File read outputs superseded by a more recent read of the same path
+2. Tool outputs from completed pipeline phases (e.g., Robert's spec exploration
+   outputs after Cal has the ADR)
+3. Verbose Bash outputs (build logs, test suite outputs) after Eva has
+   extracted the verdict
+4. Git diff outputs after Roz and Poirot have completed their review of that
+   unit
+
+### Placeholder Format
+
+```
+[masked: {tool} {target}, {size} lines, turn {N}. Re-read: {recovery_command}]
+```
+
+Examples:
+
+- `[masked: Read source/rules/agent-system.md, 482 lines, turn 3. Re-read: Read source/rules/agent-system.md]`
+- `[masked: Bash npm test, 147 lines, turn 12. Re-read: run test suite again]`
+- `[masked: Grep "Distillator" source/, 35 matches, turn 5. Re-read: Grep "Distillator" source/]`
+
+### Trigger Points (Mechanical -- Not Discretionary)
+
+Eva applies masking at these four trigger points:
+
+1. **Before each subagent invocation:** Mask all tool outputs from prior
+   phases that are not in the current invocation's READ list.
+2. **After processing a subagent's return:** Mask the invocation prompt and
+   raw return output, preserving only the structured verdict (PASS/FAIL,
+   findings list, DoD).
+3. **After each phase transition:** Mask all tool outputs from the completed
+   phase.
+4. **When Eva's context cleanup advisory fires** (visible response degradation
+   or 20+ agent handoffs): Apply aggressive masking -- preserve only
+   pipeline-state.md content, context-brief.md, and the current phase's
+   active tool outputs.
+
+Telemetry: Log "Masking [N] observations from phase [phase]" at each trigger
+point. Absence of this log line means masking is being skipped.
+
+### Brain Integration (when `brain_available: true`)
+
+Before masking a tool output that informed a decision, Eva captures a summary:
+
+- Call `agent_capture` with `thought_type: 'observation'`, `source_agent: 'eva'`
+- Content: one-line summary of what was learned from the output
+- Metadata: `{ masked_at_turn: N, original_tool: 'Read', target: 'path/to/file' }`
+
+This makes masked observations recoverable via `agent_search` in future
+sessions (query by `thought_type: 'observation'` or by file path).
+
+Telemetry: `agent_capture` calls with `thought_type: 'observation'` per
+pipeline. Absence when brain is available means brain integration for masking
+is not firing.
+
+### Recovery (when `brain_available: false` or observation not captured)
+
+Use the placeholder's recovery command to re-read the original content:
+
+- `[masked: Read source/foo.md, 120 lines, turn 4. Re-read: Read source/foo.md]`
+  -> Re-read: `Read source/foo.md`
+- `[masked: Grep "pattern" src/, 22 matches, turn 7. Re-read: Grep "pattern" src/]`
+  -> Re-read: run the Grep again
+
+Recovery is always possible. Masking is never irreversible data loss.
+
+</protocol>
