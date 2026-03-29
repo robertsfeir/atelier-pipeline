@@ -233,6 +233,7 @@ These rules are mandatory and never skippable:
 1. **Shared config never contains bare secrets.** Only `${ENV_VAR}` placeholders. If you detect a bare API key or password in a shared config file, refuse to write it and ask the user to set an environment variable instead.
 2. **Docker default password triggers a warning for team use.** If the user chose Docker + shared setup, always warn: "Set `ATELIER_BRAIN_DB_PASSWORD` for team use. The Docker default password is not secure for shared environments."
 3. **Personal config is never committed to git.** It is written to `${CLAUDE_PLUGIN_DATA}/brain-config.json`, which is outside the project repo.
+4. **Do not write to `.mcp.json`.** The atelier-pipeline plugin registers the brain MCP server automatically via the plugin's own `.mcp.json`. Writing a duplicate `atelier-brain` entry to the project's `.mcp.json` creates a conflict — Claude Code may try to start two instances of the same MCP server. Brain-setup only writes `brain-config.json` (personal or shared). The MCP server registration is the plugin's responsibility, not the setup skill's.
 
 </gate>
 
