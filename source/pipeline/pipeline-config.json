@@ -8,5 +8,9 @@
   "base_branch": "main",
   "integration_branch": "main",
   "sentinel_enabled": false,
-  "agent_teams_enabled": false
+  "agent_teams_enabled": false,
+  "ci_watch_enabled": false,
+  "ci_watch_max_retries": 3,
+  "ci_watch_poll_command": "",
+  "ci_watch_log_command": ""
 }

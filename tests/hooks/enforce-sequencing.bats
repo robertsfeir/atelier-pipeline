@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
 # Tests for enforce-sequencing.sh (PreToolUse hook on Agent)
 # Covers: T-0003-030, T-0003-042 through T-0003-048, T-0003-057
+# Covers: T-0013-051 through T-0013-058 (ADR-0013 CI Watch gate)
 
 load test_helper
 
@@ -157,4 +158,182 @@ EOF
   run run_hook_with_input "enforce-sequencing.sh" "$input"
   [ "$status" -eq 2 ]
   [[ "$output" == *"BLOCKED"* ]]
+}
+
+# ═══════════════════════════════════════════════════════════════════════
+# ADR-0013 CI Watch -- Step 6: Enforce-Sequencing Hook Gate
+# Tests T-0013-051 through T-0013-058
+# ═══════════════════════════════════════════════════════════════════════
+
+# ── T-0013-051: Happy -- Ellis allowed with CI Watch active + CI_VERIFIED ──
+
+@test "T-0013-051: Ellis allowed when ci_watch_active=true and roz_qa=CI_VERIFIED" {
+  write_pipeline_status '{"roz_qa":"CI_VERIFIED","phase":"review","ci_watch_active":true,"ci_watch_retry_count":1}'
+
+  cat > "$TEST_TMPDIR/enforcement-config.json" << EOF
+{
+  "pipeline_state_dir": "$TEST_TMPDIR/docs/pipeline"
+}
+EOF
+
+  local input
+  input=$(build_agent_input "ellis")
+  run run_hook_with_input "enforce-sequencing.sh" "$input"
+  [ "$status" -eq 0 ]
+}
+
+# ── T-0013-052: Failure -- Ellis blocked when CI Watch active but roz_qa empty ──
+
+@test "T-0013-052: Ellis blocked when ci_watch_active=true but roz_qa is empty" {
+  write_pipeline_status '{"roz_qa":"","phase":"review","ci_watch_active":true,"ci_watch_retry_count":0}'
+
+  cat > "$TEST_TMPDIR/enforcement-config.json" << EOF
+{
+  "pipeline_state_dir": "$TEST_TMPDIR/docs/pipeline"
+}
+EOF
+
+  local input
+  input=$(build_agent_input "ellis")
+  run run_hook_with_input "enforce-sequencing.sh" "$input"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"BLOCKED"* ]]
+}
+
+# ── T-0013-053: Failure -- Ellis blocked when CI Watch inactive and roz_qa not PASS ──
+
+@test "T-0013-053: Ellis blocked when ci_watch_active=false and roz_qa is not PASS" {
+  write_pipeline_status '{"roz_qa":"FAIL","phase":"build","ci_watch_active":false}'
+
+  cat > "$TEST_TMPDIR/enforcement-config.json" << EOF
+{
+  "pipeline_state_dir": "$TEST_TMPDIR/docs/pipeline"
+}
+EOF
+
+  local input
+  input=$(build_agent_input "ellis")
+  run run_hook_with_input "enforce-sequencing.sh" "$input"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"BLOCKED"* ]]
+}
+
+# ── T-0013-054: Happy -- Ellis allowed when CI Watch inactive and roz_qa=PASS ──
+
+@test "T-0013-054: Ellis allowed when ci_watch_active=false and roz_qa=PASS (normal flow)" {
+  write_pipeline_status '{"roz_qa":"PASS","phase":"review","ci_watch_active":false}'
+
+  cat > "$TEST_TMPDIR/enforcement-config.json" << EOF
+{
+  "pipeline_state_dir": "$TEST_TMPDIR/docs/pipeline"
+}
+EOF
+
+  local input
+  input=$(build_agent_input "ellis")
+  run run_hook_with_input "enforce-sequencing.sh" "$input"
+  [ "$status" -eq 0 ]
+}
+
+# ── T-0013-055: Regression -- existing Gate 1 behavior unchanged ──
+
+@test "T-0013-055: Ellis still blocked during active pipeline without Roz QA PASS (regression)" {
+  write_pipeline_status '{"roz_qa":"","phase":"build"}'
+
+  cat > "$TEST_TMPDIR/enforcement-config.json" << EOF
+{
+  "pipeline_state_dir": "$TEST_TMPDIR/docs/pipeline"
+}
+EOF
+
+  local input
+  input=$(build_agent_input "ellis")
+  run run_hook_with_input "enforce-sequencing.sh" "$input"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"BLOCKED"* ]]
+}
+
+# ── T-0013-056: Regression -- existing Gate 2 behavior unchanged ──
+
+@test "T-0013-056: Agatha still blocked during build phase (regression)" {
+  write_pipeline_status '{"roz_qa":"","phase":"build","ci_watch_active":true}'
+
+  cat > "$TEST_TMPDIR/enforcement-config.json" << EOF
+{
+  "pipeline_state_dir": "$TEST_TMPDIR/docs/pipeline"
+}
+EOF
+
+  local input
+  input=$(build_agent_input "agatha")
+  run run_hook_with_input "enforce-sequencing.sh" "$input"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"BLOCKED"* ]]
+  [[ "$output" == *"Agatha"* ]]
+}
+
+# ── T-0013-057: Boundary -- PIPELINE_STATUS with CI Watch fields parses correctly ──
+
+@test "T-0013-057: PIPELINE_STATUS JSON with ci_watch_active and roz_qa fields parses correctly" {
+  # This test verifies the hook can parse the extended PIPELINE_STATUS JSON
+  # that includes CI Watch fields alongside existing fields.
+  # Uses roz_qa=PASS (normal flow) with ci_watch_active present but false --
+  # hook should allow Ellis (PASS is still valid regardless of ci_watch_active).
+  write_pipeline_status '{"roz_qa":"PASS","phase":"review","ci_watch_active":false,"ci_watch_retry_count":0,"ci_watch_commit_sha":"abc123"}'
+
+  cat > "$TEST_TMPDIR/enforcement-config.json" << EOF
+{
+  "pipeline_state_dir": "$TEST_TMPDIR/docs/pipeline"
+}
+EOF
+
+  local input
+  input=$(build_agent_input "ellis")
+  run run_hook_with_input "enforce-sequencing.sh" "$input"
+  [ "$status" -eq 0 ]
+}
+
+# ── T-0013-059: Boundary -- CI_VERIFIED only works when ci_watch_active=true ──
+
+@test "T-0013-059: Ellis blocked when ci_watch_active=false but roz_qa=CI_VERIFIED" {
+  # CI_VERIFIED is only a valid pass token when ci_watch_active=true.
+  # If ci_watch_active is false, CI_VERIFIED must NOT unlock Ellis --
+  # this prevents a stale CI_VERIFIED from bypassing the gate.
+  write_pipeline_status '{"roz_qa":"CI_VERIFIED","phase":"review","ci_watch_active":false}'
+
+  cat > "$TEST_TMPDIR/enforcement-config.json" << EOF
+{
+  "pipeline_state_dir": "$TEST_TMPDIR/docs/pipeline"
+}
+EOF
+
+  local input
+  input=$(build_agent_input "ellis")
+  run run_hook_with_input "enforce-sequencing.sh" "$input"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"BLOCKED"* ]]
+}
+
+# ── T-0013-058: Failure -- malformed PIPELINE_STATUS JSON fails open ──
+
+@test "T-0013-058: malformed PIPELINE_STATUS JSON with CI Watch fields exits 0 (fail-open)" {
+  # When PIPELINE_STATUS contains malformed JSON, parse_pipeline_status returns
+  # empty. With no parseable phase, the hook treats it as "no active pipeline"
+  # and allows Ellis through (fail-open, existing behavior).
+  cat > "$TEST_TMPDIR/docs/pipeline/pipeline-state.md" << 'EOF'
+# Pipeline State
+
+<!-- PIPELINE_STATUS: {"roz_qa":"CI_VERIFIED","ci_watch_active":true, broken -->
+EOF
+
+  cat > "$TEST_TMPDIR/enforcement-config.json" << EOF
+{
+  "pipeline_state_dir": "$TEST_TMPDIR/docs/pipeline"
+}
+EOF
+
+  local input
+  input=$(build_agent_input "ellis")
+  run run_hook_with_input "enforce-sequencing.sh" "$input"
+  [ "$status" -eq 0 ]
 }

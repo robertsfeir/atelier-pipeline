@@ -323,7 +323,7 @@ After installation, print:
 3. The configured branching strategy and any CI recommendations
 4. A reminder of available slash commands
 5. Instructions to start their first pipeline run
-6. **Offer optional features** -- Sentinel security agent (Step 6a), Agent Teams parallel execution (Step 6b), and Atelier Brain persistent memory
+6. **Offer optional features** -- Sentinel security agent (Step 6a), Agent Teams parallel execution (Step 6b), CI Watch automated CI monitoring (Step 6c), and Atelier Brain persistent memory
 
 **Example summary:**
 
@@ -350,6 +350,7 @@ Branching strategy: [selected strategy]
 
 Sentinel security agent: [enabled (Semgrep MCP) | not enabled]
 Agent Teams: [enabled (experimental) | not enabled]
+CI Watch: [enabled (max retries: N) | not enabled]
 Compaction API: PreCompact hook installed for pipeline state preservation
 
 Available commands:
@@ -425,9 +426,45 @@ has no external tools to install. The feature is entirely runtime-activated via 
 **No installation manifest expansion** -- Agent Teams uses the existing Colby persona
 (`.claude/agents/colby.md`). No new files are installed.
 
+### Step 6c: CI Watch Opt-In
+
+After the Agent Teams offer (whether user said yes or no), offer the optional CI Watch feature:
+
+> Would you also like to enable **CI Watch** -- automated post-push CI monitoring?
+> After Ellis pushes, Eva watches your CI run and autonomously fixes failures via Roz and Colby,
+> pausing for your approval before pushing a fix. Requires `gh` (GitHub) or `glab` (GitLab) CLI.
+
+**Platform CLI gate:** Read `platform_cli` from `.claude/pipeline-config.json`.
+- If `platform_cli` is empty or missing, block with message: "CI Watch requires `gh` or `glab`. Configure a platform CLI first (run `/pipeline-setup` and set a platform)." Skip CI Watch setup.
+- If `platform_cli` is set, continue.
+
+**If user says yes:**
+
+1. **Check CLI authentication:** run `gh auth status` (GitHub) or `glab auth status` (GitLab).
+   - If auth check fails, tell user: "CI Watch requires an authenticated `{platform_cli}` session. Run `{platform_cli} auth login` first, then re-run `/pipeline-setup` to enable CI Watch." Skip CI Watch setup.
+
+2. **Ask max retries:** "How many times should the fix cycle retry before stopping? (default: 3, minimum: 1)"
+   - Accept an integer >= 1. If user presses Enter, use 3.
+
+3. **Set config values:** in `.claude/pipeline-config.json`:
+   - `ci_watch_enabled: true`
+   - `ci_watch_max_retries: N` (the value from step 2)
+
+4. **Compute and store platform commands** in `.claude/pipeline-config.json`:
+   - `ci_watch_poll_command`: `gh run list --commit {sha} --json status,conclusion,url,databaseId --limit 1` (GitHub) or `glab ci list --branch {branch} -o json | head -1` (GitLab)
+   - `ci_watch_log_command`: `gh run view {run_id} --log-failed | tail -200` (GitHub) or `glab ci trace {job_id} | tail -200` (GitLab)
+
+5. Print: "CI Watch: enabled (max retries: N)"
+
+**Idempotency:** If `ci_watch_enabled` already exists in `pipeline-config.json` and is `true`, skip the mutation and inform the user: "CI Watch is already enabled (max retries: {current_value})." If it exists and is `false`, confirm with the user before changing.
+
+**If user says no:** Skip entirely. `ci_watch_enabled` remains `false` in `pipeline-config.json`. Print: "CI Watch: not enabled"
+
+**No new agent files installed** -- CI Watch uses existing Roz, Colby, and Ellis personas.
+
 **Brain setup offer (always ask):**
 
-After the Agent Teams offer (whether user said yes or no), ask the user:
+After the CI Watch offer (whether user said yes or no), ask the user:
 
 > The pipeline is ready. Would you also like to set up the **Atelier Brain**?
 > It gives your agents persistent memory across sessions -- architectural

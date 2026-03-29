@@ -495,3 +495,115 @@ Constraints:
   re-invokes Colby as a standard subagent.
 
 </template>
+
+<template id="roz-ci-investigation">
+
+### Roz CI Investigation (CI Watch -- Failure Diagnosis)
+
+Eva invokes Roz when CI Watch detects a CI failure and pulls the failure logs.
+CI failure logs are passed in CONTEXT (ephemeral, not file-backed).
+
+<task>Investigate CI failure -- [one-line summary of failing step/job from logs]</task>
+
+<brain-context>
+<thought type="pattern" agent="roz" phase="qa" relevance="0.85">Prior CI failure patterns and their root causes on this repo</thought>
+<thought type="lesson" agent="eva" phase="retro" relevance="0.70">Retro lessons relevant to CI failures in this area</thought>
+</brain-context>
+
+<context>
+CI failure logs (truncated to 200 lines per job):
+
+[Eva pastes truncated failure log content here -- not a file reference]
+
+Branch: [branch name]
+Commit SHA: [sha]
+Platform: [gh | glab]
+CI retry count: [N] of [max]
+</context>
+
+<read>[source files implicated by the failure logs -- max 4], .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
+
+<constraints>
+- Diagnose from the CI logs + source code -- this is a CI failure, not a user-reported bug
+- Identify root cause with file:line precision
+- Do NOT write code -- diagnosis only
+- Note whether this appears to be an environment issue (flaky test, missing secret, infra) vs. code defect
+- If root cause is ambiguous, list the top 2 hypotheses with evidence for each
+</constraints>
+
+<output>CI failure diagnosis with: root cause (file:line or environment cause), affected code path, fix description, confidence level (HIGH/MEDIUM/LOW), recommended fix approach</output>
+
+</template>
+
+<template id="colby-ci-fix">
+
+### Colby CI Fix (CI Watch -- Apply Fix)
+
+Eva invokes Colby to fix a CI failure after Roz has diagnosed it.
+
+<task>Fix CI failure -- [Roz's one-line root cause summary]</task>
+
+<brain-context>
+<thought type="pattern" agent="colby" phase="build" relevance="0.80">Implementation patterns relevant to the failing code area</thought>
+<thought type="lesson" agent="eva" phase="retro" relevance="0.70">Retro lessons relevant to this fix area</thought>
+</brain-context>
+
+<context>
+Roz's CI failure diagnosis:
+[Eva pastes Roz's full diagnosis output here]
+
+Original CI failure logs:
+[Eva pastes truncated failure log content here]
+
+Branch: [branch name]
+Commit SHA that failed: [sha]
+</context>
+
+<read>[files identified by Roz's diagnosis -- max 5], .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
+
+<constraints>
+- Fix the specific CI failure identified by Roz -- do not expand scope
+- Run lint after implementing: echo "no linter configured"
+- Do NOT modify Roz's test assertions
+- Do NOT push -- Eva will invoke Ellis after Roz verifies
+- Zero TODO/FIXME/HACK in delivered code
+</constraints>
+
+<output>Fix report with: files changed (list), root cause addressed, what changed and why, confidence that fix resolves the CI failure</output>
+
+</template>
+
+<template id="roz-ci-verify">
+
+### Roz CI Verify (CI Watch -- Post-Fix Verification)
+
+Eva invokes Roz to verify Colby's CI fix before presenting to the user for approval.
+
+<task>Verify CI fix -- [Colby's one-line fix summary]</task>
+
+<brain-context>
+<thought type="pattern" agent="roz" phase="qa" relevance="0.80">Prior verification patterns on similar CI fix cycles</thought>
+</brain-context>
+
+<context>
+Colby's fix report:
+[Eva pastes Colby's full fix report here]
+
+Original Roz diagnosis:
+[Eva pastes Roz's diagnosis summary here]
+
+Original CI failure: [one-line summary]
+</context>
+
+<read>[files Colby modified], .claude/references/retro-lessons.md, .claude/references/agent-preamble.md, .claude/references/qa-checks.md</read>
+
+<constraints>
+- Run the test suite locally to verify the fix: echo "no test suite configured"
+- Verify the fix addresses the root cause Roz identified -- not just makes tests pass locally
+- Check for regressions in related code paths
+- SCOPED RE-RUN -- focus on the CI failure area + adjacent code, not full QA
+</constraints>
+
+<output>QA verdict: PASS or FAIL. If PASS: confirm root cause is addressed, no regressions found. If FAIL: list remaining issues with file:line evidence. One-line verdict summary for Eva's hard pause presentation to user.</output>
+
+</template>

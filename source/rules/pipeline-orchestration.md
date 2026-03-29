@@ -481,7 +481,13 @@ Eva stops and asks the user at these points (strategy-dependent):
 - **MR-based strategies (GitHub Flow, GitLab Flow, GitFlow):** before MR merge (user reviews CI + approves)
 - **GitLab Flow additional:** before each environment promotion
 - **GitFlow additional:** before release merge to main
-- **All strategies:** Roz BLOCKER; Robert/Sable AMBIGUOUS or DRIFT; Cal scope-changing discovery; user says "stop"/"hold"; after Roz diagnosis on a **user-reported bug** (not pipeline-internal findings)
+- **All strategies:** any of the following:
+  - Roz BLOCKER
+  - Robert/Sable AMBIGUOUS or DRIFT
+  - Cal scope-changing discovery
+  - User says "stop"/"hold"
+  - After Roz diagnosis on a **user-reported bug** (not pipeline-internal findings)
+  - **CI Watch fix ready** -- after Roz verifies Colby's CI fix, Eva presents failure summary + fix delta + Roz verdict and waits for user approval before Ellis pushes the fix
 
 Branch lifecycle details are in `.claude/rules/branch-lifecycle.md` (strategy-specific, installed at setup time).
 
@@ -539,4 +545,133 @@ After Sable completes the UX doc, Colby builds a **mockup** (real UI, mock data)
   class of violation as skipping spec reconciliation.
 
 </gate>
+
+<protocol id="ci-watch">
+
+## CI Watch Protocol
+
+CI Watch is an opt-in, session-scoped Eva orchestration protocol that monitors CI after Ellis
+pushes and autonomously drives a fix cycle on failure.
+
+See `pipeline-operations.md` for the platform command reference, polling loop pseudocode, and
+failure log truncation rules.
+
+### Activation Gate
+
+CI Watch activates when **both** conditions hold:
+1. `ci_watch_enabled: true` in `.claude/pipeline-config.json`
+2. Ellis has just pushed to remote (Ellis reports a successful push)
+
+If either condition is false, Eva does not launch a watch. CI Watch is orthogonal to pipeline
+sizing -- it activates on any push from any sizing level when enabled.
+
+### PIPELINE_STATUS Fields
+
+Eva tracks CI Watch state in the PIPELINE_STATUS JSON marker in
+`{pipeline_state_dir}/pipeline-state.md`:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ci_watch_active` | boolean | Whether a watch is currently running |
+| `ci_watch_retry_count` | integer | Number of fix cycles completed in this session |
+| `ci_watch_commit_sha` | string | SHA of the commit being watched |
+
+After launching a watch, Eva sets `ci_watch_active: true`, `ci_watch_retry_count: 0`, and
+`ci_watch_commit_sha: {sha}` in PIPELINE_STATUS.
+
+### Watch Launch
+
+After Ellis confirms a successful push, Eva:
+1. Reads `platform_cli`, `ci_watch_poll_command`, and `ci_watch_max_retries` from
+   `.claude/pipeline-config.json`.
+2. If `ci_watch_poll_command` is empty or missing, Eva logs: "CI Watch commands not
+   configured. Run /pipeline-setup to configure." and skips watch launch.
+3. Announces: "CI Watch active -- monitoring CI for commit {sha} on {branch}."
+4. Launches the background polling loop via `run_in_background` (see `pipeline-operations.md`
+   for the pseudocode). The polling loop uses short individual commands (30-second intervals,
+   60-second timeout per command) rather than a long-running blocking process.
+
+### On CI Pass
+
+When the polling loop reports a successful CI run:
+1. Eva notifies the user: "CI passed on {branch}. [run link]"
+2. Eva sets `ci_watch_active: false` in PIPELINE_STATUS.
+3. Eva captures a brain pattern (see Brain Capture below).
+
+Note: Eva appends the notification to the conversation without interrupting the user's current work -- `run_in_background` notifications naturally append when the background task completes.
+
+### On CI Failure
+
+When the polling loop reports a failed CI run:
+1. **Pull failure logs:** Eva runs the platform log command (truncated to 200 lines per
+   job; see `pipeline-operations.md` for truncation rules).
+2. **Roz investigation (autonomous):** Eva invokes Roz in CI investigation mode with the
+   failure logs in CONTEXT (template: `roz-ci-investigation`). This runs without pausing.
+3. **Colby fix (autonomous):** Eva invokes Colby with Roz's diagnosis (template:
+   `colby-ci-fix`). This runs without pausing.
+4. **Roz verification (autonomous):** Eva invokes Roz to verify Colby's fix (template:
+   `roz-ci-verify`). This runs without pausing.
+5. **HARD PAUSE:** Eva presents to the user:
+   - CI failure summary (which jobs failed, first-seen error)
+   - What Colby changed (files modified, diff summary)
+   - Roz's verification verdict (PASS or FAIL)
+   - Retry count: "Fix cycle {N} of {ci_watch_max_retries}"
+   - Options: "Approve and push fix" or "Stop -- I'll handle this manually"
+6. **If user approves:** Eva invokes Ellis to push the fix, increments
+   `ci_watch_retry_count` in PIPELINE_STATUS, writes `roz_qa: CI_VERIFIED` to
+   PIPELINE_STATUS (so the enforce-sequencing hook allows Ellis through), then
+   re-launches the watch for the new commit SHA. After Ellis pushes the fix,
+   Eva resets `roz_qa: ""` in PIPELINE_STATUS before re-launching the watch
+   (CI_VERIFIED is a single-use token -- cleared once Ellis has consumed it).
+7. **If user rejects:** Eva sets `ci_watch_active: false` in PIPELINE_STATUS and stops.
+   The user handles CI manually.
+8. **If Ellis reports a blocked push** (branch protection, rejected by remote): Eva stops
+   the fix cycle, sets `ci_watch_active: false` in PIPELINE_STATUS, and notifies the user:
+   "Push blocked by branch protection. Handle CI failure manually."
+
+### On Timeout (30 Minutes)
+
+If the polling loop reaches 60 iterations without a CI result, Eva prompts:
+"CI has been running for 30 minutes. Keep waiting or abandon?"
+- **Keep waiting:** Eva re-launches the polling loop for another 30 minutes.
+- **Abandon:** Eva sets `ci_watch_active: false` in PIPELINE_STATUS and notifies the user
+  with the direct CI link to monitor manually.
+
+### On Retry Exhaustion
+
+If `ci_watch_retry_count` reaches `ci_watch_max_retries` (from config), Eva stops the
+fix cycle:
+"CI Watch has exhausted {ci_watch_max_retries} fix attempts. Stopping -- please review
+CI failures manually: [link]"
+Eva sets `ci_watch_active: false` in PIPELINE_STATUS and outputs a cumulative summary of
+all failure patterns encountered.
+
+### On Agent Failure During Auto-Fix
+
+If Roz or Colby fails (returns an error or aborts) during the autonomous fix cycle:
+1. Eva stops the fix loop immediately.
+2. Eva reports: "CI Watch fix cycle stopped -- {agent} failed during {phase}. Output: [summary]"
+3. Eva sets `ci_watch_active: false` in PIPELINE_STATUS.
+4. The user handles the CI failure manually.
+
+### Watch Replacement
+
+When Ellis pushes again while a watch is already active:
+1. Eva sets `ci_watch_active: false` on the current watch and announces the replacement.
+2. Eva starts a new watch for the new commit SHA, resetting `ci_watch_retry_count: 0`.
+
+Only one watch is active at a time.
+
+### Brain Capture
+
+After each CI Watch resolution (pass or retry exhaustion), Eva calls `agent_capture`:
+- `thought_type: 'pattern'`
+- `source_agent: 'eva'`
+- `source_phase: 'ci-watch'`
+- Content: the failure pattern (which CI step failed, root cause from Roz), the fix applied,
+  and the outcome. On pass without fix: just the pass confirmation.
+
+This builds institutional memory for WARN injection when similar CI failures recur.
+
+</protocol>
 

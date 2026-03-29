@@ -147,6 +147,7 @@ issues in this module that you've missed 3 times. Extra scrutiny warranted."
 | Sable-subagent UX DRIFT | Hard pause -> human decides -> Sable-skill updates UX doc OR Colby fixes code |
 | CI/CD issue | Colby (config) or Cal subagent (architectural) |
 | User reports a bug | Roz (investigate + diagnose) -> Colby (fix) -> Roz (verify) |
+| CI failure (watched) | Roz (CI investigate) -> Colby (CI fix) -> Roz (CI verify) -> hard pause -> Ellis (push fix) -> re-watch |
 
 </section>
 
@@ -297,6 +298,90 @@ between each merge.
 - Batch-mode rules still apply: parallel requires zero file overlap,
   sequential is the fallback. Eva announces wave grouping to the user
   before execution begins.
+
+</operations>
+
+<operations id="ci-watch">
+
+## CI Watch Operations
+
+CI Watch activates after Ellis pushes when `ci_watch_enabled: true` in `pipeline-config.json`.
+All platform commands are derived from `platform_cli` configured at setup time.
+
+### Platform Command Reference
+
+| Operation | GitHub (`gh`) | GitLab (`glab`) |
+|-----------|--------------|-----------------|
+| Check run status | `gh run list --commit {sha} --json status,conclusion,url,databaseId --limit 1` | `glab ci list --branch {branch} -o json \| head -1` |
+| Get failure logs | `gh run view {run_id} --log-failed \| tail -200` | `glab ci trace {job_id} \| tail -200` |
+| Get run URL | Included in `gh run list` JSON output (`url` field) | `glab ci view --branch {branch} --web` (URL in output) |
+| Auth check | `gh auth status` | `glab auth status` |
+
+### Polling Loop Pseudocode
+
+Eva launches a background Bash polling loop via `run_in_background` after Ellis pushes:
+
+```
+# Read from pipeline-config.json at watch launch:
+#   max_retries = ci_watch_max_retries  -- fix cycle cap (how many Roz->Colby->Roz cycles before giving up)
+#   Note: max_errors below is a separate polling-health counter, not the fix cycle cap.
+
+max_iterations = 60          # 30 minutes at 30-second intervals
+poll_interval  = 30          # seconds between polls
+error_streak   = 0           # consecutive polling errors (network/CLI health)
+max_errors     = 3           # error streak threshold: 3 consecutive failures -> abandon watch
+                             # DISTINCT from ci_watch_max_retries (fix cycle cap from config)
+
+for i in 1..max_iterations:
+  result = run(platform_poll_command, timeout=60s)
+  if result is error:
+    error_streak++
+    if error_streak >= max_errors:
+      notify("CI Watch lost connection to [platform]. Check CI status manually.")
+      exit
+    continue
+  error_streak = 0
+  if result is empty:
+    notify("No CI run found for commit {sha}. Does this repo have CI configured?")
+    exit
+  status = parse(result)
+  if status == "completed":
+    if conclusion == "success":
+      notify("CI passed on [branch]. [run_url]")
+      capture_brain_pattern(outcome="pass")
+      exit
+    else:
+      # Extract run/job ID from poll result for use in log command
+      # GitHub: run_id = parse(result, "databaseId")
+      # GitLab: job_id = parse(result, "id")
+      # Then substitute into ci_watch_log_command before running
+      logs = run(platform_log_command | tail -200, timeout=60s)
+      # Return logs to Eva main thread; Eva checks ci_watch_retry_count < ci_watch_max_retries
+      # before launching fix cycle. If retry cap reached, Eva stops and reports.
+      return logs to Eva main thread for fix cycle
+      exit
+  sleep(poll_interval)
+
+# timeout reached (30 minutes)
+notify("CI has been running for 30 minutes. Keep waiting or abandon?")
+wait for user input
+```
+
+### Failure Log Truncation Rules
+
+- **Single failed job:** last 200 lines of the job log.
+- **Multiple failed jobs:** concatenate logs with a job header line (`--- Job: {job_name} ---`) between each; total cap at 400 lines (200 per job, up to 2 jobs; if more than 2 jobs fail, take the first 2 failing jobs' logs).
+- Logs are passed to Roz in the CONTEXT field of the `roz-ci-investigation` template, not written to disk.
+
+### CI Watch State Fields (PIPELINE_STATUS marker in `docs/pipeline/pipeline-state.md`)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ci_watch_active` | boolean | Whether a watch is currently running |
+| `ci_watch_retry_count` | integer | Number of fix cycles completed in this session |
+| `ci_watch_commit_sha` | string | SHA of the commit being watched |
+
+**Watch replacement:** When Ellis pushes again while a watch is active, Eva sets `ci_watch_active: false` on the old watch and starts a new watch for the new commit SHA. Only one watch is active at a time.
 
 </operations>
 

@@ -99,8 +99,15 @@ if [ "$SUBAGENT_TYPE" = "ellis" ]; then
     exit 0
   fi
 
-  # Active phase -> enforce Roz QA PASS
+  # CI Watch fix cycle: if ci_watch_active=true and roz_qa=CI_VERIFIED, allow Ellis
+  # CI_VERIFIED is distinct from PASS -- written by Eva after Roz verifies a CI fix
+  CI_WATCH_ACTIVE=$(parse_pipeline_status "ci_watch_active") || true
   ROZ_QA=$(parse_pipeline_status "roz_qa") || true
+  if [ "$CI_WATCH_ACTIVE" = "true" ] && [ "$ROZ_QA" = "CI_VERIFIED" ]; then
+    exit 0
+  fi
+
+  # Active phase -> enforce Roz QA PASS
   if [ "$ROZ_QA" != "PASS" ]; then
     echo "BLOCKED: Cannot invoke Ellis — pipeline is active (phase: $PHASE) but no Roz QA PASS found. Roz must verify Colby's output before committing." >&2
     exit 2

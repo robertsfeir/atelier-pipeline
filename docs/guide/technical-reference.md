@@ -27,10 +27,11 @@ This document is the comprehensive technical reference for the atelier-pipeline 
 17. [Enforcement Hooks](#enforcement-hooks)
 18. [Sentinel Security Agent](#sentinel-security-agent)
 19. [Agent Teams](#agent-teams)
-20. [Agent Discovery](#agent-discovery)
-21. [Observation Masking and Context Hygiene](#observation-masking-and-context-hygiene)
-22. [Compaction API Integration](#compaction-api-integration)
-23. [Customization Points](#customization-points)
+20. [CI Watch](#ci-watch)
+21. [Agent Discovery](#agent-discovery)
+22. [Observation Masking and Context Hygiene](#observation-masking-and-context-hygiene)
+23. [Compaction API Integration](#compaction-api-integration)
+24. [Customization Points](#customization-points)
 
 ---
 
@@ -1277,6 +1278,105 @@ When `agent_teams_available: false`, Eva falls back to sequential subagent invoc
 - Gate 2 (Ellis commits): Teammates do NOT commit. They execute the build and mark task complete. Eva merges worktrees, then routes to Ellis for per-unit commits.
 - Gate 3 (test suite): Teammates run lint but NOT the full test suite. Roz runs the full suite on the integrated codebase after each merge.
 - Gate 5 (Poirot): Poirot blind-reviews the merged diff per unit, not the Teammate's isolated worktree diff.
+
+---
+
+## CI Watch
+
+### Overview
+
+CI Watch (v3.7) is an opt-in, session-scoped Eva orchestration protocol that monitors CI after Ellis pushes and autonomously drives a fix cycle on failure. It uses a background polling loop with short individual commands rather than long-running blocking processes, providing resilience across both GitHub Actions and GitLab CI.
+
+Design rationale: ADR-0013. The polling approach (not `gh run watch`) was chosen for platform uniformity -- `glab` has no equivalent to `gh run watch` -- and for resilience against `run_in_background` timeout constraints.
+
+### Configuration Fields
+
+All fields are in `.claude/pipeline-config.json`:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `ci_watch_enabled` | boolean | `false` | Master toggle. CI Watch only activates when `true`. |
+| `ci_watch_max_retries` | integer | `3` | Maximum fix cycles before CI Watch gives up. Set during `/pipeline-setup` Step 6c. Minimum: 1. |
+| `ci_watch_poll_command` | string | `""` | Platform-specific CI status check command. Computed at setup time from `platform_cli`. |
+| `ci_watch_log_command` | string | `""` | Platform-specific failure log retrieval command. Computed at setup time from `platform_cli`. |
+
+Platform commands are computed during setup:
+
+| Operation | GitHub (`gh`) | GitLab (`glab`) |
+|-----------|--------------|-----------------|
+| Poll status | `gh run list --commit {sha} --json status,conclusion,url,databaseId --limit 1` | `glab ci list --branch {branch} -o json \| head -1` |
+| Get failure logs | `gh run view {run_id} --log-failed \| tail -200` | `glab ci trace {job_id} \| tail -200` |
+| Auth check | `gh auth status` | `glab auth status` |
+
+### Setup Gate (Step 6c)
+
+CI Watch is offered during `/pipeline-setup` after Agent Teams (Step 6b). Two prerequisites gate enablement:
+
+1. **Platform CLI configured:** `platform_cli` must be set in `pipeline-config.json`. If empty, setup blocks with a message to configure a platform first.
+2. **CLI authenticated:** `gh auth status` or `glab auth status` must succeed. If auth fails, setup directs the user to authenticate and re-run setup.
+
+The auth check happens at setup time, not at watch time. This catches authentication issues early rather than failing silently during a CI watch.
+
+### Activation Gate
+
+CI Watch activates when **both** conditions hold:
+1. `ci_watch_enabled: true` in `pipeline-config.json`
+2. Ellis has just pushed to remote (Ellis reports a successful push)
+
+CI Watch is orthogonal to pipeline sizing -- it activates on any push from any sizing level when enabled.
+
+### PIPELINE_STATUS Fields
+
+Eva tracks CI Watch state in the PIPELINE_STATUS JSON marker in `pipeline-state.md`:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ci_watch_active` | boolean | Whether a watch is currently running |
+| `ci_watch_retry_count` | integer | Number of fix cycles completed in this session |
+| `ci_watch_commit_sha` | string | SHA of the commit being watched |
+
+### Polling Loop
+
+The background polling loop runs via `run_in_background` Bash (not Agent `run_in_background`):
+
+- **Interval:** 30 seconds between polls
+- **Timeout per command:** 60 seconds
+- **Max iterations:** 60 (30 minutes total)
+- **Error handling:** 3 consecutive polling errors triggers a connection-lost abort. The error streak counter resets on any successful poll. This is distinct from `ci_watch_max_retries` (fix cycle cap).
+
+### Fix Cycle
+
+On CI failure:
+1. Eva pulls failure logs (truncated to last 200 lines per failed job; multiple jobs concatenated with headers, total cap 400 lines)
+2. Roz investigates using the `roz-ci-investigation` invocation template (logs passed in CONTEXT, not as files)
+3. Colby fixes using the `colby-ci-fix` template with Roz's diagnosis
+4. Roz verifies using the `roz-ci-verify` template
+5. **HARD PAUSE** -- Eva presents failure summary, fix delta, Roz verdict, and retry count
+6. User approves: Eva writes `roz_qa: CI_VERIFIED` to PIPELINE_STATUS (single-use token for the enforce-sequencing hook), Ellis pushes, Eva clears `CI_VERIFIED`, increments retry count, re-launches watch
+7. User rejects: watch stops, user handles manually
+
+### Enforce-Sequencing Hook Integration
+
+The enforce-sequencing hook (Gate 1: Ellis requires Roz QA) has a CI Watch exemption. When `ci_watch_active: true` and `roz_qa: CI_VERIFIED`, Ellis is allowed through. `CI_VERIFIED` is intentionally distinct from `PASS` to prevent a CI Watch verification from satisfying the build-phase gate (different quality context). Eva clears `CI_VERIFIED` after Ellis consumes it.
+
+### Edge Cases
+
+| Scenario | Handling |
+|----------|----------|
+| No CI run found for commit | Watch stops: "No CI run found for commit [sha]. Does this repo have CI configured?" |
+| User mid-conversation when result arrives | `run_in_background` notifications append naturally without interrupting current work |
+| Branch protection blocks push | Ellis reports the block, CI Watch stops, user handles manually |
+| Agent failure during fix cycle | Loop stops immediately with a report identifying which agent failed and its output |
+| New Ellis push during active watch | Old watch replaced, new watch starts with reset retry count |
+| Dead watch (35+ minutes without reporting) | Eva checks `ci_watch_active` on next user interaction and declares watch dead |
+
+### Brain Integration
+
+After each CI Watch resolution (pass or fix exhaustion), Eva captures via `agent_capture`:
+- `thought_type: 'pattern'`, `source_agent: 'eva'`, `source_phase: 'ci-watch'`
+- Content: failure pattern, root cause from Roz, fix applied, outcome
+
+This builds institutional memory for CI failure patterns. Eva can inject WARN context into future agent invocations when the same CI failure pattern recurs.
 
 ---
 

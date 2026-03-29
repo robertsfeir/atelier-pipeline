@@ -86,6 +86,7 @@ All other reference files are loaded by subagents when relevant, not by Eva. Eva
    - Brain status: append "Brain: active ([N] thoughts)" or "Brain: baseline mode"
    - Custom agents: append "Custom agents: N discovered" when discovered agent count > 0 (omit line when zero)
    - Agent Teams: when `agent_teams_enabled: true` in config, append "Agent Teams: active (experimental)" if `agent_teams_available: true`, or "Agent Teams: disabled" if `agent_teams_available: false`. Omit this line entirely when `agent_teams_enabled: false` (user never opted in).
+   - CI Watch: when `ci_watch_enabled: true` in config, append "CI Watch: active (max retries: N)" where N is `ci_watch_max_retries` from config. Omit this line entirely when `ci_watch_enabled: false`.
 
 </protocol>
 

@@ -20,6 +20,7 @@ A structured, multi-agent development workflow for Claude Code. Eleven specializ
 - [Branching Strategy](#branching-strategy)
 - [Sentinel Security Agent](#sentinel-security-agent)
 - [Agent Teams](#agent-teams)
+- [CI Watch](#ci-watch)
 - [Agent Discovery](#agent-discovery)
 - [Context Management](#context-management)
 - [Mechanical Enforcement](#mechanical-enforcement)
@@ -529,6 +530,51 @@ Both gates must pass. If either fails, the pipeline falls back to sequential exe
 - Roz, Poirot, Robert, Sable, Ellis, Agatha, and all other agents are invoked sequentially
 - All 12 mandatory gates are preserved
 - Pipeline output is identical -- Agent Teams affects speed, not correctness
+
+---
+
+## CI Watch
+
+CI Watch is an opt-in feature that monitors your CI pipeline after Ellis pushes and autonomously fixes failures. When CI fails, Eva pulls the failure logs, Roz diagnoses the problem, Colby applies a fix, and Roz verifies it -- all without manual intervention. You review and approve the fix before Ellis pushes it.
+
+### How it works
+
+1. Ellis pushes code to the remote
+2. Eva launches a background polling loop that checks CI status every 30 seconds
+3. If CI passes, you get a notification with a link to the run
+4. If CI fails, the auto-fix cycle runs:
+   - Eva pulls the failure logs (last 200 lines)
+   - Roz investigates and diagnoses the root cause
+   - Colby applies a fix based on Roz's diagnosis
+   - Roz verifies the fix
+   - Eva pauses and shows you the failure summary, what changed, and Roz's verdict
+   - You approve or reject the fix
+5. If you approve, Ellis pushes the fix and the watch restarts
+6. The cycle repeats up to a configurable retry limit (default: 3)
+
+### Enabling CI Watch
+
+**Prerequisite:** You need `gh` (GitHub) or `glab` (GitLab) CLI installed and authenticated.
+
+During `/pipeline-setup`, answer "yes" when asked about CI Watch (Step 6c). Setup checks that your platform CLI is configured and authenticated, asks for your preferred max retries, and sets the config values.
+
+If you already ran setup, re-run `/pipeline-setup` to be offered CI Watch.
+
+### Timeout behavior
+
+If CI runs for more than 30 minutes without completing, Eva asks whether you want to keep waiting or abandon the watch. If you abandon, Eva gives you a direct link to check CI status manually.
+
+### Retry exhaustion
+
+After the configured number of fix attempts (default: 3), CI Watch stops and reports all failure patterns encountered. You take over manually from there.
+
+### Session scope
+
+CI Watch is tied to your current session. If you close the terminal while CI is running, the watch stops. There are no orphan processes or cross-session persistence. Check CI manually on your next session if needed.
+
+### When CI Watch is disabled
+
+When `ci_watch_enabled: false` (the default), CI Watch is completely absent. Ellis pushes and the pipeline ends. No polling, no background processes.
 
 ---
 
