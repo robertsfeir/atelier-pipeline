@@ -59,14 +59,35 @@ path_matches() {
   return 1
 }
 
-# Check if file matches test patterns from config
+# Check if file matches test patterns from config.
+# Patterns are matched as substrings. For patterns starting with /
+# (e.g., /tests/), we also check if the path starts with the pattern
+# sans the leading slash (e.g., tests/) to catch root-level test dirs.
 is_test_file() {
   local file="$1"
   while IFS= read -r pattern; do
     case "$file" in
       *"$pattern"*) return 0 ;;
     esac
+    # Handle root-level paths: /tests/ should also match tests/ at path start
+    if [[ "$pattern" == /* ]]; then
+      local stripped="${pattern#/}"
+      case "$file" in
+        "$stripped"*) return 0 ;;
+      esac
+    fi
   done < <(jq -r '.test_patterns[]' "$CONFIG" 2>/dev/null)
+  return 1
+}
+
+# Check if file is in a colby_blocked_paths prefix
+is_colby_blocked() {
+  local file="$1"
+  while IFS= read -r prefix; do
+    case "$file" in
+      "$prefix"*) return 0 ;;
+    esac
+  done < <(jq -r '.colby_blocked_paths[]' "$CONFIG" 2>/dev/null)
   return 1
 }
 
@@ -79,13 +100,24 @@ case "$AGENT_TYPE" in
     ;;
 
   colby)
-    # Colby has full write access
-    exit 0
+    # Colby can write to most paths but is blocked from docs, CI/CD config,
+    # and infrastructure files (colby_blocked_paths in config)
+    if is_colby_blocked "$FILE_PATH"; then
+      echo "BLOCKED: Colby cannot write to blocked path. Route documentation to Agatha, infrastructure to DevOps. Attempted: $FILE_PATH" >&2
+      exit 2
+    fi
     ;;
 
   roz)
-    # Roz has full write access
-    exit 0
+    # Roz can only write test files (matching test_patterns) and docs/pipeline
+    if path_matches "$FILE_PATH" "$PIPELINE_DIR"; then
+      exit 0
+    fi
+    if is_test_file "$FILE_PATH"; then
+      exit 0
+    fi
+    echo "BLOCKED: Roz can only write test files and $PIPELINE_DIR/. Attempted: $FILE_PATH" >&2
+    exit 2
     ;;
 
   ellis)

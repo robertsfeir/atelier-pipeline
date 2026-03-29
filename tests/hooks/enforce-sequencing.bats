@@ -51,9 +51,12 @@ EOF
   [[ "$output" == *"BLOCKED"* ]]
 }
 
-# ── T-0003-044: Failure -- Ellis with no PIPELINE_STATUS marker ─────
+# ── T-0003-044: Boundary -- Ellis with no PIPELINE_STATUS marker ────
+# No structured marker means no active pipeline -- hook fails open (exit 0).
+# This is intentional: free-form text in pipeline-state.md does not constitute
+# a machine-readable pipeline status. See also T-0013-058 for malformed JSON.
 
-@test "T-0003-044: Ellis invocation with no PIPELINE_STATUS marker exits 2" {
+@test "T-0003-044: Ellis invocation with no PIPELINE_STATUS marker exits 0 (fail-open)" {
   write_pipeline_freeform "Pipeline is running. Phase: review."
 
   cat > "$TEST_TMPDIR/enforcement-config.json" << EOF
@@ -65,13 +68,15 @@ EOF
   local input
   input=$(build_agent_input "ellis")
   run run_hook_with_input "enforce-sequencing.sh" "$input"
-  [ "$status" -eq 2 ]
-  [[ "$output" == *"BLOCKED"* ]]
+  [ "$status" -eq 0 ]
 }
 
-# ── T-0003-045: Failure -- Ellis with malformed JSON ────────────────
+# ── T-0003-045: Boundary -- Ellis with malformed JSON ───────────────
+# Malformed JSON in PIPELINE_STATUS cannot be parsed, so parse_pipeline_status
+# returns empty. No parseable phase means no active pipeline -- fail-open.
+# Consistent with T-0013-058.
 
-@test "T-0003-045: Ellis invocation with malformed JSON in PIPELINE_STATUS exits 2" {
+@test "T-0003-045: Ellis invocation with malformed JSON in PIPELINE_STATUS exits 0 (fail-open)" {
   cat > "$TEST_TMPDIR/docs/pipeline/pipeline-state.md" << 'EOF'
 # Pipeline State
 
@@ -87,8 +92,7 @@ EOF
   local input
   input=$(build_agent_input "ellis")
   run run_hook_with_input "enforce-sequencing.sh" "$input"
-  [ "$status" -eq 2 ]
-  [[ "$output" == *"BLOCKED"* ]]
+  [ "$status" -eq 0 ]
 }
 
 # ── T-0003-046: Boundary -- Agatha during build phase ───────────────
@@ -142,9 +146,12 @@ EOF
   [ "$status" -eq 0 ]
 }
 
-# ── T-0003-057: Regression -- free-form text doesn't satisfy gate ───
+# ── T-0003-057: Boundary -- free-form text fails open ───────────────
+# Free-form text like "roz passed QA" has no structured PIPELINE_STATUS
+# marker, so the hook treats it as no active pipeline -- fail-open (exit 0).
+# The gate requires the machine-readable marker, not prose.
 
-@test "T-0003-057: free-form text 'roz passed QA' does NOT satisfy the Ellis gate" {
+@test "T-0003-057: free-form text 'roz passed QA' does NOT satisfy the Ellis gate but fails open" {
   write_pipeline_freeform "roz passed QA with flying colors. Everything looks great."
 
   cat > "$TEST_TMPDIR/enforcement-config.json" << EOF
@@ -156,8 +163,7 @@ EOF
   local input
   input=$(build_agent_input "ellis")
   run run_hook_with_input "enforce-sequencing.sh" "$input"
-  [ "$status" -eq 2 ]
-  [[ "$output" == *"BLOCKED"* ]]
+  [ "$status" -eq 0 ]
 }
 
 # ═══════════════════════════════════════════════════════════════════════
