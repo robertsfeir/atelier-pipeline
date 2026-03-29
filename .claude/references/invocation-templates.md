@@ -5,7 +5,7 @@
   docs/product   = directory for product specs (default: docs/product/)
   docs/ux         = directory for UX design docs (default: docs/ux/)
   docs/architecture    = directory for ADR files (default: docs/architecture/)
-  source/        = feature directory pattern (e.g., src/features/, app/domains/)
+          = feature directory pattern (e.g., src/features/, app/domains/)
   tests/            = test directory pattern (e.g., tests/, __tests__/, spec/)
      = command for rapid inner-loop tests (e.g., npm run test:fast)
   bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs        = command to run full test suite (e.g., npx vitest run, npm test)
@@ -102,7 +102,7 @@ Research Brief (Large pipeline):
 <read>docs/product/FEATURE.md, docs/ux/FEATURE-ux.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <constraints>
-- Real components in source//feature-name/ using existing component library
+- Real components in /feature-name/ using existing component library
 - Wire to mock data hook, not API calls
 - Implement all states from Sable's doc (empty, loading, populated, error, overflow)
 - Add route and nav item. No backend, no tests.

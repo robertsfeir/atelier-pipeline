@@ -1,6 +1,6 @@
 # Atelier Pipeline -- Technical Reference
 
-Version: 3.4.0
+Version: 3.6.0
 
 This document is the comprehensive technical reference for the atelier-pipeline Claude Code plugin. It covers plugin architecture, agent system design, orchestration logic, brain infrastructure, and customization points. For usage-oriented documentation, see [the user guide](user-guide.md).
 
@@ -25,7 +25,12 @@ This document is the comprehensive technical reference for the atelier-pipeline 
 15. [Setup and Install System](#setup-and-install-system)
 16. [Branching Strategy Variants](#branching-strategy-variants)
 17. [Enforcement Hooks](#enforcement-hooks)
-18. [Customization Points](#customization-points)
+18. [Sentinel Security Agent](#sentinel-security-agent)
+19. [Agent Teams](#agent-teams)
+20. [Agent Discovery](#agent-discovery)
+21. [Observation Masking and Context Hygiene](#observation-masking-and-context-hygiene)
+22. [Compaction API Integration](#compaction-api-integration)
+23. [Customization Points](#customization-points)
 
 ---
 
@@ -43,7 +48,7 @@ The plugin itself lives in the Claude Code plugin directory (typically `~/.claud
 ```
 atelier-pipeline/                         # Plugin root (CLAUDE_PLUGIN_ROOT)
   .claude-plugin/
-    plugin.json                           # Plugin metadata, hooks, version (3.4.0)
+    plugin.json                           # Plugin metadata, hooks, version (3.6.0)
   source/                                 # Template files -- copied to target project
     rules/
       default-persona.md
@@ -53,7 +58,7 @@ atelier-pipeline/                         # Plugin root (CLAUDE_PLUGIN_ROOT)
     agents/
       cal.md, colby.md, roz.md, robert.md,
       sable.md, investigator.md, distillator.md,
-      ellis.md, agatha.md
+      ellis.md, agatha.md, sentinel.md
     commands/
       pm.md, ux.md, architect.md, debug.md,
       pipeline.md, devops.md, docs.md
@@ -271,6 +276,7 @@ Agent persona files use `disallowedTools` (denylist) in their frontmatter rather
 | **Agatha** (subagent) | Documentation -- writing | Subagent | Read, Write, Edit, MultiEdit, Grep, Glob, Bash | Documentation files | Reads: prior doc reasoning, drift patterns. Writes: doc update reasoning, gap findings. | Haiku (reference docs), Sonnet (conceptual docs) |
 | **Ellis** | Commit and Changelog Manager | Subagent | Read, Write, Edit, Glob, Grep, Bash | Git operations, changelog | N/A | Sonnet (fixed) |
 | **Distillator** | Lossless Compression Engine | Subagent | Read, Glob, Grep, Bash | **None** (read-only, output returned to Eva) | **None** | Haiku (fixed) |
+| **Sentinel** | Security Audit (opt-in) | Subagent | Read, Glob, Grep, Bash + Semgrep MCP (`semgrep_scan`, `semgrep_findings`) | **None** (read-only) | **None** -- Eva captures findings post-review. | Opus (fixed) |
 
 ### Forbidden Actions by Agent
 
@@ -284,6 +290,7 @@ Agent persona files use `disallowedTools` (denylist) in their frontmatter rather
 | **Roz** | Write to non-test files. Approve failing code. Skip checks. Trust self-reported coverage. Assert what code currently does when it contradicts domain intent. |
 | **Poirot** | Read spec/ADR/product/UX docs. Ask for context. Write/Edit anything. Produce fewer than 5 findings without HALT. Write prose paragraphs. |
 | **Distillator** | Drop decisions, rejected alternatives, or scope boundaries. Editorialize. Produce prose paragraphs. Modify source files. |
+| **Sentinel** | Read spec/ADR/UX docs. Write/Edit anything. Report findings from unchanged code (must filter to diff only). Classify pre-existing issues as new findings. Touch brain directly (Eva captures findings). |
 | **Ellis** | Commit without QA passing. Use generic commit messages. Commit without user approval. Use `git add -A` or `git add .`. |
 
 ### Cal: ADR Production Requirements (v2.4)
@@ -345,9 +352,12 @@ Eva runs this sequence on every new session:
 1. Read `docs/pipeline/pipeline-state.md` -- detect in-progress pipeline
 2. Read `docs/pipeline/context-brief.md` -- verify it matches pipeline-state's feature (stale = reset)
 3. Scan `docs/pipeline/error-patterns.md` -- note entries with recurrence count >= 3 for WARN injection
+3b. Read branching strategy from `.claude/pipeline-config.json`. Announce strategy.
+3c. Discover custom agents -- scan `.claude/agents/` for non-core persona files. Compare against core agent constant (cal, colby, roz, ellis, agatha, robert, sable, investigator, distillator). Announce discovered agents.
+3d. Detect Agent Teams availability -- read `agent_teams_enabled` from config. If `true`, check `CLAUDE_AGENT_TEAMS` env var. Both must pass for `agent_teams_available: true`.
 4. Brain health check -- call `atelier_stats`. Two gates: tool available? returns `brain_enabled: true`? Both pass = `brain_available: true`
-5. Brain context retrieval (if available) -- call `agent_search` with query from current feature area
-6. Announce session state to user
+5. Brain context retrieval (if available) -- call `agent_search` with query from current feature area. Also search for seed thoughts matching current feature.
+6. Announce session state to user (including brain status, custom agent count, Agent Teams status)
 
 ### Phase Sizing
 
@@ -382,14 +392,14 @@ When no pipeline is active, Eva classifies every user message against the intent
 - User says "stop" or "hold"
 - After Roz's diagnosis on a user-reported bug (user must approve fix approach)
 
-### Mandatory Gates (never skippable, same severity as Eva writing code)
+### Mandatory Gates (12 gates, never skippable, same severity as Eva writing code)
 
 1. Roz verifies every Colby output
 2. Ellis commits (Eva never runs git on code)
-3. Full test suite between work units
+3. Full test suite between work units (Roz runs the suite, not Eva -- Eva running tests is the same class of violation as Eva writing code)
 4. Roz investigates user-reported bugs (Eva does not)
-5. Poirot blind-reviews every Colby output (parallel with Roz)
-6. Distillator compresses upstream artifacts when >5K tokens
+5. Poirot blind-reviews every Colby output (parallel with Roz). When `sentinel_enabled: true`, Sentinel also runs in parallel scanning changed files with Semgrep MCP.
+6. Distillator compresses upstream artifacts when >5K tokens (within-session tool outputs use observation masking instead)
 7. Robert-subagent reviews at review juncture (Medium/Large)
 8. Sable-subagent verifies every mockup before UAT
 9. Agatha writes docs after final Roz sweep, not during build
@@ -841,15 +851,17 @@ Eva manages context aggressively to prevent context window exhaustion:
 
 Between major phases, subagent sessions start fresh. Within Colby+Roz interleaving, each unit is a separate subagent invocation with fresh context. Eva never carries Roz reports in her context -- she reads the verdict (PASS/FAIL + blockers), not the full report.
 
-### Context Cleanup Advisory
+### Context Cleanup Advisory (v3.6)
 
 Server-side compaction (Compaction API) manages Eva's context window automatically during long pipeline sessions. Eva no longer counts agent handoffs or estimates context usage percentage -- the Compaction API handles context management transparently.
+
+Within a session, Eva uses **observation masking** as the primary context hygiene mechanism: superseded tool outputs are replaced with structured placeholders containing re-read commands. This is mechanical substitution, not intelligent compression. Distillator is reserved for structured document compression at phase boundaries. See the [Observation Masking and Context Hygiene](#observation-masking-and-context-hygiene) section for details.
 
 Eva still suggests a fresh session when response quality visibly degrades (repetitive, contradictory, or missing obvious pipeline state) or when a pipeline spans multiple days. This is a quality-based signal, not a count. Pipeline state is preserved in `docs/pipeline/pipeline-state.md` and `docs/pipeline/context-brief.md` -- Eva resumes exactly where you left off. This is advisory -- Eva never forces a session break. The user decides.
 
 Path-scoped rules (`pipeline-orchestration.md`, `pipeline-models.md`) survive compaction because Claude Code re-injects them from disk on every turn (ADR-0004 design). Mandatory gates and triage logic are always intact after compaction.
 
-The PreCompact hook (`pre-compact.sh`) appends a timestamped `<!-- COMPACTION: ... -->` marker to `pipeline-state.md` before compaction fires. This marker is visible during debugging -- it signals that context was compacted between phase transitions.
+The PreCompact hook (`pre-compact.sh`) appends a timestamped `<!-- COMPACTION: ... -->` marker to `pipeline-state.md` before compaction fires. This marker is visible during debugging -- it signals that context was compacted between phase transitions. Brain captures provide a secondary recovery path -- decisions, findings, and lessons captured during the pipeline are queryable after compaction via `agent_search`.
 
 ---
 
@@ -861,7 +873,7 @@ The `pipeline-setup` skill is conversational. It:
 
 1. **Gathers project information** one question at a time: tech stack, test framework, test commands, source structure, database patterns, build/deploy commands, coverage thresholds, complexity limits, and branching strategy.
 2. **Reads template files** from `source/` in the plugin directory.
-3. **Copies 40 files** to the target project (27 template files + 3 path-scoped rules + 6 enforcement hooks + 1 branching config + 1 branching variant + settings + version marker), replacing placeholders with project-specific values. The branching strategy variant file is selected from `source/variants/` and installed as `.claude/rules/branch-lifecycle.md`.
+3. **Copies ~40 files** to the target project (27 template files + 3 path-scoped rules + 6 enforcement hooks + 1 branching config + 1 branching variant + settings + version marker), replacing placeholders with project-specific values. The branching strategy variant file is selected from `source/variants/` and installed as `.claude/rules/branch-lifecycle.md`. Optional: Sentinel persona file (`sentinel.md`) if the user enables Sentinel in Step 6a.
 4. **Customizes enforcement hooks** in `.claude/hooks/` -- sets project-specific paths and test commands in `enforcement-config.json`, registers hooks in `.claude/settings.json`, and makes scripts executable.
 5. **Writes version marker** to `.claude/.atelier-version` for update detection.
 6. **Updates `CLAUDE.md`** with a pipeline section.
@@ -947,7 +959,9 @@ The selected strategy is persisted in `.claude/pipeline-config.json`:
   "merge_command": "",
   "environment_branches": [],
   "base_branch": "main",
-  "integration_branch": "main"
+  "integration_branch": "main",
+  "sentinel_enabled": false,
+  "agent_teams_enabled": false
 }
 ```
 
@@ -961,6 +975,8 @@ The selected strategy is persisted in `.claude/pipeline-config.json`:
 | `environment_branches` | GitLab Flow only: list of environment branch names (e.g., `["staging", "production"]`) |
 | `base_branch` | Primary branch name (default: `main`) |
 | `integration_branch` | Branch that receives feature work. Same as `base_branch` for most strategies; `develop` for GitFlow |
+| `sentinel_enabled` | Enable Sentinel security agent. Set by `/pipeline-setup` Step 6a. Default: `false` |
+| `agent_teams_enabled` | Enable Agent Teams parallel wave execution. Set by `/pipeline-setup` Step 6b. Default: `false` |
 
 Eva reads this file during the session boot sequence. Colby reads it to determine branch naming conventions and merge targets. Ellis reads it to determine commit targets.
 
@@ -1002,7 +1018,7 @@ Only these two files are modified during reconfig.
 
 The enforcement hooks are shell scripts registered as Claude Code PreToolUse hooks. They run automatically on every tool invocation and mechanically enforce agent boundaries that persona instructions describe but cannot guarantee. Behavioral guidance tells agents what to do; hooks ensure they cannot do what they should not.
 
-All three scripts require `jq` for JSON parsing. If `jq` is not installed, the hooks degrade gracefully (exit 0, allowing the action) rather than blocking all tool calls.
+The three PreToolUse scripts require `jq` for JSON parsing. If `jq` is not installed, the hooks degrade gracefully (exit 0, allowing the action) rather than blocking all tool calls.
 
 ### The Six Hook Scripts
 
@@ -1131,6 +1147,211 @@ The three PreToolUse hooks exit 0 immediately when `jq` is not installed, when t
 
 ---
 
+## Sentinel Security Agent
+
+### Overview
+
+Sentinel is an opt-in security audit agent backed by Semgrep MCP static analysis (v3.5). It operates under partial information asymmetry: Sentinel receives the diff and Semgrep scan results, but no spec, ADR, or UX doc. It evaluates security independently of what the code was "intended" to do.
+
+**Model:** Opus (fixed). **Pronouns:** they/them.
+
+### Execution Points
+
+Sentinel runs at two points in the pipeline:
+
+1. **Per build unit:** In parallel with Roz QA and Poirot blind review after each Colby build unit (gate 5)
+2. **Review juncture:** In parallel with Roz final sweep, Poirot, Robert-subagent, and Sable-subagent
+
+### Workflow
+
+1. Receives the `git diff` for changed files
+2. Runs `semgrep_scan` on changed files via Semgrep MCP tools
+3. Retrieves structured results via `semgrep_findings`
+4. Cross-references findings against the diff to filter noise from unchanged code
+5. Classifies each finding: BLOCKER (exploitable vulnerability), MUST-FIX (security concern), NIT (hardening suggestion)
+6. Cross-references CWE and OWASP identifiers
+
+### Triage Integration
+
+Sentinel findings are triaged via the triage consensus matrix alongside Roz and Poirot:
+
+| Sentinel | Other Reviewers | Action |
+|----------|----------------|--------|
+| BLOCKER | any | HALT -- Eva verifies finding is not false positive, then treats as Roz BLOCKER |
+| MUST-FIX | Roz PASS, Poirot PASS | SECURITY CONCERN -- queue fix, Colby priority |
+| MUST-FIX | Roz/Poirot also flag | CONVERGENT SECURITY -- high-confidence fix needed |
+
+### Configuration
+
+- **Enable:** `sentinel_enabled: true` in `.claude/pipeline-config.json`
+- **Install:** `/pipeline-setup` Step 6a installs `semgrep-mcp==0.9.0` via pip, copies `sentinel.md`, registers Semgrep MCP in `.mcp.json`
+- **Disable:** When `sentinel_enabled: false`, Sentinel is completely absent. No extra tool calls, no triage column.
+
+### Failure Handling
+
+If Sentinel invocation fails (MCP server down, Semgrep scan error), Eva logs "Sentinel audit skipped: [reason]" and proceeds. Sentinel failure is never a pipeline blocker.
+
+### Brain Integration
+
+Sentinel does not touch the brain directly. Eva captures Sentinel findings post-review via `agent_capture` with `source_agent: 'eva'`, `thought_type: 'insight'` (same pattern as Poirot).
+
+---
+
+## Agent Teams
+
+### Overview
+
+Agent Teams is an experimental feature (v3.5) that enables parallel wave execution during the Colby build phase using Claude Code's Agent Teams runtime. When multiple ADR steps within a wave are independent (no shared files), Eva creates Colby Teammate instances that execute those steps simultaneously.
+
+### Activation (Two Gates)
+
+Both gates must pass for `agent_teams_available: true`:
+
+| Gate | Source | Check |
+|------|--------|-------|
+| Config gate | `.claude/pipeline-config.json` | `agent_teams_enabled: true` (set during `/pipeline-setup` Step 6b) |
+| Environment gate | Shell environment | `CLAUDE_AGENT_TEAMS=1` (Claude Code feature flag) |
+
+Eva checks both gates at session boot (step 3d). If either fails, `agent_teams_available: false` and Eva uses sequential subagent invocation.
+
+### Scope
+
+Agent Teams applies exclusively to Colby build units within a wave. All other agents (Roz, Poirot, Robert, Sable, Ellis, Agatha, Cal, Sentinel, discovered agents) are invoked sequentially.
+
+### Teammate Identity
+
+Teammates are Colby instances. They load Colby's persona from `.claude/agents/colby.md` and match the `colby` case in `enforce-paths.sh` (full write access). No new persona file exists for Teammates.
+
+### Task Lifecycle
+
+1. Eva creates one task per wave unit via `TaskCreate`
+2. Teammate instances pick up tasks and execute build units
+3. Each Teammate marks its task complete via `TaskUpdate`
+4. `TaskCompleted` events fire on Eva (Team Lead). Eva processes them sequentially.
+5. After all Teammates in the wave complete, Eva merges each worktree sequentially (deterministic merge order matches task creation order)
+6. Roz QA + Poirot blind review run per unit after merge (unchanged)
+
+### Worktree Rules
+
+- Worktrees are managed by Claude Code, not by Eva via Bash
+- Merge order is deterministic: task creation order, not completion order
+- Full test suite runs between each Teammate merge (rule 3 applies)
+- Merge conflicts trigger fallback to sequential for the conflicting unit
+
+### Fallback
+
+When `agent_teams_available: false`, Eva falls back to sequential subagent invocation. Pipeline output is identical -- Agent Teams affects execution speed, not correctness.
+
+### Mandatory Gate Notes
+
+- Gate 2 (Ellis commits): Teammates do NOT commit. They execute the build and mark task complete. Eva merges worktrees, then routes to Ellis for per-unit commits.
+- Gate 3 (test suite): Teammates run lint but NOT the full test suite. Roz runs the full suite on the integrated codebase after each merge.
+- Gate 5 (Poirot): Poirot blind-reviews the merged diff per unit, not the Teammate's isolated worktree diff.
+
+---
+
+## Agent Discovery
+
+### Overview
+
+Eva discovers custom agents at session boot (v3.4) by scanning `.claude/agents/` for non-core persona files. Discovered agents are additive only -- they never replace core agent routing.
+
+### Core Agent Constant
+
+The following 9 agents are hardcoded core agents: `cal`, `colby`, `roz`, `ellis`, `agatha`, `robert`, `sable`, `investigator`, `distillator`. Plus `sentinel` when enabled. Any `.md` file in `.claude/agents/` whose YAML frontmatter `name` field does not match one of these names is a discovered agent.
+
+### Discovery Protocol
+
+1. Run `Glob(".claude/agents/*.md")` to list all agent files
+2. Read the YAML frontmatter `name` field from each file
+3. Compare against the core agent constant
+4. For non-core agents, read the `description` field
+5. If brain is available, query `agent_search` for existing routing preferences
+6. Announce: "Discovered N custom agent(s): [name] -- [description]"
+7. On error: log and proceed with core agents only (never blocks boot)
+
+### Routing Rules
+
+- Core agents always have priority in the routing table
+- Discovered agents with no domain overlap are available via explicit name mention only
+- Discovered agents with overlapping domains trigger a one-time conflict prompt per (intent, agent) pair
+- User preference is persisted via brain (`thought_type: 'preference'`) or `context-brief.md`
+
+### Inline Agent Creation
+
+When a user pastes markdown containing an agent definition pattern, Eva recognizes it and offers conversion to a pipeline agent persona file. The conversion follows `.claude/references/xml-prompt-schema.md` tag vocabulary. Name collisions with core agents are rejected. File writing is routed to Colby. Default access is read-only (`disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit`).
+
+---
+
+## Observation Masking and Context Hygiene
+
+### Overview
+
+Observation masking (v3.6) is Eva's primary within-session context hygiene procedure. It replaces superseded tool outputs with structured placeholders while preserving all agent reasoning text verbatim.
+
+**Design principle:** Mechanical substitution, not intelligent compression. Replacing an old grep result with a placeholder requires no judgment.
+
+### Never Mask (preserved verbatim)
+
+1. All agent reasoning, analysis, decisions, and conclusions (any text an agent produced as output, not tool output)
+2. The most recent instance of each unique file read (keyed by file path)
+3. The most recent Bash output for each distinct command
+4. The most recent Grep result for each distinct query
+5. Any tool output referenced in an active BLOCKER or MUST-FIX finding
+6. Content of `pipeline-state.md` and `context-brief.md` (always-live state)
+
+### Mask (replace with placeholder)
+
+1. File read outputs superseded by a more recent read of the same path
+2. Tool outputs from completed pipeline phases
+3. Verbose Bash outputs (build logs, test suite outputs) after Eva has extracted the verdict
+4. Git diff outputs after Roz and Poirot have completed their review of that unit
+
+### Placeholder Format
+
+```
+[masked: {tool} {target}, {size} lines, turn {N}. Re-read: {recovery_command}]
+```
+
+### Scope Change: Distillator vs. Observation Masking
+
+| Context type | Mechanism | When |
+|-------------|-----------|------|
+| Within-session tool outputs (file reads, grep, bash) | Observation masking | Before each subagent invocation and at phase transitions |
+| Cross-phase structured documents (spec, UX doc, ADR) | Distillator compression | At phase boundaries when documents exceed ~5K tokens |
+
+Distillator is reserved for structured document compression where lossless preservation of decisions, constraints, and relationships matters. Within-session tool outputs use observation masking.
+
+---
+
+## Compaction API Integration
+
+### Overview
+
+The Compaction API (v3.6) provides server-side context management for Claude Code. When the context window fills, the Compaction API compacts it automatically. The pipeline is designed to survive compaction with zero data loss.
+
+### Survival Mechanisms
+
+| Mechanism | What it protects | How |
+|-----------|-----------------|-----|
+| Path-scoped rules | Mandatory gates, triage logic | Re-injected from disk on every turn (ADR-0004 design) |
+| Pipeline state files | Phase progress, decisions | Written to disk at every phase transition |
+| Brain captures | Decisions, findings, lessons | Queryable after compaction via `agent_search` |
+| PreCompact hook | Compaction visibility | Writes timestamped marker to `pipeline-state.md` before compaction |
+
+### PreCompact Hook (`pre-compact.sh`)
+
+Fires before Claude Code compacts the context window. Appends a timestamped `<!-- COMPACTION: ... -->` HTML comment to `pipeline-state.md`. Lightweight by design: no brain calls, no subagent invocations, no test runs. Exits 0 always -- never blocks compaction.
+
+### Behavioral Changes
+
+- Eva no longer tracks context usage percentage or handoff counts
+- Eva no longer suggests session breaks based on context metrics
+- Eva may still suggest a fresh session based on quality degradation signals (repetitive, contradictory, or missing obvious pipeline state)
+- Agent Teams Teammates have inherently fresh context per task -- no compaction needed
+
+---
+
 ## Customization Points
 
 ### CLAUDE.md Placeholders
@@ -1194,6 +1415,8 @@ When agents work in isolated git worktrees:
 - One worktree merge at a time with test suite between each
 - Worktree agents do not see each other's changes
 
+When Agent Teams is active, worktrees are managed by Claude Code (not by Eva via Bash). Merge order is deterministic (task creation order). Full test suite runs between each Teammate merge. Merge conflicts trigger fallback to sequential for the conflicting unit.
+
 ---
 
 ## Cross-References
@@ -1207,5 +1430,8 @@ When agents work in isolated git worktrees:
 - **Shared agent preamble (installed):** `.claude/references/agent-preamble.md`
 - **QA check procedures (installed):** `.claude/references/qa-checks.md`
 - **Branch/MR procedures (installed):** `.claude/references/branch-mr-mode.md`
+- **Sentinel persona (installed, opt-in):** `.claude/agents/sentinel.md`
 - **Brain schema:** `brain/schema.sql` (in plugin directory)
 - **Plugin metadata:** `.claude-plugin/plugin.json`
+- **ADR-0009:** Sentinel security agent design
+- **ADR-0010:** Agent Teams parallel execution design

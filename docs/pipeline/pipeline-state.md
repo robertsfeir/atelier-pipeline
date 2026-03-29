@@ -1,9 +1,9 @@
 # Pipeline State
 
 ## Active Pipeline
-**Feature:** Context management batch — #10 (observation masking), #21 (Compaction API)
-**Phase:** architecture
-**Started:** 2026-03-29
+**Feature:** (none)
+**Phase:** idle
+**Started:** ---
 
 ## Configuration
 **Branching Strategy:** trunk-based
@@ -30,4 +30,4 @@
 - #13 (DoR/DoD warn hook) closed — already implemented in v3.4.0
 - Previous batch complete: v3.5.1 shipped with #13, #15, #19, #11, Sentinel audit hardening
 
-<!-- PIPELINE_STATUS: {"roz_qa": "PASS", "phase": "build", "timestamp": "2026-03-29T18:00:00Z"} -->
+<!-- PIPELINE_STATUS: {"roz_qa": "PASS", "phase": "idle", "timestamp": "2026-03-29T20:00:00Z"} -->

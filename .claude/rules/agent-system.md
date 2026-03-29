@@ -9,11 +9,11 @@
   docs/CONVENTIONS.md    = path to conventions doc (default: docs/CONVENTIONS.md)
   CHANGELOG.md      = path to changelog (default: CHANGELOG.md)
   bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs        = command to run full test suite (e.g., npx vitest run, npm test, pytest)
-  shellcheck source/hooks/*.sh        = command to run linter (e.g., npm run lint, ruff check)
-  echo "no typecheck configured"   = command to run type checker (e.g., npm run typecheck, mypy .)
-  bats tests/hooks/   = command for rapid inner-loop tests (e.g., npm run test:fast)
+          = command to run linter (e.g., npm run lint, ruff check)
+     = command to run type checker (e.g., npm run typecheck, mypy .)
+     = command for rapid inner-loop tests (e.g., npm run test:fast)
   source/          = project source directory (e.g., src/, lib/, app/)
-  source/        = feature directory pattern (e.g., src/features/, app/domains/)
+          = feature directory pattern (e.g., src/features/, app/domains/)
   /mock/ = route prefix for UAT mockups (default: /mock/)
 -->
 

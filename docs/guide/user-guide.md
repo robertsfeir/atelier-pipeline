@@ -1,6 +1,6 @@
 # Atelier Pipeline -- User Guide
 
-A structured, multi-agent development workflow for Claude Code. Ten specialized agents handle product specs, UX design, architecture, implementation, QA, documentation, and commits -- so you focus on decisions, not process.
+A structured, multi-agent development workflow for Claude Code. Eleven specialized agents handle product specs, UX design, architecture, implementation, QA, security audit, documentation, and commits -- so you focus on decisions, not process.
 
 ---
 
@@ -18,6 +18,10 @@ A structured, multi-agent development workflow for Claude Code. Ten specialized 
 - [State Recovery](#state-recovery)
 - [Customization](#customization)
 - [Branching Strategy](#branching-strategy)
+- [Sentinel Security Agent](#sentinel-security-agent)
+- [Agent Teams](#agent-teams)
+- [Agent Discovery](#agent-discovery)
+- [Context Management](#context-management)
 - [Mechanical Enforcement](#mechanical-enforcement)
 - [Updating the Plugin](#updating-the-plugin)
 - [Troubleshooting](#troubleshooting)
@@ -44,7 +48,7 @@ Open Claude Code in your project directory and run:
 /pipeline-setup
 ```
 
-The setup asks about your project one question at a time: tech stack, test commands, source structure, coverage thresholds, and branching strategy. It then installs 38 files into your project (agent personas, commands, references, enforcement hooks, path-scoped rules, branch lifecycle rules, and state tracking).
+The setup asks about your project one question at a time: tech stack, test commands, source structure, coverage thresholds, and branching strategy. It then installs ~40 files into your project (agent personas, commands, references, enforcement hooks, path-scoped rules, branch lifecycle rules, and state tracking). At the end, it offers optional features: Sentinel security agent, Agent Teams parallel execution, and Atelier Brain persistent memory.
 
 ### 3. Build something
 
@@ -75,7 +79,8 @@ The pipeline gives you a team of specialized agents, each with a clear job. You 
 | **Poirot** | Blind Investigator | Reviews code diffs without seeing the spec -- catches issues that spec-aware reviewers miss. |
 | **Agatha** | Documentation Specialist | Plans and writes documentation in parallel with the build. |
 | **Ellis** | Commit Manager | Creates atomic commits with Conventional Commits format and updates the changelog. |
-| **Distillator** | Compression Engine | Compresses large artifacts between phases to keep agent context windows efficient. |
+| **Distillator** | Compression Engine | Compresses large structured documents (spec, UX doc, ADR) at phase boundaries when they exceed ~5K tokens. |
+| **Sentinel** | Security Auditor (opt-in) | Scans changed code for vulnerabilities using Semgrep MCP static analysis. Runs in parallel with Roz and Poirot. |
 
 ### The flow
 
@@ -91,8 +96,8 @@ Your idea
   -> Cal architects the solution (ADR + test spec)
   -> Roz reviews the test spec
   -> Roz writes test assertions
-  -> Colby builds + Roz reviews each step           (interleaved)
-  -> Roz final sweep + Poirot blind review + Robert + Sable   (parallel)
+  -> Colby builds + Roz reviews + Poirot + Sentinel  (interleaved)
+  -> Roz final sweep + Poirot + Robert + Sable + Sentinel     (parallel review juncture)
   -> Agatha writes/updates docs
   -> Robert verifies docs match the spec
   -> Ellis commits everything atomically
@@ -270,7 +275,7 @@ Colby and Roz work in lockstep. Each ADR step is a work unit:
 
 This prevents a bad pattern in step 2 from spreading to steps 3 through 6.
 
-After all steps pass, Roz does a final sweep to catch cross-step integration issues. Poirot independently reviews the full diff. Robert verifies the implementation matches the spec. On large features, Sable verifies the implementation matches her UX doc.
+After all steps pass, Roz does a final sweep to catch cross-step integration issues. Poirot independently reviews the full diff. When Sentinel is enabled, it scans all changed files for security vulnerabilities. Robert verifies the implementation matches the spec. On large features, Sable verifies the implementation matches her UX doc.
 
 ### Commit
 
@@ -387,7 +392,7 @@ Several capabilities improve pipeline velocity and institutional memory:
 
 **Eva: state diffing.** Every update to `pipeline-state.md` now includes a "Changes since last state" section listing new files created, files modified, requirements closed, and the agent that produced the change. This makes state transitions auditable across sessions.
 
-**Eva: context cleanup advisory.** Server-side compaction (Compaction API) manages context automatically during long pipeline sessions. Eva no longer suggests session breaks based on handoff counts. Eva may still suggest a fresh session when response quality visibly degrades or when a pipeline spans multiple days. Pipeline state is preserved in `docs/pipeline/pipeline-state.md` and `docs/pipeline/context-brief.md` -- Eva resumes exactly where you left off. This is advisory -- Eva never forces a session break. Path-scoped rules (`pipeline-orchestration.md`, `pipeline-models.md`) reload automatically after compaction -- they are tied to file access, not conversation history (see ADR-0004).
+**Eva: context cleanup advisory.** Server-side compaction (Compaction API) manages context automatically during long pipeline sessions. Eva no longer suggests session breaks based on handoff counts. Eva may still suggest a fresh session when response quality visibly degrades or when a pipeline spans multiple days. Pipeline state is preserved in `docs/pipeline/pipeline-state.md` and `docs/pipeline/context-brief.md` -- Eva resumes exactly where you left off. This is advisory -- Eva never forces a session break. Path-scoped rules (`pipeline-orchestration.md`, `pipeline-models.md`) reload automatically after compaction -- they are tied to file access, not conversation history (see ADR-0004). See [Context Management](#context-management) for details on observation masking and the Compaction API.
 
 **Cal: anti-goals.** Cal explicitly lists three things the design will NOT address before beginning architecture. Anti-goals draw a hard boundary around scope and prevent scope creep during implementation.
 
@@ -403,6 +408,30 @@ Several capabilities improve pipeline velocity and institutional memory:
 
 **Colby: minimal implementation.** Colby implements the minimum code necessary to pass the current failing test. Helper functions, utility abstractions, and convenience wrappers not required by the ADR step or failing test are noted in the DoD but not built.
 
+### New in v3.6
+
+**Compaction API integration.** Server-side context management replaces manual context hygiene. Eva no longer counts agent handoffs or suggests session breaks based on context usage. A `PreCompact` hook (`pre-compact.sh`) writes a timestamped marker to `pipeline-state.md` before compaction fires, so Eva's boot sequence can detect that compaction occurred. Path-scoped rules (`pipeline-orchestration.md`, `pipeline-models.md`) survive compaction automatically because Claude Code re-injects them from disk on every turn.
+
+**Observation masking.** Eva's primary within-session context hygiene procedure. Superseded tool outputs (file reads, grep results, bash outputs) are replaced with structured placeholders that include a re-read command. This is mechanical substitution, not intelligent compression. Distillator is now reserved for structured document compression at phase boundaries where lossless preservation of decisions, constraints, and relationships matters.
+
+**Context cleanup advisory updated.** Eva no longer estimates context usage percentage. For very large pipelines (20+ agent handoffs), Eva may still suggest a fresh session if response quality visibly degrades, but this is a quality-based signal, not a count.
+
+### New in v3.5
+
+**Sentinel security agent (opt-in).** A Semgrep MCP-backed security audit agent. Sentinel runs in parallel with Roz and Poirot after each Colby build unit, scanning changed files for vulnerabilities, injection risks, and security misconfigurations. Findings are cross-referenced with CWE/OWASP classifications. Enable during `/pipeline-setup` (Step 6a) or add `sentinel.md` and set `sentinel_enabled: true` in `pipeline-config.json`. Sentinel failure never blocks the pipeline. See [Sentinel Security Agent](#sentinel-security-agent).
+
+**Agent Teams (experimental).** Parallel wave execution using Claude Code's Agent Teams feature. When enabled, Eva creates Colby Teammate instances that execute independent build units within a wave simultaneously. Two gates must pass: `agent_teams_enabled: true` in pipeline config and `CLAUDE_AGENT_TEAMS=1` in the environment. Falls back to sequential execution transparently when either gate fails. See [Agent Teams](#agent-teams).
+
+**Security hardening.** Word boundary regex in enforcement hooks prevents false-positive blocks. Semgrep MCP version pinning (`semgrep-mcp==0.9.0`) for reproducible security scans.
+
+### New in v3.4
+
+**DoR/DoD warn hook.** A `SubagentStop` hook (`warn-dor-dod.sh`) warns when Colby or Roz subagent output is missing DoR/DoD sections. Advisory only -- never blocks.
+
+**Agent discovery.** Eva discovers custom agents at session boot by scanning `.claude/agents/` for non-core persona files. Discovered agents are available via explicit name mention and can be routed to automatically after user consent for overlapping domains. See [Agent Discovery](#agent-discovery).
+
+**Eva test blocking.** `enforce-git.sh` blocks test commands from the main thread. Gate 3 rewritten: Roz runs the full test suite, not Eva. Eva running tests is the same class of violation as Eva writing code.
+
 ### New in v3.1
 
 **Configurable branching strategy.** During `/pipeline-setup`, you now choose a branching strategy: Trunk-Based Development, GitHub Flow, GitLab Flow, or GitFlow. The selected strategy installs tailored branch lifecycle rules that govern how Colby creates branches, how Ellis commits, and how Eva handles cleanup after merges. Existing projects default to trunk-based with no config change required. See [Branching Strategy](#branching-strategy) for details.
@@ -410,6 +439,134 @@ Several capabilities improve pipeline velocity and institutional memory:
 **Lightweight reconfig.** You can change your branching strategy without re-running the full setup. Ask Eva to "change branching strategy" -- she updates two files and announces the change. No pipeline restart needed.
 
 **Platform CLI detection.** For strategies that use merge requests, setup detects your platform from the git remote URL and checks whether the required CLI (`gh` or `glab`) is installed.
+
+---
+
+## Sentinel Security Agent
+
+Sentinel is an opt-in security audit agent backed by Semgrep MCP static analysis. It operates under partial information asymmetry: Sentinel receives the code diff and Semgrep scan results, but no spec, ADR, or UX doc. It evaluates security independently of what the code was "intended" to do.
+
+### When Sentinel runs
+
+- **Per build unit:** In parallel with Roz QA and Poirot blind review after each Colby build unit
+- **Review juncture:** In parallel with Roz final sweep, Poirot, Robert, and Sable
+
+### How Sentinel works
+
+1. Receives the `git diff` for changed files
+2. Runs `semgrep_scan` on those files via Semgrep MCP
+3. Retrieves structured findings via `semgrep_findings`
+4. Filters noise: only reports findings in code that was added or modified (ignores pre-existing issues)
+5. Classifies each finding by severity: BLOCKER (exploitable vulnerability), MUST-FIX (security concern), or NIT (hardening suggestion)
+6. Cross-references CWE and OWASP identifiers for each finding
+
+### Triage
+
+Eva triages Sentinel findings alongside Roz and Poirot using the triage consensus matrix:
+
+- **Sentinel BLOCKER:** Pipeline halts (same as Roz BLOCKER). Eva verifies the finding is not a false positive before halting.
+- **Sentinel MUST-FIX + Roz/Poirot PASS:** Security concern that other reviewers missed. Queued for Colby with priority.
+- **Sentinel MUST-FIX + Roz MUST-FIX:** Convergent security finding. High-confidence fix needed.
+
+### Enabling Sentinel
+
+During `/pipeline-setup`, answer "yes" when asked about the Sentinel security agent. Setup installs `semgrep-mcp==0.9.0` via pip, copies the Sentinel persona file, registers Semgrep MCP in your project's `.mcp.json`, and sets `sentinel_enabled: true` in `pipeline-config.json`.
+
+**Requirements:** Python and pip (for Semgrep MCP installation).
+
+### When Sentinel is disabled
+
+When `sentinel_enabled: false`, Sentinel is completely absent. The triage consensus matrix drops the Sentinel column and behaves as it did before Sentinel was added. No performance cost, no extra tool calls.
+
+---
+
+## Agent Teams
+
+Agent Teams is an experimental feature that enables parallel wave execution during the Colby build phase. When multiple ADR steps are independent (no shared files), Eva normally executes them sequentially. With Agent Teams enabled, Eva creates Colby Teammate instances that execute those steps simultaneously.
+
+### How it works
+
+1. Eva groups independent ADR steps into waves (existing wave extraction algorithm)
+2. For each wave with multiple units, Eva creates one task per unit via `TaskCreate`
+3. Teammate instances (Colby clones) pick up tasks and execute build units in parallel
+4. Each Teammate marks its task complete when done
+5. Eva merges each Teammate's worktree sequentially (deterministic merge order)
+6. Roz QA + Poirot blind review run per unit after merge (unchanged)
+
+### Activation (two gates)
+
+| Gate | How to set | What it means |
+|------|-----------|--------------|
+| Config gate | `"agent_teams_enabled": true` in `.claude/pipeline-config.json` | Pipeline-level opt-in. Set during `/pipeline-setup` (Step 6b). |
+| Environment gate | `export CLAUDE_AGENT_TEAMS=1` | Claude Code feature flag that enables the Agent Teams runtime. |
+
+Both gates must pass. If either fails, the pipeline falls back to sequential execution with zero behavioral change.
+
+### What changes with Agent Teams
+
+- Build units within a wave execute in parallel (faster)
+- Merge order is deterministic (task creation order, not completion order)
+- Full test suite runs between each Teammate merge (quality unchanged)
+- Merge conflicts trigger fallback to sequential for the conflicting unit
+
+### What does not change
+
+- Roz, Poirot, Robert, Sable, Ellis, Agatha, and all other agents are invoked sequentially
+- All 12 mandatory gates are preserved
+- Pipeline output is identical -- Agent Teams affects speed, not correctness
+
+---
+
+## Agent Discovery
+
+Eva discovers custom agents at session boot by scanning `.claude/agents/` for non-core persona files. This lets you extend the pipeline with project-specific agents without modifying core pipeline files.
+
+### Adding a custom agent
+
+1. Create a persona file at `.claude/agents/your-agent-name.md` with YAML frontmatter (`name`, `description`, `disallowedTools`)
+2. Restart Claude Code or start a new session
+3. Eva announces the discovery: "Discovered 1 custom agent(s): your-agent-name -- [description]."
+
+### Routing
+
+- Custom agents with **no domain overlap** with core agents are available only via explicit name mention (e.g., "ask your-agent-name about this")
+- Custom agents with **overlapping domains** trigger a conflict prompt: "This could go to [core agent] (core) or [your-agent-name] (custom). Which do you prefer?" Your choice is remembered for the session (and persisted in the brain if available)
+- Core agents always have routing priority. Custom agents never shadow core agents without explicit consent.
+
+### Inline agent creation
+
+If you paste markdown containing an agent definition pattern (role description, behavioral rules, tool lists, constraints), Eva recognizes it and offers to convert it to a pipeline agent persona file. She handles the conversion, name collision checks, and file writing (via Colby).
+
+---
+
+## Context Management
+
+The pipeline uses three complementary strategies to manage context window usage during long sessions.
+
+### Observation masking (within-session, v3.6)
+
+Eva's primary context hygiene procedure. Before each subagent invocation and at phase transitions, Eva replaces superseded tool outputs with structured placeholders:
+
+```
+[masked: Read src/api/routes.ts, 142 lines, turn 5. Re-read: Read src/api/routes.ts]
+```
+
+**Never masked:** Agent reasoning and analysis text, the most recent read of each file, active BLOCKER/MUST-FIX findings, pipeline state files.
+
+**Always masked:** Superseded file reads (older reads of the same file), tool outputs from completed phases, verbose build/test logs after verdict extraction, git diffs after review completion.
+
+### Distillator compression (cross-phase)
+
+When upstream documents (spec, UX doc, ADR) exceed ~5K tokens at a phase boundary, Eva invokes Distillator for lossless compression. Distillator preserves all decisions, constraints, relationships, and scope boundaries while reducing token count. This is reserved for structured documents -- tool outputs use observation masking instead.
+
+### Compaction API (server-side, v3.6)
+
+Claude Code's server-side context management handles automatic compaction when the context window fills. The pipeline is designed to survive compaction:
+
+- **Path-scoped rules** (`pipeline-orchestration.md`, `pipeline-models.md`) are re-injected from disk on every turn, so mandatory gates and triage logic survive compaction intact
+- **Pipeline state** is written to disk at every phase transition, so Eva can recover from the last recorded phase
+- **Brain captures** provide a secondary recovery path for decisions and findings
+- **PreCompact hook** writes a timestamped marker to `pipeline-state.md` before compaction fires
 
 ---
 
@@ -668,7 +825,7 @@ Eva reads this file at session start. Agents reference it to determine branch na
 
 ## Mechanical Enforcement
 
-The pipeline does not rely solely on instructions to keep agents in their lanes. Seven shell-script hooks run automatically on every tool call, blocking actions that would violate agent boundaries before they happen.
+The pipeline does not rely solely on instructions to keep agents in their lanes. Six shell-script hooks run automatically on tool calls, blocking actions that would violate agent boundaries before they happen.
 
 ### What gets blocked
 
@@ -679,6 +836,9 @@ The pipeline does not rely solely on instructions to keep agents in their lanes.
 | Eva runs `git commit` directly | "BLOCKED: Eva cannot run git write operations directly. Route commits through Ellis." |
 | Eva invokes Ellis during an active pipeline before Roz passes QA | "BLOCKED: Cannot invoke Ellis — pipeline is active (phase: build) but no Roz QA PASS found. Roz must verify Colby's output before committing." |
 | Eva invokes Agatha during the build phase | "BLOCKED: Cannot invoke Agatha during the build phase. Agatha writes docs after Roz's final sweep against verified code." |
+| Eva runs `npm test` directly | "BLOCKED: Eva cannot run test commands directly. Route test execution through Roz." |
+| Colby or Roz output is missing DoR/DoD | Advisory warning: "Output may be missing DoR/DoD sections" (does not block) |
+
 When an agent sees a block message, it adjusts: Eva routes the work to the correct agent, or waits until the prerequisite gate is satisfied. You do not need to intervene.
 
 ### What you need to know
@@ -785,47 +945,51 @@ instructions to install the pipeline in this project
 ```
 your-project/
   .claude/
-    rules/                       # Always loaded by Claude Code
-      default-persona.md         # Eva orchestrator persona
-      agent-system.md            # Orchestration rules and routing
-      pipeline-orchestration.md  # Path-scoped: mandatory gates, triage, wave execution (loads on docs/pipeline/**)
-      pipeline-models.md         # Path-scoped: model selection tables, Micro tier, complexity classifier (loads on docs/pipeline/**)
-      branch-lifecycle.md        # Path-scoped: branching strategy rules (selected variant only)
-    agents/                      # Loaded when subagents are invoked
-      cal.md                     # Architect
-      colby.md                   # Engineer
-      roz.md                     # QA
-      robert.md                  # Product reviewer
-      sable.md                   # UX reviewer
-      investigator.md            # Poirot (blind investigator)
-      distillator.md             # Compression engine
-      ellis.md                   # Commit manager
-      agatha.md                  # Agatha (documentation)
-    commands/                    # Loaded on slash command
+    .atelier-version                # Plugin version marker for update detection
+    rules/                          # Always loaded by Claude Code
+      default-persona.md            # Eva orchestrator persona
+      agent-system.md               # Orchestration rules and routing
+      pipeline-orchestration.md     # Path-scoped: mandatory gates, triage, wave execution
+      pipeline-models.md            # Path-scoped: model selection tables, Micro tier
+      branch-lifecycle.md           # Path-scoped: branching strategy rules (selected variant)
+    agents/                         # Loaded when subagents are invoked
+      cal.md                        # Architect
+      colby.md                      # Engineer
+      roz.md                        # QA
+      robert.md                     # Product reviewer
+      sable.md                      # UX reviewer
+      investigator.md               # Poirot (blind investigator)
+      distillator.md                # Compression engine
+      ellis.md                      # Commit manager
+      agatha.md                     # Documentation
+      sentinel.md                   # Security audit (opt-in)
+    commands/                       # Loaded on slash command
       pm.md, ux.md, architect.md, debug.md,
       pipeline.md, devops.md, docs.md
-    references/                  # Loaded by agents on demand
-      dor-dod.md                 # Quality framework
-      retro-lessons.md           # Shared lessons from past runs
-      invocation-templates.md    # Subagent invocation examples
-      pipeline-operations.md     # Operational procedures
-      agent-preamble.md          # Shared agent required actions
-      qa-checks.md               # Roz QA check procedures
-      branch-mr-mode.md          # Colby branch/MR procedures
-    hooks/                       # Mechanical enforcement (PreToolUse)
-      enforce-paths.sh           # Blocks Write/Edit outside agent's allowed paths
-      enforce-sequencing.sh      # Blocks out-of-order agent invocations
-      enforce-git.sh             # Blocks git write ops from main thread
-      enforcement-config.json    # Project-specific paths and rules
-    pipeline-config.json           # Branching strategy configuration
-    settings.json                # Hook registration
+    references/                     # Loaded by agents on demand
+      dor-dod.md                    # Quality framework
+      retro-lessons.md              # Shared lessons from past runs
+      invocation-templates.md       # Subagent invocation examples
+      pipeline-operations.md        # Operational procedures, observation masking
+      agent-preamble.md             # Shared agent required actions
+      qa-checks.md                  # Roz QA check procedures
+      branch-mr-mode.md             # Colby branch/MR procedures
+    hooks/                          # Mechanical enforcement (PreToolUse + SubagentStop + PreCompact)
+      enforce-paths.sh              # Blocks Write/Edit outside agent's allowed paths
+      enforce-sequencing.sh         # Blocks out-of-order agent invocations
+      enforce-git.sh                # Blocks git write ops and test commands from main thread
+      warn-dor-dod.sh               # Warns on missing DoR/DoD sections (advisory)
+      pre-compact.sh                # Compaction marker for pipeline state preservation
+      enforcement-config.json       # Project-specific paths and rules
+    pipeline-config.json            # Branching strategy, Sentinel, Agent Teams config
+    settings.json                   # Hook registration
   docs/
-    pipeline/                    # Eva reads at session start
-      pipeline-state.md          # Session recovery state
-      context-brief.md           # Cross-session context
-      error-patterns.md          # Error pattern tracking
-      investigation-ledger.md    # Debug hypothesis tracking
-      last-qa-report.md          # Roz's most recent QA report
+    pipeline/                       # Eva reads at session start
+      pipeline-state.md             # Session recovery state
+      context-brief.md              # Cross-session context
+      error-patterns.md             # Error pattern tracking
+      investigation-ledger.md       # Debug hypothesis tracking
+      last-qa-report.md             # Roz's most recent QA report
 ```
 
 ### Agent quick reference
@@ -839,6 +1003,7 @@ your-project/
 | Roz | (via Eva) | Test assertions, QA reports | ADR test spec + Colby's code |
 | Colby | (via Eva) | Implementation code, mockups | ADR + Roz's tests |
 | Poirot | (via Eva) | Blind diff review | Code diff only (no spec, no ADR) |
+| Sentinel | (via Eva, opt-in) | Security audit | Code diff + Semgrep scan results |
 | Ellis | (via Eva) | Git commit + changelog entry | All verified code + docs |
 
 ### Quality gates
@@ -850,6 +1015,7 @@ your-project/
 | Roz BLOCKER | Critical code issue (security, data loss, broken functionality) | Pipeline halts. Colby fixes. Roz re-verifies. |
 | Roz MUST-FIX | Non-critical but required fix | Queued. All must be resolved before Ellis commits. |
 | Spec drift | Implementation diverges from spec intent | Hard pause. You decide: update the spec or fix the code. |
+| Security vulnerability | Sentinel finds an exploitable issue (BLOCKER) | Pipeline halts. Eva verifies finding is not false positive. Colby fixes. |
 
 ### Further reading
 

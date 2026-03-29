@@ -310,7 +310,7 @@ Before invoking Robert-skill, Eva determines whether Robert should run in
 assumptions mode (brownfield) or question mode (greenfield). This is mechanical:
 
 1. `ls docs/product/*{feature}*` -- existing spec found? -> assumptions mode
-2. `ls source//*{feature}*` -- existing components found? -> assumptions mode
+2. `ls /*{feature}*` -- existing components found? -> assumptions mode
 3. `agent_search("{feature}")` (if brain available) -- 3+ active thoughts? -> assumptions mode
 4. None of the above -> question mode (greenfield)
 
