@@ -6,5 +6,6 @@
   "merge_command": "",
   "environment_branches": [],
   "base_branch": "main",
-  "integration_branch": "main"
+  "integration_branch": "main",
+  "sentinel_enabled": false
 }

@@ -374,6 +374,31 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 
 </template>
 
+<template id="sentinel-audit">
+
+### Sentinel (Security Audit)
+
+Eva invokes Sentinel at the review juncture and after each Colby build unit
+(when `sentinel_enabled: true` in `pipeline-config.json`).
+
+<task>Security audit of Colby's build output for ADR-NNNN Step N</task>
+
+(Or for the final review juncture: "Security audit -- full review juncture for ADR-NNNN")
+
+<constraints>
+- You receive ONLY the diff and Semgrep scan results. No spec, no ADR, no UX doc, no context. This is by design.
+- Run `semgrep_scan` on changed files. Call `semgrep_findings` for structured results.
+- Cross-reference all findings against the diff -- only report findings in added or modified code.
+- Minimum 3 findings or explicit "clean scan" report with evidence (files scanned, rules matched, scan duration).
+- Include CWE/OWASP references for every BLOCKER and MUST-FIX finding.
+- If Semgrep scan hangs or times out, STOP. Report partial results. Do not retry.
+- Grep codebase to verify whether flagged patterns exist in other files (scope check).
+</constraints>
+
+<output>Security report with findings table (location, severity, category, CWE/OWASP, description, remediation), scan metadata, DoR/DoD sections</output>
+
+</template>
+
 <template id="distillator-compress">
 
 ### Distillator (Compress Between Phases)

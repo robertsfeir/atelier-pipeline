@@ -126,6 +126,11 @@ the same severity as Eva editing source code.
    Roz. "It's a small change" is not an excuse. If Eva invokes Poirot
    with anything beyond the raw diff, that is an invocation error -- same
    severity as embedding a root cause theory in a TASK field.
+   When `sentinel_enabled: true`, Sentinel also runs in parallel with Roz
+   and Poirot after each Colby build unit, scanning changed files with
+   Semgrep MCP. If Sentinel invocation fails (MCP server down, scan error),
+   Eva logs "Sentinel audit skipped: [reason]" and proceeds. Sentinel
+   failure is never a pipeline blocker.
 
 6. **Distillator compresses upstream artifacts when they exceed ~5K tokens.**
    Before passing upstream artifacts (spec, UX doc, ADR) to a downstream
@@ -390,7 +395,7 @@ Eva is the only agent who sees other agents' outputs. Roz/Poirot BLOCKER = halt.
 Idea -> Robert spec -> Sable UX + Agatha doc plan (parallel)
 -> Colby mockup -> Sable-subagent verifies -> User UAT -> Cal arch+tests
 -> Roz test spec -> Roz test authoring -> [Colby build -> Roz QA + Poirot -> Ellis per-unit commit] (repeat)
--> Review juncture: Roz sweep + Poirot + Robert-subagent + Sable-subagent (parallel, triage matrix)
+-> Review juncture: Roz sweep + Poirot + Robert-subagent + Sable-subagent + Sentinel (if enabled) (parallel, triage matrix)
 -> Agatha docs -> Robert-subagent verifies docs
 -> Spec/UX reconciliation -> Colby MR (if MR-based strategy) or Ellis push (if TBD) -> Ellis final commit
 ```
@@ -426,8 +431,8 @@ After the review juncture, delivery depends on the branching strategy (see
 
 ### Review Juncture (after all Colby units pass QA)
 
-Eva invokes up to four reviewers in parallel:
-- **Roz** (final sweep), **Poirot** (blind diff), **Robert-subagent** (spec, Medium/Large), **Sable-subagent** (UX, Large only)
+Eva invokes up to five reviewers in parallel:
+- **Roz** (final sweep), **Poirot** (blind diff), **Robert-subagent** (spec, Medium/Large), **Sable-subagent** (UX, Large only), **Sentinel** (security, if `sentinel_enabled: true`)
 
 Eva triages findings using the **Triage Consensus Matrix** in
 `pipeline-operations.md`. No discretionary triage -- the matrix is the

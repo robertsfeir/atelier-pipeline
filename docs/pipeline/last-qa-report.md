@@ -1,214 +1,228 @@
-# QA Report -- 2026-03-28 (ADR-0008)
+# QA Report -- 2026-03-29 (ADR-0009)
 *Reviewed by Roz*
-
-### Verdict: PASS
 
 PIPELINE_STATUS: {"roz_qa": "PASS"}
 
 ## DoR: Requirements Extracted
 
-| # | Requirement | Source | Notes |
-|---|-------------|--------|-------|
-| R1 | Boot-time discovery scan in default-persona.md step 3c | ADR-0008 Step 1 | Between 3b and 4, uses Glob, non-blocking errors |
-| R2 | Inline creation via paste + Colby write | ADR-0008 Step 3 | Eva converts, Colby writes, user confirms |
-| R3 | Semantic conflict detection | ADR-0008 Step 0, Step 2 | One-time per session, core first |
-| R4 | Brain persistence for routing preferences | ADR-0008 Step 2 | agent_capture with thought_type: preference |
-| R5 | Session-scoped fallback without brain | ADR-0008 Step 2 | context-brief.md under Routing Preferences |
-| R6 | Core agents hardcoded, discovered additive | ADR-0008 Step 0, Step 4 | 9 names, never replace |
-| R7 | XML conversion per schema + preamble reference | ADR-0008 Step 3 | 7 tags in order, agent-preamble.md |
-| R8 | All changes in source/ only | ADR-0008 constraint | Not .claude/ |
-| R9 | No trust scoring | ADR-0008 anti-goal | Quality is user responsibility |
-| R10 | No registry, manifest, or API | ADR-0008 decision | Filesystem IS the registry |
-| R11 | Eva never writes agent files | ADR-0008 constraint, default-persona.md gate | Routes to Colby |
-| R12 | enforce-paths.sh catch-all blocks unknown agents | ADR-0008 blast radius | No changes to hook |
+| # | Requirement | Source |
+|---|-------------|--------|
+| R1 | Sentinel is optional 10th agent, user opts in during /pipeline-setup | ADR-0009 |
+| R2 | Full install chain: pip check, semgrep-mcp install, persona copy, MCP register, config flag | ADR-0009 |
+| R3 | Semgrep MCP backbone: `semgrep_scan`, `semgrep_findings`, `security_check` | ADR-0009 |
+| R4 | Runs at review juncture parallel with Roz, Poirot, Robert, Sable | ADR-0009 |
+| R5 | Read-only: `disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit` | ADR-0009 |
+| R6 | Security BLOCKER = pipeline halt | ADR-0009 |
+| R7 | `pipeline-config.json` gets `sentinel_enabled: false` default | ADR-0009 |
+| R8 | Information asymmetry: diff + scan results only, no spec/ADR/UX | ADR-0009 |
+| R9 | All changes in `source/` and `skills/` only, not `.claude/` | ADR-0009 |
+| R10 | XML format per `xml-prompt-schema.md` tag order | ADR-0009 |
+| R11 | Triage consensus matrix updated with Sentinel column | ADR-0009 |
+| R12 | Invocation template `sentinel-audit` added | ADR-0009 |
+| R13 | Agent system tables updated (subagent + no-skill-tool + phase transitions) | ADR-0009 |
+| R14 | Setup flow after Step 6, before brain offer | ADR-0009 |
+| R15 | Persona in `source/agents/`, installed to `.claude/agents/` by setup | ADR-0009 |
+| R16 | Mechanical enforcement via `enforce-paths.sh` catch-all, hook NOT modified | ADR-0009 |
 
 ### Retro Risks
 
-| Lesson | Risk | Status |
-|--------|------|--------|
-| #003 (Stop hook race condition) | Discovery scan adds latency; errors could block boot | Mitigated: step 3c.7 specifies non-blocking error handling |
-| Behavioral constraints ignored (MEMORY) | Discovered agent XML conversion relies on behavioral guidance | Mitigated: hook catch-all provides mechanical enforcement for read-only default |
+| Lesson | Risk | Verified |
+|--------|------|----------|
+| #003 (Stop hook race) | Sentinel MCP failure could block pipeline | Mitigated: persona and orchestration docs specify graceful degradation |
+| #004 (Hung process retry) | Semgrep scan could hang | Mitigated: persona `<constraints>` includes explicit "STOP, report partial, do not retry" |
+| Behavioral constraints ignored (brain lesson) | Read-only relies on frontmatter alone | Mitigated: `enforce-paths.sh` catch-all confirmed unchanged, covers `sentinel` agent type |
 
 ---
 
-## Tier 1 -- Mechanical Checks
+### Verdict: PASS
+
+---
+
+## Test-by-Test Verification (55 tests)
+
+### Step 0: Sentinel Persona File (11 tests)
+
+| ID | Category | Status | Evidence |
+|----|----------|--------|----------|
+| T-0009-001 | Happy | PASS | Lines 1-8: YAML frontmatter with `name: sentinel`, description mentions Semgrep MCP and security, `disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit` |
+| T-0009-002 | Happy | PASS | Lines 12-22: "You are Sentinel, the Security Audit Agent. Pronouns: they/them." + "You run on the Opus model." |
+| T-0009-003 | Happy | PASS | Lines 24-42: references `.claude/references/agent-preamble.md` steps 1-5; includes scan, retrieve findings, cross-reference diff, classify severity |
+| T-0009-004 | Happy | PASS | Lines 44-96: "Scan Phase" (items 1-4), "Interpret Phase" (items 5-7), "Report Phase" (items 8-9) |
+| T-0009-005 | Failure | PASS | Lines 58-60: "If Semgrep MCP is unavailable...report: 'Sentinel: scan unavailable -- Semgrep MCP not responding. Manual security review recommended.' Do not crash. Do not retry." |
+| T-0009-006 | Failure | PASS | Line 124: "do not read spec files, ADR files, product docs, UX docs, context-brief.md, or pipeline-state.md" |
+| T-0009-007 | Failure | PASS | Line 130: "If Semgrep scan hangs or times out, STOP. Report partial results with what you have. Do not retry. Do not sleep-poll-kill-retry." |
+| T-0009-008 | Happy | PASS | Lines 134-168: full output template with findings table (location, severity, category, CWE/OWASP, description, remediation) + scan metadata |
+| T-0009-009 | Boundary | PASS | Lines 78-87: BLOCKER, MUST-FIX, NIT defined matching pipeline conventions |
+| T-0009-010 | Regression | PASS | `git diff HEAD` shows zero changes to any of the 9 existing agent persona files |
+| T-0009-011 | Happy | PASS | Tag order: identity(12) -> required-actions(24) -> workflow(44) -> examples(98) -> tools(113) -> constraints(123) -> output(134) -- matches `xml-prompt-schema.md` |
+
+### Step 1: Pipeline Config Template (3 tests)
+
+| ID | Category | Status | Evidence |
+|----|----------|--------|----------|
+| T-0009-020 | Happy | PASS | Line 10: `"sentinel_enabled": false` |
+| T-0009-021 | Boundary | PASS | `jq .` parses successfully with all fields present |
+| T-0009-022 | Regression | PASS | Diff shows only addition of `sentinel_enabled` field and trailing comma on `integration_branch` |
+
+### Step 2: Agent System Tables (5 tests)
+
+| ID | Category | Status | Evidence |
+|----|----------|--------|----------|
+| T-0009-030 | Happy | PASS | Line 65: Sentinel row with "Security audit -- Semgrep-backed SAST (opt-in)" and "Read, Glob, Grep, Bash (read-only) + Semgrep MCP tools" |
+| T-0009-031 | Happy | PASS | Line 290: "Sentinel (security audit)" mapped to ".claude/agents/sentinel.md" |
+| T-0009-032 | Happy | PASS | Line 136: review juncture includes "Sentinel (if enabled) (parallel)" |
+| T-0009-033 | Regression | PASS | Diff shows only line additions; no existing rows modified |
+| T-0009-034 | Happy | PASS | Subagent table: "(opt-in)"; phase transitions: "(if enabled)" |
+
+### Step 3: Triage Consensus Matrix (7 tests)
+
+| ID | Category | Status | Evidence |
+|----|----------|--------|----------|
+| T-0009-040 | Happy | PASS | Header: `\| Roz \| Poirot \| Robert \| Sable \| Sentinel \| Action \|` |
+| T-0009-041 | Happy | PASS | BLOCKER row: "any + any + any + any + BLOCKER = HALT" with false positive verification step |
+| T-0009-042 | Happy | PASS | "PASS + PASS + -- + -- + MUST-FIX = SECURITY CONCERN. Queue fix, Colby priority." |
+| T-0009-043 | Happy | PASS | "MUST-FIX + flags issue + -- + -- + MUST-FIX = CONVERGENT SECURITY." |
+| T-0009-044 | Boundary | PASS | All pre-existing rows have `--` in Sentinel column |
+| T-0009-045 | Failure | PASS | "When `sentinel_enabled: false`, the Sentinel column is absent from triage" |
+| T-0009-046 | Regression | PASS | All original row actions preserved; only Sentinel column added |
+
+### Step 4: Pipeline Orchestration (6 tests)
+
+| ID | Category | Status | Evidence |
+|----|----------|--------|----------|
+| T-0009-050 | Happy | PASS | Line 435: "Sentinel (security, if `sentinel_enabled: true`)" as fifth reviewer |
+| T-0009-051 | Happy | PASS | Line 398: "+ Sentinel (if enabled) (parallel, triage matrix)" in flow diagram |
+| T-0009-052 | Happy | PASS | Lines 129-133: Sentinel runs in parallel with Roz and Poirot per build unit when enabled |
+| T-0009-053 | Failure | PASS | Lines 132-133: "If Sentinel invocation fails...Eva logs 'Sentinel audit skipped: [reason]' and proceeds. Sentinel failure is never a pipeline blocker." |
+| T-0009-054 | Regression | PASS | All 12 mandatory gates retain existing behavior; gate 5 only gains appended note |
+| T-0009-055 | Boundary | PASS | All mentions gated: "When `sentinel_enabled: true`", "if `sentinel_enabled: true`", "(if enabled)" |
+
+### Step 5: Invocation Template (7 tests)
+
+| ID | Category | Status | Evidence |
+|----|----------|--------|----------|
+| T-0009-060 | Happy | PASS | `<template id="sentinel-audit">` present between poirot-blind and distillator-compress |
+| T-0009-061 | Happy | PASS | `<task>`: "Security audit of Colby's build output for ADR-NNNN Step N" + review juncture variant |
+| T-0009-062 | Happy | PASS | All 7 constraint bullets: diff only, Semgrep tools, cross-reference, min 3 findings, CWE/OWASP, stop if hang, grep verify |
+| T-0009-063 | Happy | PASS | `<output>`: "Security report with findings table...scan metadata, DoR/DoD sections" |
+| T-0009-064 | Failure | PASS | No `<brain-context>` tag in sentinel-audit template |
+| T-0009-065 | Failure | PASS | No `<read>` tag with spec/ADR/UX files in sentinel-audit template |
+| T-0009-066 | Regression | PASS | Diff shows only sentinel-audit insertion; no existing templates modified |
+
+### Step 6: Pipeline-Setup Opt-In (12 tests)
+
+| ID | Category | Status | Evidence |
+|----|----------|--------|----------|
+| T-0009-070 | Happy | PASS | Step 6a at line 337; brain setup offer at line 366; correct ordering |
+| T-0009-071 | Happy | PASS | Prompt text mentions SAST, Semgrep, Python, pip, optional |
+| T-0009-072 | Happy | PASS | Steps 1-6 in numbered order: pip check, install, copy, MCP register, config flag, summary update |
+| T-0009-073 | Happy | PASS | Step 4: `"semgrep": {"command": "semgrep-mcp"}` -- flat format per MEMORY.md |
+| T-0009-074 | Failure | PASS | "Skip entirely. `sentinel_enabled` remains `false`" |
+| T-0009-075 | Failure | PASS | Step 1: "Sentinel requires Python and pip. Install them and re-run setup to enable Sentinel." Skip without error. |
+| T-0009-076 | Happy | PASS | Both paths: "enabled (Semgrep MCP)" or "not enabled" |
+| T-0009-077 | Happy | PASS | Conditional manifest table with source/destination/condition columns |
+| T-0009-078 | Regression | PASS | Diff shows only insertion between Step 6 summary and brain offer; no existing lines modified |
+| T-0009-079 | Boundary | PASS | Step 4 handles both: "If `.mcp.json` exists: read it, merge" and "does not exist: create it" |
+| T-0009-080 | Security | PASS | Step 3: "Copy `source/agents/sentinel.md` to `.claude/agents/sentinel.md`" |
+
+### Step 7: Model Table (3 tests)
+
+| ID | Category | Status | Evidence |
+|----|----------|--------|----------|
+| T-0009-090 | Happy | PASS | `\| **Sentinel** \| Opus \| Security judgment requires strong reasoning...` |
+| T-0009-091 | Happy | PASS | "Semgrep provides data; Sentinel must interpret relevance, reachability, and severity in context of the diff." |
+| T-0009-092 | Regression | PASS | Single line added; no existing rows modified |
+
+### Step 8: Pipeline Operations Update (6 tests)
+
+| ID | Category | Status | Evidence |
+|----|----------|--------|----------|
+| T-0009-100 | Happy | PASS | Item 3: "AND Sentinel for security audit (if `sentinel_enabled: true`) in PARALLEL" |
+| T-0009-101 | Happy | PASS | Item 4: "Findings unique to Sentinel get CWE/OWASP cross-reference." |
+| T-0009-102 | Happy | PASS | Item 8: "+ Sentinel (if `sentinel_enabled: true`) in parallel" |
+| T-0009-103 | Happy | PASS | Brain capture: "Eva captures Sentinel findings post-review via `agent_capture` with `source_agent: 'eva'`, `thought_type: 'insight'` (same pattern as Poirot -- Sentinel does not touch brain directly)." |
+| T-0009-104 | Regression | PASS | Existing items modified only to add Sentinel references; no behavior removed |
+| T-0009-105 | Boundary | PASS | Item 3 and item 8 both gated on `sentinel_enabled: true` |
+
+---
+
+## Cross-Cutting Verification
 
 | Check | Status | Details |
 |-------|--------|---------|
-| Type Check | SKIP | No typecheck configured |
-| Lint | SKIP | No linter configured for markdown |
-| Tests | SKIP | Non-code ADR; no test suite applicable |
-| Coverage | N/A | Non-code changes |
-| Complexity | PASS | All additions are structured markdown sections, no nesting issues |
-| Unfinished markers | PASS | 0 TODO/FIXME/HACK/XXX in any of the 4 changed files |
-
-## Tier 2 -- Judgment Checks
-
-| Check | Status | Details |
-|-------|--------|---------|
-| Security | PASS | Eva does NOT gain Write/Edit; discovered agents read-only by default; enforce-paths.sh untouched |
-| Additions only | PASS | All 4 files verified via diff: only additions, no deletions of existing content |
-| Eva tool constraints | PASS | Eva tools list (line 73 agent-system.md) unchanged: "NO Write/Edit/MultiEdit/NotebookEdit" |
-| Doc Impact | YES | See below |
-| Dependencies | PASS | No new dependencies |
-
----
-
-## Per-Step Verification
-
-### Step 0: Agent Discovery Section in agent-system.md
-
-| Test ID | Status | Finding |
-|---------|--------|---------|
-| T-0008-001 | PASS | `<section id="agent-discovery">` at source/rules/agent-system.md:308. Contains 5 sub-protocols: Discovery Protocol, Conflict Detection, Brain Persistence for Routing Preferences, (brain-unavailable fallback within Brain Persistence), Inline Agent Creation Protocol |
-| T-0008-002 | PASS | Core list at line 324: cal, colby, roz, ellis, agatha, robert, sable, investigator, distillator -- exactly 9 names |
-| T-0008-003 | PASS | Line 314: "Discovered agents are **additive only** -- they never replace core agent routing." Line 353: "Discovered agents **never shadow** core agents without explicit user consent." |
-| T-0008-004 | PASS | Lines 401-403: "Eva does **NOT** write the file herself -- this is a mandatory routing to Colby." |
-| T-0008-005 | PASS | Lines 361-363: Brain-unavailable fallback to context-brief.md under "## Routing Preferences", session-scoped, re-asked next session |
-| T-0008-006 | PASS | Verified via diff: existing `<routing id="auto-routing">` content unchanged; only new "### Discovered Agent Routing" subsection appended before closing `</routing>` tag |
-| T-0008-007 | PASS | Verified via diff: existing `<section id="shared-behaviors">` content unchanged; new section added AFTER shared-behaviors closes |
-
-### Step 1: Boot Sequence Discovery in default-persona.md
-
-| Test ID | Status | Finding |
-|---------|--------|---------|
-| T-0008-010 | PASS | Step 3c at source/rules/default-persona.md:61, positioned between step 3b (line 57) and step 4 (line 74) |
-| T-0008-011 | PASS | Step 3c.1: `Glob(".claude/agents/*.md")` |
-| T-0008-012 | PASS | Step 3c.2-3: YAML frontmatter name field comparison against core constant from agent-system.md |
-| T-0008-013 | PASS | Step 3c.7: "Agent discovery scan failed: [reason]. Proceeding with core agents only." + "Never block session boot." |
-| T-0008-014 | PASS | Step 3c.6: "If zero non-core agents found, no announcement or 'No custom agents found.'" |
-| T-0008-015 | PASS | Covered by step 3c.3 -- comparison against core constant; if all files match core names, step 3c.6 applies (zero discovered) |
-| T-0008-016 | PASS | Verified via diff: existing steps 1-3b and 4-6 are unmodified; only step 3c inserted and step 6 announcement appended |
-| T-0008-017 | PASS | Line 86: "Custom agents: append 'Custom agents: N discovered' when discovered agent count > 0 (omit line when zero)" |
-
-### Step 2: Auto-Routing Extension
-
-| Test ID | Status | Finding |
-|---------|--------|---------|
-| T-0008-020 | PASS | "### Discovered Agent Routing" subsection at line 187 within `<routing id="auto-routing">` |
-| T-0008-021 | PASS | Line 193: "The core routing table is always evaluated first. Core agents have priority for all intent categories they cover." |
-| T-0008-022 | PASS | Line 346 (discovery section) + line 195 (routing section): asks user once per (intent, agent) pair |
-| T-0008-023 | PASS | Line 200: `agent_capture` with `thought_type: 'preference'`, `source_agent: 'eva'`, `routing_rule: {intent} -> {chosen_agent}` |
-| T-0008-024 | PASS | Line 202-203: Brain-unavailable appends to context-brief.md under "## Routing Preferences" |
-| T-0008-025 | PASS | Line 209: "Explicit name mention routes to any discovered agent regardless of conflicts or preferences -- it is always a direct override." |
-| T-0008-026 | PASS | Lines 207-208: "Discovered agents with no description overlap with core agents are available only via **explicit name mention**" |
-| T-0008-027 | PASS | Verified via diff: existing Intent Detection table rows (lines 152-169) unchanged |
-| T-0008-028 | PASS | Line 212: "Discovered agents cannot shadow core agents without explicit user consent." |
-
-### Step 3: Inline Agent Creation
-
-| Test ID | Status | Finding |
-|---------|--------|---------|
-| T-0008-030 | PASS | Detection heuristic at lines 373-377: "two or more" of identity, rules, tools, constraints, output format |
-| T-0008-031 | PASS | Conversion process step 2 lists 7 tags in order: identity, required-actions, workflow, examples, tools, constraints, output. Matches xml-prompt-schema.md persona file tag order |
-| T-0008-032 | PASS | Step 2 YAML frontmatter: name (kebab-case), description (one-line), disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit |
-| T-0008-033 | PASS | Step 2: "`<required-actions>` with reference to `.claude/references/agent-preamble.md`" |
-| T-0008-034 | PASS | Step 4: "Present the converted content to the user for approval before writing." |
-| T-0008-035 | PASS | Step 5: "Eva does **NOT** write the file herself -- this is a mandatory routing to Colby." |
-| T-0008-036 | PASS | Step 6: "If user declines: No file is written. Eva acknowledges and moves on." |
-| T-0008-037 | PASS | Step 2 workflow entry: "omit tag entirely if source has no workflow content" |
-| T-0008-038 | PASS | Step 3: "If the parsed name matches a core agent constant, Eva rejects: '[name] conflicts with a core agent.'" |
-| T-0008-039 | PASS | Step 7: "Eva re-runs the discovery scan to register the new agent immediately." |
-| T-0008-040 | PASS | Step 8: "Enforcement note: Eva announces: '[agent-name] has read-only access by default.'" |
-| T-0008-041 | PASS | xml-prompt-schema.md line 193: "## Agent Conversion Template" section with YAML frontmatter, structural mapping table, required-actions content |
-| T-0008-042 | PASS | Verified via diff: all existing xml-prompt-schema.md sections (lines 1-191) unchanged; new section appended at end |
-
-### Step 4: Subagent Table Updates
-
-| Test ID | Status | Finding |
-|---------|--------|---------|
-| T-0008-050 | PASS | `<gate id="no-skill-tool">` table at line 289: "*[Discovered agents]* \| *`.claude/agents/{name}.md` (see `<section id="agent-discovery">`)*" |
-| T-0008-051 | PASS | `<section id="architecture">` subagent table at line 65: "*[Discovered agents]* \| *Per agent persona file* \| *Read, Glob, Grep, Bash (read-only by default)*" |
-| T-0008-052 | PASS | Verified via diff: all 9 core agent rows unchanged in both tables |
-
-### Step 5: Pipeline-Setup Awareness
-
-| Test ID | Status | Finding |
-|---------|--------|---------|
-| T-0008-060 | PASS | "#### Custom Agent Discovery" subsection at SKILL.md after Step 3a (hooks installation), before Step 3b |
-| T-0008-061 | PASS | Note mentions: drop file (with frontmatter), paste markdown (Eva converts), read-only default, hook customization for write access |
-| T-0008-062 | PASS | Verified via diff: existing setup procedure steps unchanged |
-
----
+| `enforce-paths.sh` NOT modified | PASS | Zero diff on `source/hooks/enforce-paths.sh` |
+| No `.claude/` files touched | PASS | Zero diff in `.claude/` directory; 9 original agents only |
+| All changes in `source/` and `skills/` only (R9) | PASS | 1 new + 6 modified in `source/`, 1 modified in `skills/` |
+| Conditional language on every Sentinel mention | PASS | Verified across all 7 modified files |
+| XML tag order per schema | PASS | 7 tags in correct order per `xml-prompt-schema.md` |
+| MCP flat format in SKILL.md | PASS | `"semgrep": {"command": "semgrep-mcp"}` |
+| Valid JSON in pipeline-config.json | PASS | `jq` parses successfully |
+| Unfinished markers | PASS | 0 TODO/FIXME/HACK/XXX in changed code (2 matches are instructional text) |
 
 ## Requirements Verification
 
 | # | Requirement | Colby Claims | Roz Verified | Finding |
 |---|-------------|-------------|-------------|---------|
-| R1 | Boot-time discovery scan | Step 3c added | PASS | Correct position, Glob scan, non-blocking errors |
-| R2 | Inline creation via Colby | Conversion + Colby write | PASS | Eva converts, routes to Colby, user confirms |
-| R3 | Semantic conflict detection | Core first, one-time ask | PASS | Explicit in both discovery section and routing subsection |
-| R4 | Brain persistence | agent_capture with preference | PASS | Correct thought_type, source_agent, metadata |
-| R5 | Session-scoped fallback | context-brief.md | PASS | Under "## Routing Preferences", session-scoped |
-| R6 | Core hardcoded, discovered additive | 9 names, never replace | PASS | List exact, "additive only" + "never shadow" stated |
-| R7 | XML conversion per schema | 7 tags, preamble ref | PASS | Tags match schema order; preamble in required-actions |
-| R8 | Changes in source/ only | source/ templates modified | PASS | .claude/ copies NOT modified (277 vs 411 lines) |
-| R9 | No trust scoring | Not implemented | PASS | No quality/trust evaluation anywhere in additions |
-| R10 | No registry/manifest/API | Filesystem scanning only | PASS | No JSON, no manifest, no API |
-| R11 | Eva never writes agent files | Routes to Colby | PASS | "Eva does **NOT** write the file herself" explicit; Eva tools list unchanged |
-| R12 | enforce-paths.sh unchanged | Catch-all blocks unknown | PASS | No diff to hooks; enforcement note in creation protocol references it |
-
----
+| R1 | Sentinel optional, opts in during setup | Step 1 + Step 6 | PASS | `sentinel_enabled: false` default; Step 6a opt-in flow |
+| R2 | Full install chain | Step 6 | PASS | pip check -> install -> copy -> MCP register -> config flag |
+| R3 | Semgrep MCP backbone | Step 0 + Step 5 | PASS | Persona references all three Semgrep MCP tools |
+| R4 | Runs at review juncture parallel | Step 4 + Step 8 | PASS | Review juncture and per-unit QA both updated |
+| R5 | Read-only access | Step 0 | PASS | `disallowedTools` + hook catch-all |
+| R6 | BLOCKER = halt | Step 3 | PASS | Triage matrix row present |
+| R7 | Config gets sentinel_enabled | Step 1 | PASS | Field present, default false |
+| R8 | Information asymmetry | Step 0 + Step 5 | PASS | Constraints + template enforce no spec/ADR/UX |
+| R9 | Changes in source/ and skills/ only | All | PASS | No .claude/ or hook changes |
+| R10 | XML format per schema | Step 0 | PASS | 7-tag order verified |
+| R11 | Triage matrix updated | Step 3 | PASS | Sentinel column + 3 new rows + `--` on existing |
+| R12 | Invocation template added | Step 5 | PASS | `sentinel-audit` template present |
+| R13 | Agent system tables updated | Step 2 | PASS | Subagent + no-skill-tool + phase transitions |
+| R14 | Setup after Step 6, before brain | Step 6 | PASS | Correct positioning verified |
+| R15 | Persona in source/, installed by setup | Step 0 + Step 6 | PASS | File in `source/agents/`; SKILL.md copies to `.claude/agents/` |
+| R16 | Mechanical enforcement via hook | Blast radius | PASS | `enforce-paths.sh` unchanged; catch-all covers sentinel |
 
 ## Unfinished Markers
 
-`grep -r "TODO|FIXME|HACK|XXX"` across all 4 changed files: **0 matches.**
-
----
+`grep -r "TODO|FIXME|HACK|XXX"` across all changed files: **0 matches in changed code.** 2 matches in `invocation-templates.md` are instructional text telling agents to check for unfinished markers -- not actual unfinished work.
 
 ## Issues Found
 
-**No blockers. No fix-required items.**
+None. No blockers. No fix-required items.
 
-### Observations (informational, not blocking)
+## Doc Impact: NO
 
-1. **Out-of-scope changes in SKILL.md:** The diff includes warn-dor-dod.sh hook addition (manifest row, SubagentStop registration, file count bumps 38->39, 4->5 hooks). These are from a separate ADR-0007 work unit, not part of ADR-0008. They are correct and additive but should be attributed separately at commit time.
-
-2. **Dual tree sync deferred:** The `.claude/` installed copies were NOT updated (`.claude/rules/agent-system.md` has 277 lines vs `source/` at 411). This is correct per constraint R8 ("all changes in source/ only"). The project's own installed pipeline will not have discovery capabilities until setup is re-run.
-
----
-
-## Doc Impact: YES
-
-**Affected docs:** All 4 modified files ARE the documentation (non-code ADR). No additional external docs require updates. The ADR at `docs/architecture/ADR-0008-agent-discovery.md` serves as architectural documentation.
-
----
-
-## Roz's Assessment
-
-Clean implementation. All 42 test spec items (T-0008-001 through T-0008-062) pass verification. Every ADR requirement (R1-R12) is traceable to specific lines in the implementation.
-
-The changes are purely additive -- verified by diffing every file against HEAD, confirming no existing content was deleted or modified. The implementation correctly maintains the critical safety invariants: Eva's tool list is unchanged (no Write/Edit), discovered agents default to read-only, enforce-paths.sh is untouched, and the core 9 agents are hardcoded with discovered agents explicitly marked as additive-only.
-
-The section placement follows the ADR's instructions precisely: `<section id="agent-discovery">` is after `<section id="shared-behaviors">`, the routing subsection is after "### Auto-Routing Confidence" within the routing block, and the boot step 3c sits correctly between 3b and 4.
-
-The xml-prompt-schema.md conversion template is well-structured with a clear structural mapping table, explicit required/optional markers, and the mandatory agent-preamble.md reference in required-actions. The mapping covers all 7 persona file tags with correct optionality rules.
-
----
+All changes are to pipeline configuration templates, agent personas, and operational documentation within `source/` -- these ARE the documentation. No separate user-facing docs require updating. The SKILL.md update includes the user-facing opt-in flow.
 
 ## DoD: Verification
 
 | ADR Requirement | Test IDs | Status |
 |-----------------|----------|--------|
-| R1: Boot-time discovery | T-0008-010 through T-0008-017 | Done (8/8 pass) |
-| R2: Inline creation | T-0008-030 through T-0008-042 | Done (13/13 pass) |
-| R3: Conflict detection | T-0008-001, T-0008-020 through T-0008-028 | Done (10/10 pass) |
-| R4: Brain persistence | T-0008-023 | Done |
-| R5: Session-scoped fallback | T-0008-024 | Done |
-| R6: Core hardcoded, additive | T-0008-003, T-0008-006, T-0008-028, T-0008-052 | Done |
-| R7: XML conversion + preamble | T-0008-031 through T-0008-033, T-0008-041 | Done |
-| R8: Source/ only | Verified via diff | Done |
-| R9: No trust scoring | Absence verified | Done |
-| R10: No registry/manifest | Absence verified | Done |
-| R11: Eva never writes | T-0008-004, T-0008-035 | Done |
-| R12: Hook catch-all preserved | T-0008-040, diff verified | Done |
+| R1: Optional, opts in during setup | T-0009-020, T-0009-070 through T-0009-080 | Done (13/13) |
+| R2: Full install chain | T-0009-072, T-0009-073, T-0009-080 | Done (3/3) |
+| R3: Semgrep MCP backbone | T-0009-003, T-0009-004, T-0009-062 | Done (3/3) |
+| R4: Runs at review juncture | T-0009-050, T-0009-100 through T-0009-102 | Done (4/4) |
+| R5: Read-only access | T-0009-001, T-0009-006 | Done (2/2) |
+| R6: BLOCKER = halt | T-0009-041 | Done (1/1) |
+| R7: Config gets sentinel_enabled | T-0009-020 through T-0009-022 | Done (3/3) |
+| R8: Information asymmetry | T-0009-006, T-0009-064, T-0009-065 | Done (3/3) |
+| R9: Changes in source/ and skills/ only | Cross-cutting verification | Done |
+| R10: XML format per schema | T-0009-011 | Done (1/1) |
+| R11: Triage matrix updated | T-0009-040 through T-0009-046 | Done (7/7) |
+| R12: Invocation template added | T-0009-060 through T-0009-066 | Done (7/7) |
+| R13: Agent system tables updated | T-0009-030 through T-0009-034 | Done (5/5) |
+| R14: Setup after Step 6, before brain | T-0009-070, T-0009-078 | Done (2/2) |
+| R15: Persona in source/, installed by setup | T-0009-001, T-0009-080 | Done (2/2) |
+| R16: Mechanical enforcement via hook | Cross-cutting verification | Done |
 
-All 12 requirements verified. 42/42 test spec items pass. No deferred items.
+All 16 requirements verified. 55/55 tests pass. 0 deferred items.
 
 ### Recurring QA Patterns
 
-None identified. First ADR-0008 review.
+None identified for this ADR. The dual-tree sync gap (`.claude/` installed copies not updated) is expected per R9 and consistent with prior ADR-0008 observation.
 
-### Investigation Findings Beyond Immediate Scope
+### Roz's Assessment
 
-The SKILL.md diff bundles ADR-0007 (warn-dor-dod.sh) changes with ADR-0008 (agent discovery) changes. These should be separated at commit time for clean attribution.
+Clean implementation. All 55 test specifications pass. Colby followed the ADR precisely across all 8 steps.
+
+The persona file is well-structured, modeled correctly on `source/agents/investigator.md` (Poirot) as directed. Both retro lessons (#003 graceful degradation, #004 hung process handling) are addressed in the persona's constraints. The triage consensus matrix expansion is correctly done with `--` on existing rows and three new Sentinel-specific scenarios. Conditional language is consistent throughout -- every Sentinel mention in every file is properly gated.
+
+The implementation is purely additive. No existing behavior is changed when `sentinel_enabled: false`. No hooks were modified. No `.claude/` installed copies were touched. The 9 existing agent personas are untouched.

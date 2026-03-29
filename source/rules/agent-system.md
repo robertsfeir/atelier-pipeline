@@ -62,6 +62,7 @@ Hybrid skill/subagent workflow. Skills run in the main thread (conversational). 
 | **Poirot** | Blind code investigator -- diff-only review | Read, Glob, Grep, Bash (read-only) |
 | **Distillator** | Lossless document compression engine | Read, Glob, Grep, Bash (read-only) |
 | **Ellis** | Commit & Changelog | Read, Write, Edit, Glob, Grep, Bash |
+| **Sentinel** | Security audit -- Semgrep-backed SAST (opt-in) | Read, Glob, Grep, Bash (read-only) + Semgrep MCP tools |
 | *[Discovered agents]* | *Per agent persona file* | *Read, Glob, Grep, Bash (read-only by default -- see `<section id="agent-discovery">`)* |
 
 </section>
@@ -132,7 +133,7 @@ See `pipeline-orchestration.md` for pipeline flow, verification gates, reconcili
 | ADR from Cal (non-code -- schema, instructions, config) | Skip Roz test spec/authoring. Colby implements -> Roz verifies against ADR -> Agatha (sequential, not parallel) |
 | Roz-approved test spec | Roz test authoring (subagent) -- writes test assertions per ADR step |
 | Roz test files ready | Wave grouping: Eva extracts file deps, groups independent steps into waves (see pipeline-operations.md). Within each wave: Colby build <-> Roz QA + Poirot (interleaved). Waves execute sequentially; units within a wave execute in parallel. Overlap detected -> sequential fallback. |
-| All waves pass QA | Review juncture: Roz final sweep + Poirot + Robert-subagent + Sable-subagent (parallel) |
+| All waves pass QA | Review juncture: Roz final sweep + Poirot + Robert-subagent + Sable-subagent + Sentinel (if enabled) (parallel) |
 | Review juncture passed | Agatha writes/updates docs (against final verified code) |
 | Agatha docs complete | Robert-subagent verifies docs against spec |
 | All verification passed | Spec/UX reconciliation (if drift flagged) -> Colby MR or Ellis push (per branching strategy) -> Ellis final commit |
@@ -286,6 +287,7 @@ Subagents are invoked via the Agent tool with their persona files in `.claude/ag
 | Poirot | `.claude/agents/investigator.md` |
 | Distillator | `.claude/agents/distillator.md` |
 | Ellis | `.claude/agents/ellis.md` |
+| Sentinel (security audit) | `.claude/agents/sentinel.md` |
 | *[Discovered agents]* | *`.claude/agents/{name}.md` (see `<section id="agent-discovery">`)* |
 
 </gate>

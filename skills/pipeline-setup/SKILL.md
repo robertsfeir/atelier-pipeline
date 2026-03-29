@@ -334,6 +334,35 @@ To start your first pipeline:
   Eva will size the work and route to the right starting agent.
 ```
 
+### Step 6a: Sentinel Security Agent (Opt-In)
+
+After printing the summary, offer the optional Sentinel security agent:
+
+> Would you also like to enable **Sentinel** -- the security audit agent?
+> It uses Semgrep (open-source SAST) to scan your code for vulnerabilities
+> during QA. Requires Python and pip. Optional -- the pipeline works fine
+> without it.
+
+**If user says yes:**
+
+1. Check `command -v pip3 || command -v pip` -- if neither is available, tell the user: "Sentinel requires Python and pip. Install them and re-run setup to enable Sentinel." Skip Sentinel setup (do not error).
+2. Run `pip3 install semgrep-mcp` (or `pip install semgrep-mcp` if only `pip` is available).
+3. Copy `source/agents/sentinel.md` to `.claude/agents/sentinel.md` (with placeholder customization, same as other agent personas).
+4. Register Semgrep MCP in project `.mcp.json`:
+   - If `.mcp.json` exists: read it, merge the new entry, write back.
+   - If `.mcp.json` does not exist: create it.
+   - Add entry: `"semgrep": {"command": "semgrep-mcp"}` (flat format).
+5. Set `sentinel_enabled: true` in `.claude/pipeline-config.json`.
+6. Update the installation summary to include: "Sentinel security agent: enabled (Semgrep MCP)"
+
+**If user says no:** Skip entirely. `sentinel_enabled` remains `false` in `pipeline-config.json`. Print: "Sentinel security agent: not enabled"
+
+**Installation manifest addition (conditional):**
+
+| Template Source | Destination | Install When |
+|----------------|-------------|-------------|
+| `source/agents/sentinel.md` | `.claude/agents/sentinel.md` | User enables Sentinel in Step 6a |
+
 **Brain setup offer (always ask):**
 
 After printing the summary, ask the user:

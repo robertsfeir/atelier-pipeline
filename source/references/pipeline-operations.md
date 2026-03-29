@@ -48,11 +48,13 @@ Cal's ADR steps become work units. Roz writes tests first, Colby implements to p
 1. Eva invokes Colby for unit 1 with Roz's test files as the target
 2. Colby implements to make Roz's tests pass (may add additional tests)
 3. When Colby finishes unit 1, Eva invokes Roz for QA review AND Poirot
-   for blind diff review in PARALLEL. Roz gets full context; Poirot gets
-   ONLY the `git diff` output.
-4. Eva triages findings from both: deduplicates, classifies severity.
-   Findings unique to Poirot get special attention.
-5. If Roz or Poirot flags an issue on unit N, Eva queues the fix. Colby
+   for blind diff review AND Sentinel for security audit (if `sentinel_enabled: true`)
+   in PARALLEL. Roz gets full context; Poirot gets ONLY the `git diff` output;
+   Sentinel gets the diff and runs Semgrep MCP scans on changed files.
+4. Eva triages findings from all reviewers: deduplicates, classifies severity.
+   Findings unique to Poirot get special attention. Findings unique to Sentinel
+   get CWE/OWASP cross-reference.
+5. If Roz, Poirot, or Sentinel flags an issue on unit N, Eva queues the fix. Colby
    finishes the current unit, then addresses the fix before starting the next unit
 6. **Eva invokes Ellis for a per-unit commit** on the feature branch after
    Roz QA PASS. Ellis uses per-unit commit mode (shorter message, no
@@ -61,8 +63,12 @@ Cal's ADR steps become work units. Roz writes tests first, Colby implements to p
 
 **Post-build pipeline tail (after all units pass individual QA):**
 8. Eva invokes the review juncture: Roz final sweep + Poirot + Robert-subagent
-   + Sable-subagent (Large) in parallel. Eva triages findings using the
-   Triage Consensus Matrix (see below). Routes fixes to Colby if needed, re-runs Roz.
+   + Sable-subagent (Large) + Sentinel (if `sentinel_enabled: true`) in parallel.
+   Eva triages findings using the Triage Consensus Matrix (see below). Routes
+   fixes to Colby if needed, re-runs Roz. Eva captures Sentinel findings
+   post-review via `agent_capture` with `source_agent: 'eva'`,
+   `thought_type: 'insight'` (same pattern as Poirot -- Sentinel does not touch
+   brain directly).
 9. Eva invokes Agatha to write/update docs against the final verified code.
    On Small: only if Roz flagged doc impact. On Medium/Large: always.
 10. Eva invokes Robert-subagent in doc review mode to verify Agatha's output
@@ -91,18 +97,23 @@ Cal's ADR steps become work units. Roz writes tests first, Colby implements to p
 At every review juncture, Eva consults this matrix to determine the action.
 No discretion -- the matrix is the rule.
 
-| Roz | Poirot | Robert | Sable | Action |
-|-----|--------|--------|-------|--------|
-| BLOCKER | any | any | any | **HALT.** Roz BLOCKER is always authoritative. |
-| any | BLOCKER | any | any | **HALT.** Eva investigates Poirot's finding. If confirmed, same as Roz BLOCKER. |
-| MUST-FIX | agrees | -- | -- | **HIGH-CONFIDENCE.** Queue fix, Colby priority. |
-| PASS | flags issue | -- | -- | **CONTEXT-ANCHORING MISS.** Eva investigates -- Poirot caught what Roz's context biased her to miss. Treat as MUST-FIX minimum. |
-| MUST-FIX | PASS | -- | -- | **STANDARD.** Queue fix per normal flow. |
-| -- | -- | DRIFT | -- | **HARD PAUSE.** Human decides: fix code or update spec. |
-| -- | -- | AMBIGUOUS | -- | **HARD PAUSE.** Human clarifies spec. |
-| -- | -- | -- | DRIFT | **HARD PAUSE.** Human decides: fix code or update UX doc. |
-| -- | -- | DRIFT | DRIFT | **CONVERGENT DRIFT.** High-confidence spec/UX misalignment. Escalate to human with both reports. |
-| PASS | PASS | PASS | PASS | **ADVANCE.** All clear, proceed to Agatha. |
+| Roz | Poirot | Robert | Sable | Sentinel | Action |
+|-----|--------|--------|-------|----------|--------|
+| BLOCKER | any | any | any | -- | **HALT.** Roz BLOCKER is always authoritative. |
+| any | BLOCKER | any | any | -- | **HALT.** Eva investigates Poirot's finding. If confirmed, same as Roz BLOCKER. |
+| any | any | any | any | BLOCKER | **HALT.** Sentinel BLOCKER (exploitable vulnerability) is always authoritative. Eva verifies Semgrep finding is not false positive (check CWE, check if code path is reachable). If confirmed, same as Roz BLOCKER. |
+| MUST-FIX | agrees | -- | -- | -- | **HIGH-CONFIDENCE.** Queue fix, Colby priority. |
+| PASS | flags issue | -- | -- | -- | **CONTEXT-ANCHORING MISS.** Eva investigates -- Poirot caught what Roz's context biased her to miss. Treat as MUST-FIX minimum. |
+| MUST-FIX | PASS | -- | -- | -- | **STANDARD.** Queue fix per normal flow. |
+| PASS | PASS | -- | -- | MUST-FIX | **SECURITY CONCERN.** Queue fix, Colby priority. Sentinel caught what Roz and Poirot missed (SAST-specific finding). |
+| MUST-FIX | flags issue | -- | -- | MUST-FIX | **CONVERGENT SECURITY.** Multiple reviewers flag security. High-confidence fix needed. |
+| -- | -- | DRIFT | -- | -- | **HARD PAUSE.** Human decides: fix code or update spec. |
+| -- | -- | AMBIGUOUS | -- | -- | **HARD PAUSE.** Human clarifies spec. |
+| -- | -- | -- | DRIFT | -- | **HARD PAUSE.** Human decides: fix code or update UX doc. |
+| -- | -- | DRIFT | DRIFT | -- | **CONVERGENT DRIFT.** High-confidence spec/UX misalignment. Escalate to human with both reports. |
+| PASS | PASS | PASS | PASS | PASS | **ADVANCE.** All clear, proceed to Agatha. |
+
+When `sentinel_enabled: false`, the Sentinel column is absent from triage -- Eva skips Sentinel entirely and the matrix behaves as it did before Sentinel was added.
 
 **Brain capture gate (when brain_available: true):** After each triage,
 Eva calls `agent_capture` with `thought_type: 'insight'`, content:

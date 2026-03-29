@@ -26,6 +26,7 @@ model selection at invocation time.
 | **Robert** (subagent) | Opus | Product acceptance review requires strong reasoning to diff spec intent against implementation. |
 | **Sable** (subagent) | Opus | UX acceptance review requires strong reasoning to diff UX intent against implementation. |
 | **Poirot** | Opus | Blind review with no context requires the strongest reasoning to find issues from a raw diff alone. |
+| **Sentinel** | Opus | Security judgment requires strong reasoning. Semgrep provides data; Sentinel must interpret relevance, reachability, and severity in context of the diff. |
 | **Distillator** | Haiku | Mechanical compression with structured validation. No judgment required. |
 | **Ellis** | Sonnet | Reads diff, writes commit message, runs git. Zero ambiguity in the task. |
 
