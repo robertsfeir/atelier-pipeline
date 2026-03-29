@@ -1,9 +1,9 @@
 # Pipeline State
 
 ## Active Pipeline
-**Feature:** (none)
-**Phase:** idle
-**Started:** ---
+**Feature:** Pipeline enhancement batch — #13 (DoR/DoD warn hook), #15 (agent discovery), #19 (Sentinel), #11 (Agent Teams)
+**Phase:** architecture
+**Started:** 2026-03-28
 
 ## Configuration
 **Branching Strategy:** (not configured)
@@ -15,9 +15,14 @@
 
 | # | Unit | Agent | Status | Notes |
 |---|------|-------|--------|-------|
-| --- | --- | --- | --- | --- |
+| 1 | #13 DoR/DoD warn hook | Cal | Done | ADR-0007 produced |
+| 1 | #13 DoR/DoD warn hook | Colby | Done | Hook created, settings.json + SKILL.md updated |
+| 1 | #13 DoR/DoD warn hook | Roz | Done | PASS (1 blocker found + fixed: missing .claude/ copy) |
+| 2 | #15 Agent discovery | Cal | Done | ADR-0008 produced (6 steps, 42 tests) |
+| 2 | #15 Agent discovery | Colby | Done | All 6 steps implemented across 4 files |
+| 2 | #15 Agent discovery | Roz | Done | PASS — all 42 tests verified, zero blockers |
 
 ## Queue
 (empty)
 
-<!-- PIPELINE_STATUS: {"roz_qa": "PASS", "phase": "commit", "timestamp": "2026-03-27T18:30:00Z"} -->
+<!-- PIPELINE_STATUS: {"roz_qa": "PASS", "phase": "build", "timestamp": "2026-03-28T23:30:00Z"} -->

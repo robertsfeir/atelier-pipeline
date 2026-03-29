@@ -169,6 +169,7 @@ optional and must be installed for the pipeline to function correctly.
 | `source/hooks/enforce-paths.sh` | `.claude/hooks/enforce-paths.sh` | Blocks Write/Edit outside each agent's allowed file paths |
 | `source/hooks/enforce-sequencing.sh` | `.claude/hooks/enforce-sequencing.sh` | Blocks out-of-order agent invocations (e.g., Ellis without Roz QA) |
 | `source/hooks/enforce-git.sh` | `.claude/hooks/enforce-git.sh` | Blocks git write operations from main thread (must go through Ellis) |
+| `source/hooks/warn-dor-dod.sh` | `.claude/hooks/warn-dor-dod.sh` | Warns when Colby/Roz output missing DoR/DoD sections (SubagentStop) |
 | `source/hooks/enforcement-config.json` | `.claude/hooks/enforcement-config.json` | Project-specific paths and agent rules |
 
 After copying, make the `.sh` files executable: `chmod +x .claude/hooks/*.sh`
@@ -200,6 +201,11 @@ file already exists. Add this hooks section:
         "matcher": "Bash",
         "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-git.sh"}]
       }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/warn-dor-dod.sh"}]
+      }
     ]
   }
 }
@@ -209,7 +215,23 @@ file already exists. Add this hooks section:
 If `jq` is not available, tell the user: "Install jq for pipeline enforcement hooks:
 `brew install jq` (macOS) or `apt install jq` (Linux)."
 
-**Total with hooks: 38 mandatory files across 7 directories (plus up to 5 optional tech-stack references).**
+**Total with hooks: 39 mandatory files across 7 directories (plus up to 5 optional tech-stack references).**
+
+#### Custom Agent Discovery
+
+The pipeline supports custom agents beyond the core 9. To add a custom agent:
+
+- **Drop a file:** Place any `.md` file into `.claude/agents/` with YAML
+  frontmatter (`name`, `description`) and Eva will discover it automatically
+  at session start.
+- **Paste markdown:** Paste a raw agent definition into the chat and Eva will
+  offer to convert it to the pipeline's XML format and write it as a proper
+  agent file.
+- **Read-only by default:** Discovered agents cannot use Write, Edit, or
+  MultiEdit tools. To grant write access, add an explicit case to
+  `.claude/hooks/enforce-paths.sh` for the agent's name.
+
+See the "Agent Discovery" section in `agent-system.md` for full details.
 
 ### Step 3b: Write Version Marker
 
@@ -268,7 +290,7 @@ This project uses a multi-agent orchestration pipeline for structured developmen
 
 After installation, print:
 
-1. A count of files installed (38 mandatory files across 7 directories, plus any optional tech-stack references)
+1. A count of files installed (39 mandatory files across 7 directories, plus any optional tech-stack references)
 2. The directory tree showing what was created
 3. The configured branching strategy and any CI recommendations
 4. A reminder of available slash commands
@@ -280,12 +302,12 @@ After installation, print:
 ```
 Atelier Pipeline installed successfully.
 
-Files installed: 38 (mandatory) + optional tech-stack references
+Files installed: 39 (mandatory) + optional tech-stack references
   .claude/rules/       -- 5 files (Eva persona, orchestration rules, pipeline operations, model selection, branch lifecycle)
   .claude/agents/      -- 9 files (Cal, Colby, Roz, Robert, Sable, Poirot, Distillator, Ellis, Agatha)
   .claude/commands/    -- 7 files (/pm, /ux, /architect, /debug, /pipeline, /devops, /docs)
   .claude/references/  -- 7 files (quality framework, retro lessons, invocation templates, pipeline operations, agent preamble, QA checks, branch/MR mode)
-  .claude/hooks/       -- 4 files (path enforcement, sequencing, git guard, config)
+  .claude/hooks/       -- 5 files (path enforcement, sequencing, git guard, DoR/DoD warning, config)
   docs/pipeline/       -- 5 files (state tracking for session recovery)
   .claude/pipeline-config.json -- branching strategy configuration
   .claude/settings.json -- updated with hook registration

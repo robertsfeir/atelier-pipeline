@@ -189,3 +189,53 @@ that benefit from unambiguous boundaries get wrapped.
 | `<error-handling>` | Error conditions table with messages and recovery guidance | `id` (kebab-case) |
 | `<protocol>` | A routing decision or conditional execution path (reused from rules vocabulary) | `id` (kebab-case) |
 | `<section>` | General-purpose semantic section (shared across all file types) | `id` (kebab-case) |
+
+## Agent Conversion Template
+
+When converting raw markdown agent definitions to pipeline-compatible XML
+format (see `agent-system.md` section "Agent Discovery"), use this structural
+mapping. Tags appear in the standard persona file order: `<identity>` first,
+`<output>` last.
+
+### YAML Frontmatter
+
+```yaml
+---
+name: {kebab-case-agent-name}
+description: {one-line description from the agent's identity/role}
+disallowedTools:
+  - Agent
+  - Write
+  - Edit
+  - MultiEdit
+  - NotebookEdit
+---
+```
+
+The `disallowedTools` list is the conservative read-only default. Users who
+need write access for a discovered agent must also add a case to
+`.claude/hooks/enforce-paths.sh`.
+
+### Structural Mapping
+
+| Source Content | Target Tag | Required |
+|----------------|------------|----------|
+| Role, identity, pronouns, personality | `<identity>` | Yes |
+| Cognitive directive, proactive behaviors | `<required-actions>` | Yes -- always includes reference to `.claude/references/agent-preamble.md` |
+| Ordered steps, process, methodology | `<workflow>` | No -- omit tag if source has no workflow |
+| Scenarios showing correct behavior | `<examples>` | No -- omit tag if source has no examples |
+| Tool access list, tool-specific guidance | `<tools>` | No -- omit tag if source has no tool list |
+| Rules, boundaries, forbidden actions | `<constraints>` | Yes -- include at minimum: "Follow DoR/DoD framework" |
+| Output format, templates, handoff messages | `<output>` | Yes -- if absent in source, use: "Produce structured output with DoR and DoD sections." |
+
+### Required `<required-actions>` Content
+
+Every converted agent's `<required-actions>` must begin with:
+
+```
+Follow the shared required actions in `.claude/references/agent-preamble.md`:
+DoR first, read upstream artifacts, review retro lessons, review brain context
+(if provided), DoD last.
+```
+
+Agent-specific actions from the source material follow after this reference.

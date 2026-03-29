@@ -33,6 +33,16 @@
           }
         ]
       }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/warn-dor-dod.sh"
+          }
+        ]
+      }
     ]
   },
   "enabledPlugins": {
