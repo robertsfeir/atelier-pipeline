@@ -168,17 +168,7 @@ Copy each template to its destination in the user's project, customizing placeho
 | `source/pipeline/pipeline-config.json` | `.claude/pipeline-config.json` | Branching strategy configuration |
 | `source/variants/branch-lifecycle-{strategy}.md` | `.claude/rules/branch-lifecycle.md` | Branch lifecycle rules (selected variant only) |
 
-**Optional tech-stack references (install based on Step 1 tech stack answers):**
-
-| Template Source | Destination | Install When |
-|----------------|-------------|-------------|
-| `source/references/docker-infrastructure.md` | `.claude/references/docker-infrastructure.md` | Docker or Podman in build/deploy |
-| `source/references/python-fastapi.md` | `.claude/references/python-fastapi.md` | Python + FastAPI in tech stack |
-| `source/references/nextjs-app-router.md` | `.claude/references/nextjs-app-router.md` | Next.js in tech stack |
-| `source/references/react-frontend.md` | `.claude/references/react-frontend.md` | React in tech stack |
-| `source/references/cloud-architecture.md` | `.claude/references/cloud-architecture.md` | Cloud deployment mentioned |
-
-**Total: 34 mandatory files across 5 directories (before hooks and config), plus up to 5 optional tech-stack references.**
+**Total: 34 mandatory files across 5 directories (before hooks and config).**
 
 ### Step 3a: Install Enforcement Hooks
 
@@ -243,7 +233,7 @@ file already exists. Add this hooks section:
 If `jq` is not available, tell the user: "Install jq for pipeline enforcement hooks:
 `brew install jq` (macOS) or `apt install jq` (Linux)."
 
-**Total with hooks: 40 mandatory files across 7 directories (plus up to 5 optional tech-stack references).**
+**Total with hooks: 40 mandatory files across 7 directories.**
 
 #### Custom Agent Discovery
 
@@ -330,7 +320,7 @@ After installation, print:
 ```
 Atelier Pipeline installed successfully.
 
-Files installed: 40 (mandatory) + optional tech-stack references
+Files installed: 40 (mandatory)
   .claude/rules/       -- 5 files (Eva persona, orchestration rules, pipeline operations, model selection, branch lifecycle)
   .claude/agents/      -- 9 files (Cal, Colby, Roz, Robert, Sable, Poirot, Distillator, Ellis, Agatha)
   .claude/commands/    -- 7 files (/pm, /ux, /architect, /debug, /pipeline, /devops, /docs)

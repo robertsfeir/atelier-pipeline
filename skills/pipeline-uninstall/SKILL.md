@@ -55,7 +55,6 @@ Before removing anything, scan the project to build a complete inventory of what
   qa-checks.md
   branch-mr-mode.md
   xml-prompt-schema.md
-  (optional tech-stack references: docker-infrastructure.md, python-fastapi.md, nextjs-app-router.md, react-frontend.md, cloud-architecture.md)
 
 .claude/hooks/
   enforce-paths.sh

@@ -1,7 +1,7 @@
 # Pipeline State
 
 ## Active Pipeline
-**Feature:** CI Watch (Self-Healing CI) — Issue #16
+**Feature:** Agent Telemetry (#18) + Deps Agent (#20) — batch pipeline
 **Phase:** architecture
 **Started:** 2026-03-29
 
@@ -33,8 +33,12 @@
 - Roz test authoring: 8 tests written (T-0013-051 to T-0013-058), 1 fails (TDD target)
 - All 3 waves complete, review juncture passed
 - 9 CI Watch tests pass (T-0013-051 to T-0013-059), 92 brain tests pass
-- Agatha docs complete, Robert docs verification PASS
-- Spec reconciled (6 DRIFT/MISSING items updated)
-- Routing to Ellis for commit and push
+- New batch pipeline: #18 (Agent Telemetry, Medium) + #20 (Deps Agent, Small)
+- Both specs written, both ADRs produced (0014: 56 tests, 0015: 64 tests)
+- Roz test spec review PASS (both, after 1 revision round each)
+- Roz test authoring: 126 bats tests written
+- Wave 1 complete: ADR-0014 Steps 1,4 + ADR-0015 Steps 1,2,3 — 49 tests pass
+- Also: deleted 8 MyApp tech-stack files, added stale-file detection to update checker
+- Committing + history rewrite, then Wave 2+3
 
-<!-- PIPELINE_STATUS: {"roz_qa": "PASS", "phase": "complete", "sizing": "medium", "timestamp": "2026-03-30T02:00:00Z"} -->
+<!-- PIPELINE_STATUS: {"roz_qa": "PASS", "phase": "build", "sizing": "medium", "timestamp": "2026-03-30T04:00:00Z"} -->

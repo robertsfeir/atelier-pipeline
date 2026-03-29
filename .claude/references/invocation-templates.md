@@ -1,5 +1,10 @@
 # Invocation Templates
 
+<!-- Telemetry timing protocol: Eva records wall-clock start_time before every
+     Agent tool invocation and end_time after return. duration_ms = end_time -
+     start_time. This is mechanical -- not a per-template change, but documented
+     here as the telemetry timing source for Tier 1 duration_ms. Eva does not add
+     timing instructions to individual templates. -->
 
 Eva loads this file just-in-time when constructing sub-agent invocation
 prompts. These are not pre-loaded into Eva's always-on context.

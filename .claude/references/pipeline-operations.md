@@ -383,6 +383,26 @@ wait for user input
 
 **Watch replacement:** When Ellis pushes again while a watch is active, Eva sets `ci_watch_active: false` on the old watch and starts a new watch for the new commit SHA. Only one watch is active at a time.
 
+### Telemetry Accumulator Fields (PIPELINE_STATUS marker in `docs/pipeline/pipeline-state.md`)
+
+Eva writes telemetry accumulator fields to PIPELINE_STATUS at each phase transition, piggybacking
+on existing pipeline-state.md updates. This enables session recovery: if Eva restarts mid-pipeline,
+she reads the last PIPELINE_STATUS to restore telemetry accumulators.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `telemetry_pipeline_id` | string | `{feature_name}_{ISO_timestamp}`, set at pipeline start |
+| `telemetry_total_invocations` | integer | Running count of agent invocations |
+| `telemetry_total_cost_usd` | float or null | Running cost total (null if any invocation had no pricing data) |
+| `telemetry_rework_by_unit` | object | `{unit_id: rework_count}` per work unit |
+
+**Session recovery:** On pipeline resume, Eva reads the last PIPELINE_STATUS and restores telemetry
+accumulators: `telemetry_total_invocations`, `telemetry_total_cost_usd`, and `telemetry_rework_by_unit`.
+
+**Upgrade safety:** On the first pipeline after upgrade, PIPELINE_STATUS will lack telemetry fields.
+Eva initializes absent telemetry fields to zero defaults: `telemetry_total_invocations: 0`,
+`telemetry_total_cost_usd: null`, `telemetry_rework_by_unit: {}`. No crash, no undefined values.
+
 </operations>
 
 <section id="context-hygiene">
@@ -457,6 +477,9 @@ invocations, not backward (Claude Code's conversation history is append-only).
 4. The most recent Grep result for each distinct query
 5. Any tool output referenced in an active BLOCKER or MUST-FIX finding
 6. Content of `pipeline-state.md` and `context-brief.md` (always-live state)
+7. Telemetry accumulators in PIPELINE_STATUS (`telemetry_total_invocations`,
+   `telemetry_total_cost_usd`, `telemetry_rework_by_unit`) -- always-live state,
+   already covered by the pipeline-state.md rule above
 
 ### Mask (Replace with Placeholder)
 
@@ -467,6 +490,8 @@ invocations, not backward (Claude Code's conversation history is append-only).
    extracted the verdict
 4. Git diff outputs after Roz and Poirot have completed their review of that
    unit
+5. Individual Tier 1 `agent_capture` responses after Eva has updated the
+   telemetry accumulators (the brain response confirmation is transient)
 
 ### Placeholder Format
 

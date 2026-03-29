@@ -36,9 +36,28 @@ if [ "$INSTALLED_VERSION" != "$PLUGIN_VERSION" ]; then
     done
   done
 
+  # Detect stale files that have been removed from the plugin but still exist in .claude/
+  # Hardcoded list of files removed from source/ in past versions, keyed as dir/filename.
+  # Add entries here when a template is removed in a new plugin version.
+  REMOVED_TEMPLATES="
+agents/docker-infrastructure.md
+agents/python-fastapi.md
+agents/nextjs-app-router.md
+agents/react-frontend.md
+"
+  STALE=""
+  while IFS= read -r entry; do
+    [ -n "$entry" ] || continue
+    dst_file=".claude/${entry}"
+    [ -f "$dst_file" ] && STALE="${STALE:+$STALE, }${entry}"
+  done <<< "$REMOVED_TEMPLATES"
+
   echo "[atelier-pipeline] Update available: installed v${INSTALLED_VERSION}, plugin v${PLUGIN_VERSION}."
   if [ -n "$CHANGED" ]; then
-    echo "New templates: ${CHANGED}"
+    echo "New templates: ${CHANGED}."
+  fi
+  if [ -n "$STALE" ]; then
+    echo "Stale files from previous versions: ${STALE}. These files have been removed from the plugin and can be safely deleted."
   fi
   echo "Ask the user if they want to update their pipeline files. Use /pipeline-setup to reinstall, or selectively copy changed templates from the plugin's source/ directory."
 fi
