@@ -470,9 +470,17 @@ Eva triages Sentinel findings alongside Roz and Poirot using the triage consensu
 
 ### Enabling Sentinel
 
-During `/pipeline-setup`, answer "yes" when asked about the Sentinel security agent. Setup installs the Semgrep CLI, prompts you to log in to your semgrep.dev account, copies the Sentinel persona file, registers the built-in Semgrep MCP server in your project's `.mcp.json`, and sets `sentinel_enabled: true` in `pipeline-config.json`.
+**Prerequisite:** Install the Semgrep MCP plugin before running setup:
 
-**Requirements:** Semgrep CLI (`brew install semgrep`) and a free [semgrep.dev](https://semgrep.dev/login) account. The free tier includes the Pro Engine for individual use. Run `semgrep login` before or during setup.
+```sh
+claude mcp add semgrep semgrep mcp
+```
+
+This registers the Semgrep MCP server in Claude Code. You also need a free [semgrep.dev](https://semgrep.dev/login) account -- run `semgrep login` once to authenticate. The free tier includes the Pro Engine for individual use.
+
+During `/pipeline-setup`, answer "yes" when asked about the Sentinel security agent. Setup copies the Sentinel persona file and sets `sentinel_enabled: true` in `pipeline-config.json`.
+
+**Legacy cleanup:** If you ran an older version of `/pipeline-setup`, you may have a `semgrep` entry in your project's `.mcp.json` that was added by setup. That entry is no longer managed by the pipeline. You can remove it manually -- `claude mcp add semgrep semgrep mcp` (above) registers Semgrep globally and makes the project-level entry redundant.
 
 ### When Sentinel is disabled
 

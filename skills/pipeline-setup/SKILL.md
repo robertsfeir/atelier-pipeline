@@ -349,32 +349,25 @@ To start your first pipeline:
 After printing the summary, offer the optional Sentinel security agent:
 
 > Would you also like to enable **Sentinel** -- the security audit agent?
-> It uses Semgrep (open-source SAST) to scan your code for vulnerabilities
-> during QA. Requires Semgrep CLI and a free semgrep.dev account. Optional -- the pipeline works fine
-> without it.
+> It uses Semgrep to scan your code for vulnerabilities during QA.
+> Requires the Semgrep MCP server (free). Optional -- the pipeline works fine without it.
 
 **If user says yes:**
 
-1. **Check for semgrep** — `command -v semgrep`. If not available:
-   - Check for brew: `command -v brew`. If available, run `brew install semgrep`.
-   - If no brew: tell user "Install Semgrep CLI (https://semgrep.dev/docs/getting-started/) and re-run setup." Skip Sentinel setup.
+1. **Clean up legacy Sentinel install** (if present) — previous versions of pipeline-setup installed the deprecated `semgrep-mcp` PyPI package and registered it manually in `.mcp.json`. Check and clean up:
+   - Run `command -v semgrep-mcp`. If found: run `pipx uninstall semgrep-mcp` (or `pip3 uninstall semgrep-mcp -y` if pipx is not available). Tell user: "Removed deprecated semgrep-mcp package — Sentinel now uses the official Semgrep plugin."
+   - Check `.mcp.json` for a `"semgrep-mcp"` or `"semgrep"` entry that was manually added (command is `"semgrep-mcp"` or command is `"semgrep"` with args `["mcp"]`). If found: remove the entry. If `.mcp.json` is now empty (`{}` or `{"mcpServers": {}}`), delete the file.
+   - This cleanup is safe to run even if the user never had the old install — all checks are no-ops when nothing is found.
 
-2. **Verify** — `semgrep --version`. If this fails, report the error and skip.
+2. **Check for Semgrep MCP** — verify the Semgrep MCP server is available. Run a quick check: `command -v semgrep && semgrep mcp --version`.
+   - If not available, tell user: "Sentinel requires the Semgrep MCP server. Set it up with: `claude mcp add semgrep semgrep mcp` — then re-run `/pipeline-setup` to enable Sentinel." Skip Sentinel setup.
+   - If semgrep is installed but not authenticated: tell user to run `semgrep login` first (opens browser, free account at https://semgrep.dev/login). Skip Sentinel setup.
 
-3. **Semgrep login** — Run `semgrep login --check 2>/dev/null`. If not logged in:
-   - Tell user: "Semgrep MCP requires a free Semgrep account (Pro Engine is included for individuals). Sign up at https://semgrep.dev/login if you don't have an account."
-   - Run `semgrep login` — this opens the browser automatically for authentication and saves the token locally.
-   - After login completes, verify: `semgrep login --check`. If still not authenticated, skip Sentinel setup with message: "Semgrep authentication required. Run `semgrep login` and re-run setup."
+3. Copy `source/agents/sentinel.md` to `.claude/agents/sentinel.md` (with placeholder customization, same as other agent personas).
 
-4. Copy `source/agents/sentinel.md` to `.claude/agents/sentinel.md`.
+4. Set `sentinel_enabled: true` in `.claude/pipeline-config.json`.
 
-5. Register Semgrep MCP in project `.mcp.json`:
-   - If `.mcp.json` exists with `mcpServers`: merge `"semgrep": {"command": "semgrep", "args": ["mcp"]}`.
-   - If `.mcp.json` does not exist: create with `{"mcpServers": {"semgrep": {"command": "semgrep", "args": ["mcp"]}}}`.
-
-6. Set `sentinel_enabled: true` in `.claude/pipeline-config.json`.
-
-7. Update installation summary: "Sentinel security agent: enabled (Semgrep)"
+5. Update installation summary: "Sentinel security agent: enabled (Semgrep MCP)"
 
 **If user says no:** Skip entirely. `sentinel_enabled` remains `false` in `pipeline-config.json`. Print: "Sentinel security agent: not enabled"
 
@@ -404,7 +397,7 @@ After the Sentinel offer (whether user said yes or no), offer the optional Agent
 **If user says no:** Skip entirely. `agent_teams_enabled` remains `false` in
 `pipeline-config.json`. Print: "Agent Teams: not enabled"
 
-**No dependency checks needed** -- unlike Sentinel (pip) or Brain (PostgreSQL), Agent Teams
+**No dependency checks needed** -- unlike Sentinel (Semgrep MCP) or Brain (PostgreSQL), Agent Teams
 has no external tools to install. The feature is entirely runtime-activated via the env var.
 
 **No installation manifest expansion** -- Agent Teams uses the existing Colby persona
