@@ -422,7 +422,7 @@ Several capabilities improve pipeline velocity and institutional memory:
 
 **Agent Teams (experimental).** Parallel wave execution using Claude Code's Agent Teams feature. When enabled, Eva creates Colby Teammate instances that execute independent build units within a wave simultaneously. Two gates must pass: `agent_teams_enabled: true` in pipeline config and `CLAUDE_AGENT_TEAMS=1` in the environment. Falls back to sequential execution transparently when either gate fails. See [Agent Teams](#agent-teams).
 
-**Security hardening.** Word boundary regex in enforcement hooks prevents false-positive blocks. Semgrep MCP version pinning (`semgrep-mcp==0.9.0`) for reproducible security scans.
+**Security hardening.** Word boundary regex in enforcement hooks prevents false-positive blocks.
 
 ### New in v3.4
 
@@ -470,9 +470,9 @@ Eva triages Sentinel findings alongside Roz and Poirot using the triage consensu
 
 ### Enabling Sentinel
 
-During `/pipeline-setup`, answer "yes" when asked about the Sentinel security agent. Setup installs `semgrep-mcp==0.9.0` via pip, copies the Sentinel persona file, registers Semgrep MCP in your project's `.mcp.json`, and sets `sentinel_enabled: true` in `pipeline-config.json`.
+During `/pipeline-setup`, answer "yes" when asked about the Sentinel security agent. Setup installs the Semgrep CLI, prompts you to log in to your semgrep.dev account, copies the Sentinel persona file, registers the built-in Semgrep MCP server in your project's `.mcp.json`, and sets `sentinel_enabled: true` in `pipeline-config.json`.
 
-**Requirements:** Python and pip (for Semgrep MCP installation).
+**Requirements:** Semgrep CLI (`brew install semgrep`) and a free [semgrep.dev](https://semgrep.dev/login) account. The free tier includes the Pro Engine for individual use. Run `semgrep login` before or during setup.
 
 ### When Sentinel is disabled
 

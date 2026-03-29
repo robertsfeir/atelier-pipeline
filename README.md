@@ -190,7 +190,7 @@ Not every feature runs every phase. Eva adjusts:
 
 **Agent Teams (experimental).** Parallel wave execution using Claude Code's Agent Teams feature. When enabled, Eva creates Colby Teammate instances that execute independent build units within a wave simultaneously. Two gates must pass: `agent_teams_enabled: true` in pipeline config and `CLAUDE_AGENT_TEAMS=1` in the environment. Falls back to sequential execution transparently when either gate fails.
 
-**Security hardening.** Word boundary regex in enforcement hooks prevents false-positive blocks. Semgrep MCP version pinning (`semgrep-mcp==0.9.0`) for reproducible security scans.
+**Security hardening.** Word boundary regex in enforcement hooks prevents false-positive blocks.
 
 ### What's New in v3.4
 

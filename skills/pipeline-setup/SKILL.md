@@ -350,7 +350,7 @@ After printing the summary, offer the optional Sentinel security agent:
 
 > Would you also like to enable **Sentinel** -- the security audit agent?
 > It uses Semgrep (open-source SAST) to scan your code for vulnerabilities
-> during QA. Requires Homebrew (macOS) or Semgrep CLI. Optional -- the pipeline works fine
+> during QA. Requires Semgrep CLI and a free semgrep.dev account. Optional -- the pipeline works fine
 > without it.
 
 **If user says yes:**
@@ -361,15 +361,20 @@ After printing the summary, offer the optional Sentinel security agent:
 
 2. **Verify** — `semgrep --version`. If this fails, report the error and skip.
 
-3. Copy `source/agents/sentinel.md` to `.claude/agents/sentinel.md`.
+3. **Semgrep login** — Run `semgrep login --check 2>/dev/null`. If not logged in:
+   - Tell user: "Semgrep MCP requires a free Semgrep account (Pro Engine is included for individuals). Sign up at https://semgrep.dev/login if you don't have an account."
+   - Run `semgrep login` — this opens the browser automatically for authentication and saves the token locally.
+   - After login completes, verify: `semgrep login --check`. If still not authenticated, skip Sentinel setup with message: "Semgrep authentication required. Run `semgrep login` and re-run setup."
 
-4. Register Semgrep MCP in project `.mcp.json`:
+4. Copy `source/agents/sentinel.md` to `.claude/agents/sentinel.md`.
+
+5. Register Semgrep MCP in project `.mcp.json`:
    - If `.mcp.json` exists with `mcpServers`: merge `"semgrep": {"command": "semgrep", "args": ["mcp"]}`.
    - If `.mcp.json` does not exist: create with `{"mcpServers": {"semgrep": {"command": "semgrep", "args": ["mcp"]}}}`.
 
-5. Set `sentinel_enabled: true` in `.claude/pipeline-config.json`.
+6. Set `sentinel_enabled: true` in `.claude/pipeline-config.json`.
 
-6. Update installation summary: "Sentinel security agent: enabled (Semgrep)"
+7. Update installation summary: "Sentinel security agent: enabled (Semgrep)"
 
 **If user says no:** Skip entirely. `sentinel_enabled` remains `false` in `pipeline-config.json`. Print: "Sentinel security agent: not enabled"
 

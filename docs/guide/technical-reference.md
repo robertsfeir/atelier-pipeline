@@ -1184,7 +1184,7 @@ Sentinel findings are triaged via the triage consensus matrix alongside Roz and 
 ### Configuration
 
 - **Enable:** `sentinel_enabled: true` in `.claude/pipeline-config.json`
-- **Install:** `/pipeline-setup` Step 6a installs `semgrep-mcp==0.9.0` via pip, copies `sentinel.md`, registers Semgrep MCP in `.mcp.json`
+- **Install:** `/pipeline-setup` Step 6a installs the Semgrep CLI (`brew install semgrep`), requires a free semgrep.dev account (`semgrep login`), copies `sentinel.md`, registers the built-in Semgrep MCP server (`{"command": "semgrep", "args": ["mcp"]}`) in `.mcp.json`
 - **Disable:** When `sentinel_enabled: false`, Sentinel is completely absent. No extra tool calls, no triage column.
 
 ### Failure Handling
