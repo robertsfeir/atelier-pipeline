@@ -160,6 +160,7 @@ Copy each template to its destination in the user's project, customizing placeho
 | `source/references/agent-preamble.md` | `.claude/references/agent-preamble.md` | Shared agent required actions |
 | `source/references/qa-checks.md` | `.claude/references/qa-checks.md` | Roz QA check procedures |
 | `source/references/branch-mr-mode.md` | `.claude/references/branch-mr-mode.md` | Colby branch/MR procedures |
+| `source/references/telemetry-metrics.md` | `.claude/references/telemetry-metrics.md` | Telemetry metric schemas, cost table, alert thresholds |
 | `source/pipeline/pipeline-state.md` | `docs/pipeline/pipeline-state.md` | Session recovery state |
 | `source/pipeline/context-brief.md` | `docs/pipeline/context-brief.md` | Context preservation |
 | `source/pipeline/error-patterns.md` | `docs/pipeline/error-patterns.md` | Error pattern tracking |
@@ -304,7 +305,7 @@ This project uses a multi-agent orchestration pipeline for structured developmen
 - Full test suite between work units
 ```
 
-### Step 6: Print Summary and Offer Brain Setup
+### Step 6: Print Summary and Offer Optional Features
 
 After installation, print:
 
@@ -313,7 +314,7 @@ After installation, print:
 3. The configured branching strategy and any CI recommendations
 4. A reminder of available slash commands
 5. Instructions to start their first pipeline run
-6. **Offer optional features** -- Sentinel security agent (Step 6a), Agent Teams parallel execution (Step 6b), CI Watch automated CI monitoring (Step 6c), and Atelier Brain persistent memory
+6. **Offer optional features** -- Sentinel security agent, Agent Teams parallel execution, CI Watch automated CI monitoring, Deps Agent dependency scanning, and Atelier Brain persistent memory (Steps 6a through 6d)
 
 **Example summary:**
 
@@ -324,7 +325,7 @@ Files installed: 40 (mandatory)
   .claude/rules/       -- 5 files (Eva persona, orchestration rules, pipeline operations, model selection, branch lifecycle)
   .claude/agents/      -- 9 files (Cal, Colby, Roz, Robert, Sable, Poirot, Distillator, Ellis, Agatha)
   .claude/commands/    -- 7 files (/pm, /ux, /architect, /debug, /pipeline, /devops, /docs)
-  .claude/references/  -- 7 files (quality framework, retro lessons, invocation templates, pipeline operations, agent preamble, QA checks, branch/MR mode)
+  .claude/references/  -- 8 files (quality framework, retro lessons, invocation templates, pipeline operations, agent preamble, QA checks, branch/MR mode, telemetry metrics)
   .claude/hooks/       -- 6 files (path enforcement, sequencing, git guard, DoR/DoD warning, pre-compact, config)
   docs/pipeline/       -- 5 files (state tracking for session recovery)
   .claude/pipeline-config.json -- branching strategy configuration
@@ -341,6 +342,7 @@ Branching strategy: [selected strategy]
 Sentinel security agent: [enabled (Semgrep MCP) | not enabled]
 Agent Teams: [enabled (experimental) | not enabled]
 CI Watch: [enabled (max retries: N) | not enabled]
+Deps agent: [enabled | not enabled]
 Compaction API: PreCompact hook installed for pipeline state preservation
 
 Available commands:
@@ -452,9 +454,40 @@ After the Agent Teams offer (whether user said yes or no), offer the optional CI
 
 **No new agent files installed** -- CI Watch uses existing Roz, Colby, and Ellis personas.
 
+### Step 6d: Deps Agent Opt-In
+
+After the CI Watch offer (whether user said yes or no), offer the optional Deps agent:
+
+> Would you also like to enable the **Deps agent** -- predictive dependency management?
+> It scans your dependencies for CVEs, checks for outdated packages, and predicts
+> breakage risk before you upgrade. No external tools required beyond your existing
+> package managers. Optional -- the pipeline works fine without it.
+
+**If user says yes:**
+
+1. Set `deps_agent_enabled: true` in `.claude/pipeline-config.json`.
+2. Copy `source/agents/deps.md` to `.claude/agents/deps.md`.
+3. Copy `source/commands/deps.md` to `.claude/commands/deps.md`.
+4. Print: "Deps agent: enabled. Use /deps to scan your dependencies."
+
+**Idempotency:** If `deps_agent_enabled` already exists in `pipeline-config.json`
+and is `true`, skip mutation and inform: "Deps agent is already enabled." If it
+exists and is `false`, confirm before changing. If the key is absent (missing from
+the config), treat as `false` (default false) and proceed with the offer.
+
+**If user says no:** Skip entirely. `deps_agent_enabled` remains `false`.
+Print: "Deps agent: not enabled"
+
+**Installation manifest addition (conditional):**
+
+| Template Source | Destination | Install When |
+|----------------|-------------|-------------|
+| `source/agents/deps.md` | `.claude/agents/deps.md` | User enables Deps in Step 6d |
+| `source/commands/deps.md` | `.claude/commands/deps.md` | User enables Deps in Step 6d |
+
 **Brain setup offer (always ask):**
 
-After the CI Watch offer (whether user said yes or no), ask the user:
+After the Deps Agent offer (whether user said yes or no), ask the user:
 
 > The pipeline is ready. Would you also like to set up the **Atelier Brain**?
 > It gives your agents persistent memory across sessions -- architectural

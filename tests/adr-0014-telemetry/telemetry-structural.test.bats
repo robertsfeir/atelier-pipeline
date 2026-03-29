@@ -599,9 +599,10 @@ load ../xml-prompt-structure/test_helper
   [ -f "$file" ] || skip "pipeline-operations.md not found"
 
   # Extract the "### Mask" section (between "### Mask" and the next "###" heading)
-  # Use awk since sed alternation is unreliable on macOS
+  # Use awk since sed alternation is unreliable on macOS.
+  # NR>1 prevents the terminator from matching the opening line itself.
   local mask_section
-  mask_section=$(awk '/^### Mask/,/^###/' "$file" | head -30)
+  mask_section=$(awk '/^### Mask/{found=1} found && NR>1 && /^###/{exit} found' "$file" | head -30)
   [ -n "$mask_section" ] || skip "### Mask section not found"
 
   # Must reference Tier 1 or telemetry capture within the Mask section
@@ -632,9 +633,8 @@ load ../xml-prompt-structure/test_helper
 # ── T-0014-046: Existing PIPELINE_STATUS fields unchanged ────────────
 
 @test "T-0014-046: existing PIPELINE_STATUS fields roz_qa still present" {
-  local file="$INSTALLED_REFS/pipeline-operations.md"
-  [ -f "$file" ] || file="$INSTALLED_RULES/pipeline-operations.md"
-  [ -f "$file" ] || skip "pipeline-operations.md not found"
+  local file="$INSTALLED_RULES/pipeline-orchestration.md"
+  [ -f "$file" ] || skip "pipeline-orchestration.md not found"
 
   grep -q "roz_qa" "$file"
 }
@@ -665,9 +665,10 @@ load ../xml-prompt-structure/test_helper
   [ -f "$file" ] || file="$INSTALLED_RULES/pipeline-operations.md"
   [ -f "$file" ] || skip "pipeline-operations.md not found"
 
-  # Extract the "### Never Mask" section up to the next "###" heading
+  # Extract the "### Never Mask" section up to the next "###" heading.
+  # NR>1 prevents the terminator from matching the opening line itself.
   local never_mask
-  never_mask=$(awk '/^### Never Mask/,/^###/' "$file" | head -20)
+  never_mask=$(awk '/^### Never Mask/{found=1} found && NR>1 && /^###/{exit} found' "$file" | head -20)
   [ -n "$never_mask" ] || skip "### Never Mask section not found"
 
   # Must reference telemetry accumulators specifically

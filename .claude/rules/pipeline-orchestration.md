@@ -81,6 +81,119 @@ pipeline?" The user decides — seeds are suggestions, not requirements.
 
 </protocol>
 
+<protocol id="telemetry-capture">
+
+## Telemetry Capture Protocol (MANDATORY when brain is available)
+
+Eva captures quantitative pipeline metrics at three gates. All captures use:
+- `thought_type: 'insight'`
+- `source_agent: 'eva'`
+- `source_phase: 'telemetry'`
+- `metadata.pipeline_id` (set at pipeline start: `{feature_name}_{ISO_timestamp}`)
+
+Eva reads `telemetry-metrics.md` at pipeline start alongside `pipeline-operations.md`
+to load metric schemas and cost estimation tables.
+
+Telemetry captures are additive -- they do not replace existing brain captures
+(phase transitions, model-vs-outcome, seeds, etc.).
+
+When `brain_available: false`, skip all telemetry capture gates entirely.
+In-memory accumulators still run for the pipeline-end summary display.
+
+### Tier 1 Gate (per-invocation) -- After Every Agent Returns
+
+After every Agent tool completion, Eva:
+
+1. Records wall-clock duration (`end_time - start_time` in ms). Duration is always computable.
+2. Extracts available metadata from Agent tool result: `model`, `input_tokens`, `output_tokens`,
+   `cache_read_tokens`, `finish_reason`, `tool_count`, `turn_count`.
+   - If token counts unavailable: log `0`, note "token counts unavailable from Agent tool" in content.
+   - If model unavailable: set `"unknown"`, skip `context_utilization` and `cost_usd` computation.
+3. Computes `cost_usd` using the cost table from `telemetry-metrics.md`.
+   If model unknown or not in the pricing table: set `cost_usd: null`, log "Cost unavailable -- model not in pricing table".
+4. Computes `context_utilization` as `(input_tokens + output_tokens) / context_window_max`
+   (model-dependent from `telemetry-metrics.md`). Set `null` when tokens unavailable.
+5. Calls `agent_capture`:
+   - `content`: `"Telemetry T1: {agent_name} {pipeline_phase} {duration_ms}ms {model}"`
+   - `importance: 0.3`
+   - `metadata`: full Tier 1 schema from `telemetry-metrics.md` populated with available data,
+     plus `telemetry_tier: 1` and `pipeline_id`
+6. On `agent_capture` failure: log and continue -- `"Telemetry T1 capture failed: {reason}. Continuing."` Never block the pipeline.
+7. Adds to in-memory accumulators: `total_cost`, `total_invocations`, `invocations_by_agent`.
+
+**Micro pipelines:** Tier 1 captures run as normal. Micro pipelines capture Tier 1 only --
+skip Tier 2 and Tier 3. Micro runs do not contribute to boot trend data (which queries Tier 3).
+
+### Tier 2 Gate (per-unit) -- After Each Work Unit Completes Roz QA PASS
+
+After each work unit passes Roz QA, Eva:
+
+1. Counts `rework_cycles` for this unit: number of Colby re-invocations after the first
+   on the same `work_unit_id`. A unit that passes on its first Colby invocation has `rework_cycles == 0`.
+2. Determines `first_pass_qa` (`rework_cycles == 0`).
+3. Sums `unit_cost_usd` from all Tier 1 captures for this `work_unit_id`. Set `null` if any Tier 1 cost was null.
+4. Tallies `finding_counts` from Roz, Poirot, Robert, Sable, Sentinel for this unit.
+5. Computes `finding_convergence` (findings flagged independently by both Roz and Poirot).
+6. Computes `evoscore_delta` from Roz's QA report (test counts before/after this unit).
+   Formula: `(tests_after - tests_broken) / tests_before`. When `tests_before == 0`: `evoscore_delta = 1.0`.
+7. Calls `agent_capture`:
+   - `content`: `"Telemetry T2: {work_unit_id} rework={rework_cycles} first_pass={first_pass_qa}"`
+   - `importance: 0.5`
+   - `metadata`: full Tier 2 schema populated, plus `telemetry_tier: 2` and `pipeline_id`
+8. On failure: log and continue -- `"Telemetry T2 capture failed: {reason}. Continuing."` Never block the pipeline.
+
+**Skipped on Micro pipelines.**
+
+### Tier 3 Gate (per-pipeline) -- At Pipeline End After Ellis Final Commit
+
+At pipeline end, after Ellis final commit and before the pattern staleness check, Eva:
+
+1. Aggregates from in-memory accumulators + Tier 2 captures.
+2. Computes `phase_durations` from Tier 1 timestamps grouped by `pipeline_phase`.
+3. Computes `rework_rate`: total `rework_cycles` / total units.
+4. Computes `first_pass_qa_rate`: units with `first_pass_qa == true` / total units.
+5. Computes aggregate `evoscore` from average of Tier 2 `evoscore_delta` values.
+6. Calls `agent_capture`:
+   - `content`: `"Telemetry T3: {pipeline_id} cost=${total_cost_usd} rework={rework_rate} evoscore={evoscore}"`
+   - `importance: 0.7`
+   - `metadata`: full Tier 3 schema populated, plus `telemetry_tier: 3` and `pipeline_id`
+   - Fields: `total_cost_usd`, `total_duration_ms`, `phase_durations`, `total_invocations`,
+     `invocations_by_agent`, `rework_rate`, `first_pass_qa_rate`, `agent_failures`, `evoscore`,
+     `regression_count`, `sizing`
+7. On failure: log and continue -- `"Telemetry T3 capture failed: {reason}. Continuing."` Never block the pipeline.
+   Pipeline-end summary still prints from in-memory accumulators.
+
+**Skipped on Micro pipelines.** Micro pipelines exclude from trend data -- Tier 3 skip means
+Micro runs do not appear in boot trend queries.
+
+### Pipeline-End Telemetry Summary
+
+After the Tier 3 capture (or after Ellis on Micro pipelines), Eva prints a telemetry summary
+to the user. Source data: in-memory accumulators (always available) supplemented by Tier 2
+captures for finding details (best-effort).
+
+**Standard (non-Micro) format:**
+```
+Pipeline complete. Telemetry summary:
+  Cost: ${total_cost_usd} ({agent}: ${agent_cost}, ...)
+  Duration: {total_duration_min} min ({phase}: {phase_duration_min} min, ...)
+  Rework: {rework_rate} cycles/unit ({total_units} units, {first_pass_count} first-pass QA)
+  EvoScore: {evoscore} ({tests_before} tests before, {tests_after} after, {tests_broken} broken)
+  Findings: Roz {N}, Poirot {N}, Robert {N} (convergence: {N} shared)
+```
+
+**Micro format (abbreviated):**
+```
+Telemetry: {invocation_count} invocations, {total_duration_min} min
+```
+Micro pipelines print invocation count and duration only -- no rework, EvoScore, or findings.
+
+**Fallback rules:**
+- Cost unavailable (token counts not exposed by Agent tool): print "Cost: unavailable (token counts not exposed)"
+- Brain unavailable: in-memory accumulator fallback -- summary still prints; finding details may be approximate
+
+</protocol>
+
 <gate id="mandatory-gates">
 
 ## Mandatory Gates -- Eva NEVER Skips These

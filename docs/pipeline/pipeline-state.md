@@ -39,6 +39,10 @@
 - Roz test authoring: 126 bats tests written
 - Wave 1 complete: ADR-0014 Steps 1,4 + ADR-0015 Steps 1,2,3 — 49 tests pass
 - Also: deleted 8 MyApp tech-stack files, added stale-file detection to update checker
-- Committing + history rewrite, then Wave 2+3
+- Waves 2+3 complete, review juncture passed (126/126 tests)
+- History rewrite: scrubbed all Clairvoyant references from 111 commits
+- Agatha docs complete, Robert docs verification done
+- Specs reconciled, version bumped to 3.8.0
+- Routing to Ellis for commit and push
 
-<!-- PIPELINE_STATUS: {"roz_qa": "PASS", "phase": "build", "sizing": "medium", "timestamp": "2026-03-30T04:00:00Z"} -->
+<!-- PIPELINE_STATUS: {"roz_qa": "PASS", "phase": "complete", "sizing": "medium", "timestamp": "2026-03-30T06:00:00Z"} -->

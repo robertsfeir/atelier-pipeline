@@ -515,7 +515,7 @@ load ../xml-prompt-structure/test_helper
 @test "T-0015-039: Sentinel row in subagent table is unchanged" {
   local file="$INSTALLED_RULES/agent-system.md"
   grep -q '\*\*Sentinel\*\*' "$file"
-  grep -qiE "Sentinel.*security.*audit\|Sentinel.*Semgrep" "$file"
+  grep -qiE "(Sentinel.*security.*audit|Sentinel.*Semgrep)" "$file"
 }
 
 # ── T-0015-040: Core agent constant list unchanged ──────────────────

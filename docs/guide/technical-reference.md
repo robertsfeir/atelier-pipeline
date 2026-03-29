@@ -1,6 +1,6 @@
 # Atelier Pipeline -- Technical Reference
 
-Version: 3.7.0
+Version: 3.8.0
 
 This document is the comprehensive technical reference for the atelier-pipeline Claude Code plugin. It covers plugin architecture, agent system design, orchestration logic, brain infrastructure, and customization points. For usage-oriented documentation, see [the user guide](user-guide.md).
 
@@ -28,10 +28,12 @@ This document is the comprehensive technical reference for the atelier-pipeline 
 18. [Sentinel Security Agent](#sentinel-security-agent)
 19. [Agent Teams](#agent-teams)
 20. [CI Watch](#ci-watch)
-21. [Agent Discovery](#agent-discovery)
-22. [Observation Masking and Context Hygiene](#observation-masking-and-context-hygiene)
-23. [Compaction API Integration](#compaction-api-integration)
-24. [Customization Points](#customization-points)
+21. [Deps Agent](#deps-agent)
+22. [Agent Telemetry](#agent-telemetry)
+23. [Agent Discovery](#agent-discovery)
+24. [Observation Masking and Context Hygiene](#observation-masking-and-context-hygiene)
+25. [Compaction API Integration](#compaction-api-integration)
+26. [Customization Points](#customization-points)
 
 ---
 
@@ -49,7 +51,7 @@ The plugin itself lives in the Claude Code plugin directory (typically `~/.claud
 ```
 atelier-pipeline/                         # Plugin root (CLAUDE_PLUGIN_ROOT)
   .claude-plugin/
-    plugin.json                           # Plugin metadata, hooks, version (3.7.0)
+    plugin.json                           # Plugin metadata, hooks, version (3.8.0)
   source/                                 # Template files -- copied to target project
     rules/
       default-persona.md
@@ -59,15 +61,15 @@ atelier-pipeline/                         # Plugin root (CLAUDE_PLUGIN_ROOT)
     agents/
       cal.md, colby.md, roz.md, robert.md,
       sable.md, investigator.md, distillator.md,
-      ellis.md, agatha.md, sentinel.md
+      ellis.md, agatha.md, sentinel.md, deps.md
     commands/
       pm.md, ux.md, architect.md, debug.md,
-      pipeline.md, devops.md, docs.md
+      pipeline.md, devops.md, docs.md, deps.md
     references/
       dor-dod.md, retro-lessons.md,
       invocation-templates.md, pipeline-operations.md,
       agent-preamble.md, qa-checks.md,
-      branch-mr-mode.md
+      branch-mr-mode.md, telemetry-metrics.md
     pipeline/
       pipeline-state.md, context-brief.md, error-patterns.md,
       investigation-ledger.md, last-qa-report.md,
@@ -114,7 +116,7 @@ The plugin registers a `SessionStart` hook in `plugin.json` that runs two comman
 
 ## File Tree -- What Lives Where
 
-After running `/pipeline-setup`, 40 files are installed into the target project. The plugin templates remain in the plugin directory and are never modified.
+After running `/pipeline-setup`, 41 mandatory files are installed into the target project (plus optional agent files). The plugin templates remain in the plugin directory and are never modified.
 
 ### Target Project (installed by /pipeline-setup)
 
@@ -154,6 +156,7 @@ your-project/
       agent-preamble.md                   # Shared required actions (DoR/DoD, retro, brain)
       qa-checks.md                        # Roz QA check procedures (Tier 1 + Tier 2)
       branch-mr-mode.md                   # Colby branch creation and MR procedures
+      telemetry-metrics.md                # Telemetry metric schemas, cost table, alert thresholds
     hooks/                                # Mechanical enforcement (PreToolUse + SubagentStop + PreCompact)
       enforce-paths.sh                    # Blocks Write/Edit outside agent's allowed paths
       enforce-sequencing.sh               # Blocks out-of-order agent invocations
@@ -172,7 +175,7 @@ your-project/
       last-qa-report.md                   # Roz's most recent QA report
 ```
 
-**Total: 40 files across 7 directories, plus the `.atelier-version` marker and an update to `CLAUDE.md`.** Three new reference files (`agent-preamble.md`, `qa-checks.md`, `branch-mr-mode.md`) extract shared behaviors from agent persona files to reduce duplication. The two additional files compared to v3.0 are `.claude/pipeline-config.json` (branching strategy configuration) and `.claude/rules/branch-lifecycle.md` (selected strategy's lifecycle rules).
+**Total: 41 mandatory files across 7 directories, plus the `.atelier-version` marker and an update to `CLAUDE.md`.** The `telemetry-metrics.md` reference file (v3.8) provides metric schemas, cost estimation tables, and degradation alert thresholds. Optional files: Sentinel persona (`sentinel.md`, Step 6a), Deps persona + command (`deps.md`, Step 6d).
 
 ### What Does NOT Live on Disk
 
@@ -280,6 +283,7 @@ Agent persona files use `disallowedTools` (denylist) in their frontmatter rather
 | **Ellis** | Commit and Changelog Manager | Subagent | Read, Write, Edit, Glob, Grep, Bash | Git operations, changelog | N/A | Sonnet (fixed) |
 | **Distillator** | Lossless Compression Engine | Subagent | Read, Glob, Grep, Bash | **None** (read-only, output returned to Eva) | **None** | Haiku (fixed) |
 | **Sentinel** | Security Audit (opt-in) | Subagent | Read, Glob, Grep, Bash + Semgrep MCP (`semgrep_scan`, `semgrep_findings`) | **None** (read-only) | **None** -- Eva captures findings post-review. | Opus (fixed) |
+| **Deps** | Dependency Management (opt-in) | Subagent | Read, Glob, Grep, Bash (read-only), WebSearch, WebFetch | **None** (read-only) | Reads: prior dependency decisions. Writes: scan results, upgrade risk assessments. | Sonnet (fixed) |
 
 ### Forbidden Actions by Agent
 
@@ -294,6 +298,7 @@ Agent persona files use `disallowedTools` (denylist) in their frontmatter rather
 | **Poirot** | Read spec/ADR/product/UX docs. Ask for context. Write/Edit anything. Produce fewer than 5 findings without HALT. Write prose paragraphs. |
 | **Distillator** | Drop decisions, rejected alternatives, or scope boundaries. Editorialize. Produce prose paragraphs. Modify source files. |
 | **Sentinel** | Read spec/ADR/UX docs. Write/Edit anything. Report findings from unchanged code (must filter to diff only). Classify pre-existing issues as new findings. Touch brain directly (Eva captures findings). |
+| **Deps** | Write/Edit/MultiEdit any file. Run `npm install`, `pip install`, `cargo update`, `go get`, or any command that modifies dependency files. Classify uncertain upgrades as "Safe to Upgrade" (must use "Needs Review"). |
 | **Ellis** | Commit without QA passing. Use generic commit messages. Commit without user approval. Use `git add -A` or `git add .`. |
 
 ### Cal: ADR Production Requirements (v2.4)
@@ -878,7 +883,7 @@ The skill:
 
 1. **Gathers project information** one question at a time: tech stack, test framework, test commands, source structure, database patterns, build/deploy commands, coverage thresholds, complexity limits, and branching strategy.
 2. **Reads template files** from `source/` in the plugin directory.
-3. **Copies ~40 files** to the target project (27 template files + 3 path-scoped rules + 6 enforcement hooks + 1 branching config + 1 branching variant + settings + version marker), replacing placeholders with project-specific values. The branching strategy variant file is selected from `source/variants/` and installed as `.claude/rules/branch-lifecycle.md`. Optional: Sentinel persona file (`sentinel.md`) if the user enables Sentinel in Step 6a.
+3. **Copies ~41 files** to the target project (28 template files + 3 path-scoped rules + 6 enforcement hooks + 1 branching config + 1 branching variant + settings + version marker), replacing placeholders with project-specific values. The branching strategy variant file is selected from `source/variants/` and installed as `.claude/rules/branch-lifecycle.md`. Optional: Sentinel persona (`sentinel.md`, Step 6a), Deps agent persona + command (`deps.md`, Step 6d).
 4. **Customizes enforcement hooks** in `.claude/hooks/` -- sets project-specific paths and test commands in `enforcement-config.json`, registers hooks in `.claude/settings.json`, and makes scripts executable.
 5. **Writes version marker** to `.claude/.atelier-version` for update detection.
 6. **Updates `CLAUDE.md`** with a pipeline section.
@@ -1377,6 +1382,269 @@ After each CI Watch resolution (pass or fix exhaustion), Eva captures via `agent
 - Content: failure pattern, root cause from Roz, fix applied, outcome
 
 This builds institutional memory for CI failure patterns. Eva can inject WARN context into future agent invocations when the same CI failure pattern recurs.
+
+---
+
+## Deps Agent
+
+### Overview
+
+The Deps agent (v3.8) is an opt-in, read-only dependency management agent that scans dependency manifests, checks CVEs via audit tools, predicts upgrade breakage by cross-referencing code usage against changelogs, and produces structured risk-grouped reports. It follows the Sentinel opt-in pattern: config flag, conditional install during setup, and auto-routing with a pre-flight gate.
+
+Design rationale: ADR-0015. The agent is analysis-only -- it never modifies dependency files.
+
+**Model:** Sonnet (fixed). **Pronouns:** they/them.
+
+### Agent Persona
+
+The persona file is `source/agents/deps.md` (installed to `.claude/agents/deps.md` when enabled). Key characteristics:
+
+- **disallowedTools:** `Agent, Write, Edit, MultiEdit, NotebookEdit` (read-only by default)
+- **Permitted Bash commands:** Explicit whitelist -- `npm outdated --json`, `npm audit --json`, `pip list --outdated`, `pip-audit`, `cargo outdated`, `cargo audit --json`, `go list -m -u all`, and version checks
+- **Prohibited Bash commands:** Explicit blocklist -- `npm install`, `pip install`, `cargo update`, `go get`, `go mod tidy`, and any command with `--save`, `--write`, or file redirection
+- **Conservative labeling:** When uncertain (changelog unavailable, tool missing, private registry), always uses "Needs Review" rather than "Safe to Upgrade"
+
+### Configuration
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `deps_agent_enabled` | boolean | `false` | Master toggle. Deps agent only activates when `true`. |
+
+### Setup Gate (Step 6d)
+
+The Deps agent is offered during `/pipeline-setup` after CI Watch (Step 6c). When the user enables it:
+
+1. `deps_agent_enabled` is set to `true` in `.claude/pipeline-config.json`
+2. `source/agents/deps.md` is copied to `.claude/agents/deps.md`
+3. `source/commands/deps.md` is copied to `.claude/commands/deps.md`
+
+Idempotency: if `deps_agent_enabled` already exists and is `true`, setup skips mutation. If it exists and is `false`, setup confirms before changing. If absent, it defaults to `false`.
+
+### Command: /deps
+
+The `/deps` command file (`.claude/commands/deps.md`) defines two flows:
+
+- **Flow A (Full Scan):** Triggered by `/deps` or auto-routed dependency questions. Eva invokes the Deps subagent, which produces a risk-grouped report.
+- **Flow B (Migration ADR Brief):** Triggered when the user asks for a migration ADR for a specific package. Deps produces a structured migration brief (breaking changes, affected files, estimated effort), which Eva hands to Cal for ADR production.
+
+### Auto-Routing
+
+Eva routes dependency-related questions to the Deps agent when `deps_agent_enabled: true`:
+
+| User intent pattern | Route |
+|-------------------|-------|
+| "Is [package] safe to upgrade?" | Deps |
+| "Do we have any CVEs?" | Deps |
+| "What dependencies need updates?" | Deps |
+| "Check my deps" | Deps |
+
+The `deps_agent_enabled` gate applies to auto-routed requests. When the agent is disabled, Eva suggests enabling it via `/pipeline-setup`.
+
+### Workflow
+
+The agent operates in three phases:
+
+1. **Detect** -- Glob for manifest files, verify package manager tool availability via version checks
+2. **Scan** -- Run outdated checks, CVE audits, and breakage prediction (changelog fetch + grep for breaking API usage)
+3. **Classify and Report** -- Group dependencies by risk level (CVE Alert, Needs Review, Safe to Upgrade, No Action Needed)
+
+### Risk Classification
+
+| Risk Level | Criteria |
+|------------|----------|
+| **CVE Alert** | CVSS >= 7.0, or any CVE in a directly used package |
+| **Needs Review** | Major version bump with breaking changes found in codebase, or changelog fetch failed |
+| **Safe to Upgrade** | Minor/patch bump, no breaking changes in changelog or codebase usage |
+| **No Action Needed** | Already at latest version |
+
+### Supported Ecosystems
+
+| Ecosystem | Manifest | Outdated | CVE Audit | Notes |
+|-----------|----------|----------|-----------|-------|
+| Node.js | `package.json` | `npm outdated --json` | `npm audit --json` | Full support |
+| Python | `requirements.txt` | `pip list --outdated --format=json` | `pip-audit --format=json` | `pip-audit` must be installed separately |
+| Rust | `Cargo.toml` | `cargo outdated` | `cargo audit --json` | `cargo-outdated` and `cargo-audit` must be installed |
+| Go | `go.mod` | `go list -m -u all` | None | No standard Go CVE audit tool -- report notes the gap |
+
+### Invocation Templates
+
+Eva uses two templates for Deps invocations:
+
+- **`deps-scan`** -- Full dependency scan. Task: "Scan all dependency manifests and produce a risk-grouped report."
+- **`deps-migration-brief`** -- Scoped to a specific package. Task: "Produce a migration brief for [package] [current] to [target]."
+
+### Failure Handling
+
+| Scenario | Handling |
+|----------|----------|
+| No manifest found | Report: "No dependency manifests detected" -- stop |
+| Package manager not installed | Skip that ecosystem, note the gap |
+| Network error (WebFetch/WebSearch) | Breakage prediction unavailable -- report outdated and CVE data from local tools |
+| Private registry auth failure | Note failure, CVE data unavailable for that ecosystem |
+| Bash command timeout | Stop immediately, report partial results (retro lessons #003, #004) |
+
+### Brain Integration
+
+Deps does not touch the brain directly. Eva captures scan results post-invocation via `agent_capture` with `source_agent: 'eva'`, `thought_type: 'insight'`, following the same pattern as Poirot and Sentinel.
+
+---
+
+## Agent Telemetry
+
+### Overview
+
+Agent Telemetry (v3.8) is Eva's quantitative metrics capture and trend analysis system. It captures cost, duration, rework rates, and quality scores across pipeline runs and surfaces trends at session boot. All telemetry data is stored in the Atelier Brain -- when the brain is unavailable, telemetry capture is skipped entirely with no behavioral change to the pipeline.
+
+Design rationale: ADR-0014. This feature subsumes the previously separate EvoScore (#12) and eval-driven outcome metrics (#14) proposals into a unified telemetry system.
+
+### Metric Tiers
+
+Telemetry is organized into four tiers, each captured at a different granularity:
+
+#### Tier 1: Per-Invocation
+
+Captured after every Agent tool completion. Key fields:
+
+| Field | Type | Source |
+|-------|------|--------|
+| `agent_name` | string | Agent identity |
+| `duration_ms` | integer | Wall-clock timing |
+| `model` | string | Agent tool result metadata |
+| `input_tokens` / `output_tokens` | integer | Agent tool result metadata (0 when unavailable) |
+| `cost_usd` | float or null | Computed from cost estimation table |
+| `context_utilization` | float or null | `(input + output tokens) / context_window_max` |
+| `is_retry` | boolean | Whether this is a rework invocation |
+
+Full schema: `.claude/references/telemetry-metrics.md`.
+
+#### Tier 2: Per-Unit
+
+Captured after each work unit completes Roz QA PASS. Aggregated from Tier 1. Key fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `rework_cycles` | integer | Colby re-invocations after first (0 = first-pass QA) |
+| `first_pass_qa` | boolean | `rework_cycles == 0` |
+| `unit_cost_usd` | float or null | Sum of Tier 1 costs for this unit |
+| `finding_counts` | object | `{roz: N, poirot: N, robert: N, sable: N, sentinel: N}` |
+| `evoscore_delta` | float | `(tests_after - tests_broken) / tests_before` |
+
+Skipped on Micro pipelines.
+
+#### Tier 3: Per-Pipeline
+
+Captured at pipeline end, after Ellis final commit. Aggregated from Tier 1 and Tier 2. Key fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `total_cost_usd` | float or null | Sum of all invocation costs |
+| `total_duration_ms` | integer | Pipeline start to Ellis final commit |
+| `rework_rate` | float | Total rework cycles / total units |
+| `first_pass_qa_rate` | float | Units passing first try / total units |
+| `evoscore` | float | Average EvoScore delta across all units |
+| `sizing` | string | micro / small / medium / large |
+
+Skipped on Micro pipelines. Micro runs do not appear in boot trend data.
+
+#### Tier 4: Over-Time Trends
+
+Not stored directly -- derived from brain queries at session boot. Eva queries the last 10 Tier 3 summaries and computes averages, percentage changes, and degradation alerts.
+
+### Capture Protocol
+
+All telemetry captures use:
+- `thought_type: 'insight'`
+- `source_agent: 'eva'`
+- `source_phase: 'telemetry'`
+- `metadata.pipeline_id` (format: `{feature_name}_{ISO_timestamp}`)
+
+Eva reads `telemetry-metrics.md` at pipeline start to load metric schemas, the cost estimation table, and alert thresholds.
+
+On capture failure at any tier: Eva logs the failure and continues. Telemetry never blocks the pipeline.
+
+### Cost Estimation Table
+
+Hardcoded estimates for order-of-magnitude accuracy (not for billing):
+
+| Model | Input per 1K tokens | Output per 1K tokens | Context window |
+|-------|---------------------|---------------------|----------------|
+| Opus | $0.015 | $0.075 | 200K |
+| Sonnet | $0.003 | $0.015 | 200K |
+| Haiku | $0.001 | $0.005 | 200K |
+
+When model is unknown or not in the table: `cost_usd` is set to `null`.
+
+### EvoScore
+
+```
+EvoScore = (tests_after - tests_broken) / tests_before
+```
+
+- `1.0` = no regressions, test count maintained or grew
+- `> 1.0` = new tests added, no regressions
+- `< 1.0` = regressions detected
+- Edge case: `tests_before == 0` yields EvoScore `1.0` (no regression possible)
+
+### Degradation Alert Thresholds
+
+Alerts fire only when a threshold is exceeded for 3+ consecutive pipelines. Two consecutive breaches do NOT fire an alert (anti-fatigue rule).
+
+| Alert | Threshold | Consecutive Required |
+|-------|-----------|---------------------|
+| Cost spike | >25% above rolling average | 3 |
+| Rework accumulation | >2.0 cycles/unit | 3 |
+| First-pass QA degradation | <60% | 3 |
+| Agent failure pattern | >2 failures for same agent over last 10 pipelines | N/A (window-based) |
+| Context pressure | >80% utilization per invocation | 3 consecutive invocations |
+| EvoScore degradation | <0.9 | 3 |
+
+### Boot Trend Query (Step 5b)
+
+At session boot, when `brain_available: true`, Eva queries the brain for Tier 3 summaries (`agent_search` with `filter: { telemetry_tier: 3 }`, limit 10). Results are filtered client-side for `source_phase == 'telemetry'`.
+
+| Prior pipelines found | Boot announcement |
+|----------------------|-------------------|
+| 2+ | `"Telemetry: Last {N} pipelines -- avg ${cost}, {duration} min. Rework: {rate}/unit. First-pass QA: {pct}%."` plus any degradation alerts |
+| 1 | `"Telemetry: 1 prior pipeline -- ${cost}, {duration} min. Trends appear after 2+ pipelines for comparison."` |
+| 0 | `"Telemetry: No prior pipeline data. Trends will appear after 2+ pipelines."` |
+| Brain unavailable | Telemetry line omitted entirely |
+
+### Pipeline-End Summary Format
+
+Standard (non-Micro):
+```
+Pipeline complete. Telemetry summary:
+  Cost: ${total_cost_usd} ({agent}: ${agent_cost}, ...)
+  Duration: {total_duration_min} min ({phase}: {phase_duration_min} min, ...)
+  Rework: {rework_rate} cycles/unit ({total_units} units, {first_pass_count} first-pass QA)
+  EvoScore: {evoscore} ({tests_before} tests before, {tests_after} after, {tests_broken} broken)
+  Findings: Roz {N}, Poirot {N}, Robert {N} (convergence: {N} shared)
+```
+
+Micro (abbreviated):
+```
+Telemetry: {invocation_count} invocations, {total_duration_min} min
+```
+
+Fallback: when token counts are unavailable, prints "Cost: unavailable (token counts not exposed)". When brain is unavailable, the summary still prints from in-memory accumulators.
+
+### Missing Data Handling
+
+| Data | When unavailable | Behavior |
+|------|-----------------|----------|
+| Token counts | Agent tool does not expose them | Log `0`, note "unavailable" in content |
+| Model | Agent tool does not expose it | Set `"unknown"`, skip cost and context utilization |
+| Cost | Tokens or model unavailable | Set `null`, log reason |
+| Context utilization | Tokens or model unavailable | Set `null` |
+
+### `pipeline_id` Generation
+
+Format: `{feature_name}_{ISO_timestamp}`
+
+- `feature_name`: slug from feature spec filename or ADR title (lowercase, hyphens)
+- `ISO_timestamp`: pipeline start time in `YYYY-MM-DDTHH:MM:SSZ`
+
+Example: `agent-telemetry-dashboard_2026-03-29T14:30:00Z`
 
 ---
 

@@ -1,6 +1,6 @@
 # Atelier Pipeline -- User Guide
 
-A structured, multi-agent development workflow for Claude Code. Eleven specialized agents handle product specs, UX design, architecture, implementation, QA, security audit, documentation, and commits -- so you focus on decisions, not process.
+A structured, multi-agent development workflow for Claude Code. Twelve specialized agents handle product specs, UX design, architecture, implementation, QA, security audit, dependency management, documentation, and commits -- so you focus on decisions, not process.
 
 ---
 
@@ -21,6 +21,8 @@ A structured, multi-agent development workflow for Claude Code. Eleven specializ
 - [Sentinel Security Agent](#sentinel-security-agent)
 - [Agent Teams](#agent-teams)
 - [CI Watch](#ci-watch)
+- [Deps Agent](#deps-agent)
+- [Agent Telemetry](#agent-telemetry)
 - [Agent Discovery](#agent-discovery)
 - [Context Management](#context-management)
 - [Mechanical Enforcement](#mechanical-enforcement)
@@ -50,7 +52,7 @@ Open Claude Code in your project directory and run:
 /pipeline-setup
 ```
 
-The setup asks about your project one question at a time: tech stack, test commands, source structure, coverage thresholds, and branching strategy. It then installs ~40 files into your project (agent personas, commands, references, enforcement hooks, path-scoped rules, branch lifecycle rules, and state tracking). At the end, it offers optional features: Sentinel security agent, Agent Teams parallel execution, and Atelier Brain persistent memory.
+The setup asks about your project one question at a time: tech stack, test commands, source structure, coverage thresholds, and branching strategy. It then installs ~41 files into your project (agent personas, commands, references, enforcement hooks, path-scoped rules, branch lifecycle rules, and state tracking). At the end, it offers optional features: Sentinel security agent, Agent Teams parallel execution, CI Watch, Deps agent, and Atelier Brain persistent memory.
 
 ### 3. Build something
 
@@ -83,6 +85,7 @@ The pipeline gives you a team of specialized agents, each with a clear job. You 
 | **Ellis** | Commit Manager | Creates atomic commits with Conventional Commits format and updates the changelog. |
 | **Distillator** | Compression Engine | Compresses large structured documents (spec, UX doc, ADR) at phase boundaries when they exceed ~5K tokens. |
 | **Sentinel** | Security Auditor (opt-in) | Scans changed code for vulnerabilities using Semgrep MCP static analysis. Runs in parallel with Roz and Poirot. |
+| **Deps** | Dependency Manager (opt-in) | Scans dependency manifests, checks CVEs, predicts upgrade breakage, and produces risk-grouped reports. |
 
 ### The flow
 
@@ -122,6 +125,7 @@ These are installed into your project by `/pipeline-setup`. Use them to invoke a
 | `/debug` | Roz, Colby | Investigate and fix a bug |
 | `/docs` | Agatha | Plan what documentation a feature needs |
 | `/devops` | Eva | Handle infrastructure, CI/CD, deployment |
+| `/deps` | Deps | Scan dependencies for outdated packages, CVEs, and upgrade risk |
 
 ### When you don't need slash commands
 
@@ -575,6 +579,101 @@ CI Watch is tied to your current session. If you close the terminal while CI is 
 ### When CI Watch is disabled
 
 When `ci_watch_enabled: false` (the default), CI Watch is completely absent. Ellis pushes and the pipeline ends. No polling, no background processes.
+
+---
+
+## Deps Agent
+
+The Deps agent is an opt-in dependency management agent that scans your project for outdated packages, CVE vulnerabilities, and upgrade risk. It produces a report -- it never modifies your files.
+
+### What Deps does
+
+1. **Detects ecosystems** -- finds `package.json`, `requirements.txt`, `Cargo.toml`, and `go.mod` across your project (including monorepos)
+2. **Checks for outdated packages** -- runs `npm outdated`, `pip list --outdated`, `cargo outdated`, or `go list -m -u all`
+3. **Scans for CVEs** -- runs `npm audit`, `pip-audit`, or `cargo audit` (Go has no standard audit tool -- the report notes this gap)
+4. **Predicts breakage** -- for major version bumps, fetches changelogs and cross-references breaking API changes against your actual code usage
+5. **Classifies by risk** -- groups results into CVE Alert, Needs Review, Safe to Upgrade, and No Action Needed
+
+### Using /deps
+
+Run `/deps` to trigger a full dependency scan. You can also ask naturally:
+
+```
+"Are any of our dependencies outdated?"
+"Do we have any CVEs?"
+"Is react safe to upgrade?"
+```
+
+Eva auto-routes dependency-related questions to the Deps agent when it is enabled.
+
+### Report format
+
+The report groups dependencies by risk level:
+
+- **CVE Alerts** -- packages with known vulnerabilities, with CVSS scores and fix versions
+- **Needs Review** -- major version bumps with breaking changes detected in your codebase, with file:line evidence
+- **Safe to Upgrade** -- minor/patch bumps with no breaking changes found
+- **No Action Needed** -- already at latest version
+
+For risky upgrades, you can ask Deps to produce a migration brief, which Eva then hands to Cal for a full migration ADR.
+
+### Enabling Deps
+
+During `/pipeline-setup`, answer "yes" when asked about the Deps agent (Step 6d). Setup copies the Deps persona and command files and sets `deps_agent_enabled: true` in `pipeline-config.json`.
+
+If you already ran setup, re-run `/pipeline-setup` to be offered the Deps agent.
+
+### When Deps is disabled
+
+When `deps_agent_enabled: false` (the default), the Deps agent is completely absent. The `/deps` command responds with a message directing you to enable it via `/pipeline-setup`.
+
+---
+
+## Agent Telemetry
+
+Agent Telemetry gives you visibility into pipeline efficiency -- cost, duration, rework rates, and quality trends across sessions. It requires the Atelier Brain.
+
+### What you see
+
+**At pipeline end**, Eva prints a telemetry summary:
+
+```
+Pipeline complete. Telemetry summary:
+  Cost: $3.42 (Colby: $1.80, Roz: $0.95, Cal: $0.45, Ellis: $0.12, Poirot: $0.10)
+  Duration: 34 min (build: 18 min, QA: 10 min, review: 4 min, docs: 2 min)
+  Rework: 1.5 cycles/unit (3 units, 2 first-pass QA)
+  EvoScore: 1.0 (24 tests before, 28 after, 0 broken)
+  Findings: Roz 4, Poirot 2, Robert 0 (convergence: 1 shared finding)
+```
+
+**At session boot** (after 2+ pipelines with telemetry data), Eva shows trends:
+
+```
+Telemetry: Last 5 pipelines -- avg $4.10, 41 min. Rework: 1.2/unit. First-pass QA: 73%.
+```
+
+**Degradation alerts** fire when thresholds are exceeded for 3+ consecutive pipelines:
+
+```
+Warning: Rework rate above 2.0 for 3 consecutive pipelines.
+Last 3: 2.1, 2.3, 2.5. Colby may need persona revision or model upgrade.
+```
+
+Alerts only trigger after 3 consecutive breaches to avoid noise from one bad pipeline.
+
+### How it works
+
+Eva captures metrics at three points during a pipeline:
+
+1. **After every agent invocation** -- duration, model, token counts, cost estimate
+2. **After each work unit passes QA** -- rework cycles, first-pass QA rate, EvoScore delta, finding counts
+3. **At pipeline end** -- aggregated cost, duration, rework rate, quality scores
+
+All metrics are stored in the brain via `agent_capture`. If the brain is unavailable, telemetry capture is skipped entirely -- the pipeline works identically without it. The pipeline-end summary still prints from in-memory data even without the brain, but trend data at boot requires stored history.
+
+### Micro pipelines
+
+Micro pipelines (2 or fewer files, mechanical changes) capture per-invocation metrics only. They skip per-unit and per-pipeline summaries and do not contribute to trend data.
 
 ---
 

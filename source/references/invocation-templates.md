@@ -405,6 +405,52 @@ Eva invokes Sentinel at the review juncture and after each Colby build unit
 
 </template>
 
+<template id="deps-scan">
+
+### Deps (Full Dependency Scan)
+
+Eva invokes Deps when the user types `/deps` or when dependency-related intent
+is detected (when `deps_agent_enabled: true` in `pipeline-config.json`).
+
+<task>Scan dependency manifests, check CVEs, predict breakage risk, and produce a risk-grouped report.</task>
+
+<constraints>
+- Detect which ecosystems are present (package.json, requirements.txt, Cargo.toml, go.mod). Skip missing ecosystems -- report them as absent rather than erroring.
+- Run outdated checks and CVE audit per ecosystem. Skip any ecosystem whose tool is absent -- report the gap.
+- Fetch changelogs for packages with major version bumps via WebFetch/WebSearch. If unavailable, note in report and skip changelog analysis.
+- Grep codebase for usage of APIs listed as breaking changes in changelogs.
+- Use conservative risk labels: prefer "Needs review" over "Safe" when uncertain.
+- If a Bash command hangs or times out, STOP. Do not retry. Report partial results.
+- Never modify files. This is analysis only.
+- Monorepo: scan all manifests found. Group report by directory.
+</constraints>
+
+<output>Risk-grouped dependency report: CVE Alerts | Needs Review | Safe to Upgrade | No Action Needed. Each entry: package name, current version, target version, CVE IDs, breaking API usage found (file:line), risk label, recommendation. DoR (ecosystems detected, tools available) and DoD sections.</output>
+
+</template>
+
+<template id="deps-migration-brief">
+
+### Deps (Migration ADR Brief)
+
+Eva invokes Deps when the user requests a migration ADR for a specific package.
+Eva then routes the brief to Cal for ADR production.
+
+<task>Produce a migration ADR brief for upgrading [package] from [current] to [target].</task>
+
+<constraints>
+- Scope this invocation to the named package only.
+- Fetch the full changelog/release notes for the version range.
+- Grep the entire codebase for every usage of APIs that are removed or changed.
+- Produce a structured brief: affected APIs, usage locations (file:line), suggested migration approach per API, estimated effort (low/medium/high).
+- This brief is the input to Cal's ADR production -- it must be precise and complete.
+- Never modify files.
+</constraints>
+
+<output>Migration ADR brief: package + version range, breaking changes table, usage inventory (file:line per API), migration approach, estimated effort, open questions for Cal. DoR and DoD sections.</output>
+
+</template>
+
 <!-- Distillator scope: Eva invokes Distillator only for cross-phase artifact
      compression (spec, UX doc, ADR exceeding ~5K tokens at a phase boundary).
      Within-session tool outputs (file reads, grep results, bash outputs) are

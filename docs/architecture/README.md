@@ -12,3 +12,5 @@
 | [ADR-0009](ADR-0009-sentinel-security-agent.md) | Sentinel Security Audit Agent with Semgrep MCP -- Optional 10th Pipeline Agent | Proposed |
 | [ADR-0010](ADR-0010-agent-teams.md) | Agent Teams -- Experimental Opt-In Support for Parallel Wave Execution | Proposed |
 | [ADR-0013](ADR-0013-ci-watch.md) | CI Watch (Self-Healing CI) -- Background CI Monitoring with Autonomous Fix Cycles | Proposed |
+| [ADR-0014](ADR-0014-telemetry.md) | Agent Telemetry Dashboard -- Per-Invocation Metrics, Cost Tracking, and Alert Thresholds | Proposed |
+| [ADR-0015](ADR-0015-deps-agent.md) | Deps Agent -- Predictive Dependency Management with CVE Scanning and Upgrade Risk Assessment | Proposed |

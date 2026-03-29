@@ -18,7 +18,7 @@
 # Feature Spec: Predictive Dependency Management Agent
 
 **Author:** Robert (CPO) | **Date:** 2026-03-29
-**Status:** Draft
+**Status:** Reconciled
 **Issue:** #20
 
 ## The Problem
@@ -181,14 +181,14 @@ Single slice — Small sizing. Agent persona + setup + command + routing.
 
 | # | Requirement | Status | Evidence |
 |---|-------------|--------|----------|
-| 1 | Agent persona | Pending | |
-| 2 | Config flag | Pending | |
-| 3 | Setup Step 6d | Pending | |
-| 4 | /deps command | Pending | |
-| 5 | Dep scanning | Pending | |
-| 6 | CVE checking | Pending | |
-| 7 | Breakage prediction | Pending | |
-| 8 | Migration ADR brief | Pending | |
-| 9 | Read-only enforcement | Pending | |
-| 10 | Auto-routing | Pending | |
-| 11 | Docs updated | Pending | |
+| 1 | Agent persona | Done | `source/agents/deps.md` with full workflow, constraints, and output format |
+| 2 | Config flag | Done | `deps_agent_enabled` in `pipeline-config.json`, default `false` |
+| 3 | Setup Step 6d | Done | `skills/pipeline-setup/SKILL.md` Step 6d with idempotency |
+| 4 | /deps command | Done | `source/commands/deps.md` with Flow A and Flow B |
+| 5 | Dep scanning | Done | Persona workflow Phase 2: `npm outdated`, `pip list --outdated`, `cargo outdated`, `go list -m -u all` |
+| 6 | CVE checking | Done | Persona workflow Phase 2: `npm audit`, `pip-audit`, `cargo audit`; Go gap documented |
+| 7 | Breakage prediction | Done | Persona workflow Phase 2: WebFetch changelogs + Grep for breaking API usage |
+| 8 | Migration ADR brief | Done | `/deps` command Flow B; Deps produces brief, Eva hands to Cal |
+| 9 | Read-only enforcement | Done | `disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit`; explicit Bash blocklist |
+| 10 | Auto-routing | Done | `agent-system.md` routing table entry for dependency-related intents |
+| 11 | Docs updated | Done | User guide and technical reference updated |

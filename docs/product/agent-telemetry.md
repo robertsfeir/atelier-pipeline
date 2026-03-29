@@ -19,7 +19,7 @@
 # Feature Spec: Agent Telemetry Dashboard
 
 **Author:** Robert (CPO) | **Date:** 2026-03-29
-**Status:** Draft
+**Status:** Reconciled
 **Issue:** #18 (includes folded #12, #14)
 
 ## The Problem
@@ -179,12 +179,12 @@ Telemetry: Last 5 pipelines — avg $4.10, 41 min. Rework: 1.2/unit. First-pass 
 
 ## Non-Functional Requirements
 
-| NFR | Target |
-|-----|--------|
-| Capture overhead | < 2s per invocation (brain write) |
-| Boot trend query | < 5s (brain search + aggregation) |
-| Storage | ~1KB per invocation, ~5KB per pipeline summary |
-| No pipeline blocking | Brain failure never blocks pipeline |
+| NFR | Target | Status |
+|-----|--------|--------|
+| T-NFR1: Capture overhead | < 2s per invocation (brain write) | Aspirational -- not verifiable in instruction files (runtime measurement required) |
+| T-NFR2: Boot trend query | < 5s (brain search + aggregation) | Aspirational -- not verifiable in instruction files (runtime measurement required) |
+| Storage | ~1KB per invocation, ~5KB per pipeline summary | Implemented (schema design supports this) |
+| No pipeline blocking | Brain failure never blocks pipeline | Implemented (all capture gates log-and-continue) |
 
 ## Dependencies
 
@@ -211,12 +211,12 @@ Single slice — all tiers ship together per the "no piecemeal" directive.
 
 | # | Requirement | Status | Evidence |
 |---|-------------|--------|----------|
-| 1 | Tier 1 per-invocation capture | Pending | |
-| 2 | Tier 2 per-unit capture | Pending | |
-| 3 | Tier 3 per-pipeline capture | Pending | |
-| 4 | Boot trend summary | Pending | |
-| 5 | Degradation alerts | Pending | |
-| 6 | Pipeline end summary | Pending | |
-| 7 | Non-blocking on failure | Pending | |
-| 8 | EvoScore tracking | Pending | |
-| 9 | Docs updated | Pending | |
+| 1 | Tier 1 per-invocation capture | Done | `pipeline-orchestration.md` Tier 1 Gate; `telemetry-metrics.md` Tier 1 schema |
+| 2 | Tier 2 per-unit capture | Done | `pipeline-orchestration.md` Tier 2 Gate; `telemetry-metrics.md` Tier 2 schema |
+| 3 | Tier 3 per-pipeline capture | Done | `pipeline-orchestration.md` Tier 3 Gate; `telemetry-metrics.md` Tier 3 schema |
+| 4 | Boot trend summary | Done | `default-persona.md` step 5b; `telemetry-metrics.md` Tier 4 queries |
+| 5 | Degradation alerts | Done | `telemetry-metrics.md` alert thresholds; `default-persona.md` step 5b |
+| 6 | Pipeline end summary | Done | `pipeline-orchestration.md` Pipeline-End Telemetry Summary |
+| 7 | Non-blocking on failure | Done | All capture gates: "log and continue -- never block the pipeline" |
+| 8 | EvoScore tracking | Done | `telemetry-metrics.md` EvoScore formula and edge cases |
+| 9 | Docs updated | Done | User guide and technical reference updated |

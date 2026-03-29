@@ -47,6 +47,7 @@ Hybrid skill/subagent workflow. Skills run in the main thread (conversational). 
 | **Distillator** | Lossless document compression engine | Read, Glob, Grep, Bash (read-only) |
 | **Ellis** | Commit & Changelog | Read, Write, Edit, Glob, Grep, Bash |
 | **Sentinel** | Security audit -- Semgrep-backed SAST (opt-in) | Read, Glob, Grep, Bash (read-only) + Semgrep MCP tools |
+| **Deps** | Dependency management -- outdated scan, CVE check, breakage prediction | Read, Glob, Grep, Bash (read-only), WebSearch, WebFetch |
 | *[Discovered agents]* | *Per agent persona file* | *Read, Glob, Grep, Bash (read-only by default -- see `<section id="agent-discovery">`)* |
 
 </section>
@@ -148,6 +149,7 @@ When the user sends a message outside an active pipeline, classify intent and ro
 | Says "run tests", "check this", "QA", "validate" | **Roz** | subagent |
 | Says "commit", "push", "ship it", "we're done" | **Ellis** | subagent |
 | Says "write docs", "document this", "update the docs" | **Agatha** (writing) | subagent |
+| Asks about outdated dependencies, CVEs, upgrade risk, "is [package] safe to upgrade", "check my deps", dependency vulnerabilities | **Deps** (if `deps_agent_enabled: true`) or suggest enabling | subagent |
 | Asks about infra, CI/CD, deployment, monitoring | **Eva** (devops) | skill |
 | Reports a bug, error, stack trace, "this is broken" | **Roz** (investigate) -> **hard pause** -> **Colby** (fix) | subagent chain |
 | Says "go", "next", "continue" after a phase completes | **Eva** routes to next | (see flow) |
@@ -246,7 +248,7 @@ See `.claude/references/invocation-templates.md` for detailed examples per agent
 
 ## CRITICAL: Custom Commands Are NOT Skills
 
-Do NOT invoke the `Skill` tool for `/pm`, `/ux`, `/docs`, `/architect`, `/debug`, `/pipeline`, `/devops`. Read the corresponding file and adopt the persona:
+Do NOT invoke the `Skill` tool for `/pm`, `/ux`, `/docs`, `/architect`, `/debug`, `/pipeline`, `/devops`, `/deps`. Read the corresponding file and adopt the persona:
 
 | Command | File | Agent |
 |---------|------|-------|
@@ -257,6 +259,7 @@ Do NOT invoke the `Skill` tool for `/pm`, `/ux`, `/docs`, `/architect`, `/debug`
 | `/debug` | `.claude/commands/debug.md` | Eva routes: Roz -> Colby -> Roz |
 | `/pipeline` | `.claude/commands/pipeline.md` | Eva (orchestrator) |
 | `/devops` | `.claude/commands/devops.md` | Eva (DevOps) |
+| `/deps` | `.claude/commands/deps.md` | Deps (dependency scan) |
 
 Subagents are invoked via the Agent tool with their persona files in `.claude/agents/`:
 
@@ -272,6 +275,7 @@ Subagents are invoked via the Agent tool with their persona files in `.claude/ag
 | Distillator | `.claude/agents/distillator.md` |
 | Ellis | `.claude/agents/ellis.md` |
 | Sentinel (security audit) | `.claude/agents/sentinel.md` |
+| Deps (dependency scan) | `.claude/agents/deps.md` |
 | *[Discovered agents]* | *`.claude/agents/{name}.md` (see `<section id="agent-discovery">`)* |
 
 </gate>
