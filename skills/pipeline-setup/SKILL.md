@@ -350,7 +350,7 @@ After printing the summary, offer the optional Sentinel security agent:
 
 > Would you also like to enable **Sentinel** -- the security audit agent?
 > It uses Semgrep (open-source SAST) to scan your code for vulnerabilities
-> during QA. Requires Python and pip. Optional -- the pipeline works fine
+> during QA. Requires Python and Homebrew (macOS). Optional -- the pipeline works fine
 > without it.
 
 **If user says yes:**
@@ -372,17 +372,22 @@ After printing the summary, offer the optional Sentinel security agent:
 
 5. **Verify installation** — `semgrep-mcp --version`. If this fails, report the error and skip Sentinel setup.
 
-6. Copy `source/agents/sentinel.md` to `.claude/agents/sentinel.md` (with placeholder customization, same as other agent personas).
+6. **Install Semgrep CLI** — `command -v semgrep`. If not available:
+   - Check for brew: `command -v brew`. If available, run `brew install semgrep`.
+   - If no brew: tell user "Install Semgrep CLI (https://semgrep.dev/docs/getting-started/) and restart Claude Code." Skip Sentinel setup.
+   - Verify: `semgrep --version`. The semgrep-mcp server requires the `semgrep` binary in PATH at startup.
 
-7. Register Semgrep MCP in project `.mcp.json`:
+7. Copy `source/agents/sentinel.md` to `.claude/agents/sentinel.md` (with placeholder customization, same as other agent personas).
+
+8. Register Semgrep MCP in project `.mcp.json`:
    - If `.mcp.json` exists and has `mcpServers` key: merge the new entry into `mcpServers`.
    - If `.mcp.json` exists without `mcpServers`: wrap existing entries under `mcpServers`, add new entry.
    - If `.mcp.json` does not exist: create with `{"mcpServers": {"semgrep": {"command": "semgrep-mcp"}}}`.
    - The entry format is: `"semgrep": {"command": "semgrep-mcp"}` inside the `mcpServers` object.
 
-8. Set `sentinel_enabled: true` in `.claude/pipeline-config.json`.
+9. Set `sentinel_enabled: true` in `.claude/pipeline-config.json`.
 
-9. Update the installation summary to include: "Sentinel security agent: enabled (Semgrep MCP)"
+10. Update the installation summary to include: "Sentinel security agent: enabled (Semgrep MCP)"
 
 **Known compatibility notes (print if relevant):**
 - Python 3.14: `semgrep-mcp` depends on `google-protobuf` which does not yet support Python 3.14's metaclass changes. Python 3.12 or 3.13 required.
