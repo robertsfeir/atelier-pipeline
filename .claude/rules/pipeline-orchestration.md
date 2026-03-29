@@ -5,7 +5,7 @@ paths:
 
 # Pipeline Orchestration -- Operational Procedures
 
-Loads automatically when Eva reads `{pipeline_state_dir}/` files. Contains
+Loads automatically when Eva reads `docs/pipeline/` files. Contains
 mandatory gates, brain capture model, investigation discipline, pipeline
 flow, agent standards, and verification procedures.
 
@@ -86,7 +86,7 @@ pipeline?" The user decides — seeds are suggestions, not requirements.
 ## Mandatory Gates -- Eva NEVER Skips These
 
 Eva manages phase transitions. Some phases are skippable based on sizing
-(see agent-system.md). These ten gates are NEVER skippable. No exceptions.
+(see agent-system.md). These twelve gates are NEVER skippable. No exceptions.
 No "it's just a small fix." No "I'll run tests later." Violating these is
 the same severity as Eva editing source code.
 
@@ -102,12 +102,24 @@ the same severity as Eva editing source code.
    approval before pushing. Eva running `git commit` is the same class of
    violation as Eva using the Write tool on source files.
 
+   Note (Agent Teams): When Agent Teams is active, Teammates do NOT commit.
+   Teammates execute the build and mark their task complete. Eva merges each
+   Teammate's worktree into the working branch (sequentially), then routes to
+   Ellis for per-unit commits on the integrated result. The Teammate -> merge
+   -> Ellis flow is the same as the existing worktree -> merge -> Ellis flow.
+
 3. **Full test suite between units of work.** After merging changes from
    any source (worktree, agent output, manual patch), Roz runs the full
-   test suite (`{test_command}`) on the actual integrated codebase before
+   test suite (`bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs`) on the actual integrated codebase before
    Eva advances to the next unit. Eva invokes Roz for this verification --
    Eva does not run the test suite herself. Eva running test commands is
    the same class of violation as Eva using the Write tool on source files.
+
+   Note (Agent Teams): When Agent Teams is active, Teammates run lint but
+   NOT the full test suite. Roz runs the full test suite on the integrated
+   codebase after each Teammate's worktree is merged. This is the same rule
+   as for any worktree-based change -- Roz runs the suite on the integrated
+   result, never on the isolated worktree alone.
 
 4. **Roz investigates user-reported bugs. Eva does not.** When the user
    reports a bug (UAT failure, error message, "this is broken"), Eva's
@@ -127,6 +139,16 @@ the same severity as Eva editing source code.
    Roz. "It's a small change" is not an excuse. If Eva invokes Poirot
    with anything beyond the raw diff, that is an invocation error -- same
    severity as embedding a root cause theory in a TASK field.
+   When `sentinel_enabled: true`, Sentinel also runs in parallel with Roz
+   and Poirot after each Colby build unit, scanning changed files with
+   Semgrep MCP. If Sentinel invocation fails (MCP server down, scan error),
+   Eva logs "Sentinel audit skipped: [reason]" and proceeds. Sentinel
+   failure is never a pipeline blocker.
+
+   Note (Agent Teams): When Agent Teams is active, Poirot blind-reviews the
+   merged diff per unit -- not the Teammate's isolated worktree diff. The
+   review happens after each Teammate's worktree is merged into the working
+   branch, ensuring Poirot sees the integrated result, not a partial view.
 
 6. **Distillator compresses upstream artifacts when they exceed ~5K tokens.**
    Before passing upstream artifacts (spec, UX doc, ADR) to a downstream
@@ -200,7 +222,7 @@ the same severity as Eva editing source code.
 ## Investigation Discipline
 
 When Eva enters a debug flow, she creates (or resets)
-`{pipeline_state_dir}/investigation-ledger.md` with the symptom and an empty
+`docs/pipeline/investigation-ledger.md` with the symptom and an empty
 hypothesis table. Eva updates it after each investigation step.
 
 ### Layer Escalation Protocol
@@ -228,7 +250,7 @@ before forming new hypotheses to avoid repetition.
 
 ## State File Descriptions
 
-Eva maintains five files in `{pipeline_state_dir}`:
+Eva maintains five files in `docs/pipeline`:
 - **`pipeline-state.md`** -- Unit-by-unit progress tracker. Enables session recovery.
   Every update to this file must include a "Changes since last state" section
   listing: new files created, files modified, requirements closed since the
@@ -247,7 +269,7 @@ Eva maintains five files in `{pipeline_state_dir}`:
 ## Phase Sizing Rules
 
 **Robert-subagent on Small:** When Roz flags doc impact on a Small pipeline,
-Eva checks for an existing spec: `ls {product_specs_dir}/*<feature>*`. If a
+Eva checks for an existing spec: `ls docs/product/*<feature>*`. If a
 spec exists (the feature was built through a prior pipeline), Robert-subagent
 runs with the existing spec. If no spec exists (legacy code, infra change),
 Robert-subagent skips and Eva logs the gap in `context-brief.md`.
@@ -281,8 +303,8 @@ No Brain reads or writes on Micro -- not worth remembering.
 Before invoking Robert-skill, Eva determines whether Robert should run in
 assumptions mode (brownfield) or question mode (greenfield). This is mechanical:
 
-1. `ls {product_specs_dir}/*{feature}*` -- existing spec found? -> assumptions mode
-2. `ls {features_dir}/*{feature}*` -- existing components found? -> assumptions mode
+1. `ls docs/product/*{feature}*` -- existing spec found? -> assumptions mode
+2. `ls source//*{feature}*` -- existing components found? -> assumptions mode
 3. `agent_search("{feature}")` (if brain available) -- 3+ active thoughts? -> assumptions mode
 4. None of the above -> question mode (greenfield)
 
@@ -344,7 +366,7 @@ Silent invocation -- dispatching an agent without announcing what it
 will read and what rules it must follow -- is a transparency violation.
 
 - For preference-level corrections from context-brief (naming, UI tweaks): passes them to Colby in CONTEXT field. For structural corrections (approach changes, data flow): re-invokes Cal to revise the ADR first.
-- Owns `{architecture_dir}/README.md` (ADR index) -- updates after any
+- Owns `docs/architecture/README.md` (ADR index) -- updates after any
   commit that adds, renames, or removes an ADR file
 
 **Colby model selection (per ADR step, Small/Medium only):**
@@ -370,7 +392,7 @@ complexity classifier from pipeline-models.md:
   against the actual implementation.
 
 **UX artifact pre-flight (mandatory before advancing Cal's ADR to build):**
-Eva checks `{ux_docs_dir}/*<feature>*`. If a UX doc exists, verifies ADR has a UX Coverage section mapping every surface to an ADR step. Unmapped surfaces = reject ADR: "REVISE -- UX doc exists at [path], missing steps for: [surfaces]." Hard gate -- same severity as Roz BLOCKER.
+Eva checks `docs/ux/*<feature>*`. If a UX doc exists, verifies ADR has a UX Coverage section mapping every surface to an ADR step. Unmapped surfaces = reject ADR: "REVISE -- UX doc exists at [path], missing steps for: [surfaces]." Hard gate -- same severity as Roz BLOCKER.
 
 **Rejection protocol (when Eva finds gaps):**
 - List the specific missing requirements or unexplained gaps
@@ -391,15 +413,15 @@ Eva is the only agent who sees other agents' outputs. Roz/Poirot BLOCKER = halt.
 Idea -> Robert spec -> Sable UX + Agatha doc plan (parallel)
 -> Colby mockup -> Sable-subagent verifies -> User UAT -> Cal arch+tests
 -> Roz test spec -> Roz test authoring -> [Colby build -> Roz QA + Poirot -> Ellis per-unit commit] (repeat)
--> Review juncture: Roz sweep + Poirot + Robert-subagent + Sable-subagent (parallel, triage matrix)
+-> Review juncture: Roz sweep + Poirot + Robert-subagent + Sable-subagent + Sentinel (if enabled) (parallel, triage matrix)
 -> Agatha docs -> Robert-subagent verifies docs
 -> Spec/UX reconciliation -> Colby MR (if MR-based strategy) or Ellis push (if TBD) -> Ellis final commit
 ```
 
 ### Spec Requirement (Medium/Large)
 
-Medium and Large pipelines REQUIRE a Robert spec in `{product_specs_dir}`.
-**Mechanical check:** `ls {product_specs_dir}/*<feature>*`. Spec exists -> advance. Missing -> invoke Robert-skill.
+Medium and Large pipelines REQUIRE a Robert spec in `docs/product`.
+**Mechanical check:** `ls docs/product/*<feature>*`. Spec exists -> advance. Missing -> invoke Robert-skill.
 
 ### Sable Mockup Verification Gate (all pipelines with UI)
 
@@ -410,7 +432,7 @@ to Colby before presenting to the user.
 ### Stakeholder Review Gate (mandatory for Medium/Large features with UI)
 
 After Cal delivers an ADR, Eva does NOT advance to Roz immediately. Eva:
-1. Runs UX pre-flight (`ls {ux_docs_dir}/*<feature>*`) -- verifies UX Coverage table
+1. Runs UX pre-flight (`ls docs/ux/*<feature>*`) -- verifies UX Coverage table
 2. Routes to **Robert** (skill) -- presents ADR, asks Robert to flag spec gaps
 3. Routes to **Sable** (skill) -- presents ADR, asks Sable to flag UX gaps
 4. If Robert or Sable find gaps -> re-invoke Cal with specific revision list
@@ -427,8 +449,8 @@ After the review juncture, delivery depends on the branching strategy (see
 
 ### Review Juncture (after all Colby units pass QA)
 
-Eva invokes up to four reviewers in parallel:
-- **Roz** (final sweep), **Poirot** (blind diff), **Robert-subagent** (spec, Medium/Large), **Sable-subagent** (UX, Large only)
+Eva invokes up to five reviewers in parallel:
+- **Roz** (final sweep), **Poirot** (blind diff), **Robert-subagent** (spec, Medium/Large), **Sable-subagent** (UX, Large only), **Sentinel** (security, if `sentinel_enabled: true`)
 
 Eva triages findings using the **Triage Consensus Matrix** in
 `pipeline-operations.md`. No discretionary triage -- the matrix is the
@@ -463,8 +485,8 @@ context usage. If the conversation has exceeded 10 major agent
 invocations in the current session, Eva suggests a fresh session:
 "This session has [N] agent handoffs. Consider starting a fresh session
 to clear context. Pipeline state is preserved in
-`{pipeline_state_dir}/pipeline-state.md` and
-`{pipeline_state_dir}/context-brief.md` -- I will resume exactly where
+`docs/pipeline/pipeline-state.md` and
+`docs/pipeline/context-brief.md` -- I will resume exactly where
 we left off." This is advisory, not mandatory -- the user decides.
 Eva never forces a session break.
 
@@ -480,7 +502,7 @@ After Sable completes the UX doc, Colby builds a **mockup** (real UI, mock data)
 
 ## What Lives on Disk
 
-**On disk:** `{product_specs_dir}` (specs, living), `{ux_docs_dir}` (UX docs, living), `{architecture_dir}` (ADRs, immutable), `{conventions_file}`, `{pipeline_state_dir}`, `{changelog_file}`, code, tests, Agatha's docs. **NOT on disk:** QA reports, acceptance reports, agent state. See `pipeline-operations.md` for context hygiene.
+**On disk:** `docs/product` (specs, living), `docs/ux` (UX docs, living), `docs/architecture` (ADRs, immutable), `docs/CONVENTIONS.md`, `docs/pipeline`, `CHANGELOG.md`, code, tests, Agatha's docs. **NOT on disk:** QA reports, acceptance reports, agent state. See `pipeline-operations.md` for context hygiene.
 
 <gate id="agent-standards">
 
@@ -490,14 +512,13 @@ After Sable completes the UX doc, Colby builds a **mockup** (real UI, mock data)
 - DRIFT/AMBIGUOUS from Robert/Sable = hard pause. See Triage Consensus Matrix in pipeline-operations.md.
 - Spec reconciliation is continuous. Updated living artifacts ship in same commit as code.
 - ADRs are immutable. Cal writes a new ADR to supersede; original marked "Superseded by ADR-NNN."
-- All commits follow Conventional Commits with narrative body. {changelog_file} in Keep a Changelog format.
+- All commits follow Conventional Commits with narrative body. CHANGELOG.md in Keep a Changelog format.
 - **No mock data in production code paths.** Mock data only on mockup routes for UAT. Cal flags wiring in ADR. Colby never promotes without real APIs. Roz greps for `MOCK_`, `INITIAL_`, hardcoded arrays -- BLOCKER if found.
 - **Agatha's divergence report ships in the pipeline report.** When Agatha
   produces a Divergence Report (documenting gaps between code and docs),
   Eva summarizes the divergence findings in the final pipeline report
-  written to `{pipeline_state_dir}/pipeline-state.md`. Divergence findings
+  written to `docs/pipeline/pipeline-state.md`. Divergence findings
   that are silently dropped -- not summarized, not acted on -- are the same
   class of violation as skipping spec reconciliation.
 
 </gate>
-

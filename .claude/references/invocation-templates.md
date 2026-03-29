@@ -2,13 +2,13 @@
 
 <!-- CONFIGURE: Update the placeholders below to match your project -->
 <!--
-  {product_specs_dir}   = directory for product specs (default: docs/product/)
-  {ux_docs_dir}         = directory for UX design docs (default: docs/ux/)
-  {architecture_dir}    = directory for ADR files (default: docs/architecture/)
-  {features_dir}        = feature directory pattern (e.g., src/features/, app/domains/)
-  {test_dir}            = test directory pattern (e.g., tests/, __tests__/, spec/)
-  {fast_test_command}   = command for rapid inner-loop tests (e.g., npm run test:fast)
-  {test_command}        = command to run full test suite (e.g., npx vitest run, npm test)
+  docs/product   = directory for product specs (default: docs/product/)
+  docs/ux         = directory for UX design docs (default: docs/ux/)
+  docs/architecture    = directory for ADR files (default: docs/architecture/)
+  source/        = feature directory pattern (e.g., src/features/, app/domains/)
+  tests/            = test directory pattern (e.g., tests/, __tests__/, spec/)
+            = command for rapid inner-loop tests (e.g., npm run test:fast)
+  bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs        = command to run full test suite (e.g., npx vitest run, npm test)
 -->
 
 Eva loads this file just-in-time when constructing sub-agent invocation
@@ -34,7 +34,7 @@ If brain is available, Eva pre-fetches and injects relevant context here:
 
 <context>[User preferences and decisions from context-brief.md]</context>
 
-<read>{product_specs_dir}/FEATURE.md, {ux_docs_dir}/FEATURE-ux.md, {product_specs_dir}/FEATURE-doc-plan.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
+<read>docs/product/FEATURE.md, docs/ux/FEATURE-ux.md, docs/product/FEATURE-doc-plan.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <warn>[Specific pattern if recurred 3x in error-patterns.md, otherwise omit this tag]</warn>
 
@@ -44,7 +44,7 @@ If brain is available, Eva pre-fetches and injects relevant context here:
 - Comprehensive test spec: failure tests >= happy path tests
 </constraints>
 
-<output>ADR saved to {architecture_dir}/ADR-NNNN-feature-name.md with DoR/DoD sections</output>
+<output>ADR saved to docs/architecture/ADR-NNNN-feature-name.md with DoR/DoD sections</output>
 
 </template>
 
@@ -71,7 +71,7 @@ Research Brief (Large pipeline):
 - Brain-surfaced rejections: [rejected approaches]
 - Brain-surfaced patterns: [proven patterns]</context>
 
-<read>{product_specs_dir}/FEATURE.md, {ux_docs_dir}/FEATURE-ux.md, {product_specs_dir}/FEATURE-doc-plan.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
+<read>docs/product/FEATURE.md, docs/ux/FEATURE-ux.md, docs/product/FEATURE-doc-plan.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <warn>[Specific pattern if recurred 3x in error-patterns.md, otherwise omit this tag]</warn>
 
@@ -82,7 +82,7 @@ Research Brief (Large pipeline):
 - Reference research brief findings in Alternatives Considered section
 </constraints>
 
-<output>ADR saved to {architecture_dir}/ADR-NNNN-feature-name.md with DoR/DoD sections</output>
+<output>ADR saved to docs/architecture/ADR-NNNN-feature-name.md with DoR/DoD sections</output>
 
 </template>
 
@@ -99,10 +99,10 @@ Research Brief (Large pipeline):
 
 <context>[User preferences from context-brief.md]</context>
 
-<read>{product_specs_dir}/FEATURE.md, {ux_docs_dir}/FEATURE-ux.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
+<read>docs/product/FEATURE.md, docs/ux/FEATURE-ux.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <constraints>
-- Real components in {features_dir}/feature-name/ using existing component library
+- Real components in source//feature-name/ using existing component library
 - Wire to mock data hook, not API calls
 - Implement all states from Sable's doc (empty, loading, populated, error, overflow)
 - Add route and nav item. No backend, no tests.
@@ -127,11 +127,11 @@ Research Brief (Large pipeline):
 [When this step consumes a contract from a prior step, Eva includes the prior
 step's Contracts Produced table here so Colby has the exact response shapes.]</context>
 
-<read>{architecture_dir}/ADR-NNNN-feature-name.md, [Roz-authored test files], .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
+<read>docs/architecture/ADR-NNNN-feature-name.md, [Roz-authored test files], .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <constraints>
 - Make Roz's pre-written tests pass -- do not modify her assertions
-- Inner loop: `{fast_test_command}` for rapid iteration. Full suite at unit completion.
+- Inner loop: `` for rapid iteration. Full suite at unit completion.
 - If a Roz test fails against existing code, the code has a bug -- fix it
 - When fixing a shared utility bug, grep for all instances codebase-wide
 - Zero TODO/FIXME/HACK in delivered code
@@ -179,7 +179,7 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 <thought type="lesson" agent="eva" phase="retro" relevance="0.70">Retro lessons relevant to this area</thought>
 </brain-context>
 
-<read>{architecture_dir}/ADR-NNNN-feature-name.md, {product_specs_dir}/FEATURE.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md, .claude/references/qa-checks.md</read>
+<read>docs/architecture/ADR-NNNN-feature-name.md, docs/product/FEATURE.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md, .claude/references/qa-checks.md</read>
 
 <constraints>
 - Check failure:happy ratio (failure >= happy, hard rule)
@@ -203,7 +203,7 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 <thought type="lesson" agent="eva" phase="retro" relevance="0.70">Retro lessons relevant to this area</thought>
 </brain-context>
 
-<read>{architecture_dir}/ADR-NNNN-feature-name.md (Step N), {product_specs_dir}/FEATURE.md, [relevant source files], .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
+<read>docs/architecture/ADR-NNNN-feature-name.md (Step N), docs/product/FEATURE.md, [relevant source files], .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <constraints>
 - Write concrete test assertions, not descriptions
@@ -213,7 +213,7 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 - Flag any ambiguous domain intent for Eva
 </constraints>
 
-<output>Test files in {test_dir}/ matching ADR step scope, with DoR/DoD sections</output>
+<output>Test files in tests// matching ADR step scope, with DoR/DoD sections</output>
 
 </template>
 
@@ -228,7 +228,7 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 <thought type="lesson" agent="eva" phase="retro" relevance="0.70">Retro lessons relevant to this area</thought>
 </brain-context>
 
-<read>{architecture_dir}/ADR-NNNN-feature-name.md, {product_specs_dir}/FEATURE.md, {ux_docs_dir}/FEATURE-ux.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md, .claude/references/qa-checks.md</read>
+<read>docs/architecture/ADR-NNNN-feature-name.md, docs/product/FEATURE.md, docs/ux/FEATURE-ux.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md, .claude/references/qa-checks.md</read>
 
 <constraints>
 - Run all QA checks in order (per your persona file)
@@ -247,7 +247,7 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 
 <task>Scoped QA re-run on ADR-NNNN fix</task>
 
-<read>{architecture_dir}/ADR-NNNN-feature-name.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md, .claude/references/qa-checks.md</read>
+<read>docs/architecture/ADR-NNNN-feature-name.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md, .claude/references/qa-checks.md</read>
 
 <constraints>
 - Failed checks from first pass: [list specific failed checks]
@@ -271,7 +271,7 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 <thought type="decision" agent="colby" phase="build" relevance="0.75">Key implementation decisions for commit context</thought>
 </brain-context>
 
-<read>{architecture_dir}/ADR-NNNN-feature-name.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
+<read>docs/architecture/ADR-NNNN-feature-name.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <constraints>
 - Analyze the full diff, not just the last commit
@@ -295,7 +295,7 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 <thought type="lesson" agent="eva" phase="retro" relevance="0.70">Retro lessons relevant to this area</thought>
 </brain-context>
 
-<read>{product_specs_dir}/FEATURE.md, {ux_docs_dir}/FEATURE-ux.md, {architecture_dir}/ADR-NNNN-feature-name.md, {product_specs_dir}/FEATURE-doc-plan.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
+<read>docs/product/FEATURE.md, docs/ux/FEATURE-ux.md, docs/architecture/ADR-NNNN-feature-name.md, docs/product/FEATURE-doc-plan.md, .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <constraints>
 - Follow doc plan
@@ -318,7 +318,7 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 <thought type="decision" agent="robert" phase="review" relevance="0.80">Prior acceptance review patterns and decisions</thought>
 </brain-context>
 
-<read>{product_specs_dir}/FEATURE.md, [implementation file paths], .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
+<read>docs/product/FEATURE.md, [implementation file paths], .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <constraints>
 - Verify every acceptance criterion from the spec against the actual code
@@ -342,7 +342,7 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 <thought type="decision" agent="sable" phase="review" relevance="0.80">Prior UX review patterns and decisions</thought>
 </brain-context>
 
-<read>{ux_docs_dir}/FEATURE-ux.md, [implementation file paths], .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
+<read>docs/ux/FEATURE-ux.md, [implementation file paths], .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <constraints>
 - Verify every screen, state, interaction, a11y requirement, and copy item
@@ -374,6 +374,31 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 
 </template>
 
+<template id="sentinel-audit">
+
+### Sentinel (Security Audit)
+
+Eva invokes Sentinel at the review juncture and after each Colby build unit
+(when `sentinel_enabled: true` in `pipeline-config.json`).
+
+<task>Security audit of Colby's build output for ADR-NNNN Step N</task>
+
+(Or for the final review juncture: "Security audit -- full review juncture for ADR-NNNN")
+
+<constraints>
+- You receive ONLY the diff and Semgrep scan results. No spec, no ADR, no UX doc, no context. This is by design.
+- Run `semgrep_scan` on changed files. Call `semgrep_findings` for structured results.
+- Cross-reference all findings against the diff -- only report findings in added or modified code.
+- Minimum 3 findings or explicit "clean scan" report with evidence (files scanned, rules matched, scan duration).
+- Include CWE/OWASP references for every BLOCKER and MUST-FIX finding.
+- If Semgrep scan hangs or times out, STOP. Report partial results. Do not retry.
+- Grep codebase to verify whether flagged patterns exist in other files (scope check).
+</constraints>
+
+<output>Security report with findings table (location, severity, category, CWE/OWASP, description, remediation), scan metadata, DoR/DoD sections</output>
+
+</template>
+
 <template id="distillator-compress">
 
 ### Distillator (Compress Between Phases)
@@ -383,7 +408,7 @@ them for downstream consumption.
 
 <task>Compress spec + UX doc for downstream consumption by Cal</task>
 
-<read>{product_specs_dir}/FEATURE.md, {ux_docs_dir}/FEATURE-ux.md</read>
+<read>docs/product/FEATURE.md, docs/ux/FEATURE-ux.md</read>
 
 <constraints>
 - Lossless compression -- every decision, constraint, rejected alternative, open question, scope boundary survives
@@ -403,7 +428,7 @@ them for downstream consumption.
 
 <task>Compress ADR for downstream consumption by Colby -- with validation</task>
 
-<read>{architecture_dir}/ADR-NNNN-feature-name.md</read>
+<read>docs/architecture/ADR-NNNN-feature-name.md</read>
 
 <constraints>
 - Same lossless rules as above
@@ -412,5 +437,64 @@ them for downstream consumption.
 </constraints>
 
 <output>Distillate + reconstruction, YAML frontmatter, DoR/DoD sections, preservation checklist</output>
+
+</template>
+
+<template id="agent-teams-task">
+
+### Agent Teams Teammate Task (Experimental)
+
+Eva uses this format when creating tasks for Colby Teammates during Agent
+Teams wave execution (when `agent_teams_available: true`). This is the
+task description written to TaskCreate -- not an Agent tool invocation
+prompt. Teammates load Colby's persona from `.claude/agents/colby.md`
+and project rules from `.claude/rules/` automatically via their worktree.
+
+**Task description format (Eva writes this to TaskCreate):**
+
+```
+ADR: ADR-NNNN Step N -- [step description]
+Wave: N of M, Unit: K of L
+maxTurns: 25
+
+Files to create:
+- [path/to/new-file.ext]
+
+Files to modify:
+- [path/to/existing-file.ext]
+
+Test files:
+- [path/to/test-file.ext]
+
+Acceptance criteria (from ADR step):
+- [criterion 1]
+- [criterion 2]
+- [criterion N]
+
+Constraints:
+- Run lint after implementation:
+- Do NOT run the full test suite -- Eva runs it after merge
+- Do NOT commit -- Eva merges and routes to Ellis
+- Do NOT modify files outside your assigned scope above
+- If a file that should exist does not exist (missing dependency from
+  another step), mark this task as blocked with a description of
+  what is missing rather than attempting to work around it
+- Make Roz's pre-written tests pass -- do not modify her assertions
+- Zero TODO/FIXME/HACK in delivered code
+```
+
+**Notes for Eva:**
+
+- One task per wave unit. Tasks are created for all units in the wave
+  before any Teammate begins execution.
+- `maxTurns: 25` is the default. Adjust per unit complexity if needed.
+  This is the only hard limit on runaway Teammate iterations (retro #004).
+- Eva processes `TaskCompleted` events sequentially -- one at a time --
+  to avoid race conditions in `pipeline-state.md` updates (retro #003).
+- After all Teammates in the wave complete, Eva merges worktrees in task
+  creation order (deterministic merge sequence).
+- If a Teammate marks its task blocked: Eva falls back to sequential
+  execution for that unit, resolves the missing dependency, then
+  re-invokes Colby as a standard subagent.
 
 </template>

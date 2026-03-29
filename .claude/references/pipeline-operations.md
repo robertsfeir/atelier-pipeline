@@ -48,21 +48,27 @@ Cal's ADR steps become work units. Roz writes tests first, Colby implements to p
 1. Eva invokes Colby for unit 1 with Roz's test files as the target
 2. Colby implements to make Roz's tests pass (may add additional tests)
 3. When Colby finishes unit 1, Eva invokes Roz for QA review AND Poirot
-   for blind diff review in PARALLEL. Roz gets full context; Poirot gets
-   ONLY the `git diff` output.
-4. Eva triages findings from both: deduplicates, classifies severity.
-   Findings unique to Poirot get special attention.
-5. If Roz or Poirot flags an issue on unit N, Eva queues the fix. Colby
+   for blind diff review AND Sentinel for security audit (if `sentinel_enabled: true`)
+   in PARALLEL. Roz gets full context; Poirot gets ONLY the `git diff` output;
+   Sentinel gets the diff and runs Semgrep MCP scans on changed files.
+4. Eva triages findings from all reviewers: deduplicates, classifies severity.
+   Findings unique to Poirot get special attention. Findings unique to Sentinel
+   get CWE/OWASP cross-reference.
+5. If Roz, Poirot, or Sentinel flags an issue on unit N, Eva queues the fix. Colby
    finishes the current unit, then addresses the fix before starting the next unit
 6. **Eva invokes Ellis for a per-unit commit** on the feature branch after
    Roz QA PASS. Ellis uses per-unit commit mode (shorter message, no
    changelog trailer). The feature branch accumulates granular commits.
-7. Eva updates `{pipeline_state_dir}/pipeline-state.md` after each unit transition
+7. Eva updates `docs/pipeline/pipeline-state.md` after each unit transition
 
 **Post-build pipeline tail (after all units pass individual QA):**
 8. Eva invokes the review juncture: Roz final sweep + Poirot + Robert-subagent
-   + Sable-subagent (Large) in parallel. Eva triages findings using the
-   Triage Consensus Matrix (see below). Routes fixes to Colby if needed, re-runs Roz.
+   + Sable-subagent (Large) + Sentinel (if `sentinel_enabled: true`) in parallel.
+   Eva triages findings using the Triage Consensus Matrix (see below). Routes
+   fixes to Colby if needed, re-runs Roz. Eva captures Sentinel findings
+   post-review via `agent_capture` with `source_agent: 'eva'`,
+   `thought_type: 'insight'` (same pattern as Poirot -- Sentinel does not touch
+   brain directly).
 9. Eva invokes Agatha to write/update docs against the final verified code.
    On Small: only if Roz flagged doc impact. On Medium/Large: always.
 10. Eva invokes Robert-subagent in doc review mode to verify Agatha's output
@@ -91,18 +97,23 @@ Cal's ADR steps become work units. Roz writes tests first, Colby implements to p
 At every review juncture, Eva consults this matrix to determine the action.
 No discretion -- the matrix is the rule.
 
-| Roz | Poirot | Robert | Sable | Action |
-|-----|--------|--------|-------|--------|
-| BLOCKER | any | any | any | **HALT.** Roz BLOCKER is always authoritative. |
-| any | BLOCKER | any | any | **HALT.** Eva investigates Poirot's finding. If confirmed, same as Roz BLOCKER. |
-| MUST-FIX | agrees | -- | -- | **HIGH-CONFIDENCE.** Queue fix, Colby priority. |
-| PASS | flags issue | -- | -- | **CONTEXT-ANCHORING MISS.** Eva investigates -- Poirot caught what Roz's context biased her to miss. Treat as MUST-FIX minimum. |
-| MUST-FIX | PASS | -- | -- | **STANDARD.** Queue fix per normal flow. |
-| -- | -- | DRIFT | -- | **HARD PAUSE.** Human decides: fix code or update spec. |
-| -- | -- | AMBIGUOUS | -- | **HARD PAUSE.** Human clarifies spec. |
-| -- | -- | -- | DRIFT | **HARD PAUSE.** Human decides: fix code or update UX doc. |
-| -- | -- | DRIFT | DRIFT | **CONVERGENT DRIFT.** High-confidence spec/UX misalignment. Escalate to human with both reports. |
-| PASS | PASS | PASS | PASS | **ADVANCE.** All clear, proceed to Agatha. |
+| Roz | Poirot | Robert | Sable | Sentinel | Action |
+|-----|--------|--------|-------|----------|--------|
+| BLOCKER | any | any | any | -- | **HALT.** Roz BLOCKER is always authoritative. |
+| any | BLOCKER | any | any | -- | **HALT.** Eva investigates Poirot's finding. If confirmed, same as Roz BLOCKER. |
+| any | any | any | any | BLOCKER | **HALT.** Sentinel BLOCKER (exploitable vulnerability) is always authoritative. Eva verifies Semgrep finding is not false positive (check CWE, check if code path is reachable). If confirmed, same as Roz BLOCKER. |
+| MUST-FIX | agrees | -- | -- | -- | **HIGH-CONFIDENCE.** Queue fix, Colby priority. |
+| PASS | flags issue | -- | -- | -- | **CONTEXT-ANCHORING MISS.** Eva investigates -- Poirot caught what Roz's context biased her to miss. Treat as MUST-FIX minimum. |
+| MUST-FIX | PASS | -- | -- | -- | **STANDARD.** Queue fix per normal flow. |
+| PASS | PASS | -- | -- | MUST-FIX | **SECURITY CONCERN.** Queue fix, Colby priority. Sentinel caught what Roz and Poirot missed (SAST-specific finding). |
+| MUST-FIX | flags issue | -- | -- | MUST-FIX | **CONVERGENT SECURITY.** Multiple reviewers flag security. High-confidence fix needed. |
+| -- | -- | DRIFT | -- | -- | **HARD PAUSE.** Human decides: fix code or update spec. |
+| -- | -- | AMBIGUOUS | -- | -- | **HARD PAUSE.** Human clarifies spec. |
+| -- | -- | -- | DRIFT | -- | **HARD PAUSE.** Human decides: fix code or update UX doc. |
+| -- | -- | DRIFT | DRIFT | -- | **CONVERGENT DRIFT.** High-confidence spec/UX misalignment. Escalate to human with both reports. |
+| PASS | PASS | PASS | PASS | PASS | **ADVANCE.** All clear, proceed to Agatha. |
+
+When `sentinel_enabled: false`, the Sentinel column is absent from triage -- Eva skips Sentinel entirely and the matrix behaves as it did before Sentinel was added.
 
 **Brain capture gate (when brain_available: true):** After each triage,
 Eva calls `agent_capture` with `thought_type: 'insight'`, content:
@@ -175,6 +186,27 @@ Changes from isolated worktrees must be integrated using git operations -- **nev
 3. **One worktree merges at a time.** Eva invokes Roz to run the test suite between each merge.
 4. **Worktree agents do not see each other's changes.** Eva is responsible for the integration.
 
+**Agent Teams Worktrees (when `agent_teams_available: true`, experimental):**
+
+Agent Teams worktrees are managed by Claude Code, not by Eva via Bash. Eva
+does not create or delete worktrees manually -- the Agent Teams runtime
+handles worktree lifecycle.
+
+- **Merge order:** Eva merges Teammates' worktrees one at a time, in the
+  order tasks were created (deterministic merge order matches task creation
+  order). This ensures reproducible integration regardless of Teammate
+  completion order.
+- **Test suite between merges:** Rule 3 applies unchanged -- Eva invokes
+  Roz to run the full test suite on the integrated codebase between each
+  Teammate merge.
+- **Merge conflict handling:** If a conflict is detected during a Teammate
+  merge, Eva falls back to sequential for the conflicting unit. Eva routes
+  conflict resolution to Colby, runs Roz before advancing (Rule 2 applies).
+- **Worktree cleanup:** Claude Code manages worktree lifecycle. Eva does not
+  delete worktrees via Bash. After a successful merge and Roz QA PASS, the
+  worktree is no longer needed -- Eva signals completion to the Agent Teams
+  runtime rather than manually removing the directory.
+
 </operations>
 
 <operations id="wave-execution">
@@ -205,11 +237,59 @@ parallel; waves execute sequentially.
 - **Write gate:** After grouping, `agent_capture` with
   `thought_type: 'decision'`, `source_agent: 'eva'`,
   `source_phase: 'build'`, content: "ADR-NNNN wave grouping:
-  Wave 1 [steps ...], Wave 2 [steps ...]. Rationale: [file overlap]."
+  Wave 1 [steps ...], Wave 2 [steps ...]. Rationale: [file overlap].
+  Execution: [sequential | agent-teams]."
+
+**Wave execution backend:**
+
+After the wave extraction algorithm completes, Eva executes the wave using
+one of two backends:
+
+**Sequential (default -- when `agent_teams_available: false`):**
+Eva invokes one Colby subagent per unit, one at a time, waiting for each
+to complete before starting the next. Current behavior -- no change.
+
+**Agent Teams (when `agent_teams_available: true`, experimental):**
+Eva creates one Teammate (Colby instance in a dedicated worktree) per wave
+unit using `TaskCreate`. Each Teammate receives a structured task description
+(see `invocation-templates.md`, template `agent-teams-task`). Eva then waits
+for TaskCompleted events from all Teammates in the wave.
+
+Teammate task contract format:
+```
+ADR: ADR-NNNN Step N
+Files to create: [list]
+Files to modify: [list]
+Test files: [list]
+Constraints: [from ADR step acceptance criteria]
+Wave: N of M, Unit: K of L
+maxTurns: 25
+```
+
+Teammates run Colby's persona (`.claude/agents/colby.md`). They run lint
+after implementation. They do NOT run the full test suite and do NOT commit.
+
+After all TaskCompleted events arrive for the wave, Eva merges each worktree
+sequentially -- one merge at a time, in the order tasks were created (see
+Worktree Integration Rules). Eva invokes Roz to run the full test suite
+between each merge.
+
+**Timeout and failure handling (Agent Teams):**
+- Default `maxTurns: 25` per Teammate. If a Teammate does not complete
+  within its turn limit, Eva marks the unit as failed.
+- If any Teammate in a wave fails or times out: Eva completes the merges
+  for successful Teammates, then runs the failed unit sequentially as a
+  normal Colby subagent invocation.
+- Eva announces at wave start: "Wave N executing via Agent Teams:
+  [K teammates]" or "Wave N executing sequentially."
+- 3-failure loop-breaker (gate 12) applies per unit, not per Teammate.
 
 **Constraint preservation within waves:**
 - Each unit within a wave still follows: Colby build -> Roz QA + Poirot
-  blind review (per unit). All 10 mandatory gates apply per unit.
+  blind review (per unit). All mandatory gates apply per unit.
+- When Agent Teams is active, Roz and Poirot run after each Teammate's
+  worktree is merged -- not per-Teammate in isolation. They review the
+  integrated result, not the isolated worktree diff.
 - Roz and Poirot run independently per unit -- no cross-unit review
   within a wave. Cross-unit integration is the final review juncture.
 - The final review juncture (Roz sweep + Poirot + Robert + Sable) runs
@@ -229,6 +309,11 @@ parallel; waves execute sequentially.
 - **Between major phases:** start fresh subagent sessions. Pipeline-state.md is the recovery mechanism.
 - **Within Colby+Roz interleaving:** Each unit is a separate subagent invocation (fresh context).
 - **Eva herself:** At 60% context usage, summarize to pipeline-state.md and recommend a fresh session.
+  When Agent Teams is active, Eva's context load increases because she processes multiple
+  `TaskCompleted` events per wave. The context cleanup advisory threshold (10 major handoffs)
+  counts each Teammate completion individually toward this threshold.
+- **Agent Teams Teammates have inherently fresh context per task.** Each Teammate is a new Claude
+  Code instance -- no compaction needed. Teammates start fresh regardless of wave width.
 - **Never carry Roz reports in Eva's context.** Read the verdict only.
 
 ### What Eva Carries vs. What Subagents Carry
@@ -242,5 +327,6 @@ parallel; waves execute sequentially.
 | retro-lessons.md | Never | Always (included in every READ) |
 | Feature spec | Never | Only if directly relevant |
 | ADR | Never | Only the relevant step |
+| Teammate task description | Creates (via TaskCreate) | Consumes (read from task) |
 
 </section>

@@ -5,7 +5,7 @@ paths:
 
 # Pipeline Model Selection (Mechanical -- Eva Does Not Choose)
 
-Loads automatically when Eva reads `{pipeline_state_dir}/` files. Model
+Loads automatically when Eva reads `docs/pipeline/` files. Model
 assignment is determined by the agent and the pipeline sizing. Eva sets
 the model parameter in every Agent tool invocation by looking up the
 tables below. There is no discretion, no judgment call, no "this one
@@ -26,6 +26,7 @@ model selection at invocation time.
 | **Robert** (subagent) | Opus | Product acceptance review requires strong reasoning to diff spec intent against implementation. |
 | **Sable** (subagent) | Opus | UX acceptance review requires strong reasoning to diff UX intent against implementation. |
 | **Poirot** | Opus | Blind review with no context requires the strongest reasoning to find issues from a raw diff alone. |
+| **Sentinel** | Opus | Security judgment requires strong reasoning. Semgrep provides data; Sentinel must interpret relevance, reachability, and severity in context of the diff. |
 | **Distillator** | Haiku | Mechanical compression with structured validation. No judgment required. |
 | **Ellis** | Sonnet | Reads diff, writes commit message, runs git. Zero ambiguity in the task. |
 

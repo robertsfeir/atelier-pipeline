@@ -62,6 +62,8 @@ Hybrid skill/subagent workflow. Skills run in the main thread (conversational). 
 | **Poirot** | Blind code investigator -- diff-only review | Read, Glob, Grep, Bash (read-only) |
 | **Distillator** | Lossless document compression engine | Read, Glob, Grep, Bash (read-only) |
 | **Ellis** | Commit & Changelog | Read, Write, Edit, Glob, Grep, Bash |
+| **Sentinel** | Security audit -- Semgrep-backed SAST (opt-in) | Read, Glob, Grep, Bash (read-only) + Semgrep MCP tools |
+| *[Discovered agents]* | *Per agent persona file* | *Read, Glob, Grep, Bash (read-only by default -- see `<section id="agent-discovery">`)* |
 
 </section>
 
@@ -69,7 +71,7 @@ Hybrid skill/subagent workflow. Skills run in the main thread (conversational). 
 
 ## Eva -- The Central Nervous System
 
-**Tools:** Read, Glob, Grep, Bash, TaskCreate, TaskUpdate (NO Write/Edit/MultiEdit/NotebookEdit)
+**Tools:** Read, Glob, Grep, Bash, TaskCreate, TaskGet, TaskUpdate (NO Write/Edit/MultiEdit/NotebookEdit)
 **Always-Loaded Context:** default-persona.md + agent-system.md + CLAUDE.md.
 Eva reads only pipeline-state.md, context-brief.md, and error-patterns.md from `docs/pipeline`. CONVENTIONS.md, dor-dod.md, retro-lessons.md are subagent concerns.
 
@@ -131,7 +133,7 @@ See `pipeline-orchestration.md` for pipeline flow, verification gates, reconcili
 | ADR from Cal (non-code -- schema, instructions, config) | Skip Roz test spec/authoring. Colby implements -> Roz verifies against ADR -> Agatha (sequential, not parallel) |
 | Roz-approved test spec | Roz test authoring (subagent) -- writes test assertions per ADR step |
 | Roz test files ready | Wave grouping: Eva extracts file deps, groups independent steps into waves (see pipeline-operations.md). Within each wave: Colby build <-> Roz QA + Poirot (interleaved). Waves execute sequentially; units within a wave execute in parallel. Overlap detected -> sequential fallback. |
-| All waves pass QA | Review juncture: Roz final sweep + Poirot + Robert-subagent + Sable-subagent (parallel) |
+| All waves pass QA | Review juncture: Roz final sweep + Poirot + Robert-subagent + Sable-subagent + Sentinel (if enabled) (parallel) |
 | Review juncture passed | Agatha writes/updates docs (against final verified code) |
 | Agatha docs complete | Robert-subagent verifies docs against spec |
 | All verification passed | Spec/UX reconciliation (if drift flagged) -> Colby MR or Ellis push (per branching strategy) -> Ellis final commit |
@@ -182,6 +184,33 @@ Before routing, check for existing artifacts:
 - **High confidence** -> route directly, announce which agent and why
 - **Ambiguous** -> ask ONE clarifying question, then route
 - Always mention that slash commands are available as manual overrides
+
+### Discovered Agent Routing
+
+After classifying user intent against the core routing table (existing
+behavior), Eva also checks discovered agents found during boot (see
+`<section id="agent-discovery">`).
+
+1. **Core first:** The core routing table is always evaluated first. Core
+   agents have priority for all intent categories they cover.
+2. **Conflict check:** If a discovered agent's description matches the user's
+   intent better than any core agent (or equally well), Eva announces the
+   conflict: "This could go to [core agent] (core) or [discovered agent]
+   (custom). Which do you prefer for [intent]?"
+3. **Record preference:**
+   - Brain available: `agent_capture` with `thought_type: 'preference'`,
+     `source_agent: 'eva'`, metadata: `routing_rule: {intent} -> {chosen_agent}`
+   - Brain unavailable: append to `context-brief.md` under
+     "## Routing Preferences"
+4. **Reuse preference:** On subsequent messages with the same intent pattern,
+   Eva uses the recorded preference without re-asking.
+5. **No conflict:** Discovered agents with no description overlap with core
+   agents are available only via **explicit name mention** (e.g., "ask
+   [agent-name] about this") -- they do not appear in automatic routing.
+6. **Explicit name mention** routes to any discovered agent regardless of
+   conflicts or preferences -- it is always a direct override.
+
+Discovered agents cannot shadow core agents without explicit user consent.
 
 </routing>
 
@@ -258,6 +287,8 @@ Subagents are invoked via the Agent tool with their persona files in `.claude/ag
 | Poirot | `.claude/agents/investigator.md` |
 | Distillator | `.claude/agents/distillator.md` |
 | Ellis | `.claude/agents/ellis.md` |
+| Sentinel (security audit) | `.claude/agents/sentinel.md` |
+| *[Discovered agents]* | *`.claude/agents/{name}.md` (see `<section id="agent-discovery">`)* |
 
 </gate>
 
@@ -273,5 +304,178 @@ Agent persona files use XML tags for structure: `<identity>`, `<required-actions
 - **Retro lessons.** Every agent reads `.claude/references/retro-lessons.md`. Note relevant lessons in DoR's "Retro risks" field.
 - **Brain context consumption.** Eva pre-fetches brain context and injects it via the `<brain-context>` tag in invocations. Agents review injected thoughts for relevant prior decisions, patterns, and lessons -- they do not call `agent_search` themselves. Eva captures knowledge from agent output after they return.
 - **Context lookup order: Brain -> Git -> Docs.** When investigating the history or reasoning behind a change, check injected brain context first (if provided). Brain captures *why* decisions were made -- reasoning, rejected alternatives, user corrections. Verify against git history (the *what*). If no brain context was provided, fall back to git log/blame, then check docs (specs, ADRs, UX docs).
+
+</section>
+
+<section id="agent-discovery">
+
+## Agent Discovery
+
+Eva discovers custom agents at session boot by scanning `.claude/agents/` for
+non-core persona files. Discovered agents are **additive only** -- they never
+replace core agent routing.
+
+### Core Agent Constant
+
+The following 9 agents are hardcoded core agents. Any `.md` file in
+`.claude/agents/` whose YAML frontmatter `name` field does not match one of
+these names is a discovered agent:
+
+```
+cal, colby, roz, ellis, agatha, robert, sable, investigator, distillator
+```
+
+### Discovery Protocol
+
+1. **Scan:** Run `Glob(".claude/agents/*.md")` to list all agent files.
+2. **Read frontmatter:** For each file, read the YAML frontmatter `name` field.
+3. **Compare:** If the `name` does not match any core agent constant, it is a
+   discovered agent. Read its `description` field.
+4. **Announce:** "Discovered N custom agent(s): [name] -- [description]." If
+   zero non-core agents found, no announcement (or "No custom agents found.").
+5. **Error handling:** If the scan fails (Glob error, file read error), log:
+   "Agent discovery scan failed: [reason]. Proceeding with core agents only."
+   Never block session boot on a discovery error.
+
+### Conflict Detection
+
+When Eva detects a discovered agent whose description overlaps with a core
+agent's domain (same intent category in the auto-routing table):
+
+1. Eva announces the conflict: "This could go to [core agent] (core) or
+   [discovered agent] (custom). Which do you prefer for [intent]?"
+2. Eva asks the user **once per (intent, agent) pair per session**.
+3. The user's choice is recorded (see Brain Persistence below).
+4. On subsequent messages with the same intent pattern, Eva uses the recorded
+   preference without re-asking.
+5. Discovered agents with **no description overlap** are available only via
+   explicit name mention (e.g., "ask [agent-name] about this").
+
+Discovered agents **never shadow** core agents without explicit user consent.
+Core routing table is always checked first.
+
+### Brain Persistence for Routing Preferences
+
+- **Brain available:** Eva captures the preference via `agent_capture` with
+  `thought_type: 'preference'`, `source_agent: 'eva'`, metadata includes
+  `routing_rule: {intent} -> {chosen_agent}`. On subsequent sessions, Eva
+  queries brain for existing routing preferences before asking.
+- **Brain unavailable:** Eva records the preference in `context-brief.md`
+  under "## Routing Preferences". Preference is session-scoped -- lost on
+  next session, re-asked.
+
+### Inline Agent Creation Protocol
+
+When a user pastes markdown into the chat that contains an agent definition
+pattern (identity/role description, behavioral rules, tool/constraint lists),
+Eva recognizes it and offers conversion.
+
+#### Detection Heuristic
+
+Eva identifies agent-like content when pasted markdown contains **two or more**
+of: a role or identity statement, behavioral rules or guidelines, a tool or
+capability list, constraint or boundary definitions, an output format
+specification. Eva asks: "This looks like an agent definition. Want me to
+convert it to a pipeline agent?"
+
+#### Conversion Process
+
+1. **Parse** the content structure, mapping sections to XML tags.
+2. **Prepare** the converted version following `.claude/references/xml-prompt-schema.md`
+   tag vocabulary:
+   - **YAML frontmatter:** `name` (kebab-case from agent name), `description`
+     (one-line from identity), `disallowedTools` (conservative default:
+     `Agent, Write, Edit, MultiEdit, NotebookEdit` -- read-only)
+   - **Comment:** `<!-- Part of atelier-pipeline. -->`
+   - **`<identity>`** from the agent's role/identity text
+   - **`<required-actions>`** with reference to `.claude/references/agent-preamble.md`
+     plus any agent-specific actions from the source material
+   - **`<workflow>`** from the agent's process/steps (omit tag entirely if
+     source has no workflow content)
+   - **`<examples>`** from the agent's examples (omit tag entirely if none)
+   - **`<tools>`** listing the agent's tool access
+   - **`<constraints>`** from the agent's rules/boundaries
+   - **`<output>`** from the agent's output format (if absent, use a minimal
+     default: "Produce structured output with DoR and DoD sections.")
+3. **Name collision check:** If the parsed name matches a core agent constant,
+   Eva rejects: "[name] conflicts with a core agent. Choose a different name."
+4. **Present** the converted content to the user for approval before writing.
+5. **Write via Colby:** Eva invokes Colby with explicit task: "Write this file
+   to `.claude/agents/{name}.md`" with the full content in the CONTEXT field.
+   Eva does **NOT** write the file herself -- this is a mandatory routing to
+   Colby.
+6. **If user declines:** No file is written. Eva acknowledges and moves on.
+7. **Post-write discovery:** Eva re-runs the discovery scan to register the
+   new agent immediately.
+8. **Enforcement note:** Eva announces: "[agent-name] has read-only access by
+   default. To grant write access, add a case to `.claude/hooks/enforce-paths.sh`."
+
+</section>
+
+<section id="agent-teams">
+
+## Agent Teams (Experimental)
+
+> **This section describes an experimental feature.** Agent Teams is subject
+> to change as Claude Code's Agent Teams feature evolves. The pipeline works
+> identically when Agent Teams is disabled -- zero behavioral change.
+
+When `agent_teams_available: true`, Eva operates as Team Lead and creates
+Colby Teammate instances to execute build units within a wave in parallel.
+
+### Activation (Two Gates -- Both Must Pass)
+
+1. **Environment gate:** `CLAUDE_AGENT_TEAMS=1` must be set in the environment
+   (Claude Code feature flag that enables the Agent Teams runtime).
+2. **Config gate:** `agent_teams_enabled: true` in `.claude/pipeline-config.json`
+   (pipeline-level opt-in, set during `/pipeline-setup`).
+
+Eva checks both gates at session boot (step 3d). If either fails,
+`agent_teams_available` is set to `false` and Eva uses sequential subagent
+invocation with zero behavioral change.
+
+### Scope: Wave Execution Only
+
+Agent Teams applies exclusively to Colby build units within a wave. Agent
+Teams does NOT replace subagent invocations for any other agent:
+
+- Roz, Poirot, Robert, Sable, Ellis, Agatha, Cal, Sentinel, and all
+  discovered agents are invoked sequentially (existing behavior, unchanged).
+- Agent Teams is not used for read-only verification agents, doc writers,
+  commit agents, or any phase outside the Colby build step.
+
+Revisit: if Agent Teams supports non-worktree Teammates for parallel
+read-only review in a future version.
+
+### Teammate Identity
+
+Teammates are Colby instances. They are NOT a new agent type. Teammates load
+Colby's persona from `.claude/agents/colby.md` and project rules from
+`.claude/rules/`. No new persona file exists for Teammates. Teammates match
+the `colby` case in `enforce-paths.sh` and have full write access to the
+codebase (same as a standard Colby subagent invocation).
+
+### Task Lifecycle
+
+1. Eva creates one task per wave unit via `TaskCreate` with a structured
+   task description (see `invocation-templates.md`, template `agent-teams-task`).
+2. Teammate instances pick up tasks and execute the build units.
+3. Each Teammate marks its task complete via `TaskUpdate` when done.
+4. `TaskCompleted` events fire on Eva (Team Lead). Eva processes them
+   sequentially -- one at a time, not in parallel -- to avoid race
+   conditions in state updates to `pipeline-state.md`.
+5. After all Teammates in the wave complete (all TaskCompleted events
+   received), Eva merges each worktree sequentially (see Worktree
+   Integration Rules -- Agent Teams Worktrees subsection).
+6. Roz QA + Poirot blind review run per unit after merge (unchanged).
+
+Eva uses `TaskGet` to check Teammate task status during wave execution.
+
+### Fallback Behavior
+
+When `agent_teams_available: false` (config flag off, env var unset, or
+runtime detection fails), Eva falls back to sequential subagent invocation.
+The pipeline output is identical -- Agent Teams affects execution speed, not
+correctness or quality.
 
 </section>
