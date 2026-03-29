@@ -298,6 +298,11 @@ The Micro classification is revoked -- Eva logs `mis-sized-micro` in
 `error-patterns.md` so future similar requests avoid Micro treatment.
 No Brain reads or writes on Micro -- not worth remembering.
 
+**Pipeline state:** Eva writes `"sizing": "micro"` to the PIPELINE_STATUS
+marker when classifying a change as Micro. This allows the enforce-sequencing
+hook to bypass the Roz QA gate for Ellis (Micro skips Roz by design; the
+test suite run by Roz is the safety valve, not a QA gate that Ellis waits on).
+
 **Key rules (always enforced):**
 - Colby NEVER modifies Roz's test assertions -- if a test fails, the code has a bug
 - Roz does a final full sweep after all units pass individual review

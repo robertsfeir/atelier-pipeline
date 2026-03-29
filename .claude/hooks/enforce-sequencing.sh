@@ -92,6 +92,13 @@ if [ "$SUBAGENT_TYPE" = "ellis" ]; then
     exit 0
   fi
 
+  # Micro pipelines skip Roz -- test suite is the safety valve
+  SIZING=$(parse_pipeline_status "sizing") || true
+  SIZING=$(echo "$SIZING" | tr '[:upper:]' '[:lower:]')
+  if [ "$SIZING" = "micro" ]; then
+    exit 0
+  fi
+
   # Active phase -> enforce Roz QA PASS
   ROZ_QA=$(parse_pipeline_status "roz_qa") || true
   if [ "$ROZ_QA" != "PASS" ]; then
