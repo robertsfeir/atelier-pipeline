@@ -355,17 +355,38 @@ After printing the summary, offer the optional Sentinel security agent:
 
 **If user says yes:**
 
-1. Check `command -v pip3 || command -v pip` -- if neither is available, tell the user: "Sentinel requires Python and pip. Install them and re-run setup to enable Sentinel." Skip Sentinel setup (do not error).
-2. Run `pip3 install semgrep-mcp==0.9.0` (or `pip install semgrep-mcp` if only `pip` is available).
-3. Copy `source/agents/sentinel.md` to `.claude/agents/sentinel.md` (with placeholder customization, same as other agent personas).
-4. Register Semgrep MCP in project `.mcp.json`:
+1. **Check for pipx** — `command -v pipx`. If not available:
+   - Check for brew: `command -v brew`. If available, offer: "Sentinel requires `pipx` for isolated installation. Install with `brew install pipx`?"
+   - If user agrees, run `brew install pipx`.
+   - If no brew or user declines: tell the user "Install pipx (https://pipx.pypa.io/) and re-run setup to enable Sentinel." Skip Sentinel setup.
+
+2. **Detect Python version** — `python3 --version`. If Python >= 3.14:
+   - Check for Python 3.12: `command -v python3.12` or check brew: `/opt/homebrew/bin/python3.12 --version`.
+   - If not available and brew exists: `brew install python@3.12`.
+   - Use `--python python3.12` (or `/opt/homebrew/bin/python3.12`) flag with pipx.
+   - If Python 3.12 cannot be obtained: tell user "semgrep-mcp requires Python 3.12 or 3.13 (3.14 is not yet supported). Install Python 3.12 and re-run setup." Skip Sentinel setup.
+
+3. **Install semgrep-mcp** — `pipx install semgrep-mcp==0.9.0` (add `--python python3.12` if needed from step 2).
+
+4. **Fix setuptools dependency** — `pipx inject semgrep-mcp 'setuptools<81' --force`. This is required because semgrep's OpenTelemetry dependency uses `pkg_resources` which was removed in setuptools 81+.
+
+5. **Verify installation** — `semgrep-mcp --version`. If this fails, report the error and skip Sentinel setup.
+
+6. Copy `source/agents/sentinel.md` to `.claude/agents/sentinel.md` (with placeholder customization, same as other agent personas).
+
+7. Register Semgrep MCP in project `.mcp.json`:
    - If `.mcp.json` exists and has `mcpServers` key: merge the new entry into `mcpServers`.
    - If `.mcp.json` exists without `mcpServers`: wrap existing entries under `mcpServers`, add new entry.
-   - If `.mcp.json` does not exist: create with `{"mcpServers": {"semgrep": {"command": "semgrep-mcp==0.9.0"}}}`.
-   - The entry format is: `"semgrep": {"command": "semgrep-mcp"}` inside the `mcpServers` object (not flat format).
-   - **Security note:** `semgrep-mcp` is resolved via PATH. Ensure it was installed from the official PyPI package (`pip install semgrep-mcp==0.9.0` or `pipx install semgrep-mcp`).
-5. Set `sentinel_enabled: true` in `.claude/pipeline-config.json`.
-6. Update the installation summary to include: "Sentinel security agent: enabled (Semgrep MCP)"
+   - If `.mcp.json` does not exist: create with `{"mcpServers": {"semgrep": {"command": "semgrep-mcp"}}}`.
+   - The entry format is: `"semgrep": {"command": "semgrep-mcp"}` inside the `mcpServers` object.
+
+8. Set `sentinel_enabled: true` in `.claude/pipeline-config.json`.
+
+9. Update the installation summary to include: "Sentinel security agent: enabled (Semgrep MCP)"
+
+**Known compatibility notes (print if relevant):**
+- Python 3.14: `semgrep-mcp` depends on `google-protobuf` which does not yet support Python 3.14's metaclass changes. Python 3.12 or 3.13 required.
+- setuptools >= 81: Removed `pkg_resources` used by `opentelemetry-instrumentation`. The `pipx inject 'setuptools<81'` step pins the compatible version inside the isolated venv.
 
 **If user says no:** Skip entirely. `sentinel_enabled` remains `false` in `pipeline-config.json`. Print: "Sentinel security agent: not enabled"
 
