@@ -1,0 +1,12 @@
+{
+  "branching_strategy": "trunk-based",
+  "platform": "",
+  "platform_cli": "",
+  "mr_command": "",
+  "merge_command": "",
+  "environment_branches": [],
+  "base_branch": "main",
+  "integration_branch": "main",
+  "sentinel_enabled": true,
+  "agent_teams_enabled": true
+}

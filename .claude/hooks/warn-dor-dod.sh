@@ -41,4 +41,5 @@ if ! echo "$OUTPUT" | grep -qi "^## DoD"; then
   echo "WARNING: $AGENT_TYPE output missing '## DoD' section. DoR/DoD framework requires DoD as the last output section." >&2
 fi
 
+unset OUTPUT
 exit 0

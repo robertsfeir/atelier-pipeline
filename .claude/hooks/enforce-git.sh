@@ -28,13 +28,13 @@ COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 
 # Block git add, git commit, git push from main thread
 # Allow git status, git diff, git log, git branch (read-only git operations)
-if echo "$COMMAND" | grep -qE "git\s+(add|commit|push|reset|checkout\s+--|restore|clean)" 2>/dev/null; then
+if echo "$COMMAND" | grep -qE "\bgit\s+(add|commit|push|reset|checkout\s+--|restore|clean)\b" 2>/dev/null; then
   echo "BLOCKED: Eva cannot run git write operations directly. Route commits through Ellis. Allowed: git status, git diff, git log, git branch." >&2
   exit 2
 fi
 
 # Block test execution from main thread -- Roz owns QA verification
-if echo "$COMMAND" | grep -qE "(bats|pytest|jest|vitest|mocha|rspec|phpunit|npm\s+test|yarn\s+test|pnpm\s+test|node\s+--test|go\s+test|cargo\s+test|make\s+test|dotnet\s+test|gradle\s+test|mvn\s+test)" 2>/dev/null; then
+if echo "$COMMAND" | grep -qE "\b(bats|pytest|jest|vitest|mocha|rspec|phpunit)\b|(\b(npm|yarn|pnpm)\s+test\b)|(\bnode\s+--test\b)|(\b(go|cargo|make|dotnet|gradle|mvn)\s+test\b)" 2>/dev/null; then
   echo "BLOCKED: Eva cannot run test suites directly. Route QA verification through Roz." >&2
   exit 2
 fi

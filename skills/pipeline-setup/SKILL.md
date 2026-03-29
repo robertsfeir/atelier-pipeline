@@ -349,12 +349,13 @@ After printing the summary, offer the optional Sentinel security agent:
 **If user says yes:**
 
 1. Check `command -v pip3 || command -v pip` -- if neither is available, tell the user: "Sentinel requires Python and pip. Install them and re-run setup to enable Sentinel." Skip Sentinel setup (do not error).
-2. Run `pip3 install semgrep-mcp` (or `pip install semgrep-mcp` if only `pip` is available).
+2. Run `pip3 install semgrep-mcp==0.9.0` (or `pip install semgrep-mcp` if only `pip` is available).
 3. Copy `source/agents/sentinel.md` to `.claude/agents/sentinel.md` (with placeholder customization, same as other agent personas).
 4. Register Semgrep MCP in project `.mcp.json`:
    - If `.mcp.json` exists: read it, merge the new entry, write back.
    - If `.mcp.json` does not exist: create it.
    - Add entry: `"semgrep": {"command": "semgrep-mcp"}` (flat format).
+   - **Security note:** `semgrep-mcp` is resolved via PATH. Ensure it was installed from the official PyPI package (`pip install semgrep-mcp==0.9.0` or `pipx install semgrep-mcp`).
 5. Set `sentinel_enabled: true` in `.claude/pipeline-config.json`.
 6. Update the installation summary to include: "Sentinel security agent: enabled (Semgrep MCP)"
 

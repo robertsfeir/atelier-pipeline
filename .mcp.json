@@ -8,5 +8,8 @@
       "ATELIER_BRAIN_DATABASE_URL": "${ATELIER_BRAIN_DATABASE_URL}",
       "OPENROUTER_API_KEY": "${OPENROUTER_API_KEY}"
     }
+  },
+  "semgrep": {
+    "command": "semgrep-mcp"
   }
 }
