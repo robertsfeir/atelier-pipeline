@@ -38,9 +38,10 @@ const EMBEDDING_MODEL = "openai/text-embedding-3-small";
 
 function resolveConfig() {
   const projectPath = process.env.BRAIN_CONFIG_PROJECT;
+  const cwdPath = process.cwd() + "/.claude/brain-config.json";
   const userPath = process.env.BRAIN_CONFIG_USER;
 
-  for (const configPath of [projectPath, userPath]) {
+  for (const configPath of [projectPath, cwdPath, userPath]) {
     if (!configPath) continue;
     try {
       const raw = readFileSync(configPath, "utf-8");
@@ -64,7 +65,7 @@ function resolveConfig() {
           resolved[key] = value;
         }
       }
-      resolved._source = configPath === projectPath ? "project" : "personal";
+      resolved._source = configPath === projectPath ? "project" : configPath === cwdPath ? "project-cwd" : "personal";
       return resolved;
     } catch {
       continue;
