@@ -1167,15 +1167,33 @@
 
       // -- Cost Chart ---------------------------------------------------------
 
+      function showChartEmpty(canvas, html) {
+        canvas.style.display = "none";
+        var existing = canvas.parentElement.querySelector(".chart-empty-state");
+        if (existing) existing.remove();
+        var div = document.createElement("div");
+        div.className = "chart-empty-state";
+        div.innerHTML = html;
+        canvas.parentElement.appendChild(div);
+      }
+
+      function clearChartEmpty(canvas) {
+        var existing = canvas.parentElement.querySelector(".chart-empty-state");
+        if (existing) existing.remove();
+        canvas.style.display = "";
+      }
+
       function renderCostChart() {
         var canvas = document.getElementById("cost-chart");
-        var ctx = canvas.getContext("2d");
 
         if (summaryData.length === 0) {
           if (costChart) { costChart.destroy(); costChart = null; }
-          canvas.parentElement.innerHTML = emptyCard("No cost data", "Cost trends appear after your first pipeline.");
+          showChartEmpty(canvas, emptyCard("No cost data", "Cost trends appear after your first pipeline."));
           return;
         }
+
+        clearChartEmpty(canvas);
+        var ctx = canvas.getContext("2d");
 
         // Aggregate sessions by calendar day (YYYY-MM-DD from created_at)
         var dayMap = {};
@@ -1262,11 +1280,10 @@
 
       function renderQualityChart() {
         var canvas = document.getElementById("quality-chart");
-        var ctx = canvas.getContext("2d");
 
         if (summaryData.length === 0) {
           if (qualityChart) { qualityChart.destroy(); qualityChart = null; }
-          canvas.parentElement.innerHTML = emptyCard("No quality data", "Quality trends appear after your first pipeline.");
+          showChartEmpty(canvas, emptyCard("No quality data", "Quality trends appear after your first pipeline."));
           return;
         }
 
@@ -1281,7 +1298,7 @@
 
         if (!hasAnyQualityData) {
           if (qualityChart) { qualityChart.destroy(); qualityChart = null; }
-          canvas.parentElement.innerHTML = '<div class="empty-state" style="padding:32px">' +
+          showChartEmpty(canvas, '<div class="empty-state" style="padding:32px">' +
             '<svg class="empty-state-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
             '<rect x="6" y="6" width="36" height="36" rx="6"/>' +
             '<path d="M18 20h12M18 28h8"/>' +
@@ -1289,9 +1306,12 @@
             '<h3>Quality metrics not yet available</h3>' +
             '<p>Quality metrics (first-pass QA rate, rework rate) require pipeline telemetry capture. ' +
             'These will populate automatically after your first pipeline run with v3.8.0+.</p>' +
-          '</div>';
+          '</div>');
           return;
         }
+
+        clearChartEmpty(canvas);
+        var ctx = canvas.getContext("2d");
 
         var labels = sorted.map(function (r) {
           if (!r.created_at) return "—";
