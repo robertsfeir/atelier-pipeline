@@ -296,11 +296,21 @@
       padding: 20px;
       box-shadow: var(--shadow);
       transition: box-shadow 0.2s ease, transform 0.15s ease;
+      cursor: pointer;
     }
 
     .agent-card:hover {
       box-shadow: var(--shadow-hover);
       transform: translateY(-2px);
+    }
+
+    .agent-card--orchestrator {
+      cursor: default;
+    }
+
+    .agent-card--orchestrator:hover {
+      box-shadow: var(--shadow);
+      transform: none;
     }
 
     .agent-card-header {
@@ -531,6 +541,158 @@
     }
 
     /* =========================================================================
+       Agent Detail Modal
+       ========================================================================= */
+
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(2, 18, 39, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      transition: opacity 200ms ease;
+      pointer-events: none;
+    }
+
+    .modal-overlay.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal {
+      background: var(--surface);
+      border-radius: 14px;
+      max-width: 700px;
+      width: 90%;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow-hover);
+      padding: 28px;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .modal-header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .modal-agent-name {
+      font-family: var(--font-serif);
+      font-size: 1.4rem;
+      color: var(--deep);
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-light);
+      font-size: 1.5rem;
+      line-height: 1;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: color 0.15s ease, background 0.15s ease;
+    }
+
+    .modal-close:hover {
+      color: var(--text);
+      background: var(--border-light);
+    }
+
+    .modal-accent-line {
+      height: 3px;
+      background: var(--gradient);
+      border-radius: 2px;
+      margin-bottom: 20px;
+    }
+
+    .modal-section {
+      margin-bottom: 20px;
+    }
+
+    .modal-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .modal-section-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-mid);
+    }
+
+    .modal-section-icon {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+    }
+
+    .modal-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    .modal-table th {
+      text-align: left;
+      padding: 8px 10px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-mid);
+      border-bottom: 2px solid var(--border);
+      white-space: nowrap;
+    }
+
+    .modal-table td {
+      padding: 10px;
+      border-bottom: 1px solid var(--border-light);
+      vertical-align: middle;
+    }
+
+    .modal-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .modal-table .num {
+      font-family: var(--font-serif);
+      white-space: nowrap;
+    }
+
+    .modal-table .desc {
+      max-width: 280px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .modal-loading {
+      text-align: center;
+      padding: 32px;
+      color: var(--text-mid);
+      font-size: 0.875rem;
+    }
+
+    /* =========================================================================
        Responsive
        ========================================================================= */
 
@@ -685,6 +847,23 @@
         <!-- Populated by JS -->
       </div>
     </section>
+
+    <!-- Agent Detail Modal -->
+    <div class="modal-overlay" id="agent-modal-overlay">
+      <div class="modal" id="agent-modal">
+        <div class="modal-header">
+          <div class="modal-header-left">
+            <span class="modal-agent-name" id="modal-agent-name"></span>
+            <span class="agent-badge" id="modal-agent-badge"></span>
+          </div>
+          <button class="modal-close" id="modal-close" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-accent-line"></div>
+        <div id="modal-body">
+          <div class="modal-loading">Loading agent detail...</div>
+        </div>
+      </div>
+    </div>
 
     <!-- Recent Pipelines -->
     <section class="section" id="section-pipelines">
@@ -881,6 +1060,22 @@
         var latest = summaryData[0];
         var meta = latest.metadata || {};
 
+        // Check if all key metrics are null/zero/missing
+        var hasData = (meta.total_cost_usd !== null && meta.total_cost_usd !== undefined && Number(meta.total_cost_usd) > 0) ||
+                      (meta.total_duration_ms !== null && meta.total_duration_ms !== undefined && Number(meta.total_duration_ms) > 0) ||
+                      (meta.rework_rate !== null && meta.rework_rate !== undefined) ||
+                      (meta.evoscore !== null && meta.evoscore !== undefined) ||
+                      (meta.first_pass_qa_rate !== null && meta.first_pass_qa_rate !== undefined);
+
+        if (!hasData) {
+          grid.innerHTML = '<div class="stat-block" style="grid-column: 1 / -1; text-align: center;">' +
+            '<div class="stat-label">Pipeline Overview</div>' +
+            '<div class="stat-value" style="font-size: 1.1rem; color: var(--text-mid);">Awaiting pipeline data</div>' +
+            '<div class="stat-sub">Metrics will populate after your first pipeline run with full telemetry.</div>' +
+          '</div>';
+          return;
+        }
+
         var stats = [
           { label: "Total Cost", value: fmtCost(meta.total_cost_usd), sub: meta.sizing ? meta.sizing + " pipeline" : "" },
           { label: "Duration", value: fmtDuration(meta.total_duration_ms), sub: meta.total_invocations ? meta.total_invocations + " invocations" : "" },
@@ -911,7 +1106,11 @@
         }
 
         var sorted = summaryData.slice().reverse();
-        var labels = sorted.map(function (r, i) { return "Pipeline " + (i + 1); });
+        var labels = sorted.map(function (r) {
+          if (!r.created_at) return "—";
+          var d = new Date(r.created_at);
+          return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+        });
         var costs = sorted.map(function (r) {
           var m = r.metadata || {};
           return m.total_cost_usd !== null && m.total_cost_usd !== undefined ? Number(m.total_cost_usd) : 0;
@@ -938,6 +1137,25 @@
             maintainAspectRatio: false,
             plugins: {
               legend: { display: true, position: "top", labels: { font: { family: "'DM Sans'" }, usePointStyle: true, pointStyle: "circle" } },
+              tooltip: {
+                callbacks: {
+                  title: function (items) {
+                    var idx = items[0].dataIndex;
+                    var entry = sorted[idx];
+                    return entry && entry.content ? entry.content : "Pipeline";
+                  },
+                  label: function (item) {
+                    var idx = item.dataIndex;
+                    var entry = sorted[idx];
+                    var meta = entry && entry.metadata ? entry.metadata : {};
+                    var costStr = "$" + item.raw.toFixed(2);
+                    if (meta.total_invocations) {
+                      costStr += " (" + meta.total_invocations + " invocations)";
+                    }
+                    return costStr;
+                  }
+                }
+              }
             },
             scales: {
               y: {
@@ -974,7 +1192,33 @@
         }
 
         var sorted = summaryData.slice().reverse();
-        var labels = sorted.map(function (r, i) { return "Pipeline " + (i + 1); });
+
+        // Check if all quality values are null -- if so, show informative empty state
+        var hasAnyQualityData = sorted.some(function (r) {
+          var m = r.metadata || {};
+          return (m.first_pass_qa_rate !== null && m.first_pass_qa_rate !== undefined) ||
+                 (m.rework_rate !== null && m.rework_rate !== undefined);
+        });
+
+        if (!hasAnyQualityData) {
+          if (qualityChart) { qualityChart.destroy(); qualityChart = null; }
+          canvas.parentElement.innerHTML = '<div class="empty-state" style="padding:32px">' +
+            '<svg class="empty-state-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+            '<rect x="6" y="6" width="36" height="36" rx="6"/>' +
+            '<path d="M18 20h12M18 28h8"/>' +
+            '</svg>' +
+            '<h3>Quality metrics not yet available</h3>' +
+            '<p>Quality metrics (first-pass QA rate, rework rate) require pipeline telemetry capture. ' +
+            'These will populate automatically after your first pipeline run with v3.8.0+.</p>' +
+          '</div>';
+          return;
+        }
+
+        var labels = sorted.map(function (r) {
+          if (!r.created_at) return "—";
+          var d = new Date(r.created_at);
+          return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+        });
         var firstPassRates = sorted.map(function (r) {
           var m = r.metadata || {};
           return m.first_pass_qa_rate !== null && m.first_pass_qa_rate !== undefined ? Number(m.first_pass_qa_rate) * 100 : null;
@@ -1063,11 +1307,18 @@
         }
 
         grid.innerHTML = agentData.map(function (agent) {
-          var badge = getAgentBadge(agent);
-          return '<div class="agent-card">' +
+          var isEva = (agent.agent || "").toLowerCase() === "eva";
+          var badgeHtml;
+          if (isEva) {
+            badgeHtml = '<span class="agent-badge" style="color:var(--text-light);background:transparent;border:none;font-weight:600;letter-spacing:0.08em;">ORCHESTRATOR</span>';
+          } else {
+            var badge = getAgentBadge(agent);
+            badgeHtml = '<span class="agent-badge ' + badge.cls + '">' + escapeHtml(badge.label) + '</span>';
+          }
+          return '<div class="agent-card' + (isEva ? ' agent-card--orchestrator' : '') + '" data-agent="' + escapeHtml(agent.agent || "") + '">' +
             '<div class="agent-card-header">' +
               '<span class="agent-name">' + escapeHtml(agent.agent || "Unknown") + '</span>' +
-              '<span class="agent-badge ' + badge.cls + '">' + escapeHtml(badge.label) + '</span>' +
+              badgeHtml +
             '</div>' +
             '<div class="agent-stats">' +
               '<div><div class="agent-stat-label">Invocations</div><div class="agent-stat-value">' + (agent.invocations || 0) + '</div></div>' +
@@ -1077,6 +1328,17 @@
             '</div>' +
           '</div>';
         }).join("");
+
+        // Attach click handlers (Eva's card is display-only -- no modal)
+        var cards = grid.querySelectorAll(".agent-card[data-agent]");
+        cards.forEach(function (card) {
+          var agentName = card.getAttribute("data-agent");
+          if (agentName && agentName.toLowerCase() !== "eva") {
+            card.addEventListener("click", function () {
+              openAgentModal(agentName);
+            });
+          }
+        });
       }
 
       function getAgentBadge(agent) {
@@ -1091,6 +1353,98 @@
         if (avgCostPerInvocation > 2) return { cls: "badge-struggling", label: "Struggling" };
         if (invocations >= 3) return { cls: "badge-thriving", label: "Thriving" };
         return { cls: "badge-nominal", label: "Nominal" };
+      }
+
+      // -- Agent Detail Modal --------------------------------------------------
+
+      function openAgentModal(agentName) {
+        var overlay = document.getElementById("agent-modal-overlay");
+        var nameEl = document.getElementById("modal-agent-name");
+        var badgeEl = document.getElementById("modal-agent-badge");
+        var bodyEl = document.getElementById("modal-body");
+
+        // Find agent data for badge
+        var agentInfo = agentData.find(function (a) { return a.agent === agentName; });
+        var badge = agentInfo ? getAgentBadge(agentInfo) : { cls: "badge-nominal", label: "Nominal" };
+
+        nameEl.textContent = agentName.charAt(0).toUpperCase() + agentName.slice(1);
+        badgeEl.className = "agent-badge " + badge.cls;
+        badgeEl.textContent = badge.label;
+        bodyEl.innerHTML = '<div class="modal-loading">Loading agent detail...</div>';
+
+        overlay.classList.add("visible");
+
+        var url = "/api/telemetry/agent-detail?name=" + encodeURIComponent(agentName) + (selectedScope && selectedScope !== "all" ? "&scope=" + encodeURIComponent(selectedScope) : "");
+
+        api(url).then(function (rows) {
+          if (!rows || rows.length === 0) {
+            bodyEl.innerHTML = '<div class="modal-loading">No invocation data found for this agent.</div>';
+            return;
+          }
+          renderModalBody(bodyEl, rows);
+        }).catch(function () {
+          bodyEl.innerHTML = '<div class="modal-loading" style="color:var(--red)">Failed to load agent detail.</div>';
+        });
+      }
+
+      function renderModalBody(container, rows) {
+        // Compute average cost and duration for relative comparison
+        var avgCost = rows.reduce(function (s, r) { return s + (Number(r.cost_usd) || 0); }, 0) / rows.length;
+        var avgDuration = rows.reduce(function (s, r) { return s + (Number(r.duration_ms) || 0); }, 0) / rows.length;
+
+        // Score each row: how much it exceeds the average (higher = more struggle)
+        var scored = rows.map(function (r, i) {
+          var costRatio = avgCost > 0 ? (Number(r.cost_usd) || 0) / avgCost : 0;
+          var durationRatio = avgDuration > 0 ? (Number(r.duration_ms) || 0) / avgDuration : 0;
+          return { row: r, score: Math.max(costRatio, durationRatio), index: i };
+        });
+
+        // Struggles: top 5 by cost DESC
+        var struggles = scored.slice().sort(function (a, b) { return (Number(b.row.cost_usd) || 0) - (Number(a.row.cost_usd) || 0); }).slice(0, 5);
+        // Thrives: top 5 by cost ASC
+        var thrives = scored.slice().sort(function (a, b) { return (Number(a.row.cost_usd) || 0) - (Number(b.row.cost_usd) || 0); }).slice(0, 5);
+
+        var warnIcon = '<svg class="modal-section-icon" viewBox="0 0 20 20" fill="var(--accent)" style="color:var(--accent)"><path d="M8.6 3.5L1.4 15.5c-.5.9.1 2 1.2 2h14.8c1.1 0 1.7-1.1 1.2-2L11.4 3.5c-.5-.9-2.3-.9-2.8 0zM10 8v3m0 3h.01"/></svg>';
+        var checkIcon = '<svg class="modal-section-icon" viewBox="0 0 20 20" fill="#22c55e" style="color:#22c55e"><circle cx="10" cy="10" r="8"/><path d="M7 10l2 2 4-4" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+        var html = '';
+
+        // Struggles section
+        html += '<div class="modal-section">';
+        html += '<div class="modal-section-header">' + warnIcon + '<span>Struggles</span></div>';
+        html += buildModalTable(struggles);
+        html += '</div>';
+
+        // Thrives section
+        html += '<div class="modal-section">';
+        html += '<div class="modal-section-header">' + checkIcon + '<span>Thrives</span></div>';
+        html += buildModalTable(thrives);
+        html += '</div>';
+
+        container.innerHTML = html;
+      }
+
+      function buildModalTable(items) {
+        var html = '<table class="modal-table">';
+        html += '<thead><tr><th>Description</th><th>Duration</th><th>Cost</th><th>Model</th></tr></thead>';
+        html += '<tbody>';
+        items.forEach(function (item) {
+          var r = item.row;
+          var desc = r.description || "(no description)";
+          html += '<tr>' +
+            '<td class="desc" title="' + escapeHtml(desc) + '">' + escapeHtml(desc) + '</td>' +
+            '<td class="num">' + fmtDuration(r.duration_ms) + '</td>' +
+            '<td class="num">' + fmtCost(r.cost_usd) + '</td>' +
+            '<td>' + escapeHtml(r.model || "--") + '</td>' +
+          '</tr>';
+        });
+        html += '</tbody></table>';
+        return html;
+      }
+
+      function closeAgentModal() {
+        var overlay = document.getElementById("agent-modal-overlay");
+        overlay.classList.remove("visible");
       }
 
       // -- Degradation Alerts -------------------------------------------------
@@ -1229,6 +1583,16 @@
       // =======================================================================
 
       document.getElementById("scope-select").addEventListener("change", onScopeChange);
+
+      // Modal event listeners
+      document.getElementById("modal-close").addEventListener("click", closeAgentModal);
+      document.getElementById("agent-modal-overlay").addEventListener("click", function (e) {
+        if (e.target === this) closeAgentModal();
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") closeAgentModal();
+      });
+
       loadAll();
       refreshTimer = setInterval(loadAll, REFRESH_INTERVAL);
     })();

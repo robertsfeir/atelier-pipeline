@@ -343,3 +343,77 @@ EOF
   run run_hook_with_input "enforce-sequencing.sh" "$input"
   [ "$status" -eq 0 ]
 }
+
+# ═══════════════════════════════════════════════════════════════════════
+# Gate 3: Ellis requires telemetry capture during active pipelines
+# Tests T-GATE3-001 through T-GATE3-004
+# ═══════════════════════════════════════════════════════════════════════
+
+# ── T-GATE3-001: Failure -- Ellis blocked when telemetry_captured missing ──
+
+@test "T-GATE3-001: Ellis blocked when pipeline active and telemetry_captured is missing" {
+  write_pipeline_status '{"roz_qa":"PASS","phase":"review","sizing":"medium"}'
+
+  cat > "$TEST_TMPDIR/enforcement-config.json" << EOF
+{
+  "pipeline_state_dir": "$TEST_TMPDIR/docs/pipeline"
+}
+EOF
+
+  local input
+  input=$(build_agent_input "ellis")
+  run run_hook_with_input "enforce-sequencing.sh" "$input"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"BLOCKED"* ]]
+}
+
+# ── T-GATE3-002: Happy -- Ellis allowed when telemetry_captured=true ──
+
+@test "T-GATE3-002: Ellis allowed when pipeline active and telemetry_captured is true" {
+  write_pipeline_status '{"roz_qa":"PASS","phase":"review","sizing":"medium","telemetry_captured":"true"}'
+
+  cat > "$TEST_TMPDIR/enforcement-config.json" << EOF
+{
+  "pipeline_state_dir": "$TEST_TMPDIR/docs/pipeline"
+}
+EOF
+
+  local input
+  input=$(build_agent_input "ellis")
+  run run_hook_with_input "enforce-sequencing.sh" "$input"
+  [ "$status" -eq 0 ]
+}
+
+# ── T-GATE3-003: Happy -- Ellis allowed on micro pipeline without telemetry_captured ──
+
+@test "T-GATE3-003: Ellis allowed on micro pipeline without telemetry_captured" {
+  write_pipeline_status '{"roz_qa":"PASS","phase":"review","sizing":"micro"}'
+
+  cat > "$TEST_TMPDIR/enforcement-config.json" << EOF
+{
+  "pipeline_state_dir": "$TEST_TMPDIR/docs/pipeline"
+}
+EOF
+
+  local input
+  input=$(build_agent_input "ellis")
+  run run_hook_with_input "enforce-sequencing.sh" "$input"
+  [ "$status" -eq 0 ]
+}
+
+# ── T-GATE3-004: Happy -- Ellis allowed during CI Watch without telemetry_captured ──
+
+@test "T-GATE3-004: Ellis allowed during CI Watch without telemetry_captured" {
+  write_pipeline_status '{"roz_qa":"CI_VERIFIED","phase":"review","sizing":"medium","ci_watch_active":"true"}'
+
+  cat > "$TEST_TMPDIR/enforcement-config.json" << EOF
+{
+  "pipeline_state_dir": "$TEST_TMPDIR/docs/pipeline"
+}
+EOF
+
+  local input
+  input=$(build_agent_input "ellis")
+  run run_hook_with_input "enforce-sequencing.sh" "$input"
+  [ "$status" -eq 0 ]
+}

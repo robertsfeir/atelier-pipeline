@@ -128,7 +128,37 @@ if [ "$SUBAGENT_TYPE" = "agatha" ]; then
   fi
 fi
 
-# ─── Gate 3: No git commands from main thread ────────────────────────
+# ── Gate 3: Ellis requires telemetry capture during active pipelines ───
+# Eva must capture T3 telemetry (set telemetry_captured: true in PIPELINE_STATUS)
+# before Ellis can commit. This ensures quality metrics (rework, first-pass QA,
+# EvoScore) are never lost.
+if [ "$SUBAGENT_TYPE" = "ellis" ]; then
+  if [ -f "$STATE_FILE" ]; then
+    PHASE=$(parse_pipeline_status "phase") || true
+    PHASE=$(echo "$PHASE" | tr '[:upper:]' '[:lower:]')
+
+    # Only enforce on active non-micro pipelines (same conditions as Gate 1)
+    if [ -n "$PHASE" ] && [ "$PHASE" != "idle" ] && [ "$PHASE" != "complete" ]; then
+      SIZING=$(parse_pipeline_status "sizing") || true
+      SIZING=$(echo "$SIZING" | tr '[:upper:]' '[:lower:]')
+      # Only enforce when sizing is explicitly set to a non-micro value.
+      # When sizing is absent, the pipeline size is unknown -- fail open.
+      if [ -n "$SIZING" ] && [ "$SIZING" != "micro" ]; then
+        # CI Watch fix cycles are exempt (they have their own flow)
+        CI_WATCH=$(parse_pipeline_status "ci_watch_active") || true
+        if [ "$CI_WATCH" != "true" ]; then
+          TELEMETRY=$(parse_pipeline_status "telemetry_captured") || true
+          if [ "$TELEMETRY" != "true" ]; then
+            echo "BLOCKED: Cannot invoke Ellis — pipeline is active (phase: $PHASE) but telemetry has not been captured. Eva must capture T3 telemetry before committing." >&2
+            exit 2
+          fi
+        fi
+      fi
+    fi
+  fi
+fi
+
+# ─── Gate 4 (formerly Gate 3): No git commands from main thread ──────
 # "Eva never runs git add, git commit, or git push on code changes."
 # This gate catches Eva trying to use Bash for git operations instead
 # of invoking Ellis. Checked via the Bash hook below, not here.

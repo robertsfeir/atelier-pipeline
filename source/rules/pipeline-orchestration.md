@@ -150,6 +150,11 @@ At pipeline end, after Ellis final commit and before end-of-pipeline checks, Eva
      `regression_count`, `sizing`
 7. On failure: log and continue -- `"Telemetry T3 capture failed: {reason}. Continuing."` Never block the pipeline.
    Pipeline-end summary still prints from in-memory accumulators.
+8. After a successful Tier 3 capture, Eva sets `telemetry_captured: true` in PIPELINE_STATUS.
+   This is required -- the enforce-sequencing hook blocks Ellis unless this flag is set.
+   Eva must also set it in the accumulator fields alongside `roz_qa`.
+   If the T3 capture fails (step 7), Eva does NOT set `telemetry_captured: true` -- the gate
+   will block Ellis, prompting Eva to retry or surface the failure to the user.
 
 **Skipped on Micro pipelines.** Micro pipelines exclude from trend data -- Tier 3 skip means
 Micro runs do not appear in boot trend queries.
@@ -179,6 +184,14 @@ Micro pipelines print invocation count and duration only -- no rework, EvoScore,
 **Fallback rules:**
 - Cost unavailable (token counts not exposed by Agent tool): print "Cost: unavailable (token counts not exposed)"
 - Brain unavailable: in-memory accumulator fallback -- summary still prints; finding details may be approximate
+
+### Post-Pipeline Telemetry Reminder
+
+After the pipeline-end summary, Eva appends a one-line reminder:
+"Tip: Run /telemetry-hydrate to capture detailed token usage from this session into the brain."
+
+This is advisory only -- the SessionStart hook will hydrate automatically on the next session.
+Do not block the pipeline on this reminder.
 
 ### Darwin Auto-Trigger (at pipeline end)
 
@@ -737,12 +750,16 @@ sizing -- it activates on any push from any sizing level when enabled.
 
 ### PIPELINE_STATUS Fields
 
-Eva tracks CI Watch state in the PIPELINE_STATUS JSON marker in
+Eva tracks pipeline and CI Watch state in the PIPELINE_STATUS JSON marker in
 `{pipeline_state_dir}/pipeline-state.md`:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `ci_watch_active` | boolean | Whether a watch is currently running |
+| `phase` | string | Current pipeline phase (idle, build, review, complete) |
+| `sizing` | string | Pipeline size classification (micro, small, medium, large) |
+| `roz_qa` | string | Roz QA verdict (PASS, FAIL, CI_VERIFIED, or empty) |
+| `telemetry_captured` | boolean | Set to `true` by Eva after a successful T3 capture. Required before Ellis can commit on non-micro active pipelines. |
+| `ci_watch_active` | boolean | Whether a CI Watch is currently running |
 | `ci_watch_retry_count` | integer | Number of fix cycles completed in this session |
 | `ci_watch_commit_sha` | string | SHA of the commit being watched |
 

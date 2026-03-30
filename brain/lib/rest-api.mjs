@@ -64,6 +64,9 @@ function createRestHandler(pool, cfg) {
       if (urlPath === "/api/telemetry/agents" && req.method === "GET") {
         return await handleTelemetryAgents(req, res, pool);
       }
+      if (urlPath === "/api/telemetry/agent-detail" && req.method === "GET") {
+        return await handleTelemetryAgentDetail(req, res, pool);
+      }
 
       return false;
     } catch (err) {
@@ -332,9 +335,53 @@ async function handleTelemetryAgents(req, res, pool) {
      FROM thoughts
      WHERE thought_type = 'insight'
        AND source_phase = 'telemetry'
-       AND metadata->>'telemetry_tier' = '1'${scopeClause}
+       AND metadata->>'telemetry_tier' = '1'
+       AND metadata->>'agent_name' IN ('eva','colby','roz','cal','ellis','agatha','robert','sable','investigator','distillator','sentinel','deps','darwin')${scopeClause}
      GROUP BY metadata->>'agent_name'
      ORDER BY total_cost DESC`,
+    params
+  );
+  res.writeHead(200, {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*",
+  });
+  res.end(JSON.stringify(result.rows));
+  return true;
+}
+
+async function handleTelemetryAgentDetail(req, res, pool) {
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const agentName = url.searchParams.get("name");
+  if (!agentName) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "Missing required parameter: name" }));
+    return true;
+  }
+
+  const scope = parseScopeFilter(req);
+  const params = [agentName];
+  let scopeClause = "";
+  if (scope) {
+    params.push(scope);
+    scopeClause = ` AND scope @> ARRAY[$${params.length}]::ltree[]`;
+  }
+
+  const result = await pool.query(
+    `SELECT
+       metadata->>'description' as description,
+       (metadata->>'duration_ms')::numeric::int as duration_ms,
+       (metadata->>'cost_usd')::numeric as cost_usd,
+       (metadata->>'input_tokens')::numeric::int as input_tokens,
+       (metadata->>'output_tokens')::numeric::int as output_tokens,
+       metadata->>'model' as model,
+       created_at
+     FROM thoughts
+     WHERE thought_type = 'insight'
+       AND source_phase = 'telemetry'
+       AND metadata->>'telemetry_tier' = '1'
+       AND metadata->>'agent_name' = $1${scopeClause}
+     ORDER BY created_at DESC
+     LIMIT 20`,
     params
   );
   res.writeHead(200, {
