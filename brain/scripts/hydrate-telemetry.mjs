@@ -242,8 +242,9 @@ async function alreadyHydrated(pool, sessionId, agentId) {
 /**
  * Insert a single telemetry thought into the brain database.
  * Uses a real embedding when possible; falls back to zero vector.
+ * Pass createdAt (ISO string) to override the DB default of now().
  */
-async function insertTelemetryThought(pool, config, { content, metadata, scope }) {
+async function insertTelemetryThought(pool, config, { content, metadata, scope, createdAt }) {
   let embedding = null;
 
   if (config.openrouter_api_key) {
@@ -264,14 +265,25 @@ async function insertTelemetryThought(pool, config, { content, metadata, scope }
 
   const scopeVal = scope || config.scope || "default";
 
-  await pool.query(
-    `INSERT INTO thoughts
-       (content, embedding, metadata, thought_type, source_agent, source_phase,
-        importance, scope, status)
-     VALUES ($1, $2::vector, $3, 'insight', 'eva', 'telemetry', 0.3,
-             ARRAY[$4::ltree], 'active')`,
-    [content, embedding, JSON.stringify(metadata), scopeVal]
-  );
+  if (createdAt) {
+    await pool.query(
+      `INSERT INTO thoughts
+         (content, embedding, metadata, thought_type, source_agent, source_phase,
+          importance, scope, status, created_at)
+       VALUES ($1, $2::vector, $3, 'insight', 'eva', 'telemetry', 0.3,
+               ARRAY[$4::ltree], 'active', $5)`,
+      [content, embedding, JSON.stringify(metadata), scopeVal, createdAt]
+    );
+  } else {
+    await pool.query(
+      `INSERT INTO thoughts
+         (content, embedding, metadata, thought_type, source_agent, source_phase,
+          importance, scope, status)
+       VALUES ($1, $2::vector, $3, 'insight', 'eva', 'telemetry', 0.3,
+               ARRAY[$4::ltree], 'active')`,
+      [content, embedding, JSON.stringify(metadata), scopeVal]
+    );
+  }
 }
 
 // =============================================================================
@@ -446,16 +458,18 @@ async function main() {
       }
     }
 
-    // Get file timestamps for duration
+    // Get file timestamps for duration and created_at
     let durationMs = 0;
+    let fileCreatedAt = null;
     try {
       const jsonlStat = statSync(jsonlPath);
-      // created_at = birthtime (ctime fallback), last modified = mtime
-      const createdAt  = jsonlStat.birthtimeMs || jsonlStat.ctimeMs;
-      const modifiedAt = jsonlStat.mtimeMs;
-      durationMs = Math.max(0, modifiedAt - createdAt);
+      // birthtime = when the file was created; fallback to ctime
+      const birthtimeMs = jsonlStat.birthtimeMs || jsonlStat.ctimeMs;
+      const modifiedAt  = jsonlStat.mtimeMs;
+      durationMs    = Math.max(0, modifiedAt - birthtimeMs);
+      fileCreatedAt = new Date(birthtimeMs).toISOString();
     } catch {
-      // leave 0
+      // leave 0 / null
     }
 
     // Parse JSONL
@@ -506,6 +520,7 @@ async function main() {
         content,
         metadata,
         scope: config.scope || "default",
+        createdAt: fileCreatedAt,
       });
       hydratedCount++;
     } catch (err) {
@@ -522,13 +537,15 @@ async function main() {
     }
 
     let durationMs = 0;
+    let fileCreatedAt = null;
     try {
       const jsonlStat = statSync(jsonlPath);
-      const createdAt  = jsonlStat.birthtimeMs || jsonlStat.ctimeMs;
-      const modifiedAt = jsonlStat.mtimeMs;
-      durationMs = Math.max(0, modifiedAt - createdAt);
+      const birthtimeMs = jsonlStat.birthtimeMs || jsonlStat.ctimeMs;
+      const modifiedAt  = jsonlStat.mtimeMs;
+      durationMs    = Math.max(0, modifiedAt - birthtimeMs);
+      fileCreatedAt = new Date(birthtimeMs).toISOString();
     } catch {
-      // leave 0
+      // leave 0 / null
     }
 
     const { model, inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens, turnCount } =
@@ -575,6 +592,7 @@ async function main() {
         content,
         metadata,
         scope: config.scope || "default",
+        createdAt: fileCreatedAt,
       });
       hydratedCount++;
     } catch (err) {

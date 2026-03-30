@@ -23,6 +23,8 @@ A structured, multi-agent development workflow for Claude Code. Twelve specializ
 - [CI Watch](#ci-watch)
 - [Deps Agent](#deps-agent)
 - [Agent Telemetry](#agent-telemetry)
+- [Dashboard](#dashboard)
+- [Telemetry Hydration](#telemetry-hydration)
 - [Agent Discovery](#agent-discovery)
 - [Context Management](#context-management)
 - [Mechanical Enforcement](#mechanical-enforcement)
@@ -126,6 +128,8 @@ These are installed into your project by `/pipeline-setup`. Use them to invoke a
 | `/docs` | Agatha | Plan what documentation a feature needs |
 | `/devops` | Eva | Handle infrastructure, CI/CD, deployment |
 | `/deps` | Deps | Scan dependencies for outdated packages, CVEs, and upgrade risk |
+| `/telemetry-hydrate` | Eva | Manually capture agent telemetry from session files into the brain |
+| `/dashboard` | Eva | Open the Atelier Dashboard in the browser (starts brain HTTP server if needed) |
 
 ### When you don't need slash commands
 
@@ -677,6 +681,89 @@ Micro pipelines (2 or fewer files, mechanical changes) capture per-invocation me
 
 ---
 
+## Dashboard
+
+The Atelier Dashboard is a browser-based telemetry visualization page. It shows pipeline cost, quality trends, agent fitness, and degradation alerts in one view.
+
+### Opening the dashboard
+
+Run `/dashboard` in Claude Code. The skill starts the brain HTTP server if it is not already running and opens the dashboard in your default browser at `http://localhost:8788/ui/dashboard.html`.
+
+### What you see
+
+The dashboard has five sections:
+
+**Pipeline Overview** -- summary stat cards showing all-time totals and per-pipeline averages. Each card shows a primary value (e.g., total cost) with supporting context (e.g., avg cost/pipeline). Duration cards also show min and max across all pipelines when more than one pipeline has been recorded. Before any pipeline data exists, the section displays "Awaiting pipeline data."
+
+**Cost Trend** -- a line chart of daily aggregated pipeline cost. Each data point sums the cost of all pipelines that ran on that calendar day, with tooltips showing the exact dollar amount and pipeline count. Before data exists: "Cost trends appear after your first pipeline."
+
+**Quality Trend** -- a line chart tracking first-pass QA rate and rework rate over time. Quality metrics require pipeline-level telemetry capture (v3.8.0+). Before data exists: "Quality metrics not yet available" with an explanation of what is needed.
+
+**Agent Fitness** -- a grid of agent cards, one per agent that has been invoked. Each card shows invocation count, average duration, total cost, and average token counts (input/output). Cards display a fitness badge based on quality telemetry:
+
+| Badge | Meaning |
+|-------|---------|
+| **Thriving** | First-pass QA rate >= 80% and rework rate <= 1.0 |
+| **Nominal** | Within acceptable range |
+| **Struggling** | QA rate between 50--80% or rework rate between 1.0--2.0 |
+| **Processing** | No quality telemetry data available yet |
+
+Eva's card always shows "ORCHESTRATOR" instead of a fitness badge. Clicking any non-Eva agent card opens a detail modal showing that agent's recent invocations (description, duration, cost, model, date).
+
+**Degradation Alerts** -- active alerts from the telemetry alert threshold system. Alerts fire only after 3+ consecutive threshold breaches.
+
+### Project scope selector
+
+When your brain contains telemetry from multiple projects, a project scope selector appears in the header. Select a specific project to filter all dashboard sections, or choose "All Projects" for the combined view. When only one scope exists, the selector is hidden.
+
+### Auto-refresh
+
+The dashboard auto-refreshes every 10 minutes. A green dot indicator in the header shows auto-refresh is active. The "Updated" timestamp shows the last data load time.
+
+---
+
+## Telemetry Hydration
+
+Telemetry hydration reads Claude Code session JSONL files and captures per-agent token usage, cost, and duration into the brain database. This is how historical telemetry data populates the dashboard and boot trend reports.
+
+### Automatic hydration
+
+Hydration runs automatically at the start of every Claude Code session via the plugin's SessionStart hook. It runs silently in the background (`--silent` mode) and never blocks session startup. If the brain is not configured or the hydration script encounters an error, it fails silently.
+
+### Manual hydration
+
+Run `/telemetry-hydrate` to trigger hydration manually with verbose output. This is useful after initial brain setup when you want to backfill telemetry from past sessions.
+
+The command:
+1. Checks brain availability (stops if brain is not configured)
+2. Constructs the session files path from your project directory
+3. Runs the hydration script and reports results
+
+Example output:
+```
+Hydrated 12 agents across 4 sessions. Total: 847,293 tokens, $2.4130.
+Skipped 8 already-hydrated agents.
+```
+
+If everything is already captured: "Telemetry is up to date -- no new data to hydrate."
+
+### What gets captured
+
+The hydration script processes two types of JSONL files:
+
+- **Subagent files** -- one per agent invocation, found in `{session}/subagents/`. Each contains the full conversation between Eva and the subagent, with per-turn token usage.
+- **Eva (parent session) files** -- one per session, found at the project sessions root. Contains Eva's main thread conversation.
+
+For each file, the script extracts: model name, input/output tokens, cache read/creation tokens, turn count, and duration (from file timestamps). Cost is computed using the built-in pricing table. Each agent invocation becomes a Tier 1 telemetry thought in the brain.
+
+After processing all Tier 1 entries, the script generates Tier 3 session summaries -- one per session, aggregating total cost, duration, and invocation counts. These summaries power the dashboard's Pipeline Overview and trend charts.
+
+### Duplicate detection
+
+Already-hydrated agents are skipped automatically. You can run hydration repeatedly without creating duplicate entries.
+
+---
+
 ## Agent Discovery
 
 Eva discovers custom agents at session boot by scanning `.claude/agents/` for non-core persona files. This lets you extend the pipeline with project-specific agents without modifying core pipeline files.
@@ -996,6 +1083,7 @@ The pipeline does not rely solely on instructions to keep agents in their lanes.
 | Eva runs `git commit` directly | "BLOCKED: Eva cannot run git write operations directly. Route commits through Ellis." |
 | Eva invokes Ellis during an active pipeline before Roz passes QA | "BLOCKED: Cannot invoke Ellis — pipeline is active (phase: build) but no Roz QA PASS found. Roz must verify Colby's output before committing." |
 | Eva invokes Agatha during the build phase | "BLOCKED: Cannot invoke Agatha during the build phase. Agatha writes docs after Roz's final sweep against verified code." |
+| Eva invokes Ellis during an active pipeline before telemetry is captured | "BLOCKED: Cannot invoke Ellis — pipeline is active but telemetry has not been captured. Eva must capture T3 telemetry before committing." |
 | Eva runs `npm test` directly | "BLOCKED: Eva cannot run test commands directly. Route test execution through Roz." |
 | Colby or Roz output is missing DoR/DoD | Advisory warning: "Output may be missing DoR/DoD sections" (does not block) |
 
@@ -1156,7 +1244,8 @@ your-project/
       sentinel.md                   # Security audit (opt-in)
     commands/                       # Loaded on slash command
       pm.md, ux.md, architect.md, debug.md,
-      pipeline.md, devops.md, docs.md
+      pipeline.md, devops.md, docs.md,
+      telemetry-hydrate.md
     references/                     # Loaded by agents on demand
       dor-dod.md                    # Quality framework
       retro-lessons.md              # Shared lessons from past runs
@@ -1165,6 +1254,7 @@ your-project/
       agent-preamble.md             # Shared agent required actions
       qa-checks.md                  # Roz QA check procedures
       branch-mr-mode.md             # Colby branch/MR procedures
+      telemetry-metrics.md          # Telemetry metric schemas, cost table, alert thresholds
     hooks/                          # Mechanical enforcement (PreToolUse + SubagentStop + PreCompact)
       enforce-paths.sh              # Blocks Write/Edit outside agent's allowed paths
       enforce-sequencing.sh         # Blocks out-of-order agent invocations

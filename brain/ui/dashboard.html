@@ -340,6 +340,7 @@
     .badge-nominal { background: var(--border-light); color: var(--text-mid); }
     .badge-struggling { background: var(--amber-bg); color: var(--amber); }
     .badge-failing { background: var(--red-bg); color: var(--red); }
+    .badge-processing { background: transparent; color: var(--text-light); border: 1px solid var(--border); }
 
     .agent-stats {
       display: grid;
@@ -1057,15 +1058,52 @@
           return;
         }
 
-        var latest = summaryData[0];
-        var meta = latest.metadata || {};
+        // Aggregate totals across all Tier 3 summary entries
+        var totalCost = 0;
+        var totalDuration = 0;
+        var totalInvocations = 0;
+        var pipelineCount = 0;
+        var minDuration = null;
+        var maxDuration = null;
 
-        // Check if all key metrics are null/zero/missing
-        var hasData = (meta.total_cost_usd !== null && meta.total_cost_usd !== undefined && Number(meta.total_cost_usd) > 0) ||
-                      (meta.total_duration_ms !== null && meta.total_duration_ms !== undefined && Number(meta.total_duration_ms) > 0) ||
-                      (meta.rework_rate !== null && meta.rework_rate !== undefined) ||
-                      (meta.evoscore !== null && meta.evoscore !== undefined) ||
-                      (meta.first_pass_qa_rate !== null && meta.first_pass_qa_rate !== undefined);
+        var reworkSum = 0, reworkCount = 0;
+        var evoSum = 0, evoCount = 0;
+        var qaSum = 0, qaCount = 0;
+
+        summaryData.forEach(function (r) {
+          var m = r.metadata || {};
+          pipelineCount++;
+          if (m.total_cost_usd !== null && m.total_cost_usd !== undefined) {
+            totalCost += Number(m.total_cost_usd) || 0;
+          }
+          if (m.total_duration_ms !== null && m.total_duration_ms !== undefined) {
+            var d = Number(m.total_duration_ms) || 0;
+            totalDuration += d;
+            if (d > 0) {
+              if (minDuration === null || d < minDuration) minDuration = d;
+              if (maxDuration === null || d > maxDuration) maxDuration = d;
+            }
+          }
+          if (m.total_invocations !== null && m.total_invocations !== undefined) {
+            totalInvocations += Number(m.total_invocations) || 0;
+          }
+          if (m.rework_rate !== null && m.rework_rate !== undefined) {
+            reworkSum += Number(m.rework_rate);
+            reworkCount++;
+          }
+          if (m.evoscore !== null && m.evoscore !== undefined) {
+            evoSum += Number(m.evoscore);
+            evoCount++;
+          }
+          if (m.first_pass_qa_rate !== null && m.first_pass_qa_rate !== undefined) {
+            qaSum += Number(m.first_pass_qa_rate);
+            qaCount++;
+          }
+        });
+
+        // Check if we have any meaningful data at all
+        var hasData = totalCost > 0 || totalDuration > 0 ||
+                      reworkCount > 0 || evoCount > 0 || qaCount > 0;
 
         if (!hasData) {
           grid.innerHTML = '<div class="stat-block" style="grid-column: 1 / -1; text-align: center;">' +
@@ -1076,12 +1114,45 @@
           return;
         }
 
+        var avgRework = reworkCount > 0 ? reworkSum / reworkCount : null;
+        var avgEvo    = evoCount > 0    ? evoSum    / evoCount    : null;
+        var avgQa     = qaCount > 0     ? qaSum     / qaCount     : null;
+
+        var avgCostPerPipeline = pipelineCount > 0 ? totalCost / pipelineCount : null;
+
+        var durationSub2 = null;
+        if (pipelineCount > 1 && minDuration !== null && maxDuration !== null) {
+          durationSub2 = "min: " + fmtDuration(minDuration) + " \u00b7 max: " + fmtDuration(maxDuration);
+        }
+
         var stats = [
-          { label: "Total Cost", value: fmtCost(meta.total_cost_usd), sub: meta.sizing ? meta.sizing + " pipeline" : "" },
-          { label: "Duration", value: fmtDuration(meta.total_duration_ms), sub: meta.total_invocations ? meta.total_invocations + " invocations" : "" },
-          { label: "Rework Rate", value: fmt(meta.rework_rate, 1), sub: "cycles per unit" },
-          { label: "EvoScore", value: fmt(meta.evoscore, 2), sub: meta.regression_count !== undefined ? meta.regression_count + " regressions" : "" },
-          { label: "First-Pass QA", value: fmtPercent(meta.first_pass_qa_rate), sub: "units passed first try" },
+          {
+            label: "Total Cost",
+            value: totalCost > 0 ? fmtCost(totalCost) : "--",
+            sub: "all time",
+            sub2: avgCostPerPipeline !== null ? "avg " + fmtCost(avgCostPerPipeline) + "/pipeline" : null
+          },
+          {
+            label: "Duration",
+            value: totalDuration > 0 ? fmtDuration(totalDuration) : "--",
+            sub: "all time",
+            sub2: durationSub2
+          },
+          {
+            label: "Rework Rate",
+            value: avgRework !== null ? fmt(avgRework, 1) : "--",
+            sub: reworkCount > 0 ? "avg across " + reworkCount + " pipeline" + (reworkCount !== 1 ? "s" : "") : "awaiting pipeline data"
+          },
+          {
+            label: "EvoScore",
+            value: avgEvo !== null ? fmt(avgEvo, 2) : "--",
+            sub: evoCount > 0 ? "avg across " + evoCount + " pipeline" + (evoCount !== 1 ? "s" : "") : "awaiting pipeline data"
+          },
+          {
+            label: "First-Pass QA",
+            value: avgQa !== null ? fmtPercent(avgQa) : "--",
+            sub: qaCount > 0 ? "avg across " + qaCount + " pipeline" + (qaCount !== 1 ? "s" : "") : "awaiting pipeline data"
+          },
         ];
 
         grid.innerHTML = stats.map(function (s) {
@@ -1089,6 +1160,7 @@
             '<div class="stat-label">' + escapeHtml(s.label) + '</div>' +
             '<div class="stat-value">' + escapeHtml(s.value) + '</div>' +
             (s.sub ? '<div class="stat-sub">' + escapeHtml(s.sub) + '</div>' : '') +
+            (s.sub2 ? '<div class="stat-sub" style="color: var(--text-light); font-size: 0.75rem; margin-top: 2px;">' + s.sub2 + '</div>' : '') +
             '</div>';
         }).join("");
       }
@@ -1105,16 +1177,30 @@
           return;
         }
 
-        var sorted = summaryData.slice().reverse();
-        var labels = sorted.map(function (r) {
-          if (!r.created_at) return "—";
-          var d = new Date(r.created_at);
+        // Aggregate sessions by calendar day (YYYY-MM-DD from created_at)
+        var dayMap = {};
+        summaryData.forEach(function (r) {
+          var dayKey = r.created_at ? r.created_at.slice(0, 10) : "unknown";
+          if (!dayMap[dayKey]) {
+            dayMap[dayKey] = { key: dayKey, cost: 0, count: 0 };
+          }
+          var m = r.metadata || {};
+          var cost = m.total_cost_usd !== null && m.total_cost_usd !== undefined ? Number(m.total_cost_usd) : 0;
+          dayMap[dayKey].cost += cost;
+          dayMap[dayKey].count += 1;
+        });
+
+        // Sort ascending (oldest left, newest right)
+        var aggregated = Object.values(dayMap).sort(function (a, b) {
+          return a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
+        });
+
+        var labels = aggregated.map(function (day) {
+          if (day.key === "unknown") return "—";
+          var d = new Date(day.key + "T00:00:00");
           return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
         });
-        var costs = sorted.map(function (r) {
-          var m = r.metadata || {};
-          return m.total_cost_usd !== null && m.total_cost_usd !== undefined ? Number(m.total_cost_usd) : 0;
-        });
+        var costs = aggregated.map(function (day) { return day.cost; });
 
         var config = {
           type: "line",
@@ -1140,19 +1226,12 @@
               tooltip: {
                 callbacks: {
                   title: function (items) {
-                    var idx = items[0].dataIndex;
-                    var entry = sorted[idx];
-                    return entry && entry.content ? entry.content : "Pipeline";
+                    return labels[items[0].dataIndex] || "—";
                   },
                   label: function (item) {
-                    var idx = item.dataIndex;
-                    var entry = sorted[idx];
-                    var meta = entry && entry.metadata ? entry.metadata : {};
-                    var costStr = "$" + item.raw.toFixed(2);
-                    if (meta.total_invocations) {
-                      costStr += " (" + meta.total_invocations + " invocations)";
-                    }
-                    return costStr;
+                    var day = aggregated[item.dataIndex];
+                    var runs = day ? day.count : 1;
+                    return "$" + item.raw.toFixed(2) + " (" + runs + " pipeline" + (runs === 1 ? "" : "s") + ")";
                   }
                 }
               }
@@ -1342,16 +1421,30 @@
       }
 
       function getAgentBadge(agent) {
-        // Heuristic based on cost efficiency and invocation patterns
-        var cost = Number(agent.total_cost) || 0;
-        var invocations = agent.invocations || 0;
-        var avgCostPerInvocation = invocations > 0 ? cost / invocations : 0;
+        // Badge is based on real quality telemetry only.
+        // first_pass_qa and rework_rate come from pipeline telemetry capture (v3.8.0+).
+        // Until that data exists, all agents show PROCESSING.
+        var meta = agent.metadata || {};
+        var firstPassQa = (meta.first_pass_qa_rate !== null && meta.first_pass_qa_rate !== undefined)
+          ? Number(meta.first_pass_qa_rate) : null;
+        var rework = (meta.rework_rate !== null && meta.rework_rate !== undefined)
+          ? Number(meta.rework_rate) : null;
 
-        // Thresholds: agents spending more than $2/invocation on average are struggling
-        // More than $5/invocation are failing
-        if (avgCostPerInvocation > 5) return { cls: "badge-failing", label: "Failing" };
-        if (avgCostPerInvocation > 2) return { cls: "badge-struggling", label: "Struggling" };
-        if (invocations >= 3) return { cls: "badge-thriving", label: "Thriving" };
+        var hasQualityData = firstPassQa !== null || rework !== null;
+
+        if (!hasQualityData) {
+          return { cls: "badge-processing", label: "Processing" };
+        }
+
+        // Quality data is present -- evaluate thresholds.
+        var qa = firstPassQa !== null ? firstPassQa * 100 : null;   // convert 0-1 to percentage
+        var rw = rework !== null ? rework : null;
+
+        var isStruggling = (qa !== null && qa < 80 && qa >= 50) || (rw !== null && rw >= 1.0 && rw <= 2.0);
+        var isThriving   = (qa !== null && qa >= 80) && (rw === null || rw <= 1.0);
+
+        if (isThriving)   return { cls: "badge-thriving",   label: "Thriving" };
+        if (isStruggling) return { cls: "badge-struggling", label: "Struggling" };
         return { cls: "badge-nominal", label: "Nominal" };
       }
 
@@ -1363,13 +1456,21 @@
         var badgeEl = document.getElementById("modal-agent-badge");
         var bodyEl = document.getElementById("modal-body");
 
-        // Find agent data for badge
-        var agentInfo = agentData.find(function (a) { return a.agent === agentName; });
-        var badge = agentInfo ? getAgentBadge(agentInfo) : { cls: "badge-nominal", label: "Nominal" };
-
         nameEl.textContent = agentName.charAt(0).toUpperCase() + agentName.slice(1);
-        badgeEl.className = "agent-badge " + badge.cls;
-        badgeEl.textContent = badge.label;
+
+        // Eva always shows ORCHESTRATOR; all others use quality-based badge.
+        var isEva = agentName.toLowerCase() === "eva";
+        if (isEva) {
+          badgeEl.className = "agent-badge";
+          badgeEl.style.cssText = "color:var(--text-light);background:transparent;border:none;font-weight:600;letter-spacing:0.08em;";
+          badgeEl.textContent = "ORCHESTRATOR";
+        } else {
+          var agentInfo = agentData.find(function (a) { return a.agent === agentName; });
+          var badge = agentInfo ? getAgentBadge(agentInfo) : { cls: "badge-processing", label: "Processing" };
+          badgeEl.className = "agent-badge " + badge.cls;
+          badgeEl.style.cssText = "";
+          badgeEl.textContent = badge.label;
+        }
         bodyEl.innerHTML = '<div class="modal-loading">Loading agent detail...</div>';
 
         overlay.classList.add("visible");
@@ -1387,38 +1488,76 @@
         });
       }
 
-      function renderModalBody(container, rows) {
-        // Compute average cost and duration for relative comparison
-        var avgCost = rows.reduce(function (s, r) { return s + (Number(r.cost_usd) || 0); }, 0) / rows.length;
-        var avgDuration = rows.reduce(function (s, r) { return s + (Number(r.duration_ms) || 0); }, 0) / rows.length;
+      function hasAgentQualityData(rows) {
+        // Quality data means at least one invocation row carries rework or QA telemetry.
+        // The agent-detail endpoint returns individual invocation rows; quality telemetry
+        // is attached to pipeline summary rows, not per-invocation rows. Until a future
+        // endpoint surfaces per-agent aggregated quality metrics, this returns false.
+        return rows.some(function (r) {
+          var m = r.metadata || {};
+          return (m.rework_rate !== null && m.rework_rate !== undefined) ||
+                 (m.first_pass_qa_rate !== null && m.first_pass_qa_rate !== undefined);
+        });
+      }
 
-        // Score each row: how much it exceeds the average (higher = more struggle)
-        var scored = rows.map(function (r, i) {
-          var costRatio = avgCost > 0 ? (Number(r.cost_usd) || 0) / avgCost : 0;
-          var durationRatio = avgDuration > 0 ? (Number(r.duration_ms) || 0) / avgDuration : 0;
-          return { row: r, score: Math.max(costRatio, durationRatio), index: i };
+      function renderModalBody(container, rows) {
+        if (hasAgentQualityData(rows)) {
+          // -- Future path: quality data exists, show Struggles / Thrives judgment --
+          renderModalBodyWithQuality(container, rows);
+        } else {
+          // -- Current path: no quality telemetry yet, show neutral activity log --
+          renderModalBodyActivity(container, rows);
+        }
+      }
+
+      function renderModalBodyActivity(container, rows) {
+        // Sort by date descending (most recent first), take up to 10.
+        var recent = rows.slice().sort(function (a, b) {
+          return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+        }).slice(0, 10);
+
+        var html = '<div class="modal-section">';
+        html += '<div class="modal-section-header"><span>Recent Activity</span></div>';
+        html += '<table class="modal-table">';
+        html += '<thead><tr><th>Description</th><th>Duration</th><th>Cost</th><th>Model</th><th>Date</th></tr></thead>';
+        html += '<tbody>';
+        recent.forEach(function (r) {
+          var desc = r.description || "(no description)";
+          html += '<tr>' +
+            '<td class="desc" title="' + escapeHtml(desc) + '">' + escapeHtml(desc) + '</td>' +
+            '<td class="num">' + fmtDuration(r.duration_ms) + '</td>' +
+            '<td class="num">' + fmtCost(r.cost_usd) + '</td>' +
+            '<td>' + escapeHtml(r.model || "--") + '</td>' +
+            '<td class="num">' + fmtDate(r.created_at) + '</td>' +
+          '</tr>';
+        });
+        html += '</tbody></table>';
+        html += '</div>';
+
+        container.innerHTML = html;
+      }
+
+      function renderModalBodyWithQuality(container, rows) {
+        // This path activates only when rows contain rework_rate or first_pass_qa_rate.
+        // Sort by rework count descending for Struggles, ascending for Thrives.
+        var withRework = rows.map(function (r, i) {
+          return { row: r, rework: Number((r.metadata || {}).rework_rate) || 0, index: i };
         });
 
-        // Struggles: top 5 by cost DESC
-        var struggles = scored.slice().sort(function (a, b) { return (Number(b.row.cost_usd) || 0) - (Number(a.row.cost_usd) || 0); }).slice(0, 5);
-        // Thrives: top 5 by cost ASC
-        var thrives = scored.slice().sort(function (a, b) { return (Number(a.row.cost_usd) || 0) - (Number(b.row.cost_usd) || 0); }).slice(0, 5);
+        var struggles = withRework.slice().sort(function (a, b) { return b.rework - a.rework; }).slice(0, 5);
+        var thrives   = withRework.slice().sort(function (a, b) { return a.rework - b.rework; }).slice(0, 5);
 
-        var warnIcon = '<svg class="modal-section-icon" viewBox="0 0 20 20" fill="var(--accent)" style="color:var(--accent)"><path d="M8.6 3.5L1.4 15.5c-.5.9.1 2 1.2 2h14.8c1.1 0 1.7-1.1 1.2-2L11.4 3.5c-.5-.9-2.3-.9-2.8 0zM10 8v3m0 3h.01"/></svg>';
+        var warnIcon  = '<svg class="modal-section-icon" viewBox="0 0 20 20" fill="var(--accent)" style="color:var(--accent)"><path d="M8.6 3.5L1.4 15.5c-.5.9.1 2 1.2 2h14.8c1.1 0 1.7-1.1 1.2-2L11.4 3.5c-.5-.9-2.3-.9-2.8 0zM10 8v3m0 3h.01"/></svg>';
         var checkIcon = '<svg class="modal-section-icon" viewBox="0 0 20 20" fill="#22c55e" style="color:#22c55e"><circle cx="10" cy="10" r="8"/><path d="M7 10l2 2 4-4" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
         var html = '';
-
-        // Struggles section
         html += '<div class="modal-section">';
         html += '<div class="modal-section-header">' + warnIcon + '<span>Struggles</span></div>';
-        html += buildModalTable(struggles);
+        html += buildModalTable(struggles.map(function (x) { return x; }));
         html += '</div>';
-
-        // Thrives section
         html += '<div class="modal-section">';
         html += '<div class="modal-section-header">' + checkIcon + '<span>Thrives</span></div>';
-        html += buildModalTable(thrives);
+        html += buildModalTable(thrives.map(function (x) { return x; }));
         html += '</div>';
 
         container.innerHTML = html;

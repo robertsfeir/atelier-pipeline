@@ -1,6 +1,6 @@
 # Atelier Pipeline -- Technical Reference
 
-Version: 3.8.0
+Version: 3.9.0
 
 This document is the comprehensive technical reference for the atelier-pipeline Claude Code plugin. It covers plugin architecture, agent system design, orchestration logic, brain infrastructure, and customization points. For usage-oriented documentation, see [the user guide](user-guide.md).
 
@@ -30,10 +30,12 @@ This document is the comprehensive technical reference for the atelier-pipeline 
 20. [CI Watch](#ci-watch)
 21. [Deps Agent](#deps-agent)
 22. [Agent Telemetry](#agent-telemetry)
-23. [Agent Discovery](#agent-discovery)
-24. [Observation Masking and Context Hygiene](#observation-masking-and-context-hygiene)
-25. [Compaction API Integration](#compaction-api-integration)
-26. [Customization Points](#customization-points)
+23. [Dashboard](#dashboard)
+24. [Telemetry Hydration](#telemetry-hydration)
+25. [Agent Discovery](#agent-discovery)
+26. [Observation Masking and Context Hygiene](#observation-masking-and-context-hygiene)
+27. [Compaction API Integration](#compaction-api-integration)
+28. [Customization Points](#customization-points)
 
 ---
 
@@ -64,7 +66,8 @@ atelier-pipeline/                         # Plugin root (CLAUDE_PLUGIN_ROOT)
       ellis.md, agatha.md, sentinel.md, deps.md
     commands/
       pm.md, ux.md, architect.md, debug.md,
-      pipeline.md, devops.md, docs.md, deps.md
+      pipeline.md, devops.md, docs.md, deps.md,
+      telemetry-hydrate.md
     references/
       dor-dod.md, retro-lessons.md,
       invocation-templates.md, pipeline-operations.md,
@@ -94,23 +97,28 @@ atelier-pipeline/                         # Plugin root (CLAUDE_PLUGIN_ROOT)
     docker-compose.yml                    # Docker setup for brain database
     docker-entrypoint.sh
     package.json
-    ui/                                   # Settings UI (Phase 2)
+    scripts/
+      hydrate-telemetry.mjs               # Telemetry hydration (SessionStart + /telemetry-hydrate)
+    ui/                                   # Dashboard + Settings UI
   skills/                                 # Plugin skills (run in main thread)
     pipeline-setup/SKILL.md               # /pipeline-setup
     pipeline-uninstall/SKILL.md           # /pipeline-uninstall
     brain-setup/SKILL.md                  # /brain-setup
     brain-uninstall/SKILL.md              # /brain-uninstall
     brain-hydrate/SKILL.md                # /brain-hydrate
+    dashboard/SKILL.md                    # /dashboard
+    telemetry-hydrate/SKILL.md            # /telemetry-hydrate (also source/commands/)
   scripts/
     check-updates.sh                      # SessionStart hook -- detects plugin updates
 ```
 
 ### Hooks
 
-The plugin registers a `SessionStart` hook in `plugin.json` that runs two commands on every Claude Code session start:
+The plugin registers a `SessionStart` hook in `plugin.json` that runs three commands on every Claude Code session start:
 
 1. **Dependency install** -- runs `npm install` in the `brain/` directory if `node_modules` does not exist.
 2. **Update check** -- runs `scripts/check-updates.sh` to compare the installed template version (`.claude/.atelier-version`) against the current plugin version. If they differ, it notifies the user that pipeline files may be outdated.
+3. **Telemetry hydration** -- runs `brain/scripts/hydrate-telemetry.mjs` in `--silent` mode to capture per-agent telemetry from any new session JSONL files into the brain. Errors are suppressed (`2>/dev/null || true`) so hydration never blocks session startup.
 
 ---
 
@@ -258,7 +266,7 @@ Some agents operate in both modes:
 
 The slash commands (`/pm`, `/ux`, `/docs`, `/architect`, `/debug`, `/pipeline`, `/devops`) are **custom agent persona commands**, not Claude Code skills. The `Skill` tool must not be invoked for them. When the user types one, Eva reads the corresponding `.claude/commands/*.md` file and adopts that agent's persona. This distinction matters because skills use the `Skill` tool invocation path, while custom commands trigger persona adoption in the main thread.
 
-The six actual plugin skills (`/pipeline-setup`, `/pipeline-uninstall`, `/pipeline-overview`, `/brain-setup`, `/brain-uninstall`, `/brain-hydrate`) live in the plugin's `skills/` directory and are invoked through the `Skill` tool.
+The eight actual plugin skills (`/pipeline-setup`, `/pipeline-uninstall`, `/pipeline-overview`, `/brain-setup`, `/brain-uninstall`, `/brain-hydrate`, `/dashboard`, `/telemetry-hydrate`) live in the plugin's `skills/` directory and are invoked through the `Skill` tool.
 
 ---
 
@@ -884,7 +892,7 @@ The skill:
 1. **Gathers project information** one question at a time: tech stack, test framework, test commands, source structure, database patterns, build/deploy commands, coverage thresholds, complexity limits, and branching strategy.
 2. **Reads template files** from `source/` in the plugin directory.
 3. **Copies ~41 files** to the target project (28 template files + 3 path-scoped rules + 6 enforcement hooks + 1 branching config + 1 branching variant + settings + version marker), replacing placeholders with project-specific values. The branching strategy variant file is selected from `source/variants/` and installed as `.claude/rules/branch-lifecycle.md`. Optional: Sentinel persona (`sentinel.md`, Step 6a), Deps agent persona + command (`deps.md`, Step 6d).
-4. **Customizes enforcement hooks** in `.claude/hooks/` -- sets project-specific paths and test commands in `enforcement-config.json`, registers hooks in `.claude/settings.json`, and makes scripts executable.
+4. **Customizes enforcement hooks** in `.claude/hooks/` -- sets project-specific paths and test commands in `enforcement-config.json`, registers hooks in `.claude/settings.json`, and makes scripts executable. After copying and customizing, setup validates `enforcement-config.json` by checking that all required fields are present and non-empty: `pipeline_state_dir`, `architecture_dir`, `product_specs_dir`, `ux_docs_dir`, `test_command`, `test_patterns`. An absent or empty `lint_command` produces a note (not a blocker). Validation failure prints a warning but does not block installation.
 5. **Writes version marker** to `.claude/.atelier-version` for update detection.
 6. **Updates `CLAUDE.md`** with a pipeline section.
 7. **Offers brain setup** at the end.
@@ -1093,11 +1101,13 @@ Test files are identified by patterns configured in `enforcement-config.json` (e
 
 ### Pipeline Sequencing Enforcement (`enforce-sequencing.sh`)
 
-This hook intercepts Agent tool calls from the main thread and enforces two mandatory gates by reading `docs/pipeline/pipeline-state.md`:
+This hook intercepts Agent tool calls from the main thread and enforces three mandatory gates by reading `docs/pipeline/pipeline-state.md`:
 
 **Gate 1 -- Ellis requires Roz QA PASS (active pipelines only).** During an active pipeline (phase is `build`, `implement`, `review`, `qa`, `test-authoring`, etc.), Eva cannot invoke Ellis unless the `PIPELINE_STATUS` JSON marker in `pipeline-state.md` has `roz_qa` set to `"PASS"`. When no pipeline is active -- missing state file, missing `PIPELINE_STATUS` marker, or phase is `idle`/`complete` -- Ellis is allowed through for infrastructure, doc-only, and setup commits.
 
 **Gate 2 -- Agatha blocked during build phase.** Eva cannot invoke Agatha (or `agatha`) while `pipeline-state.md` indicates the current phase is `build` or `implement`. Agatha writes docs after Roz's final sweep against verified code, not during active construction.
+
+**Gate 3 -- Ellis requires telemetry capture (v3.9).** During an active non-Micro pipeline, Eva cannot invoke Ellis unless the `PIPELINE_STATUS` JSON marker has `telemetry_captured` set to `"true"`. Eva must capture T3 telemetry before committing to ensure quality metrics (rework rate, first-pass QA, EvoScore) are never lost. Exempt when `sizing` is `"micro"`, when `ci_watch_active` is `"true"` (CI Watch fix cycles have their own flow), or when `sizing` is absent (fail-open when pipeline size is unknown).
 
 The hook only enforces from the main thread (empty `agent_id`). Subagents cannot invoke other subagents because the Agent tool is already in their `disallowedTools` list.
 
@@ -1645,6 +1655,120 @@ Format: `{feature_name}_{ISO_timestamp}`
 - `ISO_timestamp`: pipeline start time in `YYYY-MM-DDTHH:MM:SSZ`
 
 Example: `agent-telemetry-dashboard_2026-03-29T14:30:00Z`
+
+---
+
+## Dashboard
+
+### Overview
+
+The Atelier Dashboard (`/dashboard` skill) is a browser-based telemetry visualization page served by the brain HTTP server at `http://localhost:8788/ui/dashboard.html`. It displays pipeline cost, quality trends, agent fitness, and degradation alerts. The skill starts the brain HTTP server if it is not running and opens the dashboard in the default browser.
+
+### REST API Endpoints
+
+The dashboard fetches data from four REST API endpoints on the brain HTTP server (`brain/lib/rest-api.mjs`):
+
+| Endpoint | Method | Purpose | Response |
+|----------|--------|---------|----------|
+| `/api/telemetry/scopes` | GET | Lists distinct project scopes with telemetry data | `string[]` -- array of scope values |
+| `/api/telemetry/summary` | GET | Fetches Tier 3 (per-pipeline) telemetry summaries | `{content, metadata, created_at}[]` -- up to 100 most recent T3 thoughts |
+| `/api/telemetry/agents` | GET | Aggregates Tier 1 data per agent (invocations, avg duration, total cost, avg tokens) | `{agent, invocations, avg_duration_ms, total_cost, avg_input_tokens, avg_output_tokens}[]` |
+| `/api/telemetry/agent-detail` | GET | Fetches individual invocations for one agent (up to 20 most recent) | `{description, duration_ms, cost_usd, input_tokens, output_tokens, model, created_at}[]` |
+
+All endpoints accept an optional `?scope=<scope>` query parameter to filter by project. When `scope` is absent or `all`, no filter is applied. The scope filter uses PostgreSQL's `@>` array containment operator on the `scope` ltree column.
+
+### Dashboard Sections
+
+**Pipeline Overview** -- summary stat cards computed from Tier 3 data: all-time totals (total cost, total pipelines, total invocations) plus per-pipeline averages (avg cost, avg duration). Duration cards show min and max across all pipelines when more than one pipeline exists. Empty state: "Awaiting pipeline data."
+
+**Cost Trend** -- line chart of daily aggregated pipeline cost. Each data point sums cost across all pipelines on that calendar day. Tooltips show dollar amount and pipeline count. Empty state: "Cost trends appear after your first pipeline."
+
+**Quality Trend** -- line chart tracking first-pass QA rate and rework rate over time. Requires pipeline-level quality telemetry (T3 summaries with `first_pass_qa_rate` and `rework_rate` metadata). Empty state: "Quality metrics not yet available" with an explanation of what is needed.
+
+**Agent Fitness** -- grid of agent cards built from the `/api/telemetry/agents` response. Each card shows invocation count, average duration, total cost, and average token counts. Cards display a fitness badge:
+
+| Badge | Condition |
+|-------|-----------|
+| **Thriving** | First-pass QA rate >= 80% and rework rate <= 1.0 |
+| **Nominal** | Within acceptable range |
+| **Struggling** | QA rate between 50--80% or rework rate between 1.0--2.0 |
+| **Processing** | No quality telemetry data available yet |
+
+Eva's card shows "ORCHESTRATOR" instead of a fitness badge. Clicking any non-Eva agent card opens a detail modal with that agent's recent invocations from `/api/telemetry/agent-detail` (the "Recent Activity" section shows description, duration, cost, model, and date per invocation).
+
+**Degradation Alerts** -- active alerts from the telemetry alert threshold system.
+
+### Project Scope Selector
+
+When the brain contains telemetry from multiple projects, the `/api/telemetry/scopes` endpoint returns multiple scope values. The dashboard renders a scope selector in the header. Selecting a scope re-fetches all sections filtered to that project. When only one scope exists, the selector is hidden.
+
+### Auto-Refresh
+
+The dashboard auto-refreshes every 10 minutes. A green dot in the header indicates auto-refresh is active. The "Updated" timestamp shows the last data load time.
+
+---
+
+## Telemetry Hydration
+
+### Overview
+
+Telemetry hydration (`brain/scripts/hydrate-telemetry.mjs`) reads Claude Code session JSONL files and inserts per-agent token usage, cost, and duration into the brain database as Tier 1 telemetry thoughts. It then generates Tier 3 session summaries from the Tier 1 data.
+
+### Invocation Methods
+
+| Method | When | Mode |
+|--------|------|------|
+| **SessionStart hook** | Every Claude Code session start | Silent (`--silent`), errors suppressed, non-blocking |
+| **`/telemetry-hydrate` command** | Manual, on-demand | Verbose, reports summary to user |
+
+The SessionStart hook is registered in `plugin.json` and runs after dependency install and update check:
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/brain/scripts/hydrate-telemetry.mjs" "${CLAUDE_PROJECT_DIR}" --silent 2>/dev/null || true
+```
+
+The `/telemetry-hydrate` command constructs the project sessions path from `CLAUDE_PROJECT_DIR` (replacing `/` with `-`, stripping the leading `-`, prepending `~/.claude/projects/-`) and runs the hydration script without `--silent`.
+
+### JSONL File Discovery
+
+The script processes two types of files under `~/.claude/projects/-{project-path}/`:
+
+| File Type | Location | Agent ID Format |
+|-----------|----------|----------------|
+| **Eva (parent session)** | `{sessionId}.jsonl` at the project root | `eva-{sessionId}` |
+| **Subagent** | `{sessionId}/subagents/{agentId}.jsonl` | The filename stem (e.g., `colby-abc123`) |
+
+For each JSONL file, the script parses all lines to extract: model (from the first assistant message), input/output/cache-read/cache-creation tokens (summed across all turns), and turn count. Duration is estimated from file timestamps (birth time to last modification).
+
+### Cost Computation
+
+Cost is computed using a built-in pricing table:
+
+| Model Family | Input (per 1M tokens) | Output (per 1M tokens) |
+|-------------|----------------------|----------------------|
+| Opus | $15.00 | $75.00 |
+| Sonnet | $3.00 | $15.00 |
+| Haiku | $0.80 | $4.00 |
+
+Cache read tokens are priced at 10% of the input rate; cache creation tokens at 25%. When the model is unknown or not in the table, cost is set to `null`.
+
+### Duplicate Detection
+
+Before inserting, the script queries the brain for existing thoughts matching `(session_id, agent_id)` in the metadata with `hydrated: true`. Already-hydrated agents are skipped. Hydration is idempotent.
+
+### Tier 3 Summary Generation
+
+After all Tier 1 insertions, the script calls `generateTier3Summaries()`. For each session that has Tier 1 data but no Tier 3 summary, it aggregates total cost, total duration, total invocations, and invocations-by-agent into a single Tier 3 thought. These summaries are what the dashboard's Pipeline Overview and trend charts consume.
+
+### Storage Format
+
+All telemetry thoughts use:
+- `thought_type: 'insight'`, `source_agent: 'eva'`, `source_phase: 'telemetry'`
+- `importance: 0.3` (Tier 1) or `0.7` (Tier 3)
+- `metadata.hydrated: true` (distinguishes hydrated data from live capture)
+- `metadata.telemetry_tier: '1'` or `'3'`
+
+Embeddings are generated via OpenRouter when an API key is configured; otherwise a zero vector fallback is used. Zero-vector entries are still queryable via metadata filters.
 
 ---
 

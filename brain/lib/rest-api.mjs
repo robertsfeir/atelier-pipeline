@@ -304,7 +304,7 @@ async function handleTelemetrySummary(req, res, pool) {
        AND source_phase = 'telemetry'
        AND metadata->>'telemetry_tier' = '3'${scopeClause}
      ORDER BY created_at DESC
-     LIMIT 10`,
+     LIMIT 100`,
     params
   );
   res.writeHead(200, {
