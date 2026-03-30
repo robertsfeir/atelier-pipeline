@@ -188,6 +188,26 @@ optional and must be installed for the pipeline to function correctly.
 
 After copying, make the `.sh` files executable: `chmod +x .claude/hooks/*.sh`
 
+**Validate enforcement-config.json** after copying and customizing. Read the installed `.claude/hooks/enforcement-config.json` and check the following required fields:
+
+| Field | Type | Requirement |
+|-------|------|-------------|
+| `pipeline_state_dir` | string | Non-empty |
+| `architecture_dir` | string | Non-empty |
+| `product_specs_dir` | string | Non-empty |
+| `ux_docs_dir` | string | Non-empty |
+| `test_command` | string | Non-empty -- critical: Roz cannot run tests without this |
+| `test_patterns` | array | Non-empty -- at least one pattern required |
+
+Also check `lint_command`: if the field is absent or empty, warn (but do not block) -- Eva's quality gate will fall back to `test_command`.
+
+Print the validation result:
+- **All required fields valid:** `Enforcement config validated — all required fields present.`
+- **Any required field missing or empty:** `WARNING: enforcement-config.json is missing required fields: [list]. Pipeline enforcement may not work correctly. Re-run /pipeline-setup to fix.`
+- **Only lint_command empty/absent:** `NOTE: lint_command is not set — Eva will fall back to test_command for quality checks.`
+
+Do not block installation on validation failure. The warning is informational -- the fix is re-running setup.
+
 **Customize enforcement-config.json** with the project-specific values from Step 1:
 - `pipeline_state_dir`: the pipeline state directory (default: `docs/pipeline`)
 - `architecture_dir`: the ADR directory (default: `docs/architecture`)
