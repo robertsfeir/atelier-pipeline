@@ -59,6 +59,7 @@ Before removing anything, scan the project to build a complete inventory of what
 .claude/hooks/
   enforce-paths.sh
   enforce-sequencing.sh
+  enforce-pipeline-activation.sh
   enforce-git.sh
   warn-dor-dod.sh
   pre-compact.sh
@@ -149,7 +150,7 @@ Execute the removal in this order:
 
 1. **Remove hook registrations from `.claude/settings.json`:**
    - Read the current settings file
-   - Remove the `PreToolUse` hook entries that reference `enforce-paths.sh`, `enforce-sequencing.sh`, and `enforce-git.sh`
+   - Remove the `PreToolUse` hook entries that reference `enforce-paths.sh`, `enforce-sequencing.sh`, `enforce-pipeline-activation.sh`, and `enforce-git.sh`
    - Remove the `SubagentStop` hook entry that references `warn-dor-dod.sh`
    - Remove the `PreCompact` hook entry that references `pre-compact.sh`
    - If the `hooks` object is now empty, remove the `hooks` key entirely
