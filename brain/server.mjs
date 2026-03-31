@@ -23,6 +23,7 @@ import { createRestHandler } from "./lib/rest-api.mjs";
 import { startConsolidationTimer, stopConsolidationTimer } from "./lib/consolidation.mjs";
 import { startTTLTimer, stopTTLTimer } from "./lib/ttl.mjs";
 import { handleStaticFile } from "./lib/static.mjs";
+import { installCrashGuards } from "./lib/crash-guards.mjs";
 
 // =============================================================================
 // Configuration
@@ -64,6 +65,17 @@ const runtimeConfig = {
 };
 
 // =============================================================================
+// Process-Level Crash Guards (ADR-0017 Step 1)
+// =============================================================================
+
+installCrashGuards({
+  exitFn: process.exit.bind(process),
+  stopConsolidation: stopConsolidationTimer,
+  stopTTL: stopTTLTimer,
+  poolEnd: () => pool.end(),
+});
+
+// =============================================================================
 // Server Startup
 // =============================================================================
 
@@ -74,20 +86,6 @@ if (mode === "http") {
 } else {
   await startStdioMode(pool, runtimeConfig);
 }
-
-// =============================================================================
-// Graceful Shutdown
-// =============================================================================
-
-function gracefulShutdown() {
-  stopConsolidationTimer();
-  stopTTLTimer();
-  pool.end().catch(() => {});
-  process.exit(0);
-}
-
-process.on("SIGTERM", gracefulShutdown);
-process.on("SIGINT", gracefulShutdown);
 
 // =============================================================================
 // HTTP Mode

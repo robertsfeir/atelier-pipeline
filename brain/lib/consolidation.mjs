@@ -208,7 +208,14 @@ let consolidationTimer = null;
 async function startConsolidationTimer(pool, apiKey) {
   const brainConfig = await getBrainConfig(pool);
   const intervalMs = brainConfig.consolidation_interval_minutes * 60 * 1000;
-  consolidationTimer = setInterval(() => runConsolidation(pool, apiKey), intervalMs);
+  consolidationTimer = setInterval(async () => {
+    try {
+      await runConsolidation(pool, apiKey);
+    } catch (err) {
+      try { console.error('Consolidation timer error (survived):', err.message); }
+      catch { /* stderr may be broken */ }
+    }
+  }, intervalMs);
   console.log(`Consolidation timer: every ${brainConfig.consolidation_interval_minutes} min`);
 }
 

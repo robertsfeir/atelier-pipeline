@@ -38,7 +38,14 @@ let ttlTimer = null;
 async function startTTLTimer(pool) {
   // TTL runs less frequently than consolidation -- default 60 min
   const intervalMs = 60 * 60 * 1000;
-  ttlTimer = setInterval(() => runTTLEnforcement(pool), intervalMs);
+  ttlTimer = setInterval(async () => {
+    try {
+      await runTTLEnforcement(pool);
+    } catch (err) {
+      try { console.error('TTL timer error (survived):', err.message); }
+      catch { /* stderr may be broken */ }
+    }
+  }, intervalMs);
   // Run once on startup
   await runTTLEnforcement(pool);
 }

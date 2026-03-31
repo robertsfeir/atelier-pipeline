@@ -14,7 +14,12 @@ import path from "path";
 // =============================================================================
 
 function createPool(databaseUrl) {
-  const pool = new pg.Pool({ connectionString: databaseUrl });
+  const pool = new pg.Pool({
+    connectionString: databaseUrl,
+    max: 5,
+    connectionTimeoutMillis: 5000,
+    idleTimeoutMillis: 30000,
+  });
 
   pool.on("connect", async (client) => {
     await pgvector.registerTypes(client);
