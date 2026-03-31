@@ -1,6 +1,6 @@
 {
   "name": "atelier-brain",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Persistent institutional memory for atelier-pipeline agents",
   "main": "server.mjs",
   "scripts": {
