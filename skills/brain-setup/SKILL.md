@@ -104,9 +104,11 @@ Ask the user:
 
 ### Step 4: Scope Path
 
+Derive a smart default from the project directory: take the last segment of the current working directory and append `.app` (e.g., `/Users/sfeirr/projects/clairvoyant` becomes `clairvoyant.app`). Present this as a suggested default the user can accept or override.
+
 Ask the user:
 
-> "What scope path should the brain use? This is a dot-separated namespace like `myorg.myproduct` that organizes your brain's knowledge."
+> "What scope path should the brain use? This is a dot-separated namespace like `myorg.myproduct` that organizes your brain's knowledge. Based on your project directory, I'd suggest: `{derived-default}` — press Enter to accept or type your own."
 
 Provide examples: `acme.webapp`, `myteam.api`, `personal.sideproject`.
 

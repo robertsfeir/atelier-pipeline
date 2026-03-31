@@ -93,38 +93,7 @@ See `pipeline-orchestration.md` for invocation procedures, DoR/DoD gates, UX pre
 
 ## Pipeline Flow
 
-See `pipeline-orchestration.md` for pipeline flow, verification gates, reconciliation rules, hard pauses, and agent standards.
-
-### Phase Sizing
-
-| Size | Criteria | Skip | Always Run |
-|------|----------|------|------------|
-| **Micro** | ≤2 files, mechanical only, no behavioral change | Roz, Poirot, Cal, Robert, Sable, Agatha | Colby -> test suite -> Ellis |
-| **Small** | Single file, < 3 files, bug fix, test addition, or user says "quick fix" | Robert (skill), Sable (skill), Cal, Agatha (skill) | Colby -> Roz -> (Agatha if Roz flags doc impact) -> (Robert-subagent verifies docs if Agatha ran) -> Ellis |
-| **Medium** | 2-4 ADR steps, typical feature | Sable (skill) | Robert spec (required) -> Cal -> Colby <-> Roz + Poirot -> Robert-subagent -> Agatha -> Robert-subagent (docs) -> Ellis |
-| **Large** | 5+ ADR steps, new system, multi-concern | Nothing | Full pipeline including Sable-subagent at mockup + final |
-
-**Colby -> Roz -> Ellis is the minimum pipeline.** No sizing level skips Roz or Ellis. Exception: Micro skips Roz but runs the full test suite as a safety valve (see pipeline-orchestration.md).
-
-### Phase Transitions
-
-| They have... | Eva starts at... |
-|---|---|
-| Just an idea | Robert (skill) |
-| Feature spec | Sable + Agatha planning in parallel (skills) |
-| Spec + UX doc | Colby mockup (subagent) -> Sable-subagent mockup verification -> User UAT |
-| Spec + UX + mockup approved | Cal clarification (skill) -> Cal ADR production (subagent) |
-| ADR from Cal (Medium/Large with UI) | Eva UX pre-flight -> Robert review -> Sable review -> Cal revision (if gaps found) -> Roz test spec review |
-| ADR from Cal (Small or no UI) | Roz test spec review (subagent) |
-| ADR from Cal (non-code -- schema, instructions, config) | Skip Roz test spec/authoring. Colby implements -> Roz verifies against ADR -> Agatha (sequential, not parallel) |
-| Roz-approved test spec | Roz test authoring (subagent) -- writes test assertions per ADR step |
-| Roz test files ready | Wave grouping: Eva extracts file deps, groups independent steps into waves (see pipeline-operations.md). Within each wave: Colby build <-> Roz QA + Poirot (interleaved). Waves execute sequentially; units within a wave execute in parallel. Overlap detected -> sequential fallback. |
-| All waves pass QA | Review juncture: Roz final sweep + Poirot + Robert-subagent + Sable-subagent + Sentinel (if enabled) (parallel) |
-| Review juncture passed | Agatha writes/updates docs (against final verified code) |
-| Agatha docs complete | Robert-subagent verifies docs against spec |
-| All verification passed | Spec/UX reconciliation (if drift flagged) -> Colby MR or Ellis push (per branching strategy) -> Ellis final commit |
-
-See `.claude/references/pipeline-operations.md` for continuous QA details, feedback loops, batch mode, and worktree rules.
+Phase sizing, phase transitions, verification gates, reconciliation rules, hard pauses, and agent standards are defined in `pipeline-orchestration.md`. Continuous QA details, feedback loops, batch mode, and worktree rules are in `.claude/references/pipeline-operations.md`.
 
 </section>
 
@@ -356,51 +325,7 @@ Core routing table is always checked first.
   under "## Routing Preferences". Preference is session-scoped -- lost on
   next session, re-asked.
 
-### Inline Agent Creation Protocol
-
-When a user pastes markdown into the chat that contains an agent definition
-pattern (identity/role description, behavioral rules, tool/constraint lists),
-Eva recognizes it and offers conversion.
-
-#### Detection Heuristic
-
-Eva identifies agent-like content when pasted markdown contains **two or more**
-of: a role or identity statement, behavioral rules or guidelines, a tool or
-capability list, constraint or boundary definitions, an output format
-specification. Eva asks: "This looks like an agent definition. Want me to
-convert it to a pipeline agent?"
-
-#### Conversion Process
-
-1. **Parse** the content structure, mapping sections to XML tags.
-2. **Prepare** the converted version following `.claude/references/xml-prompt-schema.md`
-   tag vocabulary:
-   - **YAML frontmatter:** `name` (kebab-case from agent name), `description`
-     (one-line from identity), `disallowedTools` (conservative default:
-     `Agent, Write, Edit, MultiEdit, NotebookEdit` -- read-only)
-   - **Comment:** `<!-- Part of atelier-pipeline. -->`
-   - **`<identity>`** from the agent's role/identity text
-   - **`<required-actions>`** with reference to `.claude/references/agent-preamble.md`
-     plus any agent-specific actions from the source material
-   - **`<workflow>`** from the agent's process/steps (omit tag entirely if
-     source has no workflow content)
-   - **`<examples>`** from the agent's examples (omit tag entirely if none)
-   - **`<tools>`** listing the agent's tool access
-   - **`<constraints>`** from the agent's rules/boundaries
-   - **`<output>`** from the agent's output format (if absent, use a minimal
-     default: "Produce structured output with DoR and DoD sections.")
-3. **Name collision check:** If the parsed name matches a core agent constant,
-   Eva rejects: "[name] conflicts with a core agent. Choose a different name."
-4. **Present** the converted content to the user for approval before writing.
-5. **Write via Colby:** Eva invokes Colby with explicit task: "Write this file
-   to `.claude/agents/{name}.md`" with the full content in the CONTEXT field.
-   Eva does **NOT** write the file herself -- this is a mandatory routing to
-   Colby.
-6. **If user declines:** No file is written. Eva acknowledges and moves on.
-7. **Post-write discovery:** Eva re-runs the discovery scan to register the
-   new agent immediately.
-8. **Enforcement note:** Eva announces: "[agent-name] has read-only access by
-   default. To grant write access, add a case to `.claude/hooks/enforce-paths.sh`."
+See `.claude/commands/create-agent.md` for the inline agent creation protocol.
 
 </section>
 
@@ -426,48 +351,7 @@ Eva checks both gates at session boot (step 3d). If either fails,
 `agent_teams_available` is set to `false` and Eva uses sequential subagent
 invocation with zero behavioral change.
 
-### Scope: Wave Execution Only
-
-Agent Teams applies exclusively to Colby build units within a wave. Agent
-Teams does NOT replace subagent invocations for any other agent:
-
-- Roz, Poirot, Robert, Sable, Ellis, Agatha, Cal, Sentinel, and all
-  discovered agents are invoked sequentially (existing behavior, unchanged).
-- Agent Teams is not used for read-only verification agents, doc writers,
-  commit agents, or any phase outside the Colby build step.
-
-Revisit: if Agent Teams supports non-worktree Teammates for parallel
-read-only review in a future version.
-
-### Teammate Identity
-
-Teammates are Colby instances. They are NOT a new agent type. Teammates load
-Colby's persona from `.claude/agents/colby.md` and project rules from
-`.claude/rules/`. No new persona file exists for Teammates. Teammates match
-the `colby` case in `enforce-paths.sh` and have full write access to the
-codebase (same as a standard Colby subagent invocation).
-
-### Task Lifecycle
-
-1. Eva creates one task per wave unit via `TaskCreate` with a structured
-   task description (see `invocation-templates.md`, template `agent-teams-task`).
-2. Teammate instances pick up tasks and execute the build units.
-3. Each Teammate marks its task complete via `TaskUpdate` when done.
-4. `TaskCompleted` events fire on Eva (Team Lead). Eva processes them
-   sequentially -- one at a time, not in parallel -- to avoid race
-   conditions in state updates to `pipeline-state.md`.
-5. After all Teammates in the wave complete (all TaskCompleted events
-   received), Eva merges each worktree sequentially (see Worktree
-   Integration Rules -- Agent Teams Worktrees subsection).
-6. Roz QA + Poirot blind review run per unit after merge (unchanged).
-
-Eva uses `TaskGet` to check Teammate task status during wave execution.
-
-### Fallback Behavior
-
-When `agent_teams_available: false` (config flag off, env var unset, or
-runtime detection fails), Eva falls back to sequential subagent invocation.
-The pipeline output is identical -- Agent Teams affects execution speed, not
-correctness or quality.
+See `.claude/references/pipeline-operations.md` (wave-execution section) for
+scope, teammate identity, task lifecycle, and fallback behavior details.
 
 </section>

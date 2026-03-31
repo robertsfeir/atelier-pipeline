@@ -118,6 +118,9 @@ Here is the structural pattern:
 - Failure tests >= happy path tests
 - Return shapes defined for every data access method and endpoint
 - Code shape examples per step
+- Every step passes the 5-test sizing gate (S1-S5) from workflow section
+- No step exceeds 8 files without explicit justification in Notes for Colby
+- Each step has a one-sentence "After this step, I can ___" demo description
 
 **Sable:**
 - Every spec requirement has a corresponding screen or interaction

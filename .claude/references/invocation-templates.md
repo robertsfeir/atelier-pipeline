@@ -11,6 +11,41 @@ prompts. These are not pre-loaded into Eva's always-on context.
 
 ---
 
+## Template Index
+
+Eva: read this index to find the template line number, then read only that
+template section using offset/limit. Do not read the entire file.
+
+| # | Template ID | Agent | Purpose | Line |
+|---|-------------|-------|---------| -----|
+| 1 | cal-adr | Cal | ADR production (standard) | 49 |
+| 2 | cal-adr-large | Cal | ADR production with research brief (large) | 81 |
+| 3 | colby-mockup | Colby | UI mockup with mock data (before Cal) | 119 |
+| 4 | colby-build | Colby | Implementation build unit | 145 |
+| 5 | roz-investigation | Roz | Bug investigation (user-reported) | 175 |
+| 6 | roz-test-spec-review | Roz | Test spec review (after Cal ADR) | 202 |
+| 7 | roz-test-authoring | Roz | Test authoring per ADR step (pre-build) | 227 |
+| 8 | roz-code-qa | Roz | Code QA first pass (after Colby build) | 252 |
+| 9 | roz-scoped-rerun | Roz | Scoped re-run (after Colby fix) | 276 |
+| 10 | ellis-commit | Ellis | Commit and changelog | 296 |
+| 11 | agatha-writing | Agatha | Documentation writing | 319 |
+| 12 | robert-acceptance | Robert | Product acceptance review | 343 |
+| 13 | sable-acceptance | Sable | UX acceptance review | 367 |
+| 14 | poirot-blind | Poirot | Blind diff-only code review | 391 |
+| 15 | sentinel-audit | Sentinel | Security audit (Semgrep-backed) | 409 |
+| 16 | deps-scan | Deps | Full dependency scan | 434 |
+| 17 | deps-migration-brief | Deps | Migration ADR brief | 458 |
+| 18 | distillator-compress | Distillator | Lossless document compression | 487 |
+| 19 | distillator-validate | Distillator | Compression with round-trip validation | 510 |
+| 20 | agent-teams-task | Colby | Agent Teams teammate task (experimental) | 528 |
+| 21 | roz-ci-investigation | Roz | CI Watch failure diagnosis | 587 |
+| 22 | colby-ci-fix | Colby | CI Watch apply fix | 626 |
+| 23 | roz-ci-verify | Roz | CI Watch post-fix verification | 664 |
+| 24 | darwin-analysis | Darwin | Pipeline telemetry analysis | 699 |
+| 25 | darwin-edit-proposal | Darwin | Structural improvement proposal | 731 |
+
+---
+
 <template id="cal-adr">
 
 ### Cal (ADR Production)
@@ -122,7 +157,7 @@ Research Brief (Large pipeline):
 [When this step consumes a contract from a prior step, Eva includes the prior
 step's Contracts Produced table here so Colby has the exact response shapes.]</context>
 
-<read>docs/architecture/ADR-NNNN-feature-name.md, [Roz-authored test files], .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
+<read>docs/architecture/ADR-NNNN-feature-name.md (Step N + Contract Boundaries table), [Roz-authored test files], .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <constraints>
 - Make Roz's pre-written tests pass -- do not modify her assertions
@@ -130,6 +165,7 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 - If a Roz test fails against existing code, the code has a bug -- fix it
 - When fixing a shared utility bug, grep for all instances codebase-wide
 - Zero TODO/FIXME/HACK in delivered code
+- Read your assigned step of the ADR in full, plus the Contract Boundaries table for steps that consume your outputs. Do not read the full ADR — prior steps are done, future step implementations are not your concern.
 </constraints>
 
 <output>Step N complete report with DoR/DoD sections, Bugs Discovered section, files changed</output>
@@ -181,6 +217,7 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 - Check description quality (specific enough to write test without source)
 - Verify Cal's DoR covers all spec requirements -- flag any silent drops
 - Independently identify cases Cal missed
+- Sizing check: for each ADR step, count the number of distinct test categories required. If a single step requires tests across 4+ categories (e.g., happy + failure + boundary + security + concurrency), flag it: "Step N may be over-packed — {N} test categories across {M} files suggests multiple behaviors. Consider sub-slicing."
 </constraints>
 
 <output>Category coverage table, gaps found, missing tests, Cal DoR verification, verdict (APPROVED / REVISE)</output>

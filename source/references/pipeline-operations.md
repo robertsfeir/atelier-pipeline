@@ -231,6 +231,12 @@ parallel; waves execute sequentially.
    fall back to sequential for remaining units, log as lesson in
    error-patterns.md.
 
+**Sub-unit execution order:** When an ADR uses sub-sliced steps (e.g., 2a,
+2b, 2c), sub-units within the same parent step execute sequentially — 2a
+completes Colby/Roz/Ellis before 2b begins. Sub-units from different parent
+steps (e.g., 2c and 3a) may be wave-grouped if they have zero file overlap,
+following the standard wave extraction algorithm above.
+
 **Brain integration (Eva, wave grouping):**
 - **Read gate:** Before grouping, `agent_search` for prior wave decisions
   on this feature area. Reuse prior grouping as a starting point (still
@@ -298,6 +304,50 @@ between each merge.
 - Batch-mode rules still apply: parallel requires zero file overlap,
   sequential is the fallback. Eva announces wave grouping to the user
   before execution begins.
+
+### Scope: Wave Execution Only
+
+Agent Teams applies exclusively to Colby build units within a wave. Agent
+Teams does NOT replace subagent invocations for any other agent:
+
+- Roz, Poirot, Robert, Sable, Ellis, Agatha, Cal, Sentinel, and all
+  discovered agents are invoked sequentially (existing behavior, unchanged).
+- Agent Teams is not used for read-only verification agents, doc writers,
+  commit agents, or any phase outside the Colby build step.
+
+Revisit: if Agent Teams supports non-worktree Teammates for parallel
+read-only review in a future version.
+
+### Teammate Identity
+
+Teammates are Colby instances. They are NOT a new agent type. Teammates load
+Colby's persona from `.claude/agents/colby.md` and project rules from
+`.claude/rules/`. No new persona file exists for Teammates. Teammates match
+the `colby` case in `enforce-paths.sh` and have full write access to the
+codebase (same as a standard Colby subagent invocation).
+
+### Task Lifecycle
+
+1. Eva creates one task per wave unit via `TaskCreate` with a structured
+   task description (see `invocation-templates.md`, template `agent-teams-task`).
+2. Teammate instances pick up tasks and execute the build units.
+3. Each Teammate marks its task complete via `TaskUpdate` when done.
+4. `TaskCompleted` events fire on Eva (Team Lead). Eva processes them
+   sequentially -- one at a time, not in parallel -- to avoid race
+   conditions in state updates to `pipeline-state.md`.
+5. After all Teammates in the wave complete (all TaskCompleted events
+   received), Eva merges each worktree sequentially (see Worktree
+   Integration Rules -- Agent Teams Worktrees subsection).
+6. Roz QA + Poirot blind review run per unit after merge (unchanged).
+
+Eva uses `TaskGet` to check Teammate task status during wave execution.
+
+### Fallback Behavior
+
+When `agent_teams_available: false` (config flag off, env var unset, or
+runtime detection fails), Eva falls back to sequential subagent invocation.
+The pipeline output is identical -- Agent Teams affects execution speed, not
+correctness or quality.
 
 </operations>
 

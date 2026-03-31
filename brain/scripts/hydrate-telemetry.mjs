@@ -19,6 +19,19 @@ import { createPool, runMigrations } from "../lib/db.mjs";
 import { getEmbedding } from "../lib/embed.mjs";
 
 // =============================================================================
+// Scope Fallback Warning (fires once per script run)
+// =============================================================================
+
+let scopeWarningEmitted = false;
+
+function warnIfDefaultScope(scopeValue) {
+  if (!scopeValue && !scopeWarningEmitted) {
+    console.warn("Warning: config.scope is not set. Using 'default'. Run /brain-setup to configure a project scope.");
+    scopeWarningEmitted = true;
+  }
+}
+
+// =============================================================================
 // Cost Estimation Table (per-1M tokens, USD)
 // =============================================================================
 
@@ -264,6 +277,7 @@ async function insertTelemetryThought(pool, config, { content, metadata, scope, 
   }
 
   const scopeVal = scope || config.scope || "default";
+  warnIfDefaultScope(scope || config.scope);
 
   if (createdAt) {
     await pool.query(
@@ -376,6 +390,7 @@ async function generateTier3Summaries(pool, config) {
     }
 
     const scopeVal = config.scope || "default";
+    warnIfDefaultScope(config.scope);
 
     await pool.query(
       `INSERT INTO thoughts
@@ -514,6 +529,7 @@ async function main() {
     };
 
     log(`  Inserting: ${agentId} (${sessionId.slice(0, 8)}…) — ${agentType}, ${model}, ${totalAgentTokens} tokens, ${costStr}`);
+    warnIfDefaultScope(config.scope);
 
     try {
       await insertTelemetryThought(pool, config, {
@@ -586,6 +602,7 @@ async function main() {
     };
 
     log(`  Inserting Eva: ${agentId} (${sessionId.slice(0, 8)}…) — eva, ${model}, ${totalAgentTokens} tokens, ${costStr}`);
+    warnIfDefaultScope(config.scope);
 
     try {
       await insertTelemetryThought(pool, config, {

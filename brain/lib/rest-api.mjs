@@ -324,6 +324,7 @@ async function handleTelemetryAgents(req, res, pool) {
     scopeClause = ` AND scope @> ARRAY[$${params.length}]::ltree[]`;
   }
 
+  // T1 query: per-agent invocation metrics (cost, tokens, duration)
   const result = await pool.query(
     `SELECT
        metadata->>'agent_name' as agent,
@@ -341,11 +342,50 @@ async function handleTelemetryAgents(req, res, pool) {
      ORDER BY total_cost DESC`,
     params
   );
+
+  // T3 query: pipeline-level quality metrics (rework_rate, first_pass_qa_rate)
+  // These are per-pipeline aggregates; average across pipelines for Colby's badge.
+  const qualityParams = [];
+  let qualityScopeClause = "";
+  if (scope) {
+    qualityParams.push(scope);
+    qualityScopeClause = ` AND scope @> ARRAY[$${qualityParams.length}]::ltree[]`;
+  }
+  const qualityResult = await pool.query(
+    `SELECT
+       avg((metadata->>'rework_rate')::numeric) as rework_rate,
+       avg((metadata->>'first_pass_qa_rate')::numeric) as first_pass_qa_rate
+     FROM thoughts
+     WHERE thought_type = 'insight'
+       AND source_phase = 'telemetry'
+       AND metadata->>'telemetry_tier' = '3'${qualityScopeClause}`,
+    qualityParams
+  );
+
+  const qualityRow = qualityResult.rows[0] || {};
+  const avgReworkRate = qualityRow.rework_rate != null
+    ? Number(Number(qualityRow.rework_rate).toFixed(2)) : null;
+  const avgFirstPassQaRate = qualityRow.first_pass_qa_rate != null
+    ? Number(Number(qualityRow.first_pass_qa_rate).toFixed(4)) : null;
+
+  // Attach quality metadata to each agent row.
+  // Quality metrics apply to Colby (the builder); other agents get nulls.
+  const rows = result.rows.map((row) => {
+    const isColby = (row.agent || "").toLowerCase() === "colby";
+    return {
+      ...row,
+      metadata: {
+        first_pass_qa_rate: isColby ? avgFirstPassQaRate : null,
+        rework_rate: isColby ? avgReworkRate : null,
+      },
+    };
+  });
+
   res.writeHead(200, {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": "*",
   });
-  res.end(JSON.stringify(result.rows));
+  res.end(JSON.stringify(rows));
   return true;
 }
 
