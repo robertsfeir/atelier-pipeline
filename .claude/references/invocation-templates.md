@@ -762,3 +762,22 @@ Current content of target section:
 <output>Files changed, diff summary, DoR/DoD sections</output>
 
 </template>
+
+<template id="dashboard-bridge">
+
+### Dashboard Bridge (Eva self-invocation via Bash)
+
+Eva runs this after Ellis commit when `dashboard_mode: "plan-visualizer"`.
+Not a subagent invocation -- Eva runs the bridge script directly via Bash.
+
+<task>Run the telemetry bridge script to regenerate PIPELINE_PLAN.md for PlanVisualizer.</task>
+
+<constraints>
+- Run `.claude/dashboard/telemetry-bridge.sh` via Bash.
+- If the script fails, log the error and continue. Never block the pipeline.
+- This is a Bash command, not a subagent invocation.
+</constraints>
+
+<output>PIPELINE_PLAN.md written to project root. Dashboard HTML regenerated (if node available).</output>
+
+</template>

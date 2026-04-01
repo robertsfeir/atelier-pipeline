@@ -10,6 +10,7 @@
 # subagents is already blocked by disallowedTools: Agent.
 
 set -euo pipefail
+[ "${ATELIER_SETUP_MODE:-}" = "1" ] && exit 0
 
 INPUT=$(cat)
 

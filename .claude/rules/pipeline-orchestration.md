@@ -262,6 +262,30 @@ reference files modified in this pipeline. For each pattern:
 3. If churn is moderate (20-50%), Eva appends a warning to the pattern's next
    surfacing: "Pattern may be outdated — source files have been modified."
 
+### Dashboard Bridge (post-pipeline, PlanVisualizer only)
+
+After the Pattern Staleness Check (and Darwin auto-trigger if applicable), if
+`dashboard_mode` is set to `"plan-visualizer"` in `pipeline-config.json`, Eva runs
+the bridge script:
+
+1. Eva runs `.claude/dashboard/telemetry-bridge.sh` via Bash.
+2. If the script succeeds: Eva logs "Dashboard updated -- PIPELINE_PLAN.md regenerated."
+3. If the script fails: Eva logs "Dashboard update failed: [reason]. Pipeline complete." and continues.
+
+Dashboard bridge failure is never a pipeline blocker.
+
+When `dashboard_mode` is `"claude-code-kanban"` or `"none"`: skip this section entirely.
+claude-code-kanban is passive (watches files in real-time) and requires no post-pipeline action.
+When `dashboard_mode` is absent from `pipeline-config.json`: skip (treat as `"none"`).
+
+**Eva boot announcement for dashboard:**
+
+Eva reads `dashboard_mode` from `pipeline-config.json` at boot (step 3b) and appends a
+conditional line to the session state announcement (step 6):
+- `dashboard_mode: "plan-visualizer"` -> append "Dashboard: PlanVisualizer"
+- `dashboard_mode: "claude-code-kanban"` -> append "Dashboard: claude-code-kanban"
+- `dashboard_mode: "none"` or absent -> omit the dashboard line entirely
+
 </protocol>
 
 <gate id="mandatory-gates">

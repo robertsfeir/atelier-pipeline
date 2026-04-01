@@ -1,37 +1,43 @@
 # Pipeline State
 
 ## Active Pipeline
-**Feature:** Brain MCP Server Hardening
-**Phase:** commit
-**Started:** 2026-03-31
+**Feature:** PlanVisualizer Integration + quality-gate cleanup
+**Phase:** spec
+**Started:** 2026-04-01
 **Sizing:** Medium
 
 ## Configuration
 **Branching Strategy:** trunk-based
 **Platform:** ---
 **Integration Branch:** main
-**Feature Branch:** ---
+**Feature Branch:** feature/plan-visualizer-integration
 
 ## Progress
 
 | # | Unit | Agent | Status | Notes |
 |---|------|-------|--------|-------|
-| 0 | Spec | Robert | Done | docs/product/brain-hardening.md |
-| 0 | ADR | Cal | Done | ADR-0017: 3 steps, 26 tests |
-| 0 | Test spec review | Roz | Done | PASS |
-| 0 | Test authoring | Roz | Done | 26 tests in tests/brain/hardening.test.mjs |
-| 1 | Step 1: Process crash guards | Colby | Done | crash-guards.mjs created, server.mjs refactored |
-| 2 | Step 2: Pool hardening + fixes | Colby | Done | db.mjs + Poirot fixes applied |
-| 3 | Step 3: Timer wrappers + fix | Colby | Done | consolidation.mjs, ttl.mjs, optional chaining |
-| R | Review juncture | Roz+Poirot+Robert | Done | All PASS, 0 blockers |
-| C | Commit | Ellis | In Progress | — |
+| 0 | Spec | Robert | Done | docs/product/dashboard-integration.md |
+| 0 | ADR | Cal | Done | ADR-0018: 4 steps, 77 tests (revised after Roz review) |
+| 0 | Test spec review | Roz | Done | PASS after Cal revision (6 fixes applied) |
+| 0 | Test authoring | Roz | Done | 103 tests in tests/dashboard/dashboard-integration.bats |
+| 1 | Step 1: quality-gate cleanup + config | Colby | Done | SKILL.md Step 0 + dashboard_mode field |
+| 1 | Step 1 QA | Roz+Poirot | Done | Roz PASS 17/17, Poirot 2 expected + 5 NIT |
+| 2 | Step 2: Dashboard setup menu | Colby | Done | SKILL.md Step 6f |
+| 2 | Step 2 QA | Roz+Poirot | Done | Roz PASS 25/25, Poirot fixes applied |
+| 3 | Step 3: Bridge script | Colby | Done | source/dashboard/telemetry-bridge.sh |
+| 3 | Step 3 QA | Roz+Poirot | Done | Roz PASS 17/17, Poirot fixes applied |
+| 4 | Steps 4+5: Wiring + hook bypass | Colby | Done | orchestration, templates, 6 hooks, SKILL.md |
+| R | Review juncture | Roz+Poirot | Done | Roz PASS 103/103, Poirot 4 fixes applied |
+| C | Commit | Ellis | Pending | — |
 
 ## Queue
 (empty)
 
 ## Changes Since Last State
-- All 3 build steps complete
-- Review juncture: Roz PASS, Poirot 7 advisory, Robert 12/12 PASS
-- Routing to Ellis for commit
+- All 5 build steps complete with QA
+- Review juncture: Roz PASS 103/103, Poirot findings triaged and fixed
+- Poirot key fixes: log() rename, resolve_brain_url dead code, US-ID collision, grep regex bug
+- dashboard field renamed to dashboard_mode per Poirot naming convention finding
+- Ready for Ellis commit
 
-<!-- PIPELINE_STATUS: {"roz_qa": "PASS", "phase": "commit", "sizing": "medium", "timestamp": "2026-03-31T12:00:00Z", "telemetry_captured": true} -->
+<!-- PIPELINE_STATUS: {"roz_qa": "PASS", "phase": "commit", "sizing": "medium", "timestamp": "2026-04-01T20:30:00Z", "telemetry_captured": true} -->
