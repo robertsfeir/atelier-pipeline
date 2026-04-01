@@ -4,31 +4,25 @@ Captures conversational decisions, user corrections, and rejected alternatives.
 Reset at the start of each new feature pipeline.
 
 ## Scope
-Brain MCP server (brain/server.mjs + brain/lib/) hardening for crash resilience. The brain runs as a stdio MCP child process of Claude Code. When it crashes mid-session, tools disappear and can't be recovered without restarting the session. Goal: make the process never crash.
+Port atelier-pipeline to work with Cursor IDE. Cursor has near-1:1 feature parity with Claude Code's primitives: .cursor/rules/ (with YAML frontmatter), .cursor/agents/ (subagent personas), .cursor/commands/, .cursor/hooks.json, MCP integration, and a plugin marketplace. The port produces a parallel set of Cursor-compatible files alongside the existing Claude Code files.
 
 ## Key Constraints
-- Keep stdio transport (it's what the entire MCP ecosystem uses)
-- Do NOT switch to HTTP transport for this — HTTP has real SDK bugs and adds complexity
-- Focus on preventing crashes, not recovering from them (stdio can't reconnect)
-- Must have comprehensive tests for failure scenarios
-- User quote: "the way it's written now is amateur hour" — production-quality hardening expected
+- Most files are markdown — they port with frontmatter adjustments
+- Hooks need rewriting from shell scripts (Claude Code) to .cursor/hooks.json format (Cursor)
+- Eva orchestration adaptation is the hardest part — Cursor uses implicit delegation, not explicit subagent invocation
+- Brain MCP server works as-is via Cursor's MCP config (zero changes to server.mjs)
+- No breaking changes to existing Claude Code files — Cursor files are additive
 
-## Crash Vectors Identified (from investigation)
-1. No uncaughtException/unhandledRejection handlers — any unhandled error kills process
-2. No EPIPE handler on stdout — Claude Code disconnect kills process
-3. stdin EOF never detected (MCP SDK bug #1814) — zombie processes after client exit
-4. setInterval swallows async rejections — timer errors become unhandled rejections
-5. Pool config is bare minimum — no max, no timeouts, no statement_timeout
-6. No SIGHUP handler — terminal hangup kills without cleanup
-7. stderr write errors can crash if stderr pipe is broken
+## Brain Research Reference
+- Brain thought 19bee288: full Cursor port feasibility analysis (2026-04-01)
+- Key sources: cursor.com/docs/rules, cursor.com/docs/hooks, cursor.com/docs/subagents, cursor.com/blog/marketplace
 
 ## User Decisions
-- Stdio is the right transport (confirmed by research — all official MCP servers use stdio)
-- HTTP transport rejected: real SDK bugs (#1699 stack overflow, #1771 dropped notifications, #1726 proxy kills), adds complexity, niche adoption
-- Process supervisor (pm2/launchd) rejected: Claude Code can't reconnect to respawned stdio process
-- Tests must cover failure scenarios and verify graceful handling
+- Single repo, dual-target — improvements to source/ carry to both Claude Code and Cursor (decided 2026-04-01)
+- Full parity on feature branch — all 12 agents, hooks, brain MCP. Testers validate before marketplace publication.
+- No-repo support: ask user during /pipeline-setup Step 1 "Do you have a git repository?" BEFORE branching strategy. If no: set git_available: false, skip branching strategy, skip platform CLI, skip CI Watch. Git-dependent features degrade gracefully at runtime (Ellis → reporter, Poirot skipped, Roz uses file listing). Fold into ADR-0019.
 
 ## Rejected Alternatives
-- Switch to HTTP/StreamableHTTP transport — SDK bugs, complexity, niche adoption
-- Process supervisor wrapper — useless because Claude Code can't reconnect mid-session
-- Memory monitoring — server is lightweight, not a realistic crash vector
+- Separate repo for Cursor — rejected: maintenance burden, improvements don't propagate
+- Tiered launch (core agents only for Cursor) — rejected: feature branch is for validation, ship everything
+- Eva detects git at boot — rejected: detect once at setup, not every session

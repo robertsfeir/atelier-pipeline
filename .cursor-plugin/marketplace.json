@@ -1,0 +1,16 @@
+{
+  "name": "atelier-pipeline",
+  "description": "Multi-agent orchestration plugins for Cursor IDE with quality gates, continuous QA, and persistent institutional memory",
+  "owner": {
+    "name": "Robert Sfeir",
+    "email": "robert@sfeir.design"
+  },
+  "plugins": [
+    {
+      "name": "atelier-pipeline",
+      "version": "3.12.2",
+      "source": "./",
+      "description": "Multi-agent orchestration with quality gates, continuous QA, and persistent institutional memory across sessions"
+    }
+  ]
+}

@@ -40,7 +40,7 @@ CONFIG="$SCRIPT_DIR/enforcement-config.json"
 [ ! -f "$CONFIG" ] && exit 0
 
 # Ensure CWD is the project root -- hooks may inherit an arbitrary CWD
-PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
+PROJECT_ROOT="${CURSOR_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$(cd "$SCRIPT_DIR/../.." && pwd)}}"
 cd "$PROJECT_ROOT"
 
 PIPELINE_DIR=$(jq -r '.pipeline_state_dir' "$CONFIG")

@@ -26,6 +26,22 @@ AGENT_ID=$(echo "$INPUT" | jq -r '.agent_id // empty')
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 [ -z "$COMMAND" ] && exit 0
 
+# No-op when git is not available
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
+# Try .cursor/ first (Cursor), fall back to .claude/ (Claude Code)
+if [ -f "${PROJECT_ROOT}/.cursor/pipeline-config.json" ]; then
+  CONFIG_FILE="${PROJECT_ROOT}/.cursor/pipeline-config.json"
+else
+  CONFIG_FILE="${PROJECT_ROOT}/.claude/pipeline-config.json"
+fi
+if [ -f "$CONFIG_FILE" ]; then
+  GIT_AVAILABLE=$(jq -r 'if .git_available == false then "false" else "true" end' "$CONFIG_FILE" 2>/dev/null) || true
+  if [ "$GIT_AVAILABLE" = "false" ]; then
+    exit 0
+  fi
+fi
+
 # Block git add, git commit, git push from main thread
 # Allow git status, git diff, git log, git branch (read-only git operations)
 if echo "$COMMAND" | grep -qE "\bgit\s+(add|commit|push|reset|checkout\s+--|restore|clean)\b" 2>/dev/null; then

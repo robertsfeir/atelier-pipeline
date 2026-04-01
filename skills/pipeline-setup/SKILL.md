@@ -52,12 +52,35 @@ Before installing, ask the user about their project. Ask these questions convers
 
 If the user does not have answers for optional items (coverage), use sensible defaults.
 
-### Step 1b: Branching Strategy Selection
+### Step 1b: Git Repository Detection
+
+Before asking about branching strategy, determine git availability.
+
+1. Run `git rev-parse --git-dir 2>/dev/null`. If this succeeds, set `git_available: true` and proceed to Step 1c (branching strategy selection).
+
+2. If no git repo detected, inform the user:
+
+> This project does not have a git repository.
+>
+> **What still works without git:**
+> Eva (orchestrator), Robert (product), Sable (UX), Cal (architect), Colby (engineer), Roz (QA), Sentinel (security), Agatha (docs), Brain (memory), enforcement hooks
+>
+> **What is unavailable without git:**
+> Poirot (blind review -- needs git diff), Ellis (commit manager -- needs git), CI Watch (needs git + platform CLI), branch lifecycle management
+
+> Would you like to create a git repository now?
+
+3. **If user says yes:** Run `git init`, create a sensible `.gitignore` (node_modules/, .env, dist/, etc. based on detected tech stack), run `git add .gitignore && git commit -m "Initial commit"`. Set `git_available: true`, proceed to Step 1c (branching strategy selection).
+
+4. **If user says no:** Set `git_available: false` in pipeline-config.json. Skip Step 1c entirely. Skip platform CLI detection. Skip CI Watch offer (Step 6c). Log: "Git unavailable -- skipping branching strategy, platform CLI, and CI Watch configuration."
+
+5. **If `git init` fails** (e.g., permission error): Set `git_available: false` and proceed as in step 4. Inform: "Git init failed -- proceeding without git. You can run `git init` manually later and re-run `/pipeline-setup`."
+
+### Step 1c: Branching Strategy Selection
 
 **Pre-checks (before asking):**
 
-1. Check `git rev-parse --git-dir` -- if no git repo, skip branching question entirely. Default to trunk-based, do not write pipeline-config.json.
-2. Check `git remote get-url origin` -- if no remote, auto-select trunk-based with message: "No remote detected -- defaulting to trunk-based. Run setup again after adding a remote to configure MR-based flows." Skip to next step.
+1. Check `git remote get-url origin` -- if no remote, auto-select trunk-based with message: "No remote detected -- defaulting to trunk-based. Run setup again after adding a remote to configure MR-based flows." Skip to next step.
 
 **If git + remote exist, ask the user (one question, not a list dump):**
 

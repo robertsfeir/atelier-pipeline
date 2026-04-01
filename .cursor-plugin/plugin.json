@@ -1,0 +1,30 @@
+{
+  "name": "atelier-pipeline",
+  "version": "3.12.2",
+  "description": "Multi-agent orchestration with quality gates, continuous QA, and persistent institutional memory across sessions",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Robert Sfeir",
+    "email": "robert@sfeir.design"
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "test -d \"${CURSOR_PLUGIN_ROOT}/brain/node_modules\" || npm install --prefix \"${CURSOR_PLUGIN_ROOT}/brain\" --silent"
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CURSOR_PLUGIN_ROOT}/scripts/check-updates.sh\" \"${CURSOR_PLUGIN_ROOT}\""
+          },
+          {
+            "type": "command",
+            "command": "node \"${CURSOR_PLUGIN_ROOT}/brain/scripts/hydrate-telemetry.mjs\" \"${CURSOR_PROJECT_DIR}\" --silent 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  }
+}

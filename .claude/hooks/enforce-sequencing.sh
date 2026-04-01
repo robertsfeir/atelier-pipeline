@@ -34,7 +34,7 @@ CONFIG="$SCRIPT_DIR/enforcement-config.json"
 [ ! -f "$CONFIG" ] && exit 0
 
 # Ensure CWD is the project root — hooks may inherit an arbitrary CWD
-PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
+PROJECT_ROOT="${CURSOR_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$(cd "$SCRIPT_DIR/../.." && pwd)}}"
 cd "$PROJECT_ROOT"
 
 PIPELINE_DIR=$(jq -r '.pipeline_state_dir' "$CONFIG")
@@ -66,6 +66,25 @@ parse_pipeline_status() {
   [ -z "$value" ] && return 1
   echo "$value"
 }
+
+# ─── Gate 0: Ellis blocked when git is not available ────────────────
+# When git_available: false in pipeline-config.json, Ellis cannot operate
+# (no git repo to commit to). Block with a clear message.
+if [ "$SUBAGENT_TYPE" = "ellis" ]; then
+  # Try .cursor/ first (Cursor), fall back to .claude/ (Claude Code)
+  if [ -f "${PROJECT_ROOT}/.cursor/pipeline-config.json" ]; then
+    PIPELINE_CONFIG="${PROJECT_ROOT}/.cursor/pipeline-config.json"
+  else
+    PIPELINE_CONFIG="${PROJECT_ROOT}/.claude/pipeline-config.json"
+  fi
+  if [ -f "$PIPELINE_CONFIG" ]; then
+    GIT_AVAILABLE=$(jq -r 'if .git_available == false then "false" else "true" end' "$PIPELINE_CONFIG" 2>/dev/null) || true
+    if [ "$GIT_AVAILABLE" = "false" ]; then
+      echo "BLOCKED: Ellis is unavailable -- no git repository configured. Files were written directly to disk." >&2
+      exit 2
+    fi
+  fi
+fi
 
 # ─── Gate 1: Ellis requires Roz QA PASS during active pipelines ─────
 # "Ellis commits. Eva does not." + "Roz verifies every Colby output."
