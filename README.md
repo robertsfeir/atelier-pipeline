@@ -14,6 +14,8 @@ Atelier Pipeline has two core systems:
 
 **Atelier Brain.** A persistent memory layer backed by PostgreSQL and vector embeddings that gives your agents institutional memory across sessions. Without it, every time you close a terminal you lose the architectural decisions that shaped your implementation, the user corrections that steered scope, the rejected alternatives that explain why you didn't go a different way, and the QA lessons that prevent recurring bugs. The brain captures all of this during pipeline runs and surfaces it automatically when agents need context. It includes write-time conflict detection, TTL-based knowledge decay, and background consolidation that synthesizes raw observations into higher-level insights. The pipeline works without the brain -- but with it, session 12 of a feature build has the same context as session 1.
 
+> **The brain is essentially free to run.** It uses OpenRouter for embeddings (`text-embedding-3-small` at $0.02/1M tokens) and occasional conflict detection (`gpt-4o-mini`). A single thought capture costs ~$0.000006. Under heavy daily use -- 500 captures, 2,000 searches, regular consolidation -- the brain costs **under $0.10/month**. Fund $1.00 on OpenRouter and you can store **10,000+ thoughts** before you need to top up.
+
 For full documentation, see the [User Guide](docs/guide/user-guide.md) and [Technical Reference](docs/guide/technical-reference.md).
 
 ## Getting Started
