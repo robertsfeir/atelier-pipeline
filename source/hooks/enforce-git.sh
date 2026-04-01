@@ -8,6 +8,7 @@
 # this hook blocks test commands from the main thread.
 
 set -euo pipefail
+[ "${ATELIER_SETUP_MODE:-}" = "1" ] && exit 0
 
 INPUT=$(cat)
 

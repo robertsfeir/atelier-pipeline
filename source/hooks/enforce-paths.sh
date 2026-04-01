@@ -9,6 +9,7 @@
 # Subagents: identified by agent_type matching frontmatter name
 
 set -euo pipefail
+[ "${ATELIER_SETUP_MODE:-}" = "1" ] && exit 0
 
 INPUT=$(cat)
 

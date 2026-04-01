@@ -4,31 +4,27 @@ Captures conversational decisions, user corrections, and rejected alternatives.
 Reset at the start of each new feature pipeline.
 
 ## Scope
-Brain MCP server (brain/server.mjs + brain/lib/) hardening for crash resilience. The brain runs as a stdio MCP child process of Claude Code. When it crashes mid-session, tools disappear and can't be recovered without restarting the session. Goal: make the process never crash.
+Offer two mutually exclusive kanban/dashboard integrations as optional dependencies during /pipeline-setup:
+1. **PlanVisualizer** (github.com/ksyed0/PlanVisualizer) — static HTML dashboard with 7 tabs (hierarchy, kanban, traceability, charts, costs, bugs, lessons). Needs bridge script to translate brain telemetry into its markdown format.
+2. **claude-code-kanban** (github.com/NikiforovAll/claude-code-kanban) — real-time dashboard watching Claude Code's native task/session files via SSE. Low integration effort — already reads our TaskCreate/TaskUpdate output.
+
+Also: detect and clean up deprecated quality-gate.sh stop hook during /pipeline-setup.
 
 ## Key Constraints
-- Keep stdio transport (it's what the entire MCP ecosystem uses)
-- Do NOT switch to HTTP transport for this — HTTP has real SDK bugs and adds complexity
-- Focus on preventing crashes, not recovering from them (stdio can't reconnect)
-- Must have comprehensive tests for failure scenarios
-- User quote: "the way it's written now is amateur hour" — production-quality hardening expected
-
-## Crash Vectors Identified (from investigation)
-1. No uncaughtException/unhandledRejection handlers — any unhandled error kills process
-2. No EPIPE handler on stdout — Claude Code disconnect kills process
-3. stdin EOF never detected (MCP SDK bug #1814) — zombie processes after client exit
-4. setInterval swallows async rejections — timer errors become unhandled rejections
-5. Pool config is bare minimum — no max, no timeouts, no statement_timeout
-6. No SIGHUP handler — terminal hangup kills without cleanup
-7. stderr write errors can crash if stderr pipe is broken
+- Both dashboards are optional — same pattern as Sentinel/Agent Teams (config flag + setup question)
+- Mutually exclusive: user picks one or neither, never both (both install hooks into settings.json)
+- We do NOT modify either project's source code — we feed them data in their expected formats
+- PlanVisualizer bridge reads brain telemetry (T1/T2/T3) or pipeline-state.md as fallback
+- claude-code-kanban reads Claude Code native files directly — minimal bridge work
+- quality-gate.sh cleanup: detect during /pipeline-setup, warn user, offer removal
 
 ## User Decisions
-- Stdio is the right transport (confirmed by research — all official MCP servers use stdio)
-- HTTP transport rejected: real SDK bugs (#1699 stack overflow, #1771 dropped notifications, #1726 proxy kills), adds complexity, niche adoption
-- Process supervisor (pm2/launchd) rejected: Claude Code can't reconnect to respawned stdio process
-- Tests must cover failure scenarios and verify graceful handling
+- Two dashboard options, mutually exclusive (decided 2026-04-01)
+- No modifications to either dashboard codebase — we "upgrade them with our needs" by feeding data
+- quality-gate.sh was already removed from atelier (retro lesson #003) but users with older installs still have it — need cleanup in /pipeline-setup
+
+## User Decisions (continued)
+- Enforcement hooks should be bypassed during /pipeline-setup via ATELIER_SETUP_MODE=1 env var (decided 2026-04-01). Each hook checks for this var and exits 0 immediately. Prevents hooks from blocking legitimate setup writes.
 
 ## Rejected Alternatives
-- Switch to HTTP/StreamableHTTP transport — SDK bugs, complexity, niche adoption
-- Process supervisor wrapper — useless because Claude Code can't reconnect mid-session
-- Memory monitoring — server is lightweight, not a realistic crash vector
+- Temporarily disabling hooks by renaming settings.json section — rejected: risky if setup crashes mid-way, hooks stay disabled
