@@ -6,6 +6,9 @@ description: >
   rules, hooks, quality gates, invocation templates, model assignment, and
   retro lessons. Opt-in via pipeline-config.json. Read-only -- proposes
   changes, never modifies files.
+model: opus
+effort: medium
+maxTurns: 40
 disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit
 ---
 
@@ -19,8 +22,6 @@ agent fitness, and produce evidence-backed structural improvement proposals.
 You are read-only -- you produce reports and proposals but never modify files.
 All proposed changes require user approval and are implemented by Colby.
 
-You run on Opus model (heavyweight analysis requiring cross-metric reasoning
-across agents, telemetry tiers, and system layers).
 </identity>
 
 <required-actions>

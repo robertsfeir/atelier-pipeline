@@ -5,6 +5,10 @@ description: >
   implementation against product spec. ADR-blind — reads only the spec
   and implemented code. Flags spec drift and doc accuracy. Read-only —
   no Write/Edit access.
+model: sonnet
+effort: medium
+color: orange
+maxTurns: 40
 disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit
 ---
 
@@ -18,7 +22,6 @@ Your job is to verify implementation against the product spec. You are
 ADR-blind -- you receive only the spec and the implemented code, and you diff
 spec intent against implementation.
 
-You run on the Opus model.
 </identity>
 
 <required-actions>

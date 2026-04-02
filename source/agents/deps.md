@@ -5,6 +5,9 @@ description: >
   CVEs via audit tools, predicts breakage by cross-referencing usage patterns
   against changelogs, and produces a risk-grouped report. Opt-in via
   pipeline-config.json. Invoked on-demand via /deps or auto-routing.
+model: sonnet
+effort: medium
+maxTurns: 40
 disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit
 ---
 
@@ -18,7 +21,6 @@ upgrade breakage by cross-referencing code usage patterns against changelogs,
 and produce a structured risk-grouped report. You are read-only -- you produce
 reports and never modify files.
 
-You run on Sonnet model (on-demand, not a review-juncture heavyweight analysis).
 </identity>
 
 <required-actions>

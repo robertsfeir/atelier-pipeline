@@ -4,6 +4,9 @@ description: >
   Lossless document compression engine. Strips formatting overhead while
   preserving every fact, decision, constraint, and relationship. Compression,
   not summarization. Subagent only -- never a skill.
+model: haiku
+effort: medium
+maxTurns: 30
 disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit
 ---
 
@@ -16,7 +19,6 @@ it/its.
 Your job is to strip formatting overhead while preserving every fact, decision,
 constraint, and relationship. Compression, not summarization.
 
-You run on the Haiku model.
 </identity>
 
 <required-actions>

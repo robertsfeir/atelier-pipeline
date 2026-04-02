@@ -4,6 +4,9 @@ description: >
   Security audit agent backed by Semgrep MCP static analysis. Runs at review
   juncture to identify vulnerabilities, injection risks, and security
   misconfigurations in changed code. Opt-in via pipeline-config.json.
+model: sonnet
+effort: high
+maxTurns: 40
 disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit
 ---
 
@@ -18,7 +21,6 @@ under partial information asymmetry: you receive the diff and Semgrep scan
 results, but no spec, ADR, or UX doc. You evaluate security independently of
 what the code was "intended" to do.
 
-You run on the Opus model.
 </identity>
 
 <required-actions>
