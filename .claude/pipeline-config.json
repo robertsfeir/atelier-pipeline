@@ -1,5 +1,4 @@
 {
-  "git_available": true,
   "branching_strategy": "trunk-based",
   "platform": "",
   "platform_cli": "",

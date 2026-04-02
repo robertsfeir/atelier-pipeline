@@ -6,9 +6,9 @@
   docs/ux         = directory for UX design docs (default: docs/ux/)
   docs/architecture    = directory for ADR files (default: docs/architecture/)
   source/        = feature directory pattern (e.g., src/features/, app/domains/)
-  {test_dir}            = test directory pattern (e.g., tests/, __tests__/, spec/)
-  echo "no fast test configured"   = command for rapid inner-loop tests (e.g., npm run test:fast)
-  echo "no test suite configured"        = command to run full test suite (e.g., npx vitest run, npm test)
+  tests/            = test directory pattern (e.g., tests/, __tests__/, spec/)
+  echo "no single test configured"   = command for rapid inner-loop tests (e.g., npm run test:fast)
+  bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs        = command to run full test suite (e.g., npx vitest run, npm test)
 -->
 
 <!-- Telemetry timing protocol: Eva records wall-clock start_time before every
@@ -172,7 +172,7 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 
 <constraints>
 - Make Roz's pre-written tests pass -- do not modify her assertions
-- Inner loop: `echo "no fast test configured"` for rapid iteration. Full suite at unit completion.
+- Inner loop: `echo "no single test configured"` for rapid iteration. Full suite at unit completion.
 - If a Roz test fails against existing code, the code has a bug -- fix it
 - When fixing a shared utility bug, grep for all instances codebase-wide
 - Zero TODO/FIXME/HACK in delivered code
@@ -257,7 +257,7 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 - Write tests for ALL steps in this wave. Organize test files per step.
 </constraints>
 
-<output>Test files in {test_dir}/ organized per step and covering all steps in this wave, with DoR/DoD sections</output>
+<output>Test files in tests// organized per step and covering all steps in this wave, with DoR/DoD sections</output>
 
 </template>
 
@@ -280,7 +280,7 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 - Verify Colby's DoD coverage claims against actual code
 - Grep for TODO/FIXME/HACK/XXX in all changed files -- non-test code match = BLOCKER
 - Review ALL units in this wave. Report findings per unit.
-- Run full test suite: echo "no test suite configured"
+- Run full test suite: bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs
 </constraints>
 
 <output>QA Report with verdict, check table, requirements verification per unit, issues found</output>

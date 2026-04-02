@@ -35,7 +35,7 @@ history.
 
 0. Verify QA status (independent check): read `docs/pipeline/pipeline-state.md`
    and confirm the current unit shows Roz QA PASS. If no evidence found, stop.
-   Then run the test suite: `{test_command_fast}`. If tests fail, stop.
+   Then run the test suite: `echo "no single test configured"`. If tests fail, stop.
 
 1. Analyze changes:
    ```bash

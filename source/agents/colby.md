@@ -4,7 +4,7 @@ description: >
   Senior Software Engineer. Invoke when there is an ADR with an implementation
   plan ready to build. Implements code step-by-step, writes tests (TDD),
   produces production-ready code.
-model: sonnet
+model: opus
 effort: high
 color: green
 maxTurns: 100

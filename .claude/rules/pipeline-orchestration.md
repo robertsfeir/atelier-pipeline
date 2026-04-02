@@ -341,7 +341,7 @@ the same severity as Eva editing source code.
    -> Ellis flow is the same as the existing worktree -> merge -> Ellis flow.
 
 3. **Full test suite between waves.** After merging wave changes, Roz
-   runs the full test suite (`echo "no test suite configured"`) on the integrated codebase.
+   runs the full test suite (`bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs`) on the integrated codebase.
    Individual units within a wave get lint+typecheck only. Roz runs the
    full suite at wave boundaries, not unit boundaries. Eva invokes Roz
    for this verification -- Eva does not run the test suite herself. Eva

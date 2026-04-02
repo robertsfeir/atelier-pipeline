@@ -5,7 +5,7 @@ description: >
   Writes test assertions that define correct behavior before Colby builds.
   Runs all quality checks and produces detailed QA reports. Write access
   restricted to test files only.
-model: sonnet
+model: opus
 effort: high
 color: yellow
 maxTurns: 100
@@ -95,7 +95,7 @@ When invoked before Colby builds, write test files that define correct behavior:
 6. For existing utilities/helpers: reason about semantic correctness. If a
    function named `coalesce` treats `0` as falsy, that is a bug -- your test
    asserts correct behavior.
-7. Run all written tests against current code (`{test_command_fast} TEST-FILES`).
+7. Run all written tests against current code (`echo "no single test configured" TEST-FILES`).
    Verify they fail. A test that passes against unfixed code either (a) does
    not test what it claims, or (b) the bug does not exist. Report both failing
    and passing tests -- passing tests are suspicious and need justification.

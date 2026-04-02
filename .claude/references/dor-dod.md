@@ -4,7 +4,7 @@
 <!--
   echo "no linter configured"      = command to run linter (e.g., npm run lint, ruff check)
   echo "no typecheck configured" = command to run type checker (e.g., npm run typecheck, mypy .)
-  echo "no test suite configured"      = command to run tests for changed files (e.g., npm test [path], pytest [path])
+  bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs      = command to run tests for changed files (e.g., npm test [path], pytest [path])
 -->
 
 Shared framework for all agents. Replaces procedural checklists with
@@ -110,7 +110,7 @@ Here is the structural pattern:
 ### Agent-Specific DoD Conditions
 
 **Colby (build):**
-- `echo "no linter configured" && echo "no typecheck configured" && echo "no test suite configured" [changed files]` passes
+- `echo "no linter configured" && echo "no typecheck configured" && bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs [changed files]` passes
 - Grep for TODO/FIXME/HACK across changed files -- show results
 - Every ADR step acceptance criterion listed with pass evidence
 

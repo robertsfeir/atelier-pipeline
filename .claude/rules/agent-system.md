@@ -1,21 +1,5 @@
 # Project Agent System -- Hybrid Architecture
 
-<!-- CONFIGURE: Update the placeholders below to match your project -->
-<!--
-  docs/pipeline  = directory for pipeline state files (default: docs/pipeline/)
-  docs/architecture    = directory for ADR files (default: docs/architecture/)
-  docs/product   = directory for product specs (default: docs/product/)
-  docs/ux         = directory for UX design docs (default: docs/ux/)
-  docs/CONVENTIONS.md    = path to conventions doc (default: docs/CONVENTIONS.md)
-  CHANGELOG.md      = path to changelog (default: CHANGELOG.md)
-  echo "no test suite configured"        = command to run full test suite (e.g., npx vitest run, npm test, pytest)
-  echo "no linter configured"        = command to run linter (e.g., npm run lint, ruff check)
-  echo "no typecheck configured"   = command to run type checker (e.g., npm run typecheck, mypy .)
-  echo "no fast test configured"   = command for rapid inner-loop tests (e.g., npm run test:fast)
-  source/          = project source directory (e.g., src/, lib/, app/)
-  source/        = feature directory pattern (e.g., src/features/, app/domains/)
-  /mock/ = route prefix for UAT mockups (default: /mock/)
--->
 
 <section id="brain-config">
 
