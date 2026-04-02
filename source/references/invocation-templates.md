@@ -35,25 +35,25 @@ template section using offset/limit. Do not read the entire file.
 | 4 | colby-build | Colby | Implementation build unit | 156 |
 | 5 | roz-investigation | Roz | Bug investigation (user-reported) | 186 |
 | 6 | roz-test-spec-review | Roz | Test spec review (after Cal ADR) | 213 |
-| 7 | roz-test-authoring | Roz | Test authoring per ADR step (pre-build) | 238 |
-| 8 | roz-code-qa | Roz | Code QA first pass (after Colby build) | 263 |
-| 9 | roz-scoped-rerun | Roz | Scoped re-run (after Colby fix) | 287 |
-| 10 | ellis-commit | Ellis | Commit and changelog | 307 |
-| 11 | agatha-writing | Agatha | Documentation writing | 330 |
-| 12 | robert-acceptance | Robert | Product acceptance review | 354 |
-| 13 | sable-acceptance | Sable | UX acceptance review | 378 |
-| 14 | poirot-blind | Poirot | Blind diff-only code review | 402 |
-| 15 | sentinel-audit | Sentinel | Security audit (Semgrep-backed) | 420 |
-| 16 | deps-scan | Deps | Full dependency scan | 445 |
-| 17 | deps-migration-brief | Deps | Migration ADR brief | 469 |
-| 18 | distillator-compress | Distillator | Lossless document compression | 498 |
-| 19 | distillator-validate | Distillator | Compression with round-trip validation | 521 |
-| 20 | agent-teams-task | Colby | Agent Teams teammate task (experimental) | 539 |
-| 21 | roz-ci-investigation | Roz | CI Watch failure diagnosis | 598 |
-| 22 | colby-ci-fix | Colby | CI Watch apply fix | 637 |
-| 23 | roz-ci-verify | Roz | CI Watch post-fix verification | 675 |
-| 24 | darwin-analysis | Darwin | Pipeline telemetry analysis | 710 |
-| 25 | darwin-edit-proposal | Darwin | Structural improvement proposal | 742 |
+| 7 | roz-test-authoring | Roz | Test authoring per wave (pre-build) | 238 |
+| 8 | roz-code-qa | Roz | Wave QA (after all units in wave built) | 264 |
+| 9 | roz-scoped-rerun | Roz | Scoped re-run (after Colby fix) | 290 |
+| 10 | ellis-commit | Ellis | Wave commit | 310 |
+| 11 | agatha-writing | Agatha | Documentation writing | 334 |
+| 12 | robert-acceptance | Robert | Product acceptance review | 358 |
+| 13 | sable-acceptance | Sable | UX acceptance review | 382 |
+| 14 | poirot-blind | Poirot | Blind wave diff review | 406 |
+| 15 | sentinel-audit | Sentinel | Security audit (Semgrep-backed) | 424 |
+| 16 | deps-scan | Deps | Full dependency scan | 449 |
+| 17 | deps-migration-brief | Deps | Migration ADR brief | 473 |
+| 18 | distillator-compress | Distillator | Lossless document compression | 502 |
+| 19 | distillator-validate | Distillator | Compression with round-trip validation | 525 |
+| 20 | agent-teams-task | Colby | Agent Teams teammate task (experimental) | 543 |
+| 21 | roz-ci-investigation | Roz | CI Watch failure diagnosis | 602 |
+| 22 | colby-ci-fix | Colby | CI Watch apply fix | 641 |
+| 23 | roz-ci-verify | Roz | CI Watch post-fix verification | 679 |
+| 24 | darwin-analysis | Darwin | Pipeline telemetry analysis | 714 |
+| 25 | darwin-edit-proposal | Darwin | Structural improvement proposal | 746 |
 
 ---
 
@@ -237,16 +237,16 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 
 <template id="roz-test-authoring">
 
-### Roz Test Authoring (Pre-Build, Per ADR Step)
+### Roz Test Authoring (Pre-Build, Per Wave)
 
-<task>Write test assertions for ADR-NNNN Step N -- [step description]</task>
+<task>Write test assertions for ADR-NNNN Wave W -- Steps [N, M, ...] -- [wave description]</task>
 
 <brain-context>
 <thought type="pattern" agent="roz" phase="qa" relevance="0.80">Test strategies that worked/failed on similar code</thought>
 <thought type="lesson" agent="eva" phase="retro" relevance="0.70">Retro lessons relevant to this area</thought>
 </brain-context>
 
-<read>{architecture_dir}/ADR-NNNN-feature-name.md (Step N), {product_specs_dir}/FEATURE.md, [relevant source files], .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
+<read>{architecture_dir}/ADR-NNNN-feature-name.md (Steps N, M, ...), {product_specs_dir}/FEATURE.md, [relevant source files for each step in the wave], .claude/references/retro-lessons.md, .claude/references/agent-preamble.md</read>
 
 <constraints>
 - Write concrete test assertions, not descriptions
@@ -254,17 +254,18 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 - For each utility/helper: reason about what the function name MEANS semantically
 - If existing code contradicts domain intent, write the test for correct behavior -- Colby will fix the code
 - Flag any ambiguous domain intent for Eva
+- Write tests for ALL steps in this wave. Organize test files per step.
 </constraints>
 
-<output>Test files in {test_dir}/ matching ADR step scope, with DoR/DoD sections</output>
+<output>Test files in {test_dir}/ organized per step and covering all steps in this wave, with DoR/DoD sections</output>
 
 </template>
 
 <template id="roz-code-qa">
 
-### Roz Code QA (First Pass, After Colby Build)
+### Roz Code QA (Wave-Level, After All Units Built)
 
-<task>Full QA on ADR-NNNN implementation</task>
+<task>Full QA on ADR-NNNN Wave W -- Steps [N, M, ...] implementation</task>
 
 <brain-context>
 <thought type="pattern" agent="roz" phase="qa" relevance="0.80">Prior findings on similar code patterns and known fragile areas</thought>
@@ -278,9 +279,11 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 - REQUIREMENTS TO VERIFY: [Eva pastes enumerated requirements from spec/ADR here]
 - Verify Colby's DoD coverage claims against actual code
 - Grep for TODO/FIXME/HACK/XXX in all changed files -- non-test code match = BLOCKER
+- Review ALL units in this wave. Report findings per unit.
+- Run full test suite: {test_command}
 </constraints>
 
-<output>QA Report with verdict, check table, requirements verification, issues found</output>
+<output>QA Report with verdict, check table, requirements verification per unit, issues found</output>
 
 </template>
 
@@ -306,9 +309,9 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 
 <template id="ellis-commit">
 
-### Ellis (Commit)
+### Ellis (Wave Commit)
 
-<task>Commit ADR-NNNN ([feature name]) -- QA passed</task>
+<task>Commit ADR-NNNN Wave W ([feature name]) -- wave QA passed</task>
 
 <brain-context>
 <thought type="decision" agent="colby" phase="build" relevance="0.75">Key implementation decisions for commit context</thought>
@@ -321,6 +324,7 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 - Narrative commit body, not bullet points (what + why, skip how)
 - Include Changelog trailer for user-facing changes
 - Do not push without user approval
+- This is a wave commit covering steps [N, M, ...]. List all units in the commit body.
 </constraints>
 
 <output>Proposed commit message, then commit + push after confirmation</output>
@@ -401,9 +405,9 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 
 <template id="poirot-blind">
 
-### Poirot (Blind Review)
+### Poirot (Blind Review, Wave-Level)
 
-<task>Blind review of Colby's build output for ADR-NNNN Step N</task>
+<task>Blind review of Wave W cumulative diff for ADR-NNNN</task>
 
 <constraints>
 - You receive ONLY the diff. No spec, no ADR, no context. This is by design.

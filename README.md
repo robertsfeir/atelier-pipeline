@@ -4,17 +4,21 @@
   <img src="docs/assets/logo.png" alt="Atelier Pipeline" width="480">
 </p>
 
-A Claude Code plugin that provides multi-agent orchestration with quality gates, continuous QA, and persistent institutional memory across sessions.
+Multi-agent orchestration for AI-powered IDEs. Quality gates, continuous QA, and persistent institutional memory — for Claude Code and Cursor.
 
 ## What It Does
 
-Atelier Pipeline has two core systems:
+Atelier Pipeline has two core systems and two optional ones:
 
-**Multi-Agent Orchestration.** Eleven specialized agent personas with clear responsibilities, strict boundaries, and independent quality verification. Eva orchestrates, Robert handles product, Sable designs UX, Cal architects, Colby builds, Roz tests, Poirot blind-reviews, Agatha documents, Ellis commits, Distillator compresses, and Sentinel audits security. Custom agents can be added via agent discovery. Specs get written, designs get validated, tests get authored before code, every change passes independent QA, and nothing ships without review.
+**Multi-Agent Orchestration.** Eleven specialized agent personas with clear responsibilities, strict boundaries, and independent quality verification. Eva orchestrates, Robert handles product, Sable designs UX, Cal architects, Colby builds, Roz tests, Poirot blind-reviews, Agatha documents, Ellis commits, Distillator compresses, and Sentinel audits security. Custom agents can be added via agent discovery. Specs get written, designs get validated, tests get authored before code, every change passes independent wave-based QA, and nothing ships without review. Works with Claude Code and Cursor.
 
 **Atelier Brain.** A persistent memory layer backed by PostgreSQL and vector embeddings that gives your agents institutional memory across sessions. Without it, every time you close a terminal you lose the architectural decisions that shaped your implementation, the user corrections that steered scope, the rejected alternatives that explain why you didn't go a different way, and the QA lessons that prevent recurring bugs. The brain captures all of this during pipeline runs and surfaces it automatically when agents need context. It includes write-time conflict detection, TTL-based knowledge decay, and background consolidation that synthesizes raw observations into higher-level insights. The pipeline works without the brain -- but with it, session 12 of a feature build has the same context as session 1.
 
 > **The brain is essentially free to run.** It uses OpenRouter for embeddings (`text-embedding-3-small` at $0.02/1M tokens) and occasional conflict detection (`gpt-4o-mini`). Real-world cost: **3,500+ thoughts stored over one month of heavy daily use for $0.06 total** in OpenRouter fees. Extrapolated, that's **under $0.72/year**. Fund $1.00 on OpenRouter and you're covered for a long time.
+
+**Darwin (optional).** A self-evolving pipeline engine that queries telemetry from the brain, evaluates agent fitness, and proposes structural improvements to the pipeline itself. Enable with `darwin_enabled: true` in pipeline config. Requires the brain.
+
+**Deps (optional).** Predictive dependency management. Scans manifests for outdated packages, checks CVEs, and predicts upgrade breakage risk before you touch a version number. Enable with `deps_agent_enabled: true` in pipeline config.
 
 For full documentation, see the [User Guide](docs/guide/user-guide.md) and [Technical Reference](docs/guide/technical-reference.md).
 
@@ -31,9 +35,25 @@ Add the marketplace and install:
 
 Restart Claude Code after install.
 
+**Cursor:**
+
+Install from the Cursor Marketplace — search "atelier-pipeline".
+
+Or manually:
+
+```bash
+git clone https://github.com/robertsfeir/atelier-pipeline.git /tmp/atelier-pipeline
+```
+
+Then in Cursor:
+
+```
+Read /tmp/atelier-pipeline/.cursor-plugin/skills/pipeline-setup/SKILL.md and follow its instructions
+```
+
 ### 2. Set Up the Pipeline
 
-Open Claude Code in your project and run:
+Open your IDE (Claude Code or Cursor) in your project and run:
 
 ```
 /pipeline-setup
@@ -107,6 +127,8 @@ A session-start hook automatically notifies you when your project's pipeline fil
 
 ### Manual Setup (without plugin system)
 
+**Claude Code:**
+
 ```bash
 git clone https://github.com/robertsfeir/atelier-pipeline.git /tmp/atelier-pipeline
 ```
@@ -118,9 +140,21 @@ Read /tmp/atelier-pipeline/skills/pipeline-setup/SKILL.md and follow its
 instructions to install the pipeline in this project
 ```
 
+**Cursor:**
+
+```bash
+git clone https://github.com/robertsfeir/atelier-pipeline.git /tmp/atelier-pipeline
+```
+
+Then in Cursor:
+
+```
+Read /tmp/atelier-pipeline/.cursor-plugin/skills/pipeline-setup/SKILL.md and follow its instructions
+```
+
 ## Skills
 
-The plugin provides four skills:
+The plugin provides five skills:
 
 | Skill | Trigger | Purpose |
 |-------|---------|---------|
@@ -128,6 +162,7 @@ The plugin provides four skills:
 | `/pipeline-overview` | "how does the pipeline work", "explain atelier" | Quick reference for the pipeline system, agents, and principles |
 | `/brain-setup` | "set up the brain", "configure brain" | Configures the Atelier Brain persistent memory (Docker, local PostgreSQL, or remote PostgreSQL) |
 | `/brain-hydrate` | "hydrate brain", "seed memory", "import history" | Imports existing project knowledge (ADRs, specs, git history) into the brain |
+| `/dashboard` | "open dashboard", "show telemetry" | Opens the Atelier Dashboard for telemetry visualization |
 
 ## The Pipeline
 
@@ -154,7 +189,16 @@ Eva sizes every request and runs the right amount of process. A large feature ge
                         |
                 Roz (test authoring)
                         |
-    Colby (build) <-> Roz (QA) + Poirot + Sentinel    --- interleaved per ADR step
+         ┌─── Wave 1 ────────────────────┐
+         │  Roz (tests for wave)          │
+         │  Colby (unit 1) → lint/tc      │
+         │  Colby (unit 2) → lint/tc      │
+         │  Roz (wave QA) + Poirot        │ --- wave-level review
+         │  Ellis (wave commit)           │
+         └────────────────────────────────┘
+         ┌─── Wave 2 ────────────────────┐
+         │  ...same pattern...            │
+         └────────────────────────────────┘
                         |
     Roz + Poirot + Robert + Sable + Sentinel           --- review juncture (parallel)
                         |
@@ -175,8 +219,22 @@ Not every feature runs every phase. Eva adjusts:
 |------|------|-----------|
 | **Micro** | Rename, typo, import fix (≤2 files, mechanical only) | Colby -> test suite -> Ellis |
 | **Small** | Bug fix, <3 files, "quick fix" | Colby -> Roz -> Ellis (+ Agatha if doc impact) |
-| **Medium** | 2-4 ADR steps, typical feature | Robert -> Cal -> Colby/Roz interleaved -> review juncture -> Agatha -> Ellis |
+| **Medium** | 2-4 ADR steps, typical feature | Robert -> Cal -> wave build/QA cycle -> review juncture -> Agatha -> Ellis |
 | **Large** | 5+ ADR steps, new system | Full pipeline above |
+
+### What's New in v3.15
+
+**Wave-based build ceremony.** QA, blind review, and commits now happen per wave instead of per unit. A 25-unit pipeline that previously required 150+ agent invocations now completes in ~47. Roz writes tests and reviews at wave boundaries; Poirot reviews the cumulative wave diff; Ellis commits once per wave. Sentinel moves to the review juncture only.
+
+**Universal model classifier.** All agents now use a scope-based classifier instead of hardcoded Opus. Roz, Poirot, Robert, Sable, and Sentinel default to Sonnet and promote to Opus only when task complexity warrants it. Ellis moves to Haiku. Estimated 60-70% cost reduction on typical pipelines.
+
+**Agent output masking.** Eva replaces full agent outputs with structured one-line receipts after processing. Full outputs stay on disk. This keeps Eva's context window lean across long pipelines — 98% reduction in carried context.
+
+**Just-in-time rule loading.** Eva's orchestration rules are split into always-loaded core (mandatory gates, masking) and JIT sections (telemetry protocols, Darwin, CI Watch) that load only when needed.
+
+**Brain operations batched per wave.** Prefetch, telemetry capture, and state writes happen at wave boundaries instead of per invocation.
+
+**Cursor IDE support.** Full feature parity with Claude Code — same agents, hooks, brain, commands. Install from the Cursor Marketplace or manually.
 
 ### What's New in v3.6
 
@@ -188,7 +246,7 @@ Not every feature runs every phase. Eva adjusts:
 
 ### What's New in v3.5
 
-**Sentinel security agent (opt-in).** A Semgrep MCP-backed security audit agent that scans changed files for vulnerabilities, injection risks, and security misconfigurations. Runs in parallel with Roz and Poirot. Enable during `/pipeline-setup` or set `sentinel_enabled: true` in `pipeline-config.json`. Sentinel failure never blocks the pipeline.
+**Sentinel security agent (opt-in).** A Semgrep MCP-backed security audit agent that scans changed files for vulnerabilities, injection risks, and security misconfigurations. Runs at the review juncture in parallel with Roz and Poirot. Enable during `/pipeline-setup` or set `sentinel_enabled: true` in `pipeline-config.json`. Sentinel failure never blocks the pipeline.
 
 **Agent Teams (experimental).** Parallel wave execution using Claude Code's Agent Teams feature. When enabled, Eva creates Colby Teammate instances that execute independent build units within a wave simultaneously. Two gates must pass: `agent_teams_enabled: true` in pipeline config and `CLAUDE_AGENT_TEAMS=1` in the environment. Falls back to sequential execution transparently when either gate fails.
 
@@ -217,6 +275,8 @@ Not every feature runs every phase. Eva adjusts:
 | **Ellis** | Commit and Changelog Manager | Subagent |
 | **Distillator** | Compression Engine | Subagent |
 | **Sentinel** | Security Auditor (opt-in) | Subagent |
+| **Darwin** | Pipeline Evolution Engine (opt-in) | Subagent |
+| **Deps** | Dependency Management (opt-in) | Subagent |
 
 **Skills** run in the main Claude Code thread for conversational work. **Subagents** run in their own context windows for focused execution. Some agents have both modes -- conversational for authoring, subagent for verification. Custom agents can be added via [agent discovery](#agent-discovery) without modifying core pipeline files.
 
@@ -252,6 +312,8 @@ These are installed into your project by `/pipeline-setup`:
 | `/pipeline` | Eva | Full pipeline orchestration |
 | `/devops` | Eva | Infrastructure and deployment |
 | `/docs` | Agatha | Documentation planning and writing |
+| `/deps` | Deps | Dependency scanning and CVE checking |
+| `/darwin` | Darwin | Pipeline health analysis and improvement proposals |
 
 ## Atelier Brain
 
@@ -292,6 +354,8 @@ your-project/
       ellis.md                   # Commit manager
       agatha.md                  # Documentation
       sentinel.md                # Security audit (opt-in)
+      darwin.md                  # Pipeline evolution (opt-in)
+      deps.md                    # Dependency management (opt-in)
     commands/                    # Loaded when user types slash command
       pm.md                      # /pm (Robert)
       ux.md                      # /ux (Sable)
@@ -329,12 +393,14 @@ your-project/
 
 **Requires:** `jq` for hook enforcement (`brew install jq` on macOS, `apt install jq` on Linux).
 
+**For Cursor:** the same structure installs into `.cursor/` with rules using `.mdc` extension and frontmatter.
+
 ## Key Principles
 
 - **Roz-First TDD.** Roz writes tests before Colby builds. Colby cannot modify Roz's assertions.
-- **Continuous QA.** Each ADR step is a work unit with its own test-build-review cycle.
+- **Wave-based QA.** Each wave is a work unit with its own test-build-review cycle. Roz writes tests and reviews at wave boundaries; Poirot reviews the cumulative wave diff; Ellis commits once per wave.
 - **DoR/DoD.** Every agent proves it read upstream artifacts (DoR) and covers all requirements (DoD).
-- **Twelve mandatory gates.** Eva enforces twelve quality gates that are never skipped, covering sequencing, test-before-ship, documentation, and pipeline discipline.
+- **Twelve mandatory gates.** Eva enforces twelve quality gates that are never skipped, covering sequencing, test-before-ship, documentation, and wave-level pipeline discipline.
 - **Six enforcement hooks.** Three PreToolUse hooks (path enforcement, sequencing, git ops), one SubagentStop hook (DoR/DoD warnings), one PreCompact hook (compaction marker), and one config file. Behavioral guidance tells agents what to do; hooks ensure they can't do what they shouldn't.
 - **Information asymmetry.** Three parallel reviewers see constrained context to prevent anchoring -- Poirot sees only the diff, Robert sees only the spec, Sable sees only the UX doc. Sentinel sees only the diff and Semgrep scan results.
 - **Four-layer investigation.** Debug flows check Application, Transport, Infrastructure, Environment. Two rejected hypotheses at one layer forces escalation.
@@ -356,6 +422,8 @@ During setup, you configure project-specific values:
 - Branching strategy (trunk-based, GitHub Flow, GitLab Flow, GitFlow)
 - Sentinel security agent (opt-in)
 - Agent Teams parallel execution (opt-in, experimental)
+- Darwin pipeline evolution engine (opt-in)
+- Deps dependency management (opt-in)
 
 The orchestration patterns and quality gates are stack-agnostic.
 

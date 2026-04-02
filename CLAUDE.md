@@ -1,13 +1,14 @@
 # Atelier Pipeline
 
-A Claude Code plugin providing multi-agent orchestration with quality gates, continuous QA, and persistent institutional memory (Atelier Brain).
+Multi-agent orchestration system for AI-powered IDEs (Claude Code + Cursor). Quality gates, continuous QA, and persistent institutional memory (Atelier Brain).
 
 ## Tech Stack
 
 - **Hooks/Enforcement:** Bash shell scripts (PreToolUse hooks)
 - **Brain MCP Server:** Node.js (server.mjs), PostgreSQL with pgvector and ltree extensions
 - **Agent System:** Markdown persona files, slash commands, orchestration rules
-- **Plugin System:** Claude Code plugin format (.claude-plugin/plugin.json)
+- **IDE Support:** Claude Code plugin + Cursor plugin (dual-target from shared source)
+- **Plugin System:** Claude Code plugin format (.claude-plugin/plugin.json), Cursor plugin format (.cursor-plugin/)
 
 ## Test Commands
 
@@ -29,6 +30,7 @@ source/          # Template files -- copied to target projects by /pipeline-setu
 brain/           # Atelier Brain MCP server (Node.js + PostgreSQL)
 skills/          # Plugin skills (pipeline-setup, brain-setup, brain-hydrate, pipeline-overview)
 .claude/         # Installed pipeline files (this project eats its own cooking)
+.cursor-plugin/  # Cursor plugin packaging (manifest, marketplace, skills)
 docs/            # User guide, technical reference, ADRs, pipeline state
 scripts/         # Plugin lifecycle scripts (update checks)
 ```
@@ -37,7 +39,7 @@ scripts/         # Plugin lifecycle scripts (update checks)
 
 - **Roz-first TDD:** Roz writes test assertions before Colby builds. Colby never modifies Roz's assertions.
 - **Eva never writes code:** Eva orchestrates and routes. Colby implements. Ellis commits.
-- **Dual tree:** `source/` contains templates with `{placeholders}`. `.claude/` contains installed copies with literal values. Both must stay in sync within their respective contexts.
+- **Triple target:** `source/` contains templates with `{placeholders}`. `.claude/` contains installed copies for Claude Code. `.cursor-plugin/` contains installed copies for Cursor. All stay in sync within their respective contexts.
 - **ADR immutability:** ADRs are never updated in place. New ADRs supersede old ones.
 - **Mechanical enforcement:** PreToolUse hooks block agents from writing outside their designated paths. Behavioral guidance is backed by shell-script enforcement.
 - **Living artifacts:** Specs and UX docs are updated at pipeline end. Pipeline state files track session recovery.

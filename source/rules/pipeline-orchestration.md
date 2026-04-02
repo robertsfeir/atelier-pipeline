@@ -9,6 +9,27 @@ Loads automatically when Eva reads `{pipeline_state_dir}/` files. Contains
 mandatory gates, brain capture model, investigation discipline, pipeline
 flow, agent standards, and verification procedures.
 
+<section id="loading-strategy">
+
+## Loading Strategy
+
+This file uses just-in-time (JIT) loading. Sections marked `[ALWAYS]` are loaded when the file first loads (pipeline activation). Sections marked `[JIT]` are loaded only when their trigger condition is met. Eva reads the section headers to know what exists, then reads the full section content on demand.
+
+| Section | Load | Trigger |
+|---------|------|---------|
+| Brain Access | ALWAYS | Pipeline activation |
+| Observation Masking | ALWAYS | Pipeline activation |
+| Mandatory Gates | ALWAYS | Pipeline activation |
+| Telemetry Capture | JIT | After first agent returns |
+| Darwin Auto-Trigger | JIT | Pipeline end + degradation detected |
+| Pattern Staleness | JIT | Pipeline end |
+| Dashboard Bridge | JIT | Pipeline end |
+| Investigation Discipline | JIT | Debug flow entered |
+| State File Descriptions | JIT | First state write |
+| Phase Sizing Rules | JIT | Pipeline sizing decision |
+
+</section>
+
 <protocol id="brain-capture">
 
 ## Brain Access (MANDATORY when brain is available)
@@ -23,7 +44,7 @@ Eva captures **cross-cutting concerns only** — things no single agent owns:
 
 **Reads:**
 - Pipeline start: calls `agent_search` with query derived from current feature area + scope. Injects results into pipeline state alongside context-brief.md.
-- Before delegating to any agent: calls `agent_search` for known issues, prior findings, and user corrections relevant to the task being assigned. Passes results as context in the agent invocation.
+- Before each wave: calls `agent_search` once for the wave's feature area. Injects results into all agent invocations within that wave. Does NOT call `agent_search` per individual agent invocation.
 - Health check: calls `atelier_stats` at pipeline start to verify brain is live.
 
 **Writes (cross-cutting only):**
@@ -90,45 +111,49 @@ In-memory accumulators still run for the pipeline-end summary display.
 
 ### Tier 1 Gate (per-invocation) -- After Every Agent Returns
 
-After every Agent tool completion, Eva:
+After every Agent tool completion, Eva records metrics in the in-memory
+accumulator only. Eva does NOT call `agent_capture` per invocation. Tier 1
+data is captured in bulk at wave end as part of the Tier 2 capture.
 
 1. Records wall-clock duration (`end_time - start_time` in ms). Duration is always computable.
 2. Extracts available metadata from Agent tool result: `model`, `input_tokens`, `output_tokens`,
    `cache_read_tokens`, `finish_reason`, `tool_count`, `turn_count`.
-   - If token counts unavailable: log `0`, note "token counts unavailable from Agent tool" in content.
+   - If token counts unavailable: log `0`, note "token counts unavailable from Agent tool" in accumulator.
    - If model unavailable: set `"unknown"`, skip `context_utilization` and `cost_usd` computation.
 3. Computes `cost_usd` using the cost table from `telemetry-metrics.md`.
    If model unknown or not in the pricing table: set `cost_usd: null`, log "Cost unavailable -- model not in pricing table".
 4. Computes `context_utilization` as `(input_tokens + output_tokens) / context_window_max`
    (model-dependent from `telemetry-metrics.md`). Set `null` when tokens unavailable.
-5. Calls `agent_capture`:
-   - `content`: `"Telemetry T1: {agent_name} {pipeline_phase} {duration_ms}ms {model}"`
-   - `importance: 0.3`
-   - `metadata`: full Tier 1 schema from `telemetry-metrics.md` populated with available data,
-     plus `telemetry_tier: 1` and `pipeline_id`
-6. On `agent_capture` failure: log and continue -- `"Telemetry T1 capture failed: {reason}. Continuing."` Never block the pipeline.
-7. Adds to in-memory accumulators: `total_cost`, `total_invocations`, `invocations_by_agent`.
+5. Adds to in-memory accumulators: `total_cost`, `total_invocations`, `invocations_by_agent`,
+   and per-invocation records (agent, phase, duration, model, tokens, cost) for bulk capture.
 
 **Micro pipelines:** Tier 1 captures run as normal. Micro pipelines capture Tier 1 only --
 skip Tier 2 and Tier 3. Micro runs do not contribute to boot trend data (which queries Tier 3).
 
-### Tier 2 Gate (per-unit) -- After Each Work Unit Completes Roz QA PASS
+### Tier 2 Gate (per-wave) -- After Each Wave Passes Roz QA PASS
 
-After each work unit passes Roz QA, Eva:
+After each wave passes Roz QA, Eva captures a single Tier 2 record covering
+all units in the wave. The capture includes per-unit breakdowns (rework cycles,
+first-pass QA, costs) as array fields in metadata.
 
-1. Counts `rework_cycles` for this unit: number of Colby re-invocations after the first
-   on the same `work_unit_id`. A unit that passes on its first Colby invocation has `rework_cycles == 0`.
-2. Determines `first_pass_qa` (`rework_cycles == 0`).
-3. Sums `unit_cost_usd` from all Tier 1 captures for this `work_unit_id`. Set `null` if any Tier 1 cost was null.
-4. Tallies `finding_counts` from Roz, Poirot, Robert, Sable, Sentinel for this unit.
-5. Computes `finding_convergence` (findings flagged independently by both Roz and Poirot).
-6. Computes `evoscore_delta` from Roz's QA report (test counts before/after this unit).
+1. For each unit in the wave:
+   a. Counts `rework_cycles`: number of Colby re-invocations after the first
+      on the same `work_unit_id`. A unit that passes on its first Colby invocation has `rework_cycles == 0`.
+   b. Determines `first_pass_qa` (`rework_cycles == 0`).
+   c. Sums `unit_cost_usd` from in-memory Tier 1 accumulator for this `work_unit_id`. Set `null` if any Tier 1 cost was null.
+2. Tallies `finding_counts` from Roz, Poirot for the wave.
+3. Computes `finding_convergence` (findings flagged independently by both Roz and Poirot).
+4. Computes `evoscore_delta` from Roz's wave QA report (test counts before/after the wave).
    Formula: `(tests_after - tests_broken) / tests_before`. When `tests_before == 0`: `evoscore_delta = 1.0`.
-7. Calls `agent_capture`:
-   - `content`: `"Telemetry T2: {work_unit_id} rework={rework_cycles} first_pass={first_pass_qa}"`
+5. Calls `agent_capture` (single call for the entire wave):
+   - `content`: `"Telemetry T2: wave {wave_id} units={N} rework={total_rework} first_pass={first_pass_count}/{total_units}"`
    - `importance: 0.5`
-   - `metadata`: full Tier 2 schema populated, plus `telemetry_tier: 2` and `pipeline_id`
-8. On failure: log and continue -- `"Telemetry T2 capture failed: {reason}. Continuing."` Never block the pipeline.
+   - `metadata`: full Tier 2 schema populated, plus `telemetry_tier: 2`, `pipeline_id`,
+     `wave_id`, and `unit_breakdowns` array containing per-unit records
+     (work_unit_id, rework_cycles, first_pass_qa, unit_cost_usd).
+     Also includes bulk Tier 1 data: `tier1_invocations` array with all
+     per-invocation records accumulated during this wave.
+6. On failure: log and continue -- `"Telemetry T2 capture failed: {reason}. Continuing."` Never block the pipeline.
 
 **Skipped on Micro pipelines.**
 
@@ -297,11 +322,11 @@ Eva manages phase transitions. Some phases are skippable based on sizing
 No "it's just a small fix." No "I'll run tests later." Violating these is
 the same severity as Eva editing source code.
 
-1. **Roz verifies every Colby output.** Every unit of Colby's work gets a
-   Roz QA pass before Eva advances. If Eva is about to commit, merge, or
-   advance without a Roz pass on the current changes, she stops and invokes
-   Roz first. Agent self-reports ("all tests pass") are not a substitute --
-   Roz runs the suite herself on the integrated codebase.
+1. **Roz verifies every wave.** After all units in a wave are built, Roz
+   QA reviews the wave's cumulative changes. Individual units get
+   lint+typecheck (shell commands run by Colby during build, not a separate
+   Roz invocation). If Eva is about to commit or advance without a Roz wave
+   pass, she stops and invokes Roz first.
 
 2. **Ellis commits. Eva does not.** Eva never runs `git add`, `git commit`,
    or `git push` on code changes. Eva hands the diff to Ellis. Ellis
@@ -315,18 +340,19 @@ the same severity as Eva editing source code.
    Ellis for per-unit commits on the integrated result. The Teammate -> merge
    -> Ellis flow is the same as the existing worktree -> merge -> Ellis flow.
 
-3. **Full test suite between units of work.** After merging changes from
-   any source (worktree, agent output, manual patch), Roz runs the full
-   test suite (`{test_command}`) on the actual integrated codebase before
-   Eva advances to the next unit. Eva invokes Roz for this verification --
-   Eva does not run the test suite herself. Eva running test commands is
-   the same class of violation as Eva using the Write tool on source files.
+3. **Full test suite between waves.** After merging wave changes, Roz
+   runs the full test suite (`{test_command}`) on the integrated codebase.
+   Individual units within a wave get lint+typecheck only. Roz runs the
+   full suite at wave boundaries, not unit boundaries. Eva invokes Roz
+   for this verification -- Eva does not run the test suite herself. Eva
+   running test commands is the same class of violation as Eva using the
+   Write tool on source files.
 
    Note (Agent Teams): When Agent Teams is active, Teammates run lint but
    NOT the full test suite. Roz runs the full test suite on the integrated
-   codebase after each Teammate's worktree is merged. This is the same rule
+   codebase after each wave's changes are merged. This is the same rule
    as for any worktree-based change -- Roz runs the suite on the integrated
-   result, never on the isolated worktree alone.
+   result at wave boundaries, never on the isolated worktree alone.
 
 4. **Roz investigates user-reported bugs. Eva does not.** When the user
    reports a bug (UAT failure, error message, "this is broken"), Eva's
@@ -338,24 +364,19 @@ the same severity as Eva editing source code.
    does NOT apply to pipeline-internal findings (Roz QA issues, CI
    failures, batch queue items) -- those follow the automated flow.
 
-5. **Poirot blind-reviews every Colby output (parallel with Roz).** After
-   every Colby build unit, Eva invokes Poirot with ONLY the `git diff`
-   output -- no spec, no ADR, no context. This runs in PARALLEL with Roz's
-   informed QA. Eva triages findings from both agents before routing fixes
-   to Colby. Skipping Poirot is the same class of violation as skipping
-   Roz. "It's a small change" is not an excuse. If Eva invokes Poirot
-   with anything beyond the raw diff, that is an invocation error -- same
-   severity as embedding a root cause theory in a TASK field.
-   When `sentinel_enabled: true`, Sentinel also runs in parallel with Roz
-   and Poirot after each Colby build unit, scanning changed files with
-   Semgrep MCP. If Sentinel invocation fails (MCP server down, scan error),
-   Eva logs "Sentinel audit skipped: [reason]" and proceeds. Sentinel
-   failure is never a pipeline blocker.
+5. **Poirot blind-reviews every wave (parallel with Roz).** After all
+   units in a wave are built, Eva invokes Poirot with the wave's cumulative
+   `git diff` -- no spec, no ADR, no context. This runs in PARALLEL with
+   Roz's wave QA. Eva triages findings from both agents before routing
+   fixes to Colby. Skipping Poirot is the same class of violation as
+   skipping Roz. "It's a small change" is not an excuse. If Eva invokes
+   Poirot with anything beyond the raw diff, that is an invocation error
+   -- same severity as embedding a root cause theory in a TASK field.
+   Sentinel runs at the review juncture only, not per-wave (see gate 7).
 
    Note (Agent Teams): When Agent Teams is active, Poirot blind-reviews the
-   merged diff per unit -- not the Teammate's isolated worktree diff. The
-   review happens after each Teammate's worktree is merged into the working
-   branch, ensuring Poirot sees the integrated result, not a partial view.
+   cumulative wave diff after all Teammates' worktrees are merged into the
+   working branch, ensuring Poirot sees the integrated wave result.
 
 6. **Distillator compresses cross-phase artifacts when they exceed ~5K tokens.**
    Before passing upstream artifacts (spec, UX doc, ADR) to a downstream
@@ -369,8 +390,8 @@ the same severity as Eva editing source code.
    pipeline.
 
    Within-session tool outputs (file reads, grep results, bash outputs) are
-   handled by observation masking (see `pipeline-operations.md`
-   `<protocol id="observation-masking">`), not Distillator. Distillator is
+   handled by observation masking (see `<protocol id="observation-masking">`
+   in this file), not Distillator. Distillator is
    reserved for structured document compression at phase boundaries where
    lossless preservation of decisions, constraints, and relationships matters.
 
@@ -430,6 +451,45 @@ the same severity as Eva editing source code.
 
 </gate>
 
+<protocol id="observation-masking">
+
+## Agent Output Masking
+
+After processing each agent's return, Eva replaces the full output in her working context with a structured receipt. The full output remains on disk (in files the agent wrote, in `{pipeline_state_dir}/last-qa-report.md`, or in brain captures). Eva re-reads from disk only when she needs detail for a downstream invocation.
+
+### Receipt Format Per Agent
+
+| Agent | Receipt Format |
+|-------|---------------|
+| **Cal** | `Cal: ADR at {path}, {N} steps, {N} tests specified` |
+| **Colby** | `Colby: Unit {N} DONE, {N} files changed, lint {PASS/FAIL}, typecheck {PASS/FAIL}` |
+| **Roz** | `Roz: Wave {N} {PASS/FAIL}, {N} blockers, {N} must-fix, {N} suggestions. Report: last-qa-report.md` |
+| **Poirot** | `Poirot: Wave {N} {N} findings ({N} BLOCKER, {N} MUST-FIX, {N} NIT)` |
+| **Sentinel** | `Sentinel: {N} findings ({CWE refs}). {N} BLOCKERs.` |
+| **Ellis** | `Ellis: Committed {hash} on {branch}, {N} files` |
+| **Robert** | `Robert: {N} criteria — {N} PASS, {N} DRIFT, {N} MISSING, {N} AMBIGUOUS` |
+| **Sable** | `Sable: {N} screens — {N} PASS, {N} DRIFT, {N} MISSING` |
+| **Agatha** | `Agatha: Written {paths}, updated {paths}` |
+| **Distillator** | `Distillator: {source} compressed {ratio}. Output: {path}` |
+| **Darwin** | `Darwin: {N} proposals at escalation levels {list}` |
+
+### Masking Rules
+
+1. Eva reads the full agent output (necessary to extract the receipt)
+2. Eva extracts verdict, counts, file paths, and key decisions into the receipt
+3. Eva updates pipeline-state.md with the receipt
+4. Eva drops the full output from working context — the receipt is sufficient for routing decisions
+5. When Eva needs full detail for a downstream invocation (e.g., Roz findings to construct Colby fix prompt), she reads the relevant file from disk (last-qa-report.md, the ADR, etc.)
+6. Brain captures still use the full output data (captured before masking)
+
+### What NOT to mask
+
+- User messages (never masked)
+- Eva's own state reads (pipeline-state.md, context-brief.md) — these are small
+- Active invocation prompt being constructed — Eva needs full detail while building the next agent's prompt, masks after the invocation is dispatched
+
+</protocol>
+
 <protocol id="investigation">
 
 ## Investigation Discipline
@@ -463,8 +523,12 @@ before forming new hypotheses to avoid repetition.
 
 ## State File Descriptions
 
+Eva updates `pipeline-state.md` after each wave completes, not after each
+unit. Within a wave, Eva tracks unit progress in-memory. If the session
+crashes mid-wave, recovery restarts from the wave boundary.
+
 Eva maintains five files in `{pipeline_state_dir}`:
-- **`pipeline-state.md`** -- Unit-by-unit progress tracker. Enables session recovery.
+- **`pipeline-state.md`** -- Wave-level progress tracker. Enables session recovery.
   Every update to this file must include a "Changes since last state" section
   listing: new files created, files modified, requirements closed since the
   previous update, and the agent that produced the change. This diff section

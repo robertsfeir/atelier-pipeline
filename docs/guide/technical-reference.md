@@ -1,8 +1,8 @@
 # Atelier Pipeline -- Technical Reference
 
-Version: 3.9.0
+Version: 3.15.0
 
-This document is the comprehensive technical reference for the atelier-pipeline Claude Code plugin. It covers plugin architecture, agent system design, orchestration logic, brain infrastructure, and customization points. For usage-oriented documentation, see [the user guide](user-guide.md).
+This document is the comprehensive technical reference for the atelier-pipeline plugin. It covers plugin architecture, agent system design, orchestration logic, brain infrastructure, and customization points. The pipeline runs on both Claude Code and Cursor. For usage-oriented documentation, see [the user guide](user-guide.md).
 
 ---
 
@@ -29,19 +29,20 @@ This document is the comprehensive technical reference for the atelier-pipeline 
 19. [Agent Teams](#agent-teams)
 20. [CI Watch](#ci-watch)
 21. [Deps Agent](#deps-agent)
-22. [Agent Telemetry](#agent-telemetry)
-23. [Dashboard](#dashboard)
-24. [Telemetry Hydration](#telemetry-hydration)
-25. [Agent Discovery](#agent-discovery)
-26. [Observation Masking and Context Hygiene](#observation-masking-and-context-hygiene)
-27. [Compaction API Integration](#compaction-api-integration)
-28. [Customization Points](#customization-points)
+22. [Darwin Agent](#darwin-agent)
+23. [Agent Telemetry](#agent-telemetry)
+24. [Dashboard](#dashboard)
+25. [Telemetry Hydration](#telemetry-hydration)
+26. [Agent Discovery](#agent-discovery)
+27. [Observation Masking and Context Hygiene](#observation-masking-and-context-hygiene)
+28. [Compaction API Integration](#compaction-api-integration)
+29. [Customization Points](#customization-points)
 
 ---
 
 ## Plugin Architecture
 
-Atelier Pipeline is a Claude Code plugin distributed via the plugin marketplace. It consists of two subsystems:
+Atelier Pipeline is a plugin for Claude Code and Cursor distributed via the Claude Code plugin marketplace. It consists of two subsystems:
 
 1. **Multi-agent orchestration** -- template files installed into the target project's `.claude/` and `docs/pipeline/` directories. These define agent personas, slash commands, quality references, and state files.
 2. **Atelier Brain** -- an MCP server (`brain/server.mjs`) that runs as a sidecar, providing persistent institutional memory backed by PostgreSQL and vector embeddings.
@@ -53,7 +54,7 @@ The plugin itself lives in the Claude Code plugin directory (typically `~/.claud
 ```
 atelier-pipeline/                         # Plugin root (CLAUDE_PLUGIN_ROOT)
   .claude-plugin/
-    plugin.json                           # Plugin metadata, hooks, version (3.8.0)
+    plugin.json                           # Plugin metadata, hooks, version (3.15.0)
   source/                                 # Template files -- copied to target project
     rules/
       default-persona.md
@@ -63,7 +64,8 @@ atelier-pipeline/                         # Plugin root (CLAUDE_PLUGIN_ROOT)
     agents/
       cal.md, colby.md, roz.md, robert.md,
       sable.md, investigator.md, distillator.md,
-      ellis.md, agatha.md, sentinel.md, deps.md
+      ellis.md, agatha.md, sentinel.md, deps.md,
+      darwin.md
     commands/
       pm.md, ux.md, architect.md, debug.md,
       pipeline.md, devops.md, docs.md, deps.md,
@@ -218,8 +220,8 @@ Eva's rules are split into two categories to stay under Anthropic's recommended 
 - `agent-system.md` -- architecture, agent tables, routing, sizing, invocation template
 
 **Operations files** (path-scoped via YAML frontmatter):
-- `pipeline-orchestration.md` -- mandatory gates, triage consensus matrix, wave execution, per-unit commit flow, investigation discipline, agent standards, review juncture, reconciliation
-- `pipeline-models.md` -- model selection tables, Micro-tier criteria, Colby complexity classifier
+- `pipeline-orchestration.md` -- mandatory gates, brain capture model, wave execution, observation masking, investigation discipline, agent standards, review juncture, reconciliation. Uses just-in-time (JIT) section loading: sections marked `[ALWAYS]` load at pipeline activation; sections marked `[JIT]` load only when their trigger condition is met (e.g., investigation discipline loads only when a debug flow is entered). Eva reads section headers to know what exists without loading every section at activation.
+- `pipeline-models.md` -- universal scope classifier, size-dependent model tables, Agatha doc-type model, enforcement rules
 - `branch-lifecycle.md` -- branching strategy lifecycle rules (selected variant only: trunk-based, github-flow, gitlab-flow, or gitflow)
 
 Operations files use a `paths: ["docs/pipeline/**"]` frontmatter declaration. Claude Code loads them automatically when any file matching that glob is read. Since Eva's boot sequence reads `docs/pipeline/pipeline-state.md` on every session with an active pipeline, the operational rules load exactly when needed.
@@ -274,24 +276,25 @@ The eight actual plugin skills (`/pipeline-setup`, `/pipeline-uninstall`, `/pipe
 
 Agent persona files use `disallowedTools` (denylist) in their frontmatter rather than a `tools` allowlist. This ensures subagents inherit MCP tools (including brain tools) from the parent session -- a `tools` allowlist would block MCP tool inheritance because only explicitly listed tools would be available to the subagent.
 
-| Agent | Role | Execution Mode | Tools | Write Access | Brain Access | Model (Fixed/Size-Dependent) |
-|-------|------|---------------|-------|-------------|--------------|------------------------------|
+| Agent | Role | Execution Mode | Tools | Write Access | Brain Access | Model |
+|-------|------|---------------|-------|-------------|--------------|-------|
 | **Eva** | Pipeline Orchestrator / DevOps | Main thread (always loaded) | Read, Glob, Grep, Bash, TaskCreate, TaskUpdate | `docs/pipeline/` state files ONLY | Reads: `agent_search`, `atelier_stats`. Writes: cross-cutting decisions, phase transitions, Poirot findings. | N/A (orchestrator) |
 | **Robert** (skill) | CPO -- spec authoring | Main thread (`/pm`) | Full conversational | Spec files | Reads: prior specs, corrections. Writes: spec rationale, corrections. | N/A (skill) |
-| **Robert** (subagent) | Product acceptance reviewer | Subagent | Read, Glob, Grep, Bash | **None** (read-only) | Reads: spec evolution, prior drift. Writes: drift findings, pass verdicts. | Opus (fixed) |
+| **Robert** (subagent) | Product acceptance reviewer | Subagent | Read, Glob, Grep, Bash | **None** (read-only) | Reads: spec evolution, prior drift. Writes: drift findings, pass verdicts. | Sonnet base; Opus on Large (classifier +2) |
 | **Sable** (skill) | UX Designer -- doc authoring | Main thread (`/ux`) | Full conversational | UX docs | Reads: prior UX decisions, a11y. Writes: UX rationale, corrections. | N/A (skill) |
-| **Sable** (subagent) | UX acceptance reviewer | Subagent | Read, Glob, Grep, Bash | **None** (read-only) | Reads: UX doc evolution. Writes: drift/missing verdicts, five-state audit. | Opus (fixed) |
+| **Sable** (subagent) | UX acceptance reviewer | Subagent | Read, Glob, Grep, Bash | **None** (read-only) | Reads: UX doc evolution. Writes: drift/missing verdicts, five-state audit. | Sonnet base; Opus on Large (classifier +2) |
 | **Cal** (skill) | Architect -- conversational | Main thread (`/architect`) | Full conversational | None during conversation | Reads: prior decisions, constraints. | N/A (skill) |
-| **Cal** (subagent) | Architect -- ADR production | Subagent | Read, Write, Edit, Glob, Grep, Bash | ADR files | Reads: prior decisions, rejected approaches. Writes: decisions, rejections, insights. | Opus (fixed for Medium/Large) |
-| **Colby** | Senior Software Engineer | Subagent | Read, Write, Edit, MultiEdit, Glob, Grep, Bash | Source files, test files | Reads: implementation patterns, gotchas. Writes: implementation insights, workarounds. | Sonnet (Small/Medium), Opus (Large) |
-| **Roz** | QA Engineer | Subagent | Read, Write, Glob, Grep, Bash | **Test files ONLY** | Reads: QA patterns, fragile areas. Writes: recurring patterns, investigation findings, doc impact. | Opus (fixed) |
-| **Poirot** | Blind Code Investigator | Subagent | Read, Glob, Grep, Bash | **None** (read-only) | **None** -- Poirot never touches brain. Eva captures his findings. | Opus (fixed) |
+| **Cal** (subagent) | Architect -- ADR production | Subagent | Read, Write, Edit, Glob, Grep, Bash | ADR files | Reads: prior decisions, rejected approaches. Writes: decisions, rejections, insights. | Opus (Medium/Large) |
+| **Colby** | Senior Software Engineer | Subagent | Read, Write, Edit, MultiEdit, Glob, Grep, Bash | Source files, test files | Reads: implementation patterns, gotchas. Writes: implementation insights, workarounds. | Haiku (Micro), Sonnet (Small/Medium), Opus (Large) |
+| **Roz** | QA Engineer | Subagent | Read, Write, Glob, Grep, Bash | **Test files ONLY** | Reads: QA patterns, fragile areas. Writes: recurring patterns, investigation findings, doc impact. | Sonnet base; classifier promotes to Opus (+2 full sweep, -1 scoped rerun) |
+| **Poirot** | Blind Code Investigator | Subagent | Read, Glob, Grep, Bash | **None** (read-only) | **None** -- Poirot never touches brain. Eva captures his findings. | Sonnet base; Opus at final review juncture (classifier +2) |
 | **Agatha** (skill) | Documentation -- planning | Main thread (`/docs`) | Full conversational | None during planning | N/A | N/A (skill) |
 | **Agatha** (subagent) | Documentation -- writing | Subagent | Read, Write, Edit, MultiEdit, Grep, Glob, Bash | Documentation files | Reads: prior doc reasoning, drift patterns. Writes: doc update reasoning, gap findings. | Haiku (reference docs), Sonnet (conceptual docs) |
-| **Ellis** | Commit and Changelog Manager | Subagent | Read, Write, Edit, Glob, Grep, Bash | Git operations, changelog | N/A | Sonnet (fixed) |
-| **Distillator** | Lossless Compression Engine | Subagent | Read, Glob, Grep, Bash | **None** (read-only, output returned to Eva) | **None** | Haiku (fixed) |
-| **Sentinel** | Security Audit (opt-in) | Subagent | Read, Glob, Grep, Bash + Semgrep MCP (`semgrep_scan`, `semgrep_findings`) | **None** (read-only) | **None** -- Eva captures findings post-review. | Opus (fixed) |
+| **Ellis** | Commit and Changelog Manager | Subagent | Read, Write, Edit, Glob, Grep, Bash | Git operations, changelog | N/A | Haiku (fixed) |
+| **Distillator** | Lossless Compression Engine | Subagent | Read, Glob, Grep, Bash | **None** (read-only, output returned to Eva) | **None** | Haiku (fixed; classifier exempt) |
+| **Sentinel** | Security Audit (opt-in) | Subagent | Read, Glob, Grep, Bash + Semgrep MCP (`semgrep_scan`, `semgrep_findings`) | **None** (read-only) | **None** -- Eva captures findings post-review. | Sonnet base; Opus when auth/security files change (classifier +2) |
 | **Deps** | Dependency Management (opt-in) | Subagent | Read, Glob, Grep, Bash (read-only), WebSearch, WebFetch | **None** (read-only) | Reads: prior dependency decisions. Writes: scan results, upgrade risk assessments. | Sonnet (fixed) |
+| **Darwin** | Self-Evolving Pipeline Engine (opt-in) | Subagent | Read, Glob, Grep, Bash (read-only) | **None** (read-only) | Reads: Tier 3 telemetry, prior Darwin proposals, error patterns. Eva captures proposals post-review. | Opus (fixed -- cross-metric analysis) |
 
 ### Forbidden Actions by Agent
 
@@ -307,6 +310,7 @@ Agent persona files use `disallowedTools` (denylist) in their frontmatter rather
 | **Distillator** | Drop decisions, rejected alternatives, or scope boundaries. Editorialize. Produce prose paragraphs. Modify source files. |
 | **Sentinel** | Read spec/ADR/UX docs. Write/Edit anything. Report findings from unchanged code (must filter to diff only). Classify pre-existing issues as new findings. Touch brain directly (Eva captures findings). |
 | **Deps** | Write/Edit/MultiEdit any file. Run `npm install`, `pip install`, `cargo update`, `go get`, or any command that modifies dependency files. Classify uncertain upgrades as "Safe to Upgrade" (must use "Needs Review"). |
+| **Darwin** | Write/Edit/MultiEdit any file. Implement proposals directly (Colby implements). Touch the brain directly (Eva captures proposals). Auto-approve proposals without user review. Reuse a `darwin_proposal_id` that already exists in the brain (each proposal is unique). |
 | **Ellis** | Commit without QA passing. Use generic commit messages. Commit without user approval. Use `git add -A` or `git add .`. |
 
 ### Cal: ADR Production Requirements (v2.4)
@@ -381,10 +385,10 @@ Eva assesses scope at pipeline start and adjusts ceremony:
 
 | Size | Criteria | Pipeline |
 |------|----------|----------|
-| **Micro** | ≤2 files, mechanical only (rename, typo, import fix, version bump), no behavioral change | Colby -> test suite -> Ellis. Test failure auto-re-sizes to Small. |
-| **Small** | Bug fix, single file, < 3 files, user says "quick fix" | Colby -> Roz -> (Agatha if Roz flags doc impact) -> (Robert-subagent verifies docs if Agatha ran) -> Ellis |
-| **Medium** | 2-4 ADR steps, typical feature | Robert spec -> Cal -> Roz test spec review -> Roz test authoring -> Colby <-> Roz + Poirot -> Review juncture (Roz + Poirot + Robert-subagent) -> Agatha -> Robert-subagent (docs) -> Ellis |
-| **Large** | 5+ ADR steps, new system, multi-concern | Full pipeline including Sable mockup + Sable at final review juncture |
+| **Micro** | ≤2 files, mechanical only (rename, typo, import fix, version bump), no behavioral change | Colby -> Roz test suite -> Ellis. Test failure auto-re-sizes to Small. |
+| **Small** | Bug fix, single file, < 3 files, user says "quick fix" | Colby -> Roz wave QA -> (Agatha if Roz flags doc impact) -> (Robert-subagent verifies docs if Agatha ran) -> Ellis |
+| **Medium** | 2-4 ADR steps, typical feature | Robert spec -> Cal -> Roz test authoring (per wave) -> [Colby units (lint+typecheck only) -> Roz wave QA + Poirot -> Ellis per-wave] -> Review juncture (Roz + Poirot + Robert-subagent) -> Agatha -> Robert-subagent (docs) -> Ellis final |
+| **Large** | 5+ ADR steps, new system, multi-concern | Full pipeline including Sable mockup + Sable at final review juncture. Sentinel at review juncture. |
 
 **The minimum pipeline is always Colby -> Roz -> Ellis.** No sizing level skips Roz or Ellis.
 
@@ -410,11 +414,11 @@ When no pipeline is active, Eva classifies every user message against the intent
 
 ### Mandatory Gates (12 gates, never skippable, same severity as Eva writing code)
 
-1. Roz verifies every Colby output
-2. Ellis commits (Eva never runs git on code)
-3. Full test suite between work units (Roz runs the suite, not Eva -- Eva running tests is the same class of violation as Eva writing code)
+1. Roz verifies every wave (not per unit -- individual units get lint+typecheck from Colby, not a Roz invocation)
+2. Ellis commits (Eva never runs git on code). Ellis commits per wave after Roz QA PASS, plus a final commit at pipeline end
+3. Full test suite between waves (Roz runs the suite at wave boundaries, not unit boundaries -- Eva running tests is the same class of violation as Eva writing code)
 4. Roz investigates user-reported bugs (Eva does not)
-5. Poirot blind-reviews every Colby output (parallel with Roz). When `sentinel_enabled: true`, Sentinel also runs in parallel scanning changed files with Semgrep MCP.
+5. Poirot blind-reviews every wave (cumulative wave diff only, parallel with Roz). When `sentinel_enabled: true`, Sentinel runs at the review juncture only -- not per wave.
 6. Distillator compresses upstream artifacts when >5K tokens (within-session tool outputs use observation masking instead)
 7. Robert-subagent reviews at review juncture (Medium/Large)
 8. Sable-subagent verifies every mockup before UAT
@@ -425,31 +429,47 @@ When no pipeline is active, Eva classifies every user message against the intent
 
 ### Model Selection
 
-Model assignment is mechanical -- determined by agent identity and pipeline sizing. Eva looks up the model table in `pipeline-operations.md`. There is no discretion.
+Model assignment is mechanical -- determined by the agent identity, pipeline sizing, and the universal scope classifier. Eva looks up the tables in `pipeline-models.md`. There is no discretion.
 
-**Fixed-model agents:**
+**Size-dependent agents (base models):**
 
-| Agent | Model | Rationale |
-|-------|-------|-----------|
-| Roz | Opus | QA judgment is non-negotiable |
-| Robert (subagent) | Opus | Product acceptance requires strong reasoning |
-| Sable (subagent) | Opus | UX acceptance requires strong reasoning |
-| Poirot | Opus | Blind review with no context requires strongest reasoning |
-| Distillator | Haiku | Mechanical compression, no judgment needed |
-| Ellis | Sonnet | Read diff, write message, run git -- zero ambiguity |
-
-**Size-dependent agents:**
-
-| Agent | Small | Medium | Large |
-|-------|-------|--------|-------|
-| Cal | (skipped) | Opus | Opus |
-| Colby | Sonnet | Sonnet | Opus |
-| Agatha | Per doc type | Per doc type | Per doc type |
+| Agent | Micro | Small | Medium | Large |
+|-------|-------|-------|--------|-------|
+| Cal | (skipped) | (skipped) | Opus | Opus |
+| Colby | Haiku | Sonnet | Sonnet | Opus |
+| Ellis | Haiku | Haiku | Haiku | Haiku |
+| Agatha | (skipped) | Per doc type | Per doc type | Per doc type |
 
 Agatha uses Haiku for reference docs (API, config, changelogs) and Sonnet for conceptual docs (architecture guides, tutorials).
 
+**Base-model agents (before classifier runs):**
+
+| Agent | Base Model | Classifier override |
+|-------|------------|---------------------|
+| Roz | Sonnet | +2 full sweep, -1 scoped rerun |
+| Poirot | Sonnet | +2 at final review juncture |
+| Robert (subagent) | Sonnet | +2 on Large pipeline |
+| Sable (subagent) | Sonnet | +2 on Large pipeline |
+| Sentinel | Sonnet | +2 from universal auth/security signal |
+| Distillator | Haiku | Classifier exempt -- always Haiku |
+
+**Universal scope classifier** (applies to all non-exempt agents on Small/Medium pipelines; Large skips the classifier and runs every agent at Opus):
+
+| Signal | Score |
+|--------|-------|
+| Wave/unit touches <= 2 files | +0 |
+| Wave/unit touches 3-5 files | +1 |
+| Wave/unit touches 6+ files | +2 |
+| Task involves auth/security/crypto | +2 |
+| Task involves state machine or complex flow | +2 |
+| Task involves new module/service creation | +2 |
+| Task is mechanical (rename, format, config) | -2 |
+| Brain shows Sonnet failures on similar tasks for this agent | +3 |
+
+Score >= 3 promotes to Opus. Score < 3 uses the base model. Agent-specific overrides are applied on top of the universal score.
+
 **Enforcement rules:**
-- Ambiguous sizing defaults UP (Opus until confirmed)
+- Ambiguous sizing defaults UP (Opus until confirmed; all base-model agents treated as Large)
 - Sizing changes propagate immediately to subsequent invocations
 - Explicit model parameter required in every Agent tool invocation
 
@@ -459,7 +479,7 @@ Eva maintains five files in `docs/pipeline/`:
 
 | File | Purpose | Reset Behavior |
 |------|---------|----------------|
-| `pipeline-state.md` | Unit-by-unit progress tracker. Updated after each phase transition. Enables session recovery. Every update includes a "Changes since last state" section: new files created, files modified, requirements closed, and the agent that produced the change. This makes transitions auditable and prevents silent drift. | Never reset automatically |
+| `pipeline-state.md` | Wave-level progress tracker. Updated after each wave completes (not after each unit -- unit progress is tracked in memory within a wave). Every update includes a "Changes since last state" section: new files created, files modified, requirements closed, and the agent that produced the change. If the session crashes mid-wave, recovery restarts from the wave boundary. | Never reset automatically |
 | `context-brief.md` | Conversational decisions, corrections, user preferences, rejected alternatives. | Reset at start of each new feature pipeline |
 | `error-patterns.md` | Post-pipeline error log categorized by type. Recurrence tracking for WARN injection. | Append-only |
 | `investigation-ledger.md` | Debug hypothesis tracking. Records each theory, layer, evidence, outcome. | Reset at start of each new investigation |
@@ -532,51 +552,63 @@ Roz's 18 QA checks (6 Tier 1 mechanical + 12 Tier 2 judgment) are extracted to a
 
 ## Continuous QA Flow
 
-The continuous QA model replaces the old batch model (Colby builds everything, then Roz reviews everything). Cal's ADR steps become work units, and each unit goes through its own build-test cycle.
+The build phase is organized into waves. Each wave contains one or more ADR steps (work units) that are independent of each other. Ceremony is batched at wave boundaries rather than applied per unit -- this reduces total agent invocations on multi-step features while keeping quality gates intact.
 
-### Pre-Build: Roz-First TDD
+### Pre-Build: Roz Test Authoring (per wave)
 
-1. Eva invokes Roz in Test Authoring Mode for unit N's ADR step
-2. Roz reads Cal's test spec, existing code, and the product spec
-3. Roz writes test files with concrete assertions defining correct behavior
-4. Tests are expected to fail -- they define the target state, not current behavior
+1. Eva batches ADR steps into waves based on independence (no shared files between units in the same wave)
+2. Eva invokes Roz in Test Authoring Mode once for all units in the wave
+3. Roz reads Cal's test specs, existing code, and the product spec for all units in the wave
+4. Roz writes test files for every unit in the wave. Tests are expected to fail -- they define the target state, not current behavior
 5. Roz asserts what code SHOULD do (domain intent), not what it currently does
 
-### Build + QA Interleaving
+### Build Phase (per unit within a wave)
 
-1. Eva invokes Colby for unit 1 with Roz's test files as the target
-2. Colby runs Roz's tests first to confirm they fail for the right reason (missing implementation, not a test bug or environment issue). If a test passes before any implementation, Colby flags it.
+1. Eva invokes Colby for each unit with Roz's test files as the target
+2. Colby runs lint and typecheck only (not the full test suite) after each unit build -- fast mechanical checks, not a QA gate
 3. Colby implements to make Roz's tests pass (may add edge-case tests, but NEVER modifies Roz's assertions)
-4. When Colby finishes unit 1, Eva invokes **Roz** (full context) and **Poirot** (diff only) in PARALLEL
+
+### Wave QA (at wave boundary)
+
+After all units in the wave are built:
+
+4. Eva invokes **Roz** (full context, full test suite) and **Poirot** (cumulative wave diff only) in PARALLEL
 5. Eva triages findings from both agents, deduplicates, classifies severity
-6. If Roz or Poirot flags issues, Eva queues fixes. Colby finishes current unit, then addresses fixes before starting the next unit
-7. Eva updates `pipeline-state.md` after each unit transition
+6. If Roz or Poirot flags issues, Eva queues fixes to Colby. All fixes resolved before advancing to the next wave
+7. Eva invokes **Ellis** for a per-wave commit after Roz QA PASS
+8. Eva writes `pipeline-state.md` once per wave (not per unit)
 
 ### Post-Build Pipeline Tail
 
-7. Review juncture: Roz final sweep + Poirot + Robert-subagent + Sable-subagent (Large) in parallel
-8. Eva triages all findings, routes fixes to Colby if needed, re-runs Roz
-9. Agatha writes/updates docs against final verified code
-10. Robert-subagent verifies Agatha's docs against spec
-11. If DRIFT flagged: hard pause, human decides fix code or update living artifact
-12. Ellis commits: code + docs + updated specs/UX in one atomic commit
+9. Review juncture: Roz final sweep + Poirot + Robert-subagent + Sable-subagent (Large) + Sentinel (if enabled) in parallel
+10. Eva triages all findings, routes fixes to Colby if needed, re-runs Roz
+11. Agatha writes/updates docs against final verified code
+12. Robert-subagent verifies Agatha's docs against spec
+13. If DRIFT flagged: hard pause, human decides fix code or update living artifact
+14. Ellis final commit: code + docs + updated specs/UX in one atomic commit
 
 ### Non-Code Steps
 
-ADR steps that produce no testable application code (schema DDL, agent instruction files, configuration, migration scripts) follow a different flow. Eva identifies these at the start of the build phase and handles them separately:
+ADR steps that produce no testable application code (schema DDL, agent instruction files, configuration, migration scripts) follow a different flow. Eva identifies these at wave-grouping time and handles them separately:
 
-1. Roz test spec review and test authoring are skipped for those steps
-2. Colby implements the non-code step
-3. Roz reviews in verification mode -- checking ADR acceptance criteria are met, not running code QA checks
+1. Roz test authoring is skipped for non-code steps in the wave
+2. Colby implements the non-code steps
+3. Roz reviews in verification mode at wave boundary -- checking ADR acceptance criteria are met, not running code QA checks
 4. Agatha runs after Roz passes, sequentially (no parallel launch because there is no Roz test spec approval to gate it)
 
-Mixed ADRs (some code steps, some non-code steps) are split: code steps follow the standard TDD flow above, non-code steps follow this flow. Both must pass before advancing to the review juncture and Ellis.
+Mixed ADRs (some code steps, some non-code steps) are split across waves or handled within the same wave with separate Roz invocation modes. Both must pass before advancing to the review juncture and Ellis.
 
 ### Key Rules
 
 - **Colby NEVER modifies Roz's test assertions.** If a test fails against existing code, the code has a bug -- Colby fixes the code.
-- **Roz final sweep is mandatory** even after all units pass individual review, to catch cross-unit integration issues.
-- **Pre-commit sweep:** Eva checks all Roz reports for unresolved MUST-FIX items. Zero open items required before Ellis.
+- **Roz test authoring is batched per wave.** Roz authors tests for all units in the wave upfront, not one unit at a time.
+- **Roz QA and Poirot run at wave boundaries.** Individual units get lint+typecheck from Colby (fast feedback), not a full Roz invocation.
+- **Sentinel runs at the review juncture only.** Sentinel does not run per-wave alongside Roz and Poirot.
+- **Ellis commits per wave.** Ellis commits after each wave's Roz QA PASS, then again at pipeline end for the full tail (docs, reconciliation).
+- **State writes are batched per wave.** Eva writes `pipeline-state.md` once per wave, not after each unit. Unit progress is tracked in memory.
+- **Brain prefetch is per wave.** Eva calls `agent_search` once at the start of each wave and injects results into all agent invocations within that wave. There is no per-invocation brain prefetch.
+- **Roz final sweep is mandatory** at the review juncture, even after all waves pass, to catch cross-wave integration issues.
+- **Pre-commit sweep:** Eva checks all Roz reports for unresolved MUST-FIX items. Zero open items required before Ellis final commit.
 
 ### Feedback Loop Routing
 
@@ -746,6 +778,8 @@ Agents write their own domain-specific captures directly using their own `source
 - Phase transitions with outcome summaries
 - Cross-agent pattern convergence (e.g., Roz and Robert both flag the same drift)
 - Deploy/infra outcomes
+
+**Brain operations are batched per wave.** Eva calls `agent_search` once at the start of each wave (not per agent invocation) and injects the results into all invocations within that wave. Tier 1 telemetry is accumulated in-memory only during a wave (no per-invocation brain capture). Tier 2 is captured once per wave after Roz QA PASS. State writes to `pipeline-state.md` happen at wave boundaries, not unit boundaries.
 - Poirot's findings (Poirot himself never touches brain)
 - Context brief entries (preferences, corrections, rejected alternatives)
 - Handoff briefs at pipeline end or on explicit handoff trigger
@@ -840,7 +874,7 @@ The server's `THOUGHT_TYPES` and `SOURCE_PHASES` Zod validation arrays in `brain
 
 If Claude Code is closed mid-pipeline and reopened, Eva recovers by reading the state files:
 
-1. **`pipeline-state.md`** tells Eva the current feature, phase, and unit-by-unit progress
+1. **`pipeline-state.md`** tells Eva the current feature, phase, and wave-by-wave progress
 2. **`context-brief.md`** restores conversational decisions and user preferences
 3. **`error-patterns.md`** identifies recurring issues for WARN injection
 4. **Existing artifacts on disk** (specs, ADRs, code changes) confirm what has been produced
@@ -1003,7 +1037,9 @@ The selected strategy is persisted in `.claude/pipeline-config.json`:
   "base_branch": "main",
   "integration_branch": "main",
   "sentinel_enabled": false,
-  "agent_teams_enabled": false
+  "agent_teams_enabled": false,
+  "deps_agent_enabled": false,
+  "darwin_enabled": false
 }
 ```
 
@@ -1019,6 +1055,8 @@ The selected strategy is persisted in `.claude/pipeline-config.json`:
 | `integration_branch` | Branch that receives feature work. Same as `base_branch` for most strategies; `develop` for GitFlow |
 | `sentinel_enabled` | Enable Sentinel security agent. Set by `/pipeline-setup` Step 6a. Default: `false` |
 | `agent_teams_enabled` | Enable Agent Teams parallel wave execution. Set by `/pipeline-setup` Step 6b. Default: `false` |
+| `deps_agent_enabled` | Enable Deps dependency scan agent. Set by `/pipeline-setup` Step 6d. Default: `false` |
+| `darwin_enabled` | Enable Darwin self-evolving pipeline engine. Requires brain. Set by `/pipeline-setup`. Default: `false` |
 
 Eva reads this file during the session boot sequence. Colby reads it to determine branch naming conventions and merge targets. Ellis reads it to determine commit targets.
 
@@ -1201,10 +1239,9 @@ Sentinel is an opt-in security audit agent backed by Semgrep MCP static analysis
 
 ### Execution Points
 
-Sentinel runs at two points in the pipeline:
+Sentinel runs at one point in the pipeline:
 
-1. **Per build unit:** In parallel with Roz QA and Poirot blind review after each Colby build unit (gate 5)
-2. **Review juncture:** In parallel with Roz final sweep, Poirot, Robert-subagent, and Sable-subagent
+1. **Review juncture only:** In parallel with Roz final sweep, Poirot, Robert-subagent, and Sable-subagent. Sentinel does not run per-wave alongside Roz and Poirot -- the review juncture is the single security gate.
 
 ### Workflow
 
@@ -1275,7 +1312,7 @@ Teammates are Colby instances. They load Colby's persona from `.claude/agents/co
 3. Each Teammate marks its task complete via `TaskUpdate`
 4. `TaskCompleted` events fire on Eva (Team Lead). Eva processes them sequentially.
 5. After all Teammates in the wave complete, Eva merges each worktree sequentially (deterministic merge order matches task creation order)
-6. Roz QA + Poirot blind review run per unit after merge (unchanged)
+6. Roz wave QA + Poirot blind review run after all Teammates in the wave merge (wave boundary, same as sequential flow)
 
 ### Worktree Rules
 
@@ -1290,9 +1327,9 @@ When `agent_teams_available: false`, Eva falls back to sequential subagent invoc
 
 ### Mandatory Gate Notes
 
-- Gate 2 (Ellis commits): Teammates do NOT commit. They execute the build and mark task complete. Eva merges worktrees, then routes to Ellis for per-unit commits.
-- Gate 3 (test suite): Teammates run lint but NOT the full test suite. Roz runs the full suite on the integrated codebase after each merge.
-- Gate 5 (Poirot): Poirot blind-reviews the merged diff per unit, not the Teammate's isolated worktree diff.
+- Gate 2 (Ellis commits): Teammates do NOT commit. They execute the build and mark task complete. Eva merges worktrees, then routes to Ellis for per-wave commits after Roz QA PASS on the integrated result.
+- Gate 3 (test suite): Teammates run lint+typecheck only. Roz runs the full suite on the integrated codebase after all Teammate worktrees in the wave are merged (wave boundary, not unit boundary).
+- Gate 5 (Poirot): Poirot blind-reviews the cumulative wave diff after all Teammates' worktrees are merged, not the individual Teammate worktree diff.
 
 ---
 
@@ -1499,6 +1536,69 @@ Deps does not touch the brain directly. Eva captures scan results post-invocatio
 
 ---
 
+## Darwin Agent
+
+### Overview
+
+Darwin (v3.10) is an opt-in, read-only pipeline evolution agent. It analyzes telemetry data (all three tiers) and error patterns to produce evidence-backed structural improvement proposals targeting agent personas, orchestration rules, invocation templates, model assignments, and quality gates. Darwin never modifies files -- all proposals require user approval and are implemented by Colby.
+
+Design rationale: ADR-0016. Darwin is activated automatically at pipeline end when degradation alerts fire, or invoked on demand.
+
+**Model:** Opus (fixed). **Pronouns:** they/them.
+
+### Configuration
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `darwin_enabled` | boolean | `false` | Master toggle. Darwin only activates when `true` and `brain_available: true`. |
+
+### Auto-Trigger (at pipeline end)
+
+After the pipeline-end telemetry summary, Darwin auto-triggers when all of the following are true:
+1. `darwin_enabled: true` in `pipeline-config.json`
+2. `brain_available: true`
+3. At least one degradation alert fired in the telemetry summary
+4. Pipeline sizing is not Micro
+
+When auto-triggered, Eva announces: "Degradation detected. Running Darwin analysis..." and invokes Darwin using the `darwin-analysis` invocation template.
+
+### On-Demand Invocation
+
+Eva routes to Darwin on these user intent patterns (when `darwin_enabled: true`):
+
+| User intent | Route |
+|-------------|-------|
+| "Analyze the pipeline" | Darwin |
+| "How are agents performing?" | Darwin |
+| "Pipeline health" | Darwin |
+| "Run Darwin" | Darwin |
+| "What needs improving?" | Darwin |
+
+When `darwin_enabled: false`, Eva suggests enabling it via `/pipeline-setup`.
+
+### Workflow
+
+1. Darwin reads injected Tier 3 telemetry from the last N pipelines (provided by Eva in the invocation)
+2. Darwin reads `error-patterns.md` for recurring failure patterns and recurrence counts
+3. Darwin reads `retro-lessons.md` for codified operational lessons
+4. Darwin reads prior Darwin proposals and their outcomes (from brain)
+5. Darwin evaluates agent fitness across metrics (first-pass QA rate, rework rate, EvoScore)
+6. Darwin produces proposals ranked by expected impact at escalating intervention levels
+
+### Proposal Handling
+
+Eva presents proposals to the user one at a time. Each proposal can be approved, rejected (with reason), or modified (reject-then-repropose cycle). This is a hard pause -- Eva does not auto-advance past Darwin proposals.
+
+For approved proposals: Eva captures the approval, routes to Colby for implementation, Roz verifies, Ellis commits.
+
+For rejected proposals: Eva captures the rejection with the user's reason. Rejection metadata includes `rejected: true` and the rejection reason, so future Darwin sessions know what was already tried.
+
+### Brain Integration
+
+Darwin does not touch the brain directly. Eva captures proposals and their outcomes via `agent_capture` with `source_agent: 'eva'`, `source_phase: 'darwin'`, using `thought_type: 'decision'` for approved proposals and for rejections. Metadata includes `darwin_proposal_id` for traceability and, for approved proposals, a `baseline_value` of the target metric at approval time for future post-edit tracking.
+
+---
+
 ## Agent Telemetry
 
 ### Overview
@@ -1511,9 +1611,9 @@ Design rationale: ADR-0014. This feature subsumes the previously separate EvoSco
 
 Telemetry is organized into four tiers, each captured at a different granularity:
 
-#### Tier 1: Per-Invocation
+#### Tier 1: Per-Invocation (in-memory only)
 
-Captured after every Agent tool completion. Key fields:
+Accumulated after every Agent tool completion. Eva does NOT call `agent_capture` per invocation -- Tier 1 data is held in-memory and captured in bulk as part of the Tier 2 record at wave end. Key fields:
 
 | Field | Type | Source |
 |-------|------|--------|
@@ -1527,9 +1627,9 @@ Captured after every Agent tool completion. Key fields:
 
 Full schema: `.claude/references/telemetry-metrics.md`.
 
-#### Tier 2: Per-Unit
+#### Tier 2: Per-Wave
 
-Captured after each work unit completes Roz QA PASS. Aggregated from Tier 1. Key fields:
+Captured once after each wave passes Roz QA PASS (not per unit). Includes per-unit breakdowns as array fields in metadata. Aggregated from in-memory Tier 1 accumulator. Key fields:
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -1809,40 +1909,62 @@ When a user pastes markdown containing an agent definition pattern, Eva recogniz
 
 ### Overview
 
-Observation masking (v3.6) is Eva's primary within-session context hygiene procedure. It replaces superseded tool outputs with structured placeholders while preserving all agent reasoning text verbatim.
+Observation masking (v3.6, extended in v3.15) is Eva's primary within-session context hygiene procedure. It replaces full agent outputs with structured receipts after Eva processes them, and replaces superseded tool outputs with structured placeholders.
 
-**Design principle:** Mechanical substitution, not intelligent compression. Replacing an old grep result with a placeholder requires no judgment.
+**Design principle:** Mechanical substitution, not intelligent compression. The full agent output remains available on disk or in the brain. Eva re-reads from disk only when constructing a downstream invocation.
 
-### Never Mask (preserved verbatim)
+### Agent Output Masking (receipts)
 
-1. All agent reasoning, analysis, decisions, and conclusions (any text an agent produced as output, not tool output)
+After processing each agent's return, Eva replaces the full output in her working context with a structured receipt. The full output remains on disk (in files the agent wrote, in `docs/pipeline/last-qa-report.md`, or in brain captures). Eva re-reads from disk only when she needs detail for a downstream invocation.
+
+**Receipt format per agent:**
+
+| Agent | Receipt Format |
+|-------|---------------|
+| **Cal** | `Cal: ADR at {path}, {N} steps, {N} tests specified` |
+| **Colby** | `Colby: Unit {N} DONE, {N} files changed, lint {PASS/FAIL}, typecheck {PASS/FAIL}` |
+| **Roz** | `Roz: Wave {N} {PASS/FAIL}, {N} blockers, {N} must-fix, {N} suggestions. Report: last-qa-report.md` |
+| **Poirot** | `Poirot: Wave {N} {N} findings ({N} BLOCKER, {N} MUST-FIX, {N} NIT)` |
+| **Sentinel** | `Sentinel: {N} findings ({CWE refs}). {N} BLOCKERs.` |
+| **Ellis** | `Ellis: Committed {hash} on {branch}, {N} files` |
+| **Robert** | `Robert: {N} criteria -- {N} PASS, {N} DRIFT, {N} MISSING, {N} AMBIGUOUS` |
+| **Sable** | `Sable: {N} screens -- {N} PASS, {N} DRIFT, {N} MISSING` |
+| **Agatha** | `Agatha: Written {paths}, updated {paths}` |
+| **Distillator** | `Distillator: {source} compressed {ratio}. Output: {path}` |
+| **Darwin** | `Darwin: {N} proposals at escalation levels {list}` |
+
+Eva extracts the verdict, counts, file paths, and key decisions into the receipt, updates `pipeline-state.md`, and drops the full output from working context. Brain captures still use the full output data (captured before masking).
+
+### Tool Output Masking (placeholders)
+
+Never mask:
+1. All agent reasoning, analysis, decisions, and conclusions
 2. The most recent instance of each unique file read (keyed by file path)
 3. The most recent Bash output for each distinct command
 4. The most recent Grep result for each distinct query
 5. Any tool output referenced in an active BLOCKER or MUST-FIX finding
 6. Content of `pipeline-state.md` and `context-brief.md` (always-live state)
 
-### Mask (replace with placeholder)
-
+Mask (replace with placeholder):
 1. File read outputs superseded by a more recent read of the same path
 2. Tool outputs from completed pipeline phases
 3. Verbose Bash outputs (build logs, test suite outputs) after Eva has extracted the verdict
-4. Git diff outputs after Roz and Poirot have completed their review of that unit
+4. Git diff outputs after Roz and Poirot have completed their wave review
 
-### Placeholder Format
-
+Placeholder format:
 ```
 [masked: {tool} {target}, {size} lines, turn {N}. Re-read: {recovery_command}]
 ```
 
-### Scope Change: Distillator vs. Observation Masking
+### Scope: Distillator vs. Observation Masking
 
 | Context type | Mechanism | When |
 |-------------|-----------|------|
 | Within-session tool outputs (file reads, grep, bash) | Observation masking | Before each subagent invocation and at phase transitions |
+| Full agent outputs | Agent output masking (receipts) | After processing each agent return |
 | Cross-phase structured documents (spec, UX doc, ADR) | Distillator compression | At phase boundaries when documents exceed ~5K tokens |
 
-Distillator is reserved for structured document compression where lossless preservation of decisions, constraints, and relationships matters. Within-session tool outputs use observation masking.
+Distillator is reserved for structured document compression where lossless preservation of decisions, constraints, and relationships matters. Within-session tool outputs and agent outputs use masking.
 
 ---
 

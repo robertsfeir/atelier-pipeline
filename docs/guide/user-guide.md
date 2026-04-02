@@ -1,6 +1,6 @@
 # Atelier Pipeline -- User Guide
 
-A structured, multi-agent development workflow for Claude Code. Twelve specialized agents handle product specs, UX design, architecture, implementation, QA, security audit, dependency management, documentation, and commits -- so you focus on decisions, not process.
+A structured, multi-agent development workflow for Claude Code and Cursor. Twelve specialized agents handle product specs, UX design, architecture, implementation, QA, security audit, dependency management, documentation, and commits -- so you focus on decisions, not process.
 
 ---
 
@@ -22,6 +22,7 @@ A structured, multi-agent development workflow for Claude Code. Twelve specializ
 - [Agent Teams](#agent-teams)
 - [CI Watch](#ci-watch)
 - [Deps Agent](#deps-agent)
+- [Darwin Agent](#darwin-agent)
 - [Agent Telemetry](#agent-telemetry)
 - [Dashboard](#dashboard)
 - [Telemetry Hydration](#telemetry-hydration)
@@ -39,6 +40,8 @@ A structured, multi-agent development workflow for Claude Code. Twelve specializ
 
 ### 1. Install the plugin
 
+**Claude Code:**
+
 ```
 /plugin marketplace add robertsfeir/atelier-pipeline
 /plugin install atelier-pipeline@atelier-pipeline
@@ -46,9 +49,25 @@ A structured, multi-agent development workflow for Claude Code. Twelve specializ
 
 Restart Claude Code after install.
 
+**Cursor:**
+
+Install from the Cursor Marketplace -- search "atelier-pipeline".
+
+Or manually:
+
+```bash
+git clone https://github.com/robertsfeir/atelier-pipeline.git /tmp/atelier-pipeline
+```
+
+Then in Cursor:
+
+```
+Read /tmp/atelier-pipeline/.cursor-plugin/skills/pipeline-setup/SKILL.md and follow its instructions
+```
+
 ### 2. Set up the pipeline in your project
 
-Open Claude Code in your project directory and run:
+Open your IDE (Claude Code or Cursor) in your project directory and run:
 
 ```
 /pipeline-setup
@@ -86,8 +105,9 @@ The pipeline gives you a team of specialized agents, each with a clear job. You 
 | **Agatha** | Documentation Specialist | Plans and writes documentation in parallel with the build. |
 | **Ellis** | Commit Manager | Creates atomic commits with Conventional Commits format and updates the changelog. |
 | **Distillator** | Compression Engine | Compresses large structured documents (spec, UX doc, ADR) at phase boundaries when they exceed ~5K tokens. |
-| **Sentinel** | Security Auditor (opt-in) | Scans changed code for vulnerabilities using Semgrep MCP static analysis. Runs in parallel with Roz and Poirot. |
+| **Sentinel** | Security Auditor (opt-in) | Scans changed code for vulnerabilities using Semgrep MCP static analysis. Runs at the review juncture. |
 | **Deps** | Dependency Manager (opt-in) | Scans dependency manifests, checks CVEs, predicts upgrade breakage, and produces risk-grouped reports. |
+| **Darwin** | Pipeline Evolution Engine (opt-in) | Queries telemetry from the brain, evaluates agent fitness, and proposes structural improvements to the pipeline itself. Requires the brain. |
 
 ### The flow
 
@@ -102,12 +122,15 @@ Your idea
   -> You review the mockup in-browser (UAT)
   -> Cal architects the solution (ADR + test spec)
   -> Roz reviews the test spec
-  -> Roz writes test assertions
-  -> Colby builds + Roz reviews + Poirot + Sentinel  (interleaved)
-  -> Roz final sweep + Poirot + Robert + Sable + Sentinel     (parallel review juncture)
+  -> [Per wave]
+       Roz writes test assertions for all units in the wave
+       Colby builds each unit (lint + typecheck only per unit)
+       Roz QA + Poirot blind review run for the whole wave  (parallel)
+       Ellis commits the wave
+  -> Roz final sweep + Poirot + Robert + Sable + Sentinel  (parallel review juncture)
   -> Agatha writes/updates docs
   -> Robert verifies docs match the spec
-  -> Ellis commits everything atomically
+  -> Ellis creates final delivery commit
 ```
 
 Not every feature goes through every phase. See [Phase Sizing](#phase-sizing) for how Eva adjusts. When an ADR step produces non-code artifacts only (schema DDL, configuration, migration scripts, agent instruction files), the Roz test spec and test authoring phases are skipped for that step -- Colby implements, Roz verifies against ADR requirements, and Agatha follows sequentially.
@@ -128,6 +151,7 @@ These are installed into your project by `/pipeline-setup`. Use them to invoke a
 | `/docs` | Agatha | Plan what documentation a feature needs |
 | `/devops` | Eva | Handle infrastructure, CI/CD, deployment |
 | `/deps` | Deps | Scan dependencies for outdated packages, CVEs, and upgrade risk |
+| `/darwin` | Darwin | Analyze telemetry, evaluate agent fitness, and propose pipeline improvements |
 | `/telemetry-hydrate` | Eva | Manually capture agent telemetry from session files into the brain |
 | `/dashboard` | Eva | Open the Atelier Dashboard in the browser (starts brain HTTP server if needed) |
 
@@ -151,7 +175,7 @@ Slash commands are useful when Eva's auto-routing picks the wrong agent, or when
 
 ### Conversational agents (skills)
 
-Robert, Sable, Cal (clarification mode), and Agatha (planning mode) run in the main Claude Code thread. They have a conversation with you.
+Robert, Sable, Cal (clarification mode), and Agatha (planning mode) run in the main IDE thread. They have a conversation with you.
 
 **Example: Working with Robert**
 
@@ -187,17 +211,21 @@ Colby, Roz, Poirot, Ellis, and Distillator run in their own context windows. Eva
 **Example: What you see during the build phase**
 
 ```
-Eva: Colby completed ADR Step 1 (data model + migration). Invoking Roz
-for scoped review.
+Eva: Wave 1 (Steps 1-2 are independent). Roz writing tests for both units.
 
-Eva: Roz passed Step 1. Moving to Step 2 (API endpoints).
+Eva: Colby built Step 1 (data model + migration). Lint PASS, typecheck PASS.
 
-Eva: Colby completed Step 2. Invoking Roz for scoped review.
+Eva: Colby built Step 2 (API endpoints). Lint PASS, typecheck PASS.
 
-Eva: Roz flagged a MUST-FIX on Step 2 -- the PATCH endpoint does not
-validate email format before saving. Queuing fix for Colby.
+Eva: Invoking Roz QA and Poirot blind review for Wave 1.
 
-Eva: Colby fixed the validation. Roz scoped re-run passed. Moving to Step 3.
+Eva: Roz: Wave 1 PASS, 0 blockers, 1 must-fix, 2 suggestions. Report: last-qa-report.md
+Eva: Poirot: Wave 1 2 findings (0 BLOCKER, 1 MUST-FIX, 1 NIT)
+
+Eva: Convergent MUST-FIX: the PATCH endpoint does not validate email format.
+Queuing fix for Colby.
+
+Eva: Colby fixed the validation. Roz scoped re-run passed. Ellis committing Wave 1.
 ```
 
 ### Interacting during a pipeline
@@ -275,21 +303,21 @@ After you approve the mockup, Cal architects only the backend and data wiring. T
 
 ### Continuous QA
 
-Colby and Roz work in lockstep. Each ADR step is a work unit:
+Cal's ADR steps are grouped into waves based on file independence. QA ceremonies happen at the wave boundary, not per unit:
 
-1. Roz writes test assertions for the step
-2. Colby runs those tests to confirm they fail (verifying the test is correct before implementing)
-3. Colby implements to pass the tests
-4. Roz reviews Colby's output
-5. Issues are caught and fixed immediately, before the next step
+1. **Roz writes test assertions for all units in the wave** before Colby builds anything
+2. **Colby builds each unit** and runs only lint and typecheck as a fast sanity check -- not the full test suite
+3. **After all units in the wave are built**, Eva invokes Roz (full QA) and Poirot (blind diff review) in parallel for the entire wave
+4. Issues are caught and fixed at wave boundaries, before the next wave begins
+5. **Ellis commits the wave** after Roz and Poirot pass
 
-This prevents a bad pattern in step 2 from spreading to steps 3 through 6.
+This prevents regressions from spreading across waves while avoiding per-unit full-suite overhead.
 
-After all steps pass, Roz does a final sweep to catch cross-step integration issues. Poirot independently reviews the full diff. When Sentinel is enabled, it scans all changed files for security vulnerabilities. Robert verifies the implementation matches the spec. On large features, Sable verifies the implementation matches her UX doc.
+After all waves complete, Roz does a final sweep, Poirot reviews the full pipeline diff, Robert verifies the implementation matches the spec, and on large features, Sable verifies it matches her UX doc. When Sentinel is enabled, it runs here at the review juncture -- not during the build phase.
 
 ### Commit
 
-Ellis creates one atomic commit with all code, tests, documentation, and updated specs. Ellis uses Conventional Commits format with a human-readable narrative body.
+Ellis commits each wave on the feature branch using wave commit mode. At the final review juncture, Ellis creates a merge commit or squash to main. Ellis uses Conventional Commits format with a human-readable narrative body.
 
 Eva asks for your approval before pushing to the remote.
 
@@ -382,13 +410,13 @@ Several capabilities improve pipeline velocity and institutional memory:
 
 **Robert assumptions-mode.** When a feature touches existing code (brownfield), Robert reads the codebase first and presents his understanding as assumptions. You correct what is wrong instead of answering discovery questions from scratch. Greenfield features retain the standard question-first flow. When the Brain is available, Robert also draws on prior decisions and preferences to form better assumptions.
 
-**Wave execution.** When an ADR has independent steps (no shared files), Eva groups them into waves and executes steps within each wave in parallel. Dependent steps sequence across waves. All quality gates are preserved within each wave. Eva falls back to sequential execution if file overlap is detected mid-build.
+**Wave execution.** When an ADR has independent steps (no shared files), Eva groups them into waves and executes steps within each wave in parallel. Dependent steps sequence across waves. Roz writes tests and runs QA per wave (covering all units in the wave at once). Poirot blind-reviews the cumulative wave diff after all units are built. Sentinel runs once at the review juncture, not per wave. Ellis commits per wave. Eva falls back to sequential execution if file overlap is detected mid-build.
 
-**Per-unit commits.** During the build phase, Ellis commits after each Roz-verified unit instead of waiting until the end. This improves session recovery (resume from last committed unit) and enables `git bisect` to isolate regressions per unit. After the review juncture, Ellis creates a merge commit or squash to main.
+**Per-wave commits.** During the build phase, Ellis commits after each wave passes QA (not per unit). This preserves wave history on the feature branch for `git bisect` while reducing commit ceremony. After the review juncture, Ellis creates a merge commit or squash to main.
 
 **Triage consensus matrix.** Eva's review juncture triage is mechanical, not discretionary. A lookup table maps every combination of reviewer verdict and severity to a specific action. Roz BLOCKER always halts. Roz PASS plus Poirot flags an issue is treated as a context-anchoring miss (MUST-FIX minimum). Convergent DRIFT from Robert and Sable is escalated with both reports.
 
-**Task-level model routing.** Eva scores each ADR step's complexity before invoking Colby. High-complexity steps on Small and Medium pipelines get promoted to Opus. Low-complexity steps stay on Sonnet. Roz, Poirot, Robert, and Sable model assignments are never changed.
+**Universal model classifier.** Eva scores every agent invocation (not just Colby) before dispatching. A shared complexity score -- based on file count, security surface, state machine complexity, and brain-recorded failure history -- determines whether an agent runs at its base model or gets promoted to Opus. Roz, Poirot, Robert, Sable, and Sentinel all start at Sonnet and promote to Opus when the score crosses the threshold. Ellis is always Haiku (no classifier). Distillator is always Haiku. Large pipelines skip the classifier -- all agents run at Opus.
 
 **Brain pattern and seed types.** Two new Brain thought types: `pattern` (reusable implementation approaches captured by Colby, searched by all code-touching agents) and `seed` (out-of-scope ideas captured during any phase, surfaced at pipeline start when a related feature area begins).
 
@@ -418,6 +446,20 @@ Several capabilities improve pipeline velocity and institutional memory:
 
 **Colby: minimal implementation.** Colby implements the minimum code necessary to pass the current failing test. Helper functions, utility abstractions, and convenience wrappers not required by the ADR step or failing test are noted in the DoD but not built.
 
+### New in v3.15
+
+**Dual-platform support.** The pipeline now installs into Claude Code and Cursor IDE with full feature parity. Install from the Cursor Marketplace or manually using the `.cursor-plugin/` skill. Same agents, hooks, brain, and commands on both IDEs.
+
+**Wave-based build ceremony.** QA, blind review, and commits now happen per wave instead of per unit. Roz writes tests for all units in a wave before Colby builds. Colby builds each unit and runs only lint + typecheck (not the full test suite) per unit. After all units in a wave are built, Roz QA and Poirot blind review run in parallel for the whole wave. Sentinel runs at the review juncture only -- not during the build phase. Ellis commits per wave, not per unit.
+
+**Universal model classifier.** The complexity-based classifier that previously applied only to Colby now applies to every agent. Roz, Poirot, Robert, Sable, and Sentinel all start at Sonnet and promote to Opus when the score crosses the threshold (scope, security surface, state machine complexity, or brain-recorded Sonnet failures). Ellis is always Haiku. Large pipelines skip the classifier and run all agents at Opus.
+
+**Agent output masking.** After processing each agent's return, Eva replaces the full output with a one-line receipt in her working context. Full output stays on disk (files, `last-qa-report.md`, brain captures). Eva re-reads from disk only when building the next agent's invocation. This dramatically reduces context consumption across long pipelines without losing information.
+
+**JIT rule loading.** Eva's operational rules file (`pipeline-orchestration.md`) uses just-in-time loading. Sections are marked `[ALWAYS]` (loaded on pipeline activation) or `[JIT]` (loaded only when the trigger condition is met -- debug flow entered, pipeline end, first state write, etc.). This keeps Eva's context lean at pipeline start.
+
+**Darwin agent documented.** Darwin is now a fully documented optional agent. Run `/darwin` to analyze telemetry, evaluate agent fitness, and receive proposed pipeline improvements. See [Darwin Agent](#darwin-agent).
+
 ### New in v3.7
 
 **Uninstall skills.** Two new skills for clean removal: `/pipeline-uninstall` removes all pipeline files from a project (agent personas, commands, references, hooks, state files) while preserving custom agents and offering to back up retro lessons. `/brain-uninstall` removes or disconnects the Atelier Brain -- it offers a disconnect-only option (remove config, keep the database intact) or a full uninstall that also cleans up the database (Docker container/volume, local PostgreSQL database, or remote tables). Both skills present a full removal plan and require explicit confirmation before touching anything.
@@ -434,7 +476,7 @@ Several capabilities improve pipeline velocity and institutional memory:
 
 ### New in v3.5
 
-**Sentinel security agent (opt-in).** A Semgrep MCP-backed security audit agent. Sentinel runs in parallel with Roz and Poirot after each Colby build unit, scanning changed files for vulnerabilities, injection risks, and security misconfigurations. Findings are cross-referenced with CWE/OWASP classifications. Enable during `/pipeline-setup` (Step 6a) or add `sentinel.md` and set `sentinel_enabled: true` in `pipeline-config.json`. Sentinel failure never blocks the pipeline. See [Sentinel Security Agent](#sentinel-security-agent).
+**Sentinel security agent (opt-in).** A Semgrep MCP-backed security audit agent. Sentinel runs at the review juncture in parallel with Roz final sweep, Poirot, Robert, and Sable -- scanning all changed files for vulnerabilities, injection risks, and security misconfigurations. Findings are cross-referenced with CWE/OWASP classifications. Enable during `/pipeline-setup` (Step 6a) or add `sentinel.md` and set `sentinel_enabled: true` in `pipeline-config.json`. Sentinel failure never blocks the pipeline. See [Sentinel Security Agent](#sentinel-security-agent).
 
 **Agent Teams (experimental).** Parallel wave execution using Claude Code's Agent Teams feature. When enabled, Eva creates Colby Teammate instances that execute independent build units within a wave simultaneously. Two gates must pass: `agent_teams_enabled: true` in pipeline config and `CLAUDE_AGENT_TEAMS=1` in the environment. Falls back to sequential execution transparently when either gate fails. See [Agent Teams](#agent-teams).
 
@@ -464,8 +506,7 @@ Sentinel is an opt-in security audit agent backed by Semgrep MCP static analysis
 
 ### When Sentinel runs
 
-- **Per build unit:** In parallel with Roz QA and Poirot blind review after each Colby build unit
-- **Review juncture:** In parallel with Roz final sweep, Poirot, Robert, and Sable
+- **Review juncture only:** In parallel with Roz final sweep, Poirot, Robert, and Sable -- after all waves complete, not per wave or per unit
 
 ### How Sentinel works
 
@@ -633,6 +674,44 @@ When `deps_agent_enabled: false` (the default), the Deps agent is completely abs
 
 ---
 
+## Darwin Agent
+
+Darwin is an opt-in pipeline evolution engine. It queries telemetry from the brain, evaluates how each agent has been performing, and proposes structural improvements -- to agent personas, model assignments, wave groupings, or ceremony thresholds. It never modifies files without your approval.
+
+### Prerequisites
+
+Darwin requires the Atelier Brain. Without stored telemetry, Darwin has no data to analyze.
+
+### What Darwin does
+
+1. Reads Tier 3 telemetry summaries from the brain (cost, rework rate, first-pass QA rate, EvoScore per pipeline)
+2. Reads agent fitness data (invocation counts, duration, Roz verdicts per agent)
+3. Evaluates degradation signals against configurable thresholds
+4. Proposes targeted changes at escalating confidence levels -- conservative suggestions before structural rewrites
+5. Presents proposals to you one at a time. You approve, reject (with a reason), or modify each one.
+
+### Using /darwin
+
+Run `/darwin` to trigger a manual analysis. You can also ask naturally:
+
+```
+"How are agents performing?"
+"Is the pipeline getting more expensive?"
+"Analyze the last 5 pipelines"
+```
+
+Eva also auto-triggers Darwin at pipeline end when a degradation alert fires (3+ consecutive threshold breaches) and `darwin_enabled: true` is set.
+
+### Enabling Darwin
+
+Set `darwin_enabled: true` in `.claude/pipeline-config.json`, or ask Eva to enable it during a session. Darwin requires the brain to be configured. If `brain_available: false`, Darwin remains unavailable even when the config flag is set.
+
+### When Darwin is disabled
+
+When `darwin_enabled: false` (the default), Darwin is completely absent. No auto-trigger at pipeline end, no `/darwin` routing. Eva announces "Darwin: disabled" at session boot when `darwin_enabled: true` but the brain is unavailable.
+
+---
+
 ## Agent Telemetry
 
 Agent Telemetry gives you visibility into pipeline efficiency -- cost, duration, rework rates, and quality trends across sessions. It requires the Atelier Brain.
@@ -687,7 +766,7 @@ The Atelier Dashboard is a browser-based telemetry visualization page. It shows 
 
 ### Opening the dashboard
 
-Run `/dashboard` in Claude Code. The skill starts the brain HTTP server if it is not already running and opens the dashboard in your default browser at `http://localhost:8788/ui/dashboard.html`.
+Run `/dashboard` in your IDE. The skill starts the brain HTTP server if it is not already running and opens the dashboard in your default browser at `http://localhost:8788/ui/dashboard.html`.
 
 ### What you see
 
@@ -728,7 +807,9 @@ Telemetry hydration reads Claude Code session JSONL files and captures per-agent
 
 ### Automatic hydration
 
-Hydration runs automatically at the start of every Claude Code session via the plugin's SessionStart hook. It runs silently in the background (`--silent` mode) and never blocks session startup. If the brain is not configured or the hydration script encounters an error, it fails silently.
+Hydration runs automatically at the start of every session via the plugin's SessionStart hook. It runs silently in the background (`--silent` mode) and never blocks session startup. If the brain is not configured or the hydration script encounters an error, it fails silently.
+
+> **Note:** Telemetry hydration reads Claude Code session JSONL files. This feature applies to Claude Code only -- Cursor sessions are not currently hydrated automatically.
 
 ### Manual hydration
 
@@ -771,7 +852,7 @@ Eva discovers custom agents at session boot by scanning `.claude/agents/` for no
 ### Adding a custom agent
 
 1. Create a persona file at `.claude/agents/your-agent-name.md` with YAML frontmatter (`name`, `description`, `disallowedTools`)
-2. Restart Claude Code or start a new session
+2. Restart your IDE or start a new session
 3. Eva announces the discovery: "Discovered 1 custom agent(s): your-agent-name -- [description]."
 
 ### Routing
@@ -790,9 +871,24 @@ If you paste markdown containing an agent definition pattern (role description, 
 
 The pipeline uses three complementary strategies to manage context window usage during long sessions.
 
-### Observation masking (within-session, v3.6)
+### Agent output masking (within-session)
 
-Eva's primary context hygiene procedure. Before each subagent invocation and at phase transitions, Eva replaces superseded tool outputs with structured placeholders:
+After processing each agent's return, Eva replaces the full output in her working context with a structured one-line receipt. The full output remains on disk (files the agent wrote, `last-qa-report.md`, brain captures). Eva re-reads from disk only when she needs detail to construct the next agent's invocation.
+
+Example receipts:
+
+```
+Colby: Unit 2 DONE, 4 files changed, lint PASS, typecheck PASS
+Roz: Wave 1 PASS, 0 blockers, 1 must-fix, 2 suggestions. Report: last-qa-report.md
+Poirot: Wave 1 2 findings (0 BLOCKER, 1 MUST-FIX, 1 NIT)
+Ellis: Committed a3f8c12 on feature/dark-mode, 7 files
+```
+
+This keeps Eva's context window lean across long pipelines without losing any information -- everything is on disk.
+
+### File read masking (within-session, v3.6)
+
+Before each subagent invocation and at phase transitions, Eva also replaces superseded file read outputs with structured placeholders:
 
 ```
 [masked: Read src/api/routes.ts, 142 lines, turn 5. Re-read: Read src/api/routes.ts]
@@ -819,7 +915,7 @@ Claude Code's server-side context management handles automatic compaction when t
 
 ## The Atelier Brain
 
-The brain is optional persistent memory that survives across Claude Code sessions. Without it, each session starts fresh. With it, agents recall architectural decisions, user corrections, QA lessons, and rejected alternatives from previous sessions.
+The brain is optional persistent memory that survives across sessions. Without it, each session starts fresh. With it, agents recall architectural decisions, user corrections, QA lessons, and rejected alternatives from previous sessions.
 
 ### Setting up the brain
 
@@ -951,7 +1047,7 @@ Handoff briefs are generated automatically at pipeline completion and on explici
 
 ## State Recovery
 
-If Claude Code is closed mid-pipeline, no work is lost. Eva persists progress to disk and resumes from the last completed phase when you reopen the session.
+If your IDE is closed mid-pipeline, no work is lost. Eva persists progress to disk and resumes from the last completed phase when you reopen the session.
 
 ### State files
 
@@ -965,7 +1061,7 @@ If Claude Code is closed mid-pipeline, no work is lost. Eva persists progress to
 
 ### Resuming a session
 
-Just open Claude Code in your project. Eva reads the state files and picks up where things left off:
+Just open your IDE in your project. Eva reads the state files and picks up where things left off:
 
 ```
 Eva: Resuming pipeline for "dark-mode" feature. Last completed phase:
@@ -1107,7 +1203,7 @@ For technical details on how the hooks work, see the [Technical Reference](techn
 
 ### Removing pipeline files from a project
 
-Run `/pipeline-uninstall` in Claude Code. The skill:
+Run `/pipeline-uninstall` in your IDE. The skill:
 
 1. **Inventories** all installed pipeline files (rules, agents, commands, references, hooks, state files)
 2. **Presents** a full removal plan showing what will be removed, modified, and preserved
@@ -1116,11 +1212,11 @@ Run `/pipeline-uninstall` in Claude Code. The skill:
 5. **Asks for confirmation** before removing anything
 6. **Removes** core pipeline files, cleans up hook registrations from `.claude/settings.json`, and removes the pipeline section from `CLAUDE.md`
 
-After uninstalling, the atelier-pipeline plugin itself remains registered with Claude Code. To fully remove the plugin: `claude plugin remove atelier-pipeline`. To reinstall later: `/pipeline-setup`.
+After uninstalling, the atelier-pipeline plugin itself remains registered with your IDE. To fully remove the plugin from Claude Code: `claude plugin remove atelier-pipeline`. Cursor: remove via the Cursor extension manager. To reinstall later: `/pipeline-setup`.
 
 ### Disconnecting or removing the brain
 
-Run `/brain-uninstall` in Claude Code. The skill detects your brain configuration and offers two paths:
+Run `/brain-uninstall` in your IDE. The skill detects your brain configuration and offers two paths:
 
 - **Disconnect only** -- removes the config file but leaves the database untouched. You can reconnect later with `/brain-setup`.
 - **Full uninstall** -- removes the config file and cleans up the database. The cleanup procedure depends on how the brain was set up:
@@ -1146,7 +1242,7 @@ Three steps:
    claude plugin update atelier-pipeline@atelier-pipeline
    ```
 
-2. **Restart Claude Code** to load the new plugin version.
+2. **Restart your IDE** to load the new plugin version.
 
 3. **Re-run `/pipeline-setup`** to sync the updated templates into your project. The setup detects existing files and asks whether to merge or replace. Your project-specific customizations (test commands, directory paths) are preserved during the setup conversation.
 
@@ -1179,12 +1275,12 @@ instructions to install the pipeline in this project
 
 | Problem | Cause | Fix |
 |---------|-------|-----|
-| Eva does not recognize slash commands | Pipeline files not installed or Claude Code not restarted | Run `/pipeline-setup` and restart Claude Code |
+| Eva does not recognize slash commands | Pipeline files not installed or IDE not restarted | Run `/pipeline-setup` and restart your IDE (Claude Code or Cursor) |
 | Eva routes to the wrong agent | Ambiguous request | Use a slash command to invoke the agent directly (e.g., `/pm`, `/architect`) |
 | Pipeline stuck after a Roz BLOCKER | A blocking QA issue was found | Read Roz's report. The issue must be fixed before the pipeline can advance. Eva will route it to Colby. |
 | "Say go to continue" prompts | Feature was sized as Large | Say "go" to advance, or say "fast track this" to reduce ceremony |
 | Pipeline resumes at the wrong phase | Stale state file | Check `docs/pipeline/pipeline-state.md` and correct the current phase, or delete it to start fresh |
-| Pipeline state lost after a crash | Claude Code closed mid-pipeline | State is persisted to `docs/pipeline/pipeline-state.md` after each phase transition. Reopen Claude Code and Eva resumes from the last completed phase. If the file is corrupted, delete it and restart the pipeline from the last known good phase. |
+| Pipeline state lost after a crash | IDE closed mid-pipeline | State is persisted to `docs/pipeline/pipeline-state.md` after each phase transition. Reopen your IDE and Eva resumes from the last completed phase. If the file is corrupted, delete it and restart the pipeline from the last known good phase. |
 
 ### Hook and enforcement issues
 
@@ -1242,10 +1338,12 @@ your-project/
       ellis.md                      # Commit manager
       agatha.md                     # Documentation
       sentinel.md                   # Security audit (opt-in)
+      deps.md                       # Dependency manager (opt-in)
+      darwin.md                     # Pipeline evolution engine (opt-in)
     commands/                       # Loaded on slash command
       pm.md, ux.md, architect.md, debug.md,
       pipeline.md, devops.md, docs.md,
-      telemetry-hydrate.md
+      deps.md, darwin.md, telemetry-hydrate.md
     references/                     # Loaded by agents on demand
       dor-dod.md                    # Quality framework
       retro-lessons.md              # Shared lessons from past runs
@@ -1285,6 +1383,8 @@ your-project/
 | Colby | (via Eva) | Implementation code, mockups | ADR + Roz's tests |
 | Poirot | (via Eva) | Blind diff review | Code diff only (no spec, no ADR) |
 | Sentinel | (via Eva, opt-in) | Security audit | Code diff + Semgrep scan results |
+| Deps | `/deps` (opt-in) | Dependency risk report | Manifests, CVE databases, changelogs |
+| Darwin | `/darwin` (opt-in) | Pipeline improvement proposals | Brain telemetry, agent fitness data |
 | Ellis | (via Eva) | Git commit + changelog entry | All verified code + docs |
 
 ### Quality gates
