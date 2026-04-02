@@ -1,6 +1,7 @@
 # Branch & MR Mode
 
 <!-- Part of atelier-pipeline. Referenced by Colby when pipeline uses an MR-based branching strategy. -->
+<!-- CONFIGURE: No placeholders to update. -->
 
 When the pipeline uses an MR-based branching strategy (GitHub Flow, GitLab
 Flow, GitFlow), Colby handles branch creation and MR creation.

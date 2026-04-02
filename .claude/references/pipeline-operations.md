@@ -34,47 +34,51 @@ captures it.
 
 <operations id="continuous-qa">
 
-## Continuous QA (Interleaved Roz + Colby)
+## Continuous QA (Wave-Level Roz + Colby)
 
-Cal's ADR steps become work units. Roz writes tests first, Colby implements to pass them.
+Cal's ADR steps become work units grouped into waves. Roz writes tests per wave, Colby implements per unit, QA runs per wave.
 
-**Pre-build test authoring (per unit):**
-1. Eva invokes Roz in Test Authoring Mode for unit N's ADR step
-2. Roz reads Cal's test spec + existing code + product spec
-3. Roz writes test files with concrete assertions defining correct behavior
-4. Tests are expected to fail -- they define the target state
+**Pre-build test authoring (per wave, not per unit):**
+1. Eva invokes Roz in Test Authoring Mode for ALL units in the wave at once
+2. Roz reads Cal's test spec for all wave units + existing code + product spec
+3. Roz writes test files for the entire wave -- concrete assertions per unit
+4. Tests are expected to fail -- they define the target state for the wave
 
-**Build + QA interleaving:**
-1. Eva invokes Colby for unit 1 with Roz's test files as the target
+**Build (per unit within wave):**
+1. Eva invokes Colby for each unit sequentially (or via Agent Teams in parallel)
 2. Colby implements to make Roz's tests pass (may add additional tests)
-3. When Colby finishes unit 1, Eva invokes Roz for QA review AND Poirot
-   for blind diff review AND Sentinel for security audit (if `sentinel_enabled: true`)
-   in PARALLEL. Roz gets full context; Poirot gets ONLY the `git diff` output;
-   Sentinel gets the diff and runs Semgrep MCP scans on changed files.
-4. Eva triages findings from all reviewers: deduplicates, classifies severity.
-   Findings unique to Poirot get special attention. Findings unique to Sentinel
-   get CWE/OWASP cross-reference.
-5. If Roz, Poirot, or Sentinel flags an issue on unit N, Eva queues the fix. Colby
-   finishes the current unit, then addresses the fix before starting the next unit
-6. **Eva invokes Ellis for a per-unit commit** on the feature branch after
-   Roz QA PASS. Ellis uses per-unit commit mode (shorter message, no
-   changelog trailer). The feature branch accumulates granular commits.
-7. Eva updates `docs/pipeline/pipeline-state.md` after each unit transition
+3. After each Colby unit, Colby runs `lint + typecheck` as a fast sanity check
+   (shell command in build flow, not a separate agent invocation)
+4. If lint/typecheck fails, Colby fixes before marking unit complete
 
-**Post-build pipeline tail (after all units pass individual QA):**
-8. Eva invokes the review juncture: Roz final sweep + Poirot + Robert-subagent
+**Wave QA (per wave, not per unit):**
+1. After ALL units in the wave are built, Eva invokes Roz for wave-level QA AND
+   Poirot for wave-level blind diff review in PARALLEL. Roz gets full context for
+   all units in the wave; Poirot gets ONLY the cumulative `git diff` for the wave.
+2. Eva triages findings from both reviewers: deduplicates, classifies severity.
+   Findings unique to Poirot get special attention.
+3. If any findings require fixes, Eva routes to Colby. After fix, Eva invokes Roz
+   for a scoped rerun on the affected unit(s) only.
+4. **Sentinel does NOT run per-wave.** Sentinel runs once at the review juncture only.
+5. **Eva invokes Ellis for a per-wave commit** on the feature branch after wave QA
+   PASS. Ellis uses wave commit mode.
+6. Eva updates `docs/pipeline/pipeline-state.md` after each wave completes
+
+**Post-build pipeline tail (after all waves complete -- review juncture):**
+7. Eva invokes the review juncture: Roz final sweep + Poirot + Robert-subagent
    + Sable-subagent (Large) + Sentinel (if `sentinel_enabled: true`) in parallel.
+   Sentinel runs HERE (at review juncture) and not during the build phase.
    Eva triages findings using the Triage Consensus Matrix (see below). Routes
    fixes to Colby if needed, re-runs Roz. Eva captures Sentinel findings
    post-review via `agent_capture` with `source_agent: 'eva'`,
    `thought_type: 'insight'` (same pattern as Poirot -- Sentinel does not touch
    brain directly).
-9. Eva invokes Agatha to write/update docs against the final verified code.
+8. Eva invokes Agatha to write/update docs against the final verified code.
    On Small: only if Roz flagged doc impact. On Medium/Large: always.
-10. Eva invokes Robert-subagent in doc review mode to verify Agatha's output
-11. If Robert-subagent or Sable-subagent flagged DRIFT: hard pause. Human
+9. Eva invokes Robert-subagent in doc review mode to verify Agatha's output
+10. If Robert-subagent or Sable-subagent flagged DRIFT: hard pause. Human
     decides fix code or update spec/UX.
-12. Final delivery (strategy-dependent, see `.claude/rules/branch-lifecycle.md`):
+11. Final delivery (strategy-dependent, see `.claude/rules/branch-lifecycle.md`):
     - **Trunk-based:** Eva invokes Ellis in standard mode. Ellis commits and
       pushes to main. Hard pause before push to remote.
     - **MR-based strategies (GitHub Flow, GitLab Flow, GitFlow):** Eva invokes
@@ -85,7 +89,7 @@ Cal's ADR steps become work units. Roz writes tests first, Colby implements to p
       promotion. Hard pause at each environment boundary.
     - After merge/push: Eva handles branch cleanup (deletes feature branch
       local + remote for MR-based strategies). Code + docs + updated specs/UX
-      ship as one merge. Per-unit history is preserved on the feature branch
+      ship as one merge. Per-wave history is preserved on the feature branch
       for `git bisect`.
 
 </operations>
@@ -292,13 +296,14 @@ between each merge.
 - 3-failure loop-breaker (gate 12) applies per unit, not per Teammate.
 
 **Constraint preservation within waves:**
-- Each unit within a wave still follows: Colby build -> Roz QA + Poirot
-  blind review (per unit). All mandatory gates apply per unit.
-- When Agent Teams is active, Roz and Poirot run after each Teammate's
-  worktree is merged -- not per-Teammate in isolation. They review the
-  integrated result, not the isolated worktree diff.
-- Roz and Poirot run independently per unit -- no cross-unit review
-  within a wave. Cross-unit integration is the final review juncture.
+- Each unit within a wave follows: Colby build + lint/typecheck. After all
+  units in the wave complete: Roz wave QA + Poirot wave blind review.
+  All mandatory gates apply per wave, not per unit.
+- When Agent Teams is active, Roz and Poirot run after ALL Teammates'
+  worktrees in the wave are merged -- they review the cumulative wave
+  result, not individual worktree diffs.
+- Roz and Poirot run once per wave on the cumulative wave diff.
+  Cross-wave integration is the final review juncture.
 - The final review juncture (Roz sweep + Poirot + Robert + Sable) runs
   AFTER all waves complete, not after each wave.
 - Batch-mode rules still apply: parallel requires zero file overlap,
@@ -338,7 +343,8 @@ codebase (same as a standard Colby subagent invocation).
 5. After all Teammates in the wave complete (all TaskCompleted events
    received), Eva merges each worktree sequentially (see Worktree
    Integration Rules -- Agent Teams Worktrees subsection).
-6. Roz QA + Poirot blind review run per unit after merge (unchanged).
+6. After all worktrees in the wave are merged, Roz wave QA + Poirot wave
+   blind review run once on the cumulative wave diff (see Wave QA above).
 
 Eva uses `TaskGet` to check Teammate task status during wave execution.
 

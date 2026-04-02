@@ -21,16 +21,15 @@ Multi-agent orchestration system for AI-powered IDEs (Claude Code + Cursor). Qua
 ```
 source/          # Template files -- copied to target projects by /pipeline-setup
   rules/         # Eva persona, orchestration rules (always-loaded by Claude Code)
-  agents/        # Subagent personas (9 agents)
-  commands/      # Slash command definitions (7 commands)
+  agents/        # Subagent personas (12 agents)
+  commands/      # Slash command definitions (11 commands)
   references/    # Quality framework, retro lessons, invocation templates, operations, agent preamble, QA checks, branch/MR mode
-  hooks/         # Enforcement hook scripts (3 scripts + 1 config)
+  hooks/         # Enforcement hook scripts (6 scripts + 1 config)
   pipeline/      # Pipeline state file templates (5 files)
   variants/      # Strategy variant templates (branching lifecycle)
 brain/           # Atelier Brain MCP server (Node.js + PostgreSQL)
 skills/          # Plugin skills (pipeline-setup, brain-setup, brain-hydrate, pipeline-overview)
 .claude/         # Installed pipeline files (this project eats its own cooking)
-.cursor-plugin/  # Cursor plugin packaging (manifest, marketplace, skills)
 docs/            # User guide, technical reference, ADRs, pipeline state
 scripts/         # Plugin lifecycle scripts (update checks)
 ```

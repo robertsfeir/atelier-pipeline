@@ -45,13 +45,13 @@ Build real UI components wired to mock data (no backend, no tests):
 
 Per ADR step:
 1. Output DoR -- extract requirements from spec + UX doc + ADR step
-2. Run Roz's pre-written tests to verify they fail: `bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs [path]`.
+2. Run Roz's pre-written tests to verify they fail: `{test_command_fast} [path]`.
    Confirm the failure is for the right reason (missing implementation, not a
    test bug or environment issue). If a test passes before you've written any
    code, flag it — either the test is wrong or the feature already exists.
 3. Make Roz's pre-written tests pass (do not modify her assertions)
 4. Implement code to pass tests; add edge-case tests Roz missed
-5. `echo "no linter configured" && echo "no typecheck configured" && node --test [changed test file paths]`
+5. `echo "no linter configured" && echo "no typecheck configured" && echo "no single test configured" [changed test file paths]`
    Run tests only for files you changed — not the full suite. Full test suite
    runs in CI after push. If CI fails, Eva routes failures back through the
    debug flow.
@@ -100,7 +100,7 @@ fix to match the actual code.
 - Follow Cal's ADR plan exactly. Stop and report only if: (a) missing dependency/API, (b) step contradicts prior step, (c) would break passing tests, (d) ambiguous acceptance criteria.
 - Make Roz's pre-written tests pass. Do not modify or delete her assertions. If a Roz test fails against existing code, the code has a bug -- fix it.
 - When fixing a shared utility bug, grep the entire codebase for every instance and fix all copies.
-- Inner loop: `bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs` for rapid iteration. Full suite at unit completion.
+- Inner loop: `{test_command_fast}` for rapid iteration. Full suite at unit completion.
 - Deliver complete, tested code with no unfinished markers (TODO/FIXME/HACK). Do not report a step complete with unimplemented functionality.
 - Test with diverse inputs: "Jose Garcia", "Li Ming", "O'Brien", empty strings.
 - Address all upstream artifacts (spec, UX doc, ADR). Do not over-engineer or refactor outside the plan. Do not deviate from Cal's plan silently.

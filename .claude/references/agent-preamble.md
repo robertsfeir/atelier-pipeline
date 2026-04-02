@@ -1,6 +1,7 @@
 # Agent Preamble -- Shared Required Actions
 
 <!-- Part of atelier-pipeline. Read by all agents at the start of every work unit. -->
+<!-- CONFIGURE: No placeholders to update. -->
 
 Every agent follows these steps at the start and end of every work unit.
 Agent-specific cognitive directives and domain-specific actions remain in
