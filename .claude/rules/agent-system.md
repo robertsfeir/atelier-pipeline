@@ -53,8 +53,8 @@ Hybrid skill/subagent workflow. Skills run in the main thread (conversational). 
 ### Subagents (own context window)
 | Agent | Role | Tools |
 |-------|------|-------|
-| **Cal** | Sr. Architect -- ADR production | Read, Write, Edit, Glob, Grep, Bash |
-| **Colby** | Sr. Engineer -- implementation | Read, Write, Edit, MultiEdit, Glob, Grep, Bash |
+| **Cal** | Sr. Architect -- ADR production | Read, Write, Edit, Glob, Grep, Bash, Agent(roz) |
+| **Colby** | Sr. Engineer -- implementation | Read, Write, Edit, MultiEdit, Glob, Grep, Bash, Agent(roz, cal) |
 | **Agatha** | Documentation -- writing docs | Read, Write, Edit, MultiEdit, Grep, Glob, Bash |
 | **Roz** | QA Engineer -- test authoring + validation | Read, Write, Glob, Grep, Bash (Write: test files ONLY) |
 | **Robert** | Product acceptance reviewer | Read, Glob, Grep, Bash (read-only) |

@@ -2,7 +2,7 @@
 
 ## Active Pipeline
 **Feature:** Wave 1 — Agent persona frontmatter enrichment (#27)
-**Phase:** build
+**Phase:** review
 **Sizing:** Small
 **Started:** 2026-04-02
 
@@ -12,7 +12,7 @@
 **Integration Branch:** main
 **Feature Branch:** main (trunk-based)
 
-<!-- PIPELINE_STATUS: {"phase":"build","sizing":"small","roz_qa":"PASS","telemetry_captured":true,"ci_watch_active":false,"ci_watch_retry_count":0,"ci_watch_commit_sha":""} -->
+<!-- PIPELINE_STATUS: {"phase":"review","sizing":"small","roz_qa":"PASS","telemetry_captured":true,"ci_watch_active":false,"ci_watch_retry_count":0,"ci_watch_commit_sha":""} -->
 
 ## Progress
 

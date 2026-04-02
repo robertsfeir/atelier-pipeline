@@ -274,7 +274,9 @@ The eight actual plugin skills (`/pipeline-setup`, `/pipeline-uninstall`, `/pipe
 
 ## Agent Reference Table
 
-Agent persona files use `disallowedTools` (denylist) in their frontmatter rather than a `tools` allowlist. This ensures subagents inherit MCP tools (including brain tools) from the parent session -- a `tools` allowlist would block MCP tool inheritance because only explicitly listed tools would be available to the subagent.
+Most agent persona files use `disallowedTools` (denylist) in their frontmatter. This ensures subagents inherit MCP tools (including brain tools) from the parent session -- a `tools` allowlist would block MCP tool inheritance because only explicitly listed tools would be available to the subagent.
+
+**Cal and Colby are exceptions.** These two agents use an explicit `tools` allowlist instead of `disallowedTools`. Their allowlists include scoped `Agent(...)` access, which grants them the ability to spawn specific subagents directly without routing through Eva. Cal can spawn Roz for inline test spec review; Colby can spawn Roz for per-unit QA and Cal for architectural questions. The `Agent(specific)` syntax is enforced by the Claude Code runtime -- Cal cannot spawn Colby, and Colby cannot spawn Ellis. All 10 other agents retain `disallowedTools: Agent` and cannot spawn subagents at all.
 
 | Agent | Role | Execution Mode | Tools | Write Access | Brain Access | Model |
 |-------|------|---------------|-------|-------------|--------------|-------|
@@ -284,8 +286,8 @@ Agent persona files use `disallowedTools` (denylist) in their frontmatter rather
 | **Sable** (skill) | UX Designer -- doc authoring | Main thread (`/ux`) | Full conversational | UX docs | Reads: prior UX decisions, a11y. Writes: UX rationale, corrections. | N/A (skill) |
 | **Sable** (subagent) | UX acceptance reviewer | Subagent | Read, Glob, Grep, Bash | **None** (read-only) | Reads: UX doc evolution. Writes: drift/missing verdicts, five-state audit. | Sonnet base; Opus on Large (classifier +2) |
 | **Cal** (skill) | Architect -- conversational | Main thread (`/architect`) | Full conversational | None during conversation | Reads: prior decisions, constraints. | N/A (skill) |
-| **Cal** (subagent) | Architect -- ADR production | Subagent | Read, Write, Edit, Glob, Grep, Bash | ADR files | Reads: prior decisions, rejected approaches. Writes: decisions, rejections, insights. | Opus (Medium/Large) |
-| **Colby** | Senior Software Engineer | Subagent | Read, Write, Edit, MultiEdit, Glob, Grep, Bash | Source files, test files | Reads: implementation patterns, gotchas. Writes: implementation insights, workarounds. | Haiku (Micro), Sonnet (Small/Medium), Opus (Large) |
+| **Cal** (subagent) | Architect -- ADR production | Subagent | Read, Write, Edit, Glob, Grep, Bash, Agent(roz) | ADR files | Reads: prior decisions, rejected approaches. Writes: decisions, rejections, insights. | Opus (Medium/Large) |
+| **Colby** | Senior Software Engineer | Subagent | Read, Write, Edit, MultiEdit, Glob, Grep, Bash, Agent(roz, cal) | Source files, test files | Reads: implementation patterns, gotchas. Writes: implementation insights, workarounds. | Haiku (Micro), Sonnet (Small/Medium), Opus (Large) |
 | **Roz** | QA Engineer | Subagent | Read, Write, Glob, Grep, Bash | **Test files ONLY** | Reads: QA patterns, fragile areas. Writes: recurring patterns, investigation findings, doc impact. | Sonnet base; classifier promotes to Opus (+2 full sweep, -1 scoped rerun) |
 | **Poirot** | Blind Code Investigator | Subagent | Read, Glob, Grep, Bash | **None** (read-only) | **None** -- Poirot never touches brain. Eva captures his findings. | Sonnet base; Opus at final review juncture (classifier +2) |
 | **Agatha** (skill) | Documentation -- planning | Main thread (`/docs`) | Full conversational | None during planning | N/A | N/A (skill) |
@@ -332,6 +334,21 @@ Every ADR Cal produces must include these sections:
 **Failing test first.** Before implementing any ADR step, Colby runs Roz's pre-written tests to confirm they fail for the right reason. A test that passes before any implementation is flagged -- either the test is wrong or the feature already exists.
 
 **Minimal implementation.** Colby implements the minimum code necessary to pass the current failing test. Helper functions, utility abstractions, and convenience wrappers not required by the ADR step or failing test are noted in the DoD under "Implementation decisions not in the ADR" -- not built.
+
+### Agent Persona Frontmatter Fields
+
+Every agent persona file declares four standard fields in its YAML frontmatter. These fields drive mechanical behavior in the Claude Code runtime and in Eva's orchestration logic.
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `model` | string alias (`opus`, `sonnet`, `haiku`) | Base model for this agent. Eva overrides at invocation time using the classifier from `pipeline-models.md`. The frontmatter value is the default; the classifier result is authoritative. |
+| `effort` | string (`low`, `medium`, `high`) | Signals expected work intensity. Used by the runtime for resource hints. |
+| `maxTurns` | integer | Maximum conversation turns before the subagent is forced to return. Prevents runaway agents. |
+| `color` | string (CSS color name) | Terminal color for agent output display. Present on 6 core agents (Cal, Colby, Roz, Ellis, Robert, Sable). Omitted on agents where visual distinction is less critical. |
+
+**`model` vs `pipeline-models.md`:** The frontmatter `model` field is the base/default. Eva always runs the universal scope classifier from `pipeline-models.md` before every invocation and sets the model parameter explicitly in the Agent tool call. The classifier result can promote an agent from its base model to Opus. On Large pipelines, all agents run at Opus regardless of frontmatter. Eva is required to set the model parameter explicitly in every invocation -- omitting it is a violation even if the frontmatter declares a default.
+
+**Distributed routing (Cal and Colby):** Instead of `disallowedTools`, Cal and Colby declare an explicit `tools` allowlist with scoped `Agent(...)` entries. All other 10 agents use `disallowedTools: Agent` (or its equivalent denylist) and cannot spawn subagents.
 
 ---
 
@@ -1147,7 +1164,7 @@ This hook intercepts Agent tool calls from the main thread and enforces three ma
 
 **Gate 3 -- Ellis requires telemetry capture (v3.9).** During an active non-Micro pipeline, Eva cannot invoke Ellis unless the `PIPELINE_STATUS` JSON marker has `telemetry_captured` set to `"true"`. Eva must capture T3 telemetry before committing to ensure quality metrics (rework rate, first-pass QA, EvoScore) are never lost. Exempt when `sizing` is `"micro"`, when `ci_watch_active` is `"true"` (CI Watch fix cycles have their own flow), or when `sizing` is absent (fail-open when pipeline size is unknown).
 
-The hook only enforces from the main thread (empty `agent_id`). Subagents cannot invoke other subagents because the Agent tool is already in their `disallowedTools` list.
+The hook only enforces from the main thread (empty `agent_id`). Most subagents cannot invoke other subagents because the Agent tool is in their `disallowedTools` list. Cal and Colby are the only exceptions: they use explicit `tools` allowlists that include scoped `Agent(...)` access. The `Agent(roz)` and `Agent(roz, cal)` grants are mechanically enforced by the Claude Code runtime, so Cal and Colby can only spawn the agents named in their allowlist -- they cannot invoke each other arbitrarily or reach Ellis, Poirot, or any other agent. Eva's wave-level gates, phase transitions, and mandatory gates are unaffected by this tactical autonomy.
 
 ### Git Operation Guard (`enforce-git.sh`)
 
