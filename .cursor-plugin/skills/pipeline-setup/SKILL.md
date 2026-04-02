@@ -17,43 +17,21 @@ Before gathering project information, understand where the pipeline installs fil
 
 | Location | What Goes There | Git Status | Shared With Team? |
 |----------|----------------|------------|-------------------|
-| `.claude/rules/` | Eva persona, orchestration rules, model selection, branch lifecycle | Project-local, committed to repo | Yes -- team members get the same pipeline rules |
-| `.claude/agents/` | Agent persona files (Cal, Colby, Roz, etc.) | Project-local, committed to repo | Yes -- consistent agent behavior across the team |
-| `.claude/commands/` | Slash command definitions (/pm, /pipeline, etc.) | Project-local, committed to repo | Yes -- same commands available to all |
-| `.claude/references/` | Quality framework, retro lessons, invocation templates | Project-local, committed to repo | Yes -- shared knowledge base |
-| `.claude/hooks/` | Enforcement scripts (path, sequencing, git guards) | Project-local, committed to repo | Yes -- same guardrails for everyone |
-| `.claude/pipeline-config.json` | Branching strategy, feature flags | Project-local, committed to repo | Yes -- team-wide configuration |
-| `.claude/settings.json` | Hook registrations (tells Claude Code to run the hooks) | Project-local, committed to repo | Yes -- hooks activate for all team members |
+| `.cursor/rules/` | Eva persona, orchestration rules, model selection, branch lifecycle | Project-local, committed to repo | Yes -- team members get the same pipeline rules |
+| `.cursor/agents/` | Agent persona files (Cal, Colby, Roz, etc.) | Project-local, committed to repo | Yes -- consistent agent behavior across the team |
+| `.cursor/commands/` | Slash command definitions (/pm, /pipeline, etc.) | Project-local, committed to repo | Yes -- same commands available to all |
+| `.cursor/references/` | Quality framework, retro lessons, invocation templates | Project-local, committed to repo | Yes -- shared knowledge base |
+| `.cursor/hooks/` | Enforcement scripts (path, sequencing, git guards) | Project-local, committed to repo | Yes -- same guardrails for everyone |
+| `.cursor/pipeline-config.json` | Branching strategy, feature flags | Project-local, committed to repo | Yes -- team-wide configuration |
+| `.cursor/settings.json` | Hook registrations (tells Claude Code to run the hooks) | Project-local, committed to repo | Yes -- hooks activate for all team members |
 | `docs/pipeline/` | Pipeline state, context brief, error patterns, QA reports | Project-local, committed to repo | Yes -- session recovery works across machines |
-| `CLAUDE.md` | Pipeline section appended to project instructions | Project-local, committed to repo | Yes -- Claude Code reads this automatically |
+| `AGENTS.md` | Pipeline section appended to project instructions | Project-local, committed to repo | Yes -- Claude Code reads this automatically |
 
 **Key points:**
-- All installed files live inside the project directory -- nothing is written to `~/.claude/` or other user-level locations.
+- All installed files live inside the project directory -- nothing is written to `~/.cursor/` or other user-level locations.
 - Everything is designed to be committed to git so team members inherit the pipeline when they clone.
 - The plugin itself (installed via `claude plugin add`) is user-level, but the project files it generates are project-level.
 - To remove all installed files later, use the `/pipeline-uninstall` skill.
-
-### Step 0: Clean Up Deprecated quality-gate.sh
-
-Before gathering any project information, unconditionally run this cleanup on every /pipeline-setup invocation. It is silent unless it finds something to remove.
-
-1. **Check file:** Check if `.claude/hooks/quality-gate.sh` exists. If found: delete the file. Note that removal occurred.
-2. **Check settings.json:** Check if `.claude/settings.json` exists and contains a hook entry referencing `quality-gate.sh` in any command string across all hook event types (PreToolUse, SubagentStop, PreCompact, etc.). If found:
-   - Parse the JSON. If the JSON is malformed or invalid, log a warning ("Warning: .claude/settings.json is malformed JSON -- skipping quality-gate.sh entry removal. Does not block setup.") and continue to step 3.
-   - Remove the hook entry containing "quality-gate" from the command string.
-   - If removing that entry leaves an empty hooks array for an event type, remove the event type entry entirely (no empty arrays left behind).
-   - Write the updated JSON back to `.claude/settings.json`.
-   - Note that removal occurred.
-3. **Print notice (conditional):** If either artifact was found and removed: print exactly `Removed deprecated quality-gate.sh (see retro lesson #003).`
-4. **Silent no-op:** If neither found: do nothing. No output.
-
-**Edge case handling:**
-- File exists but settings.json entry already removed: detect file, delete it, print notice. Check settings.json independently of file existence.
-- settings.json has quality-gate.sh entry but file does not exist: detect entry in settings.json, remove it, print notice.
-- Both found: remove both, print single notice (not two).
-- Neither found: silent no-op.
-
-This cleanup targets only quality-gate.sh entries. Other hook entries (enforce-paths.sh, enforce-sequencing.sh, enforce-git.sh, etc.) are not affected.
 
 ### Step 1: Gather Project Information
 
@@ -119,7 +97,7 @@ Before asking about branching strategy, determine git availability.
 - **GitLab Flow additional:** Ask "What are your environment branch names?" Default: staging, production.
 - **GitFlow:** Platform detection only, no additional questions (conventions are standardized). Integration branch is `develop`.
 
-**Store selection:** Write `.claude/pipeline-config.json` with the appropriate values from `source/pipeline/pipeline-config.json` as the template, filled with the user's selections.
+**Store selection:** Write `.cursor/pipeline-config.json` with the appropriate values from `source/pipeline/pipeline-config.json` as the template, filled with the user's selections.
 
 ### Step 2: Read Templates
 
@@ -170,20 +148,6 @@ plugins/atelier-pipeline/source/
     branch-lifecycle-gitflow.md       # GitFlow branch lifecycle
 ```
 
-> **Enforcement hook bypass:** Before the first write operation below, create
-> the setup-mode sentinel file to disable enforcement hooks for this session.
-> This allows /pipeline-setup to write to `.claude/` paths even when
-> enforcement hooks are already installed (re-install or update scenario).
->
-> 1. Ensure `docs/pipeline/` exists: `mkdir -p docs/pipeline`
-> 2. Create sentinel: write an empty file to `docs/pipeline/.setup-mode`
->
-> After all files are installed (end of Step 6f), remove the sentinel:
-> delete `docs/pipeline/.setup-mode`.
->
-> The sentinel file is also checked into `.gitignore` patterns in the
-> pipeline state directory template to avoid accidental commits.
-
 ### Step 3: Install Files
 
 Copy each template to its destination in the user's project, customizing placeholders with the project-specific values gathered in Step 1.
@@ -192,63 +156,63 @@ Copy each template to its destination in the user's project, customizing placeho
 
 | Template Source | Destination | Purpose |
 |----------------|-------------|---------|
-| `source/rules/default-persona.md` | `.claude/rules/default-persona.md` | Eva persona -- always loaded by Claude Code |
-| `source/rules/agent-system.md` | `.claude/rules/agent-system.md` | Orchestration rules, routing table, quality gates |
-| `source/rules/pipeline-orchestration.md` | `.claude/rules/pipeline-orchestration.md` | Pipeline operations (path-scoped) |
-| `source/rules/pipeline-models.md` | `.claude/rules/pipeline-models.md` | Model selection (path-scoped) |
-| `source/agents/cal.md` | `.claude/agents/cal.md` | Architect subagent persona |
-| `source/agents/colby.md` | `.claude/agents/colby.md` | Engineer subagent persona |
-| `source/agents/roz.md` | `.claude/agents/roz.md` | QA subagent persona |
-| `source/agents/robert.md` | `.claude/agents/robert.md` | Product reviewer subagent persona |
-| `source/agents/sable.md` | `.claude/agents/sable.md` | UX reviewer subagent persona |
-| `source/agents/investigator.md` | `.claude/agents/investigator.md` | Blind investigator subagent persona |
-| `source/agents/distillator.md` | `.claude/agents/distillator.md` | Compression engine subagent persona |
-| `source/agents/ellis.md` | `.claude/agents/ellis.md` | Commit manager subagent persona |
-| `source/agents/agatha.md` | `.claude/agents/agatha.md` | Documentation subagent persona |
-| `source/commands/pm.md` | `.claude/commands/pm.md` | /pm slash command |
-| `source/commands/ux.md` | `.claude/commands/ux.md` | /ux slash command |
-| `source/commands/architect.md` | `.claude/commands/architect.md` | /architect slash command |
-| `source/commands/debug.md` | `.claude/commands/debug.md` | /debug slash command |
-| `source/commands/pipeline.md` | `.claude/commands/pipeline.md` | /pipeline slash command |
-| `source/commands/devops.md` | `.claude/commands/devops.md` | /devops slash command |
-| `source/commands/docs.md` | `.claude/commands/docs.md` | /docs slash command |
-| `source/references/dor-dod.md` | `.claude/references/dor-dod.md` | Quality framework |
-| `source/references/retro-lessons.md` | `.claude/references/retro-lessons.md` | Shared lessons (empty template) |
-| `source/references/invocation-templates.md` | `.claude/references/invocation-templates.md` | Subagent invocation examples |
-| `source/references/pipeline-operations.md` | `.claude/references/pipeline-operations.md` | Operational procedures (model selection, QA, feedback, batch, worktree, context) |
-| `source/references/agent-preamble.md` | `.claude/references/agent-preamble.md` | Shared agent required actions |
-| `source/references/qa-checks.md` | `.claude/references/qa-checks.md` | Roz QA check procedures |
-| `source/references/branch-mr-mode.md` | `.claude/references/branch-mr-mode.md` | Colby branch/MR procedures |
-| `source/references/telemetry-metrics.md` | `.claude/references/telemetry-metrics.md` | Telemetry metric schemas, cost table, alert thresholds |
+| `source/rules/default-persona.md` | `.cursor/rules/default-persona.md` | Eva persona -- always loaded by Claude Code |
+| `source/rules/agent-system.md` | `.cursor/rules/agent-system.md` | Orchestration rules, routing table, quality gates |
+| `source/rules/pipeline-orchestration.md` | `.cursor/rules/pipeline-orchestration.md` | Pipeline operations (path-scoped) |
+| `source/rules/pipeline-models.md` | `.cursor/rules/pipeline-models.md` | Model selection (path-scoped) |
+| `source/agents/cal.md` | `.cursor/agents/cal.md` | Architect subagent persona |
+| `source/agents/colby.md` | `.cursor/agents/colby.md` | Engineer subagent persona |
+| `source/agents/roz.md` | `.cursor/agents/roz.md` | QA subagent persona |
+| `source/agents/robert.md` | `.cursor/agents/robert.md` | Product reviewer subagent persona |
+| `source/agents/sable.md` | `.cursor/agents/sable.md` | UX reviewer subagent persona |
+| `source/agents/investigator.md` | `.cursor/agents/investigator.md` | Blind investigator subagent persona |
+| `source/agents/distillator.md` | `.cursor/agents/distillator.md` | Compression engine subagent persona |
+| `source/agents/ellis.md` | `.cursor/agents/ellis.md` | Commit manager subagent persona |
+| `source/agents/agatha.md` | `.cursor/agents/agatha.md` | Documentation subagent persona |
+| `source/commands/pm.md` | `.cursor/commands/pm.md` | /pm slash command |
+| `source/commands/ux.md` | `.cursor/commands/ux.md` | /ux slash command |
+| `source/commands/architect.md` | `.cursor/commands/architect.md` | /architect slash command |
+| `source/commands/debug.md` | `.cursor/commands/debug.md` | /debug slash command |
+| `source/commands/pipeline.md` | `.cursor/commands/pipeline.md` | /pipeline slash command |
+| `source/commands/devops.md` | `.cursor/commands/devops.md` | /devops slash command |
+| `source/commands/docs.md` | `.cursor/commands/docs.md` | /docs slash command |
+| `source/references/dor-dod.md` | `.cursor/references/dor-dod.md` | Quality framework |
+| `source/references/retro-lessons.md` | `.cursor/references/retro-lessons.md` | Shared lessons (empty template) |
+| `source/references/invocation-templates.md` | `.cursor/references/invocation-templates.md` | Subagent invocation examples |
+| `source/references/pipeline-operations.md` | `.cursor/references/pipeline-operations.md` | Operational procedures (model selection, QA, feedback, batch, worktree, context) |
+| `source/references/agent-preamble.md` | `.cursor/references/agent-preamble.md` | Shared agent required actions |
+| `source/references/qa-checks.md` | `.cursor/references/qa-checks.md` | Roz QA check procedures |
+| `source/references/branch-mr-mode.md` | `.cursor/references/branch-mr-mode.md` | Colby branch/MR procedures |
+| `source/references/telemetry-metrics.md` | `.cursor/references/telemetry-metrics.md` | Telemetry metric schemas, cost table, alert thresholds |
 | `source/pipeline/pipeline-state.md` | `docs/pipeline/pipeline-state.md` | Session recovery state |
 | `source/pipeline/context-brief.md` | `docs/pipeline/context-brief.md` | Context preservation |
 | `source/pipeline/error-patterns.md` | `docs/pipeline/error-patterns.md` | Error pattern tracking |
 | `source/pipeline/investigation-ledger.md` | `docs/pipeline/investigation-ledger.md` | Debug hypothesis tracking |
 | `source/pipeline/last-qa-report.md` | `docs/pipeline/last-qa-report.md` | QA report persistence |
-| `source/pipeline/pipeline-config.json` | `.claude/pipeline-config.json` | Branching strategy configuration |
-| `source/variants/branch-lifecycle-{strategy}.md` | `.claude/rules/branch-lifecycle.md` | Branch lifecycle rules (selected variant only) |
+| `source/pipeline/pipeline-config.json` | `.cursor/pipeline-config.json` | Branching strategy configuration |
+| `source/variants/branch-lifecycle-{strategy}.md` | `.cursor/rules/branch-lifecycle.md` | Branch lifecycle rules (selected variant only) |
 
 **Total: 34 mandatory files across 5 directories (before hooks and config).**
 
 ### Step 3a: Install Enforcement Hooks
 
-Copy the hook scripts from the plugin's `source/hooks/` directory to `.claude/hooks/`
+Copy the hook scripts from the plugin's `source/hooks/` directory to `.cursor/hooks/`
 in the project. These hooks mechanically enforce agent boundaries — they are not
 optional and must be installed for the pipeline to function correctly.
 
 | Template Source | Destination | Purpose |
 |----------------|-------------|---------|
-| `source/hooks/enforce-paths.sh` | `.claude/hooks/enforce-paths.sh` | Blocks Write/Edit outside each agent's allowed file paths |
-| `source/hooks/enforce-sequencing.sh` | `.claude/hooks/enforce-sequencing.sh` | Blocks out-of-order agent invocations (e.g., Ellis without Roz QA) |
-| `source/hooks/enforce-pipeline-activation.sh` | `.claude/hooks/enforce-pipeline-activation.sh` | Blocks Colby/Ellis invocation when no active pipeline exists |
-| `source/hooks/enforce-git.sh` | `.claude/hooks/enforce-git.sh` | Blocks git write operations from main thread (must go through Ellis) |
-| `source/hooks/warn-dor-dod.sh` | `.claude/hooks/warn-dor-dod.sh` | Warns when Colby/Roz output missing DoR/DoD sections (SubagentStop) |
-| `source/hooks/pre-compact.sh` | `.claude/hooks/pre-compact.sh` | Writes compaction marker to pipeline-state.md before context is compacted (PreCompact) |
-| `source/hooks/enforcement-config.json` | `.claude/hooks/enforcement-config.json` | Project-specific paths and agent rules |
+| `source/hooks/enforce-paths.sh` | `.cursor/hooks/enforce-paths.sh` | Blocks Write/Edit outside each agent's allowed file paths |
+| `source/hooks/enforce-sequencing.sh` | `.cursor/hooks/enforce-sequencing.sh` | Blocks out-of-order agent invocations (e.g., Ellis without Roz QA) |
+| `source/hooks/enforce-pipeline-activation.sh` | `.cursor/hooks/enforce-pipeline-activation.sh` | Blocks Colby/Ellis invocation when no active pipeline exists |
+| `source/hooks/enforce-git.sh` | `.cursor/hooks/enforce-git.sh` | Blocks git write operations from main thread (must go through Ellis) |
+| `source/hooks/warn-dor-dod.sh` | `.cursor/hooks/warn-dor-dod.sh` | Warns when Colby/Roz output missing DoR/DoD sections (SubagentStop) |
+| `source/hooks/pre-compact.sh` | `.cursor/hooks/pre-compact.sh` | Writes compaction marker to pipeline-state.md before context is compacted (PreCompact) |
+| `source/hooks/enforcement-config.json` | `.cursor/hooks/enforcement-config.json` | Project-specific paths and agent rules |
 
-After copying, make the `.sh` files executable: `chmod +x .claude/hooks/*.sh`
+After copying, make the `.sh` files executable: `chmod +x .cursor/hooks/*.sh`
 
-**Validate enforcement-config.json** after copying and customizing. Read the installed `.claude/hooks/enforcement-config.json` and check the following required fields:
+**Validate enforcement-config.json** after copying and customizing. Read the installed `.cursor/hooks/enforcement-config.json` and check the following required fields:
 
 | Field | Type | Requirement |
 |-------|------|-------------|
@@ -276,7 +240,7 @@ Do not block installation on validation failure. The warning is informational --
 - `test_patterns`: array of patterns matching the project's test files (e.g., `[".test.", ".spec.", "/tests/", "conftest"]`)
 - `test_command`: full test suite command from Step 1 -- used by Roz for QA verification (e.g., `npm test`, `pytest`)
 
-**Register hooks in `.claude/settings.json`** — merge with existing settings if the
+**Register hooks in `.cursor/settings.json`** — merge with existing settings if the
 file already exists. Add this hooks section:
 
 ```json
@@ -285,25 +249,25 @@ file already exists. Add this hooks section:
     "PreToolUse": [
       {
         "matcher": "Write|Edit|MultiEdit",
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-paths.sh"}]
+        "hooks": [{"type": "command", "command": "\"$CURSOR_PROJECT_DIR\"/.cursor/hooks/enforce-paths.sh"}]
       },
       {
         "matcher": "Agent",
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-sequencing.sh"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-pipeline-activation.sh"}]
+        "hooks": [{"type": "command", "command": "\"$CURSOR_PROJECT_DIR\"/.cursor/hooks/enforce-sequencing.sh"}, {"type": "command", "command": "\"$CURSOR_PROJECT_DIR\"/.cursor/hooks/enforce-pipeline-activation.sh"}]
       },
       {
         "matcher": "Bash",
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-git.sh"}]
+        "hooks": [{"type": "command", "command": "\"$CURSOR_PROJECT_DIR\"/.cursor/hooks/enforce-git.sh"}]
       }
     ],
     "SubagentStop": [
       {
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/warn-dor-dod.sh"}]
+        "hooks": [{"type": "command", "command": "\"$CURSOR_PROJECT_DIR\"/.cursor/hooks/warn-dor-dod.sh"}]
       }
     ],
     "PreCompact": [
       {
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-compact.sh"}]
+        "hooks": [{"type": "command", "command": "\"$CURSOR_PROJECT_DIR\"/.cursor/hooks/pre-compact.sh"}]
       }
     ]
   }
@@ -320,7 +284,7 @@ If `jq` is not available, tell the user: "Install jq for pipeline enforcement ho
 
 The pipeline supports custom agents beyond the core 9. To add a custom agent:
 
-- **Drop a file:** Place any `.md` file into `.claude/agents/` with YAML
+- **Drop a file:** Place any `.md` file into `.cursor/agents/` with YAML
   frontmatter (`name`, `description`) and Eva will discover it automatically
   at session start.
 - **Paste markdown:** Paste a raw agent definition into the chat and Eva will
@@ -328,17 +292,17 @@ The pipeline supports custom agents beyond the core 9. To add a custom agent:
   agent file.
 - **Read-only by default:** Discovered agents cannot use Write, Edit, or
   MultiEdit tools. To grant write access, add an explicit case to
-  `.claude/hooks/enforce-paths.sh` for the agent's name.
+  `.cursor/hooks/enforce-paths.sh` for the agent's name.
 
 See the "Agent Discovery" section in `agent-system.md` for full details.
 
 ### Step 3b: Write Version Marker
 
-After copying all template files, write the current plugin version to `.claude/.atelier-version`:
+After copying all template files, write the current plugin version to `.cursor/.atelier-version`:
 
 ```bash
 # Read version from plugin.json and write to project
-grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" | head -1 | grep -o '"[^"]*"$' | tr -d '"' > .claude/.atelier-version
+grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' "${CURSOR_PLUGIN_ROOT}/.claude-plugin/plugin.json" | head -1 | grep -o '"[^"]*"$' | tr -d '"' > .cursor/.atelier-version
 ```
 
 This file is used by the SessionStart hook to detect when the plugin has been updated and the project's pipeline files may be outdated. The hook compares this version against the plugin's current version and notifies the user if an update is available.
@@ -361,9 +325,9 @@ The following placeholders in template files must be replaced with project-speci
 | `{{BUILD_COMMAND}}` | Build command | `npm run build` |
 | `{{COVERAGE_THRESHOLDS}}` | Coverage targets | "stmt=70, branch=65, fn=75, lines=70" |
 
-### Step 5: Update CLAUDE.md
+### Step 5: Update AGENTS.md
 
-If the project already has a `CLAUDE.md` file, append the pipeline section to it. If no `CLAUDE.md` exists, create one with the full template.
+If the project already has a `AGENTS.md` file, append the pipeline section to it. If no `AGENTS.md` exists, create one with the full template.
 
 **Section to add:**
 
@@ -394,7 +358,7 @@ After installation, print:
 3. The configured branching strategy and any CI recommendations
 4. A reminder of available slash commands
 5. Instructions to start their first pipeline run
-6. **Offer optional features** -- Sentinel security agent, Agent Teams parallel execution, CI Watch automated CI monitoring, Deps Agent dependency scanning, Darwin self-evolving pipeline, Dashboard integration, and Atelier Brain persistent memory (Steps 6a through 6f)
+6. **Offer optional features** -- Sentinel security agent, Agent Teams parallel execution, CI Watch automated CI monitoring, Deps Agent dependency scanning, Darwin self-evolving pipeline, and Atelier Brain persistent memory (Steps 6a through 6e)
 
 **Example summary:**
 
@@ -402,15 +366,15 @@ After installation, print:
 Atelier Pipeline installed successfully.
 
 Files installed: 40 (mandatory)
-  .claude/rules/       -- 5 files (Eva persona, orchestration rules, pipeline operations, model selection, branch lifecycle)
-  .claude/agents/      -- 9 files (Cal, Colby, Roz, Robert, Sable, Poirot, Distillator, Ellis, Agatha)
-  .claude/commands/    -- 7 files (/pm, /ux, /architect, /debug, /pipeline, /devops, /docs)
-  .claude/references/  -- 8 files (quality framework, retro lessons, invocation templates, pipeline operations, agent preamble, QA checks, branch/MR mode, telemetry metrics)
-  .claude/hooks/       -- 6 files (path enforcement, sequencing, git guard, DoR/DoD warning, pre-compact, config)
+  .cursor/rules/       -- 5 files (Eva persona, orchestration rules, pipeline operations, model selection, branch lifecycle)
+  .cursor/agents/      -- 9 files (Cal, Colby, Roz, Robert, Sable, Poirot, Distillator, Ellis, Agatha)
+  .cursor/commands/    -- 7 files (/pm, /ux, /architect, /debug, /pipeline, /devops, /docs)
+  .cursor/references/  -- 8 files (quality framework, retro lessons, invocation templates, pipeline operations, agent preamble, QA checks, branch/MR mode, telemetry metrics)
+  .cursor/hooks/       -- 6 files (path enforcement, sequencing, git guard, DoR/DoD warning, pre-compact, config)
   docs/pipeline/       -- 5 files (state tracking for session recovery)
-  .claude/pipeline-config.json -- branching strategy configuration
-  .claude/settings.json -- updated with hook registration
-  CLAUDE.md            -- updated with pipeline section
+  .cursor/pipeline-config.json -- branching strategy configuration
+  .cursor/settings.json -- updated with hook registration
+  AGENTS.md            -- updated with pipeline section
 
 Branching strategy: [selected strategy]
   [CI template recommendations -- advisory, printed not written to files:
@@ -424,7 +388,6 @@ Agent Teams: [enabled (experimental) | not enabled]
 CI Watch: [enabled (max retries: N) | not enabled]
 Deps agent: [enabled | not enabled]
 Darwin: [enabled | not enabled]
-Dashboard: [PlanVisualizer | claude-code-kanban | not enabled]
 Compaction API: PreCompact hook installed for pipeline state preservation
 
 Available commands:
@@ -460,9 +423,9 @@ After printing the summary, offer the optional Sentinel security agent:
    - If not available, tell user: "Sentinel requires the Semgrep MCP server. Set it up with: `claude mcp add semgrep semgrep mcp` — then re-run `/pipeline-setup` to enable Sentinel." Skip Sentinel setup.
    - If semgrep is installed but not authenticated: tell user to run `semgrep login` first (opens browser, free account at https://semgrep.dev/login). Skip Sentinel setup.
 
-3. Copy `source/agents/sentinel.md` to `.claude/agents/sentinel.md` (with placeholder customization, same as other agent personas).
+3. Copy `source/agents/sentinel.md` to `.cursor/agents/sentinel.md` (with placeholder customization, same as other agent personas).
 
-4. Set `sentinel_enabled: true` in `.claude/pipeline-config.json`.
+4. Set `sentinel_enabled: true` in `.cursor/pipeline-config.json`.
 
 5. Update installation summary: "Sentinel security agent: enabled (Semgrep MCP)"
 
@@ -472,7 +435,7 @@ After printing the summary, offer the optional Sentinel security agent:
 
 | Template Source | Destination | Install When |
 |----------------|-------------|-------------|
-| `source/agents/sentinel.md` | `.claude/agents/sentinel.md` | User enables Sentinel in Step 6a |
+| `source/agents/sentinel.md` | `.cursor/agents/sentinel.md` | User enables Sentinel in Step 6a |
 
 ### Step 6b: Agent Teams Opt-In (Experimental)
 
@@ -485,7 +448,7 @@ After the Sentinel offer (whether user said yes or no), offer the optional Agent
 
 **If user says yes:**
 
-1. Set `agent_teams_enabled: true` in `.claude/pipeline-config.json`.
+1. Set `agent_teams_enabled: true` in `.cursor/pipeline-config.json`.
 2. Print: "Agent Teams: enabled (experimental). Set `CLAUDE_AGENT_TEAMS=1` in your environment
    to activate. The pipeline will fall back to sequential execution if the env var is unset."
 
@@ -498,7 +461,7 @@ After the Sentinel offer (whether user said yes or no), offer the optional Agent
 has no external tools to install. The feature is entirely runtime-activated via the env var.
 
 **No installation manifest expansion** -- Agent Teams uses the existing Colby persona
-(`.claude/agents/colby.md`). No new files are installed.
+(`.cursor/agents/colby.md`). No new files are installed.
 
 ### Step 6c: CI Watch Opt-In
 
@@ -508,7 +471,7 @@ After the Agent Teams offer (whether user said yes or no), offer the optional CI
 > After Ellis pushes, Eva watches your CI run and autonomously fixes failures via Roz and Colby,
 > pausing for your approval before pushing a fix. Requires `gh` (GitHub) or `glab` (GitLab) CLI.
 
-**Platform CLI gate:** Read `platform_cli` from `.claude/pipeline-config.json`.
+**Platform CLI gate:** Read `platform_cli` from `.cursor/pipeline-config.json`.
 - If `platform_cli` is empty or missing, block with message: "CI Watch requires `gh` or `glab`. Configure a platform CLI first (run `/pipeline-setup` and set a platform)." Skip CI Watch setup.
 - If `platform_cli` is set, continue.
 
@@ -520,11 +483,11 @@ After the Agent Teams offer (whether user said yes or no), offer the optional CI
 2. **Ask max retries:** "How many times should the fix cycle retry before stopping? (default: 3, minimum: 1)"
    - Accept an integer >= 1. If user presses Enter, use 3.
 
-3. **Set config values:** in `.claude/pipeline-config.json`:
+3. **Set config values:** in `.cursor/pipeline-config.json`:
    - `ci_watch_enabled: true`
    - `ci_watch_max_retries: N` (the value from step 2)
 
-4. **Compute and store platform commands** in `.claude/pipeline-config.json`:
+4. **Compute and store platform commands** in `.cursor/pipeline-config.json`:
    - `ci_watch_poll_command`: `gh run list --commit {sha} --json status,conclusion,url,databaseId --limit 1` (GitHub) or `glab ci list --branch {branch} -o json | head -1` (GitLab)
    - `ci_watch_log_command`: `gh run view {run_id} --log-failed | tail -200` (GitHub) or `glab ci trace {job_id} | tail -200` (GitLab)
 
@@ -547,9 +510,9 @@ After the CI Watch offer (whether user said yes or no), offer the optional Deps 
 
 **If user says yes:**
 
-1. Set `deps_agent_enabled: true` in `.claude/pipeline-config.json`.
-2. Copy `source/agents/deps.md` to `.claude/agents/deps.md`.
-3. Copy `source/commands/deps.md` to `.claude/commands/deps.md`.
+1. Set `deps_agent_enabled: true` in `.cursor/pipeline-config.json`.
+2. Copy `source/agents/deps.md` to `.cursor/agents/deps.md`.
+3. Copy `source/commands/deps.md` to `.cursor/commands/deps.md`.
 4. Print: "Deps agent: enabled. Use /deps to scan your dependencies."
 
 **Idempotency:** If `deps_agent_enabled` already exists in `pipeline-config.json`
@@ -564,8 +527,8 @@ Print: "Deps agent: not enabled"
 
 | Template Source | Destination | Install When |
 |----------------|-------------|-------------|
-| `source/agents/deps.md` | `.claude/agents/deps.md` | User enables Deps in Step 6d |
-| `source/commands/deps.md` | `.claude/commands/deps.md` | User enables Deps in Step 6d |
+| `source/agents/deps.md` | `.cursor/agents/deps.md` | User enables Deps in Step 6d |
+| `source/commands/deps.md` | `.cursor/commands/deps.md` | User enables Deps in Step 6d |
 
 ### Step 6e: Darwin Self-Evolving Pipeline (Opt-In)
 
@@ -579,9 +542,9 @@ After the Deps Agent offer (whether user said yes or no), offer the optional Dar
 
 **If user says yes:**
 
-1. Set `darwin_enabled: true` in `.claude/pipeline-config.json`.
-2. Copy `source/agents/darwin.md` to `.claude/agents/darwin.md`.
-3. Copy `source/commands/darwin.md` to `.claude/commands/darwin.md`.
+1. Set `darwin_enabled: true` in `.cursor/pipeline-config.json`.
+2. Copy `source/agents/darwin.md` to `.cursor/agents/darwin.md`.
+3. Copy `source/commands/darwin.md` to `.cursor/commands/darwin.md`.
 4. Print: "Darwin: enabled. Use /darwin to analyze pipeline performance, or Darwin will auto-trigger when degradation is detected."
 
 **Idempotency:** If `darwin_enabled` already exists in `pipeline-config.json`
@@ -593,7 +556,7 @@ the config), treat as `false` (default false) and proceed with the offer.
 Print: "Darwin: not enabled"
 
 **Dependency:** Darwin requires the Atelier Brain for telemetry data. If no
-brain is configured (`.claude/brain-config.json` absent), inform user: "Darwin
+brain is configured (`.cursor/brain-config.json` absent), inform user: "Darwin
 requires the Atelier Brain for telemetry data. Set up brain first, then re-run
 setup."
 
@@ -601,71 +564,12 @@ setup."
 
 | Template Source | Destination | Install When |
 |----------------|-------------|-------------|
-| `source/agents/darwin.md` | `.claude/agents/darwin.md` | User enables Darwin in Step 6e |
-| `source/commands/darwin.md` | `.claude/commands/darwin.md` | User enables Darwin in Step 6e |
-
-### Step 6f: Dashboard Integration (Opt-In)
-
-After the Darwin offer (whether user said yes or no), offer dashboard integration:
-
-```
-Dashboard integration (optional):
-  1. PlanVisualizer -- project-level tracking with kanban, cost trends,
-     traceability across pipeline runs
-     https://github.com/ksyed0/PlanVisualizer
-  2. claude-code-kanban -- real-time session dashboard, watch agents
-     work live (lightweight, instant setup)
-     https://github.com/NikiforovAll/claude-code-kanban
-  3. None
-
-Choose [1/2/3]:
-```
-
-**Pre-check (before showing menu):** Detect current state by checking:
-- Does `.plan-visualizer/` directory exist? (PlanVisualizer installed)
-- Do claude-code-kanban hooks exist in `~/.claude/hooks/`? (kanban installed)
-
-**If both dashboards detected:** Force choice before proceeding. Print:
-"Both dashboards detected. Pick one or remove both." Then show the menu.
-
-**Idempotency:** Before running any install or cleanup, read `dashboard_mode` from `.claude/pipeline-config.json`. If it already matches the user's choice, skip mutation and announce: "Dashboard is already set to [choice]." Do not re-run install.
-
-**If user picks 1 (PlanVisualizer):**
-
-1. Check Node.js: run `node --version`. If node is not found or the version is < 18: warn "PlanVisualizer requires Node.js 18+. Skipping." Set `dashboard_mode: "none"` in `.claude/pipeline-config.json` and skip remaining steps.
-2. **Switch cleanup:** If switching from claude-code-kanban, run `npx claude-code-kanban --uninstall` (if npx available). If that fails or npx is unavailable, manually remove kanban hooks from `~/.claude/hooks/`. Log any uninstall failure but continue -- manual cleanup is the fallback.
-3. Clone PlanVisualizer to `.plan-visualizer/` in the project root (e.g., `git clone https://github.com/ksyed0/PlanVisualizer .plan-visualizer`). Pin to a known-good tag if available.
-   Add `.plan-visualizer/` to the project's `.gitignore` if not already present.
-4. Run PlanVisualizer's install script from within `.plan-visualizer/`.
-5. Copy bridge script: `source/dashboard/telemetry-bridge.sh` -> `.claude/dashboard/telemetry-bridge.sh`.
-6. Set `dashboard_mode: "plan-visualizer"` in `.claude/pipeline-config.json`.
-7. Print: "Dashboard: PlanVisualizer installed. Run `node tools/generate-plan.js` to view."
-
-**Note:** PlanVisualizer works without the Atelier Brain. When brain is not configured, the bridge script falls back to reading `docs/pipeline/pipeline-state.md` to populate the dashboard.
-
-**If user picks 2 (claude-code-kanban):**
-
-1. Check npx: run `command -v npx`. If not found: warn "claude-code-kanban requires npm/npx. Skipping." Set `dashboard_mode: "none"` in `.claude/pipeline-config.json` and skip remaining steps.
-2. **Switch cleanup from PlanVisualizer:** If switching from PlanVisualizer, remove the `.plan-visualizer/` directory and bridge script (`.claude/dashboard/telemetry-bridge.sh`).
-3. Run `npx claude-code-kanban@latest --install` to register hooks (use `npx claude-code-kanban --install` if `@latest` is unavailable in your npm registry).
-   **Note:** `@latest` prevents stale cached versions. For production environments, pin a specific version (e.g., `npx claude-code-kanban@1.2.3 --install`) for reproducibility.
-   claude-code-kanban installs hooks at `~/.claude/hooks/` (user-level, affects all projects).
-4. Set `dashboard_mode: "claude-code-kanban"` in `.claude/pipeline-config.json`.
-5. Print: "Dashboard: claude-code-kanban installed. Run `npx claude-code-kanban --open` to view."
-
-**If user picks 3 (None):**
-
-1. **Switch cleanup:** If switching from an existing dashboard:
-   - If switching from PlanVisualizer: remove `.plan-visualizer/` directory and bridge script.
-   - If switching from claude-code-kanban: run `npx claude-code-kanban --uninstall` (if available), or manually remove kanban hooks from `~/.claude/hooks/`.
-2. Set `dashboard_mode: "none"` in `.claude/pipeline-config.json`.
-3. Print: "Dashboard: not enabled"
-
-**Error handling:** If any install step fails (clone fails, install script errors, npx install errors): log the error with "Dashboard install failed: [reason]. Skipping.", set `dashboard_mode: "none"` in `.claude/pipeline-config.json`, and continue setup. Never block setup on dashboard install failure.
+| `source/agents/darwin.md` | `.cursor/agents/darwin.md` | User enables Darwin in Step 6e |
+| `source/commands/darwin.md` | `.cursor/commands/darwin.md` | User enables Darwin in Step 6e |
 
 **Brain setup offer (always ask):**
 
-After the Dashboard offer (whether user said yes or no), ask the user:
+After the Darwin offer (whether user said yes or no), ask the user:
 
 > The pipeline is ready. Would you also like to set up the **Atelier Brain**?
 > It gives your agents persistent memory across sessions -- architectural
@@ -681,13 +585,13 @@ Users can change branching strategy without full reinstall by asking Eva to
 "change branching strategy" or "switch to GitHub Flow".
 
 **Procedure:**
-1. Eva reads `.claude/pipeline-config.json`
+1. Eva reads `.cursor/pipeline-config.json`
 2. Eva confirms no active pipeline. If active, return error: "Cannot change
    branching strategy mid-pipeline. Complete or abandon the current pipeline
    first."
 3. Eva asks the new strategy question (same as Step 1b)
-4. Eva rewrites `.claude/pipeline-config.json` and
-   `.claude/rules/branch-lifecycle.md` only (installs the selected variant)
+4. Eva rewrites `.cursor/pipeline-config.json` and
+   `.cursor/rules/branch-lifecycle.md` only (installs the selected variant)
 5. Eva announces the change and any new CI recommendations
 
 No other files are modified during reconfig.
@@ -698,10 +602,10 @@ No other files are modified during reconfig.
 
 ## Important Notes
 
-- **Do not overwrite existing files without asking.** If `.claude/rules/` or `.claude/agents/` already exists with content, ask the user whether to merge or replace.
+- **Do not overwrite existing files without asking.** If `.cursor/rules/` or `.cursor/agents/` already exists with content, ask the user whether to merge or replace.
 - **Git-track the installed files.** Recommend the user commits the pipeline files so the system persists across clones and team members.
 - **Templates are the source of truth.** If a template file is missing from the plugin's templates directory, report which file is missing and skip it rather than generating content from scratch.
-- **Validate after install.** After writing all files, verify that Claude Code recognizes the slash commands by listing them. If the rules files are not being loaded, check that they are in `.claude/rules/` (Claude Code auto-loads all files in this directory).
+- **Validate after install.** After writing all files, verify that Claude Code recognizes the slash commands by listing them. If the rules files are not being loaded, check that they are in `.cursor/rules/` (Claude Code auto-loads all files in this directory).
 
 </gate>
 
@@ -711,11 +615,11 @@ No other files are modified during reconfig.
 
 | Directory | Loaded By | Purpose |
 |-----------|-----------|---------|
-| `.claude/rules/` | Claude Code automatically (every conversation) | Eva persona and orchestration rules -- always active |
-| `.claude/agents/` | Claude Code when subagents are invoked | Agent personas for execution tasks |
-| `.claude/commands/` | Claude Code when user types a slash command | Manual agent invocation overrides |
-| `.claude/references/` | Agents when they need shared knowledge | Quality framework, lessons, templates |
-| `.claude/hooks/` | Claude Code on every tool call (PreToolUse) | Mechanical enforcement of agent boundaries, sequencing, and git operations |
+| `.cursor/rules/` | Claude Code automatically (every conversation) | Eva persona and orchestration rules -- always active |
+| `.cursor/agents/` | Claude Code when subagents are invoked | Agent personas for execution tasks |
+| `.cursor/commands/` | Claude Code when user types a slash command | Manual agent invocation overrides |
+| `.cursor/references/` | Agents when they need shared knowledge | Quality framework, lessons, templates |
+| `.cursor/hooks/` | Claude Code on every tool call (PreToolUse) | Mechanical enforcement of agent boundaries, sequencing, and git operations |
 | `docs/pipeline/` | Eva at session start | State recovery, context preservation, error tracking |
 
 </section>

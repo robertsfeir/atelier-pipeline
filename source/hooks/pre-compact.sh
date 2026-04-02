@@ -7,7 +7,7 @@
 # (ADR-0012, retro lesson #003): no brain calls, no subagent invocations,
 # no test runs. Exits 0 always -- never blocks compaction.
 
-STATE_FILE="${CLAUDE_PROJECT_DIR:-$PWD}/docs/pipeline/pipeline-state.md"
+STATE_FILE="${CURSOR_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$PWD}}/docs/pipeline/pipeline-state.md"
 
 # No-op if pipeline-state.md does not exist (non-pipeline sessions)
 if [ ! -f "$STATE_FILE" ]; then

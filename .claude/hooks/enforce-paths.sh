@@ -38,11 +38,18 @@ CONFIG="$SCRIPT_DIR/enforcement-config.json"
 [ ! -f "$CONFIG" ] && exit 0
 
 # Ensure CWD is the project root — hooks may inherit an arbitrary CWD
-PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
+PROJECT_ROOT="${CURSOR_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$(cd "$SCRIPT_DIR/../.." && pwd)}}"
 cd "$PROJECT_ROOT"
 
 # Normalize absolute paths to project-relative
 FILE_PATH="${FILE_PATH#"$PWD"/}"
+
+# If path is still absolute after normalization, it's outside the project root
+# Only ellis (full access) is allowed to write outside the project
+if [[ "$FILE_PATH" == /* ]] && [ "$AGENT_TYPE" != "ellis" ]; then
+  echo "BLOCKED: File is outside the project root. Attempted: $FILE_PATH" >&2
+  exit 2
+fi
 
 PIPELINE_DIR=$(jq -r '.pipeline_state_dir' "$CONFIG")
 ARCH_DIR=$(jq -r '.architecture_dir' "$CONFIG")
