@@ -147,17 +147,19 @@ plugins/atelier-pipeline/source/
     branch-lifecycle-gitflow.md       # GitFlow branch lifecycle
 ```
 
-> **Enforcement hook bypass:** Before the first write operation below, set the
-> `ATELIER_SETUP_MODE` environment variable to disable enforcement hooks for
-> this session. This allows /pipeline-setup to write to `.claude/` paths even
-> when enforcement hooks are already installed (re-install or update scenario).
+> **Enforcement hook bypass:** Before the first write operation below, create
+> the setup-mode sentinel file to disable enforcement hooks for this session.
+> This allows /pipeline-setup to write to `.claude/` paths even when
+> enforcement hooks are already installed (re-install or update scenario).
 >
-> ```
-> export ATELIER_SETUP_MODE=1
-> ```
+> 1. Ensure `docs/pipeline/` exists: `mkdir -p docs/pipeline`
+> 2. Create sentinel: write an empty file to `docs/pipeline/.setup-mode`
 >
-> This variable is session-scoped -- it expires naturally when the Claude Code
-> session ends. No explicit unset is needed.
+> After all files are installed (end of Step 6f), remove the sentinel:
+> delete `docs/pipeline/.setup-mode`.
+>
+> The sentinel file is also checked into `.gitignore` patterns in the
+> pipeline state directory template to avoid accidental commits.
 
 ### Step 3: Install Files
 

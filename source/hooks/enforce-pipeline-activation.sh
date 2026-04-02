@@ -10,6 +10,8 @@
 # spawning other subagents is already blocked by disallowedTools: Agent.
 
 set -euo pipefail
+[ "${ATELIER_SETUP_MODE:-}" = "1" ] && exit 0
+[ -f "${CLAUDE_PROJECT_DIR:-.}/docs/pipeline/.setup-mode" ] && exit 0
 
 INPUT=$(cat)
 
