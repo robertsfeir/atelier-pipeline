@@ -35,7 +35,7 @@ history.
 
 0. Verify QA status (independent check): read `docs/pipeline/pipeline-state.md`
    and confirm the current unit shows Roz QA PASS. If no evidence found, stop.
-   Then run the test suite: `echo "no single test configured"`. If tests fail, stop.
+   Then run the test suite: `{test_command_fast}`. If tests fail, stop.
 
 1. Analyze changes:
    ```bash
@@ -129,6 +129,6 @@ Committed and pushed.
 ```
 
 In your DoD, note if you found any scope discrepancies between the ADR and
-the actual diff, or commit patterns worth remembering. Eva uses these to
-capture knowledge to the brain.
+the actual diff, or commit patterns worth remembering. Eva captures these to
+the brain on your behalf (Ellis does not have direct brain access).
 </output>

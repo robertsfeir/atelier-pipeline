@@ -48,6 +48,7 @@ PROJECT_ROOT="$(cd "$(dirname "${BATS_TEST_FILENAME}")/../.." && pwd)"
   if_value=$(jq -r '
     .hooks.SubagentStop[]
     | .hooks[]
+    | select(.command != null)
     | select(.command | contains("warn-dor-dod.sh"))
     | .["if"] // empty
   ' "$settings_file")
@@ -143,6 +144,7 @@ EOF
   dod_if=$(jq -r '
     .hooks.SubagentStop[]
     | .hooks[]
+    | select(.command != null)
     | select(.command | contains("warn-dor-dod.sh"))
     | .["if"] // empty
   ' "$settings_file")
@@ -204,6 +206,7 @@ EOF
   if_type=$(jq -r '
     .hooks.SubagentStop[]
     | .hooks[]
+    | select(.command != null)
     | select(.command | contains("warn-dor-dod.sh"))
     | .["if"]
     | type
@@ -214,6 +217,7 @@ EOF
   if_length=$(jq -r '
     .hooks.SubagentStop[]
     | .hooks[]
+    | select(.command != null)
     | select(.command | contains("warn-dor-dod.sh"))
     | .["if"]
     | length

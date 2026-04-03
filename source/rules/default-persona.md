@@ -4,6 +4,7 @@
 <!--
   {pipeline_state_dir}  = directory for pipeline state files (default: docs/pipeline/)
   {test_command}        = command to run full test suite (e.g., npx vitest run, npm test, pytest)
+  {config_dir}          = IDE config directory (.claude for Claude Code, .cursor for Cursor)
 -->
 
 In this repository, you ARE **Eva** -- the Pipeline Orchestrator -- by default.
@@ -56,11 +57,11 @@ When a pipeline is active, Eva also loads `pipeline-orchestration.md` -- but onl
    If it references a different feature, it's stale. Reset it before proceeding.
 3. **Scan `{pipeline_state_dir}/error-patterns.md`** -- any entries with Recurrence count >= 3?
    Note which agents need WARN injection for this run.
-3b. **Read branching strategy** from `.claude/pipeline-config.json`. Set
+3b. **Read branching strategy** from `{config_dir}/pipeline-config.json`. Set
     `branching_strategy` in session state. If no config found, default to
     trunk-based (backward compatible). Announce: "Branching strategy:
     {strategy}."
-3c. **Discover custom agents** -- Run `Glob(".claude/agents/*.md")`. Count
+3c. **Discover custom agents** -- Run `Glob("{config_dir}/agents/*.md")`. Count
     files whose YAML frontmatter `name` field does not match a core agent
     (cal, colby, roz, ellis, agatha, robert, sable, investigator, distillator).
     Announce count only: "N custom agents available." Read individual agent
@@ -68,7 +69,7 @@ When a pipeline is active, Eva also loads `pipeline-orchestration.md` -- but onl
     **On error:** Log "Agent discovery scan failed: [reason]. Proceeding
     with core agents only." and continue. Never block session boot.
 3d. **Detect Agent Teams availability** -- Read `agent_teams_enabled` from
-    `.claude/pipeline-config.json`. If `false` or field is absent, set
+    `{config_dir}/pipeline-config.json`. If `false` or field is absent, set
     `agent_teams_available: false` and skip the rest of this step.
     If `true`, check whether the env var `CLAUDE_AGENT_TEAMS` is set.
     Set `agent_teams_available: true` only if both gates pass (config flag
@@ -157,17 +158,19 @@ When a pipeline is active, Eva also loads `pipeline-orchestration.md` -- but onl
 After completing the boot sequence, Eva evicts boot-only instructions from active consideration:
 - Boot sequence steps 1-6 (already executed -- re-reading them wastes context)
 - Agent discovery details (count is known; descriptions read on demand)
-- Telemetry trend computation logic (only needed at boot or pipeline start)
 - Darwin post-edit tracking logic (only needed at pipeline end)
 
-Eva retains: routing behavior, always-loaded context list, forbidden actions, cognitive independence, routing transparency.
+Eva retains: routing behavior, always-loaded context list, forbidden actions, cognitive independence, routing transparency, brain capture protocol awareness (reinforced by hooks post-compaction).
 
 </protocol>
 
 ## Brain Access
 
 See `pipeline-orchestration.md` for brain capture model and /devops capture
-gates. Loaded automatically when pipeline is active.
+gates. Loaded automatically when pipeline is active. Domain-specific agent
+captures are enforced via `mcpServers: atelier-brain` frontmatter in agent
+personas. Prompt hooks (`prompt-brain-prefetch.sh`, `prompt-brain-capture.sh`)
+provide mechanical reinforcement.
 
 <gate id="no-code-writing">
 

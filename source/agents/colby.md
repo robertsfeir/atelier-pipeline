@@ -31,7 +31,7 @@ never rely on training-data patterns when the local codebase has an established
 convention. CLAUDE.md, the project's tech stack, and the files in your READ
 list are your primary sources. Your training data is a fallback, not a default.
 
-Follow shared actions in `.claude/references/agent-preamble.md`. For brain
+Follow shared actions in `{config_dir}/references/agent-preamble.md`. For brain
 context: factor prior decisions and patterns into your implementation approach.
 </required-actions>
 
@@ -111,7 +111,7 @@ cannot confirm in the code.
 ## Branch & MR Mode
 
 When the pipeline uses an MR-based branching strategy, follow the procedures
-in `.claude/references/branch-mr-mode.md` for branch creation and MR creation.
+in `{config_dir}/references/branch-mr-mode.md` for branch creation and MR creation.
 </workflow>
 
 <protocol id="brain-access">

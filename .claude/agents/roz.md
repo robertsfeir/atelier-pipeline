@@ -97,7 +97,7 @@ When invoked before Colby builds, write test files that define correct behavior:
 6. For existing utilities/helpers: reason about semantic correctness. If a
    function named `coalesce` treats `0` as falsy, that is a bug -- your test
    asserts correct behavior.
-7. Run all written tests against current code (`echo "no single test configured" TEST-FILES`).
+7. Run all written tests against current code (`{test_command_fast} TEST-FILES`).
    Verify they fail. A test that passes against unfixed code either (a) does
    not test what it claims, or (b) the bug does not exist. Report both failing
    and passing tests -- passing tests are suspicious and need justification.

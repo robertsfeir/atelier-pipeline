@@ -1,0 +1,1479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atelier Pipeline v3.11 — Multi-Agent Software Engineering</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;0,9..40,900;1,9..40,400&family=DM+Serif+Display&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #f6f9fd;
+    --surface: #ffffff;
+    --surface-2: #eef2f8;
+    --border: #dfe4ed;
+    --text: #1a2234;
+    --text-muted: #475569;
+    --text-light: #94a3b8;
+    --accent: #e83e52;
+    --accent-soft: rgba(232,62,82,0.08);
+    --deep: #021227;
+    --green: #16a34a;
+    --yellow: #ca8a04;
+    --amber: #ca8a04;
+    --cyan: #0284c7;
+    --purple: #8b3fa0;
+    --red: #dc2626;
+    --teal: #0d9488;
+    --pink: #db2777;
+    --gradient-brand: linear-gradient(135deg, #f08a6e 0%, #e83e52 40%, #8b3fa0 100%);
+  }
+
+  body {
+    font-family: 'DM Sans', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  .deck { position: relative; width: 100vw; height: 100vh; }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3.5rem 5rem;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    transform: translateX(40px);
+  }
+
+  .slide.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(0);
+  }
+
+  .slide-inner { max-width: 1020px; width: 100%; }
+
+  .progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 3px;
+    background: var(--gradient-brand);
+    transition: width 0.4s ease;
+    z-index: 200;
+  }
+
+  .counter {
+    position: fixed;
+    bottom: 2rem;
+    right: 3rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-light);
+    z-index: 200;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .nav-hint {
+    position: fixed;
+    bottom: 2rem;
+    left: 3rem;
+    font-size: 0.65rem;
+    color: var(--text-light);
+    z-index: 200;
+    letter-spacing: 0.05em;
+    opacity: 0.6;
+  }
+
+  .section-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 1.25rem;
+  }
+  .section-label.green { color: var(--green); }
+  .section-label.amber { color: var(--amber); }
+  .section-label.cyan { color: var(--cyan); }
+  .section-label.purple { color: var(--purple); }
+  .section-label.teal { color: var(--teal); }
+  .section-label.pink { color: var(--pink); }
+
+  h1 {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: clamp(2.5rem, 5.5vw, 4.5rem);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    margin-bottom: 1.5rem;
+    color: var(--deep);
+  }
+
+  h2 {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: clamp(1.5rem, 3.2vw, 2.3rem);
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+    margin-bottom: 1rem;
+    color: var(--deep);
+  }
+
+  h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--deep); }
+
+  .lead {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.75;
+    max-width: 680px;
+    font-weight: 400;
+  }
+
+  .lead-sm {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    line-height: 1.65;
+    max-width: 700px;
+    font-weight: 400;
+  }
+
+  .hero-center { text-align: center; }
+  .hero-center .lead { margin: 0 auto; }
+
+  .gradient-text {
+    background: var(--gradient-brand);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .stats-row {
+    display: flex;
+    justify-content: center;
+    gap: 3.5rem;
+    margin-top: 2.5rem;
+    flex-wrap: wrap;
+  }
+
+  .stat { text-align: center; }
+  .stat .num { font-size: 2rem; font-weight: 800; color: var(--accent); letter-spacing: -0.02em; }
+  .stat .label { font-size: 0.65rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 0.3rem; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.15rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .card h4 { font-size: 0.82rem; font-weight: 700; margin-bottom: 0.35rem; color: var(--deep); }
+  .card p { font-size: 0.76rem; color: var(--text-muted); line-height: 1.55; }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    margin-top: 1.25rem;
+  }
+
+  .three-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+    margin-top: 1.25rem;
+  }
+
+  .four-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+
+  .col-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  .tag {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 5px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.6rem;
+  }
+  .tag-coral { background: rgba(232,62,82,0.08); color: var(--accent); }
+  .tag-green { background: rgba(22,163,74,0.1); color: var(--green); }
+  .tag-amber { background: rgba(202,138,4,0.1); color: var(--amber); }
+  .tag-cyan { background: rgba(2,132,199,0.1); color: var(--cyan); }
+  .tag-purple { background: rgba(139,63,160,0.1); color: var(--purple); }
+  .tag-teal { background: rgba(13,148,136,0.1); color: var(--teal); }
+  .tag-pink { background: rgba(219,39,119,0.1); color: var(--pink); }
+
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin: 1rem 0;
+  }
+  .flow-step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  .flow-step.coral { border-color: var(--accent); background: rgba(232,62,82,0.05); }
+  .flow-step.green { border-color: var(--green); background: rgba(22,163,74,0.05); }
+  .flow-step.cyan { border-color: var(--cyan); background: rgba(2,132,199,0.05); }
+  .flow-step.purple { border-color: var(--purple); background: rgba(139,63,160,0.05); }
+  .flow-step.amber { border-color: var(--amber); background: rgba(202,138,4,0.05); }
+  .flow-step.teal { border-color: var(--teal); background: rgba(13,148,136,0.05); }
+  .flow-step.pink { border-color: var(--pink); background: rgba(219,39,119,0.05); }
+  .flow-arrow { color: var(--accent); font-size: 0.9rem; }
+
+  .table-wrap {
+    overflow-x: auto;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    margin-top: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+  thead { background: var(--surface-2); }
+  th { text-align: left; padding: 0.55rem 0.8rem; font-weight: 600; font-size: 0.63rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+  td { padding: 0.55rem 0.8rem; border-bottom: 1px solid var(--border); line-height: 1.4; }
+  tr:last-child td { border-bottom: none; }
+
+  .takeaway {
+    margin-top: 1rem;
+    background: linear-gradient(135deg, rgba(240,138,110,0.07) 0%, rgba(232,62,82,0.07) 40%, rgba(139,63,160,0.07) 100%);
+    border: 1px solid rgba(232,62,82,0.18);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 10px 10px 0;
+    padding: 0.65rem 1.1rem;
+  }
+  .takeaway .takeaway-label {
+    font-size: 0.55rem;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+  }
+  .takeaway p {
+    font-size: 0.8rem;
+    color: var(--deep);
+    line-height: 1.55;
+    font-weight: 500;
+  }
+
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  .bl { display: flex; flex-direction: column; gap: 0.35rem; }
+  .bl-item {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    line-height: 1.45;
+    padding-left: 0.75rem;
+    border-left: 2px solid var(--border);
+  }
+  .bl-item strong { color: var(--deep); }
+
+  .codeblock {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    line-height: 1.65;
+    color: var(--text-muted);
+    white-space: pre;
+    overflow-x: auto;
+  }
+
+  .new-badge {
+    display: inline-block;
+    padding: 0.1rem 0.45rem;
+    border-radius: 4px;
+    font-size: 0.55rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    background: var(--accent);
+    color: #fff;
+    text-transform: uppercase;
+    vertical-align: middle;
+    margin-left: 0.4rem;
+  }
+
+  .stat-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin: 0.75rem 0;
+  }
+  .stat-card {
+    flex: 1;
+    min-width: 120px;
+    padding: 0.85rem;
+    border-radius: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .stat-card .num { font-size: 1.5rem; font-weight: 800; margin-bottom: 0.15rem; }
+  .stat-card .desc { font-size: 0.65rem; color: var(--text-muted); line-height: 1.3; }
+
+  .t-num {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.9rem;
+    color: #fff;
+  }
+
+  .takeaway-row {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    margin-bottom: 0.85rem;
+  }
+  .takeaway-row .t-content h3 { font-size: 0.88rem; font-weight: 700; margin-bottom: 0.15rem; }
+  .takeaway-row .t-content p { font-size: 0.78rem; color: var(--text-muted); line-height: 1.45; max-width: 620px; }
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+<div class="counter" id="counter"></div>
+<div class="nav-hint">&larr; &rarr; arrow keys to navigate</div>
+
+<div class="deck" id="deck">
+
+<!-- SLIDE 1: Title -->
+<div class="slide active" data-slide="0">
+  <div class="slide-inner hero-center">
+    <div style="display:inline-block; padding:0.35rem 0.9rem; border:1px solid var(--border); border-radius:100px; font-size:0.7rem; font-weight:500; color:var(--accent); letter-spacing:0.05em; text-transform:uppercase; margin-bottom:2rem;">Atelier Pipeline &mdash; March 2026</div>
+    <h1><span class="gradient-text">Multi-Agent<br>Software Engineering</span></h1>
+    <p class="lead" style="margin: 0 auto;">
+      12 specialized agents. 1 orchestrator. Quality gates everywhere.<br>
+      Persistent institutional memory. Zero trust in AI-generated code.
+    </p>
+    <div class="stats-row">
+      <div class="stat"><div class="num">12</div><div class="label">Agents</div></div>
+      <div class="stat"><div class="num">10</div><div class="label">Mandatory Gates</div></div>
+      <div class="stat"><div class="num">v3.11</div><div class="label">Current Version</div></div>
+      <div class="stat"><div class="num">2 wks</div><div class="label">v1.0 &rarr; v3.11</div></div>
+    </div>
+    <div style="margin-top:2.5rem; font-size:1.05rem; font-weight:600; color:var(--accent);">Robert Sfeir</div>
+  </div>
+</div>
+
+<!-- SLIDE 2: What Changed - Executive Summary -->
+<div class="slide" data-slide="1">
+  <div class="slide-inner">
+    <div class="section-label">Since Last Time</div>
+    <h2>Two weeks. v1.0 &rarr; v3.11.</h2>
+    <p class="lead-sm" style="margin-bottom: 1.25rem;">Last time you saw 8 agents and file-based memory. Here's what shipped since.</p>
+    <div class="three-col">
+      <div class="card" style="border-top:3px solid var(--amber);">
+        <h4 style="color:var(--amber);">Atelier Brain</h4>
+        <p>PostgreSQL + pgvector persistent memory. Decisions, patterns, and lessons survive across sessions. Eva mediates all access.</p>
+      </div>
+      <div class="card" style="border-top:3px solid var(--purple);">
+        <h4 style="color:var(--purple);">Darwin Engine</h4>
+        <p>The pipeline analyzes its own telemetry, proposes improvements, and tracks whether its edits helped or regressed.</p>
+      </div>
+      <div class="card" style="border-top:3px solid var(--accent);">
+        <h4 style="color:var(--accent);">Mechanical Enforcement</h4>
+        <p>PreToolUse hooks that reject tool calls. Shell scripts, not prompt instructions. Agents can't write outside their lane.</p>
+      </div>
+    </div>
+    <div class="three-col">
+      <div class="card" style="border-top:3px solid var(--red);">
+        <h4 style="color:var(--red);">4 New Agents</h4>
+        <p><strong>Poirot</strong> (blind diff review), <strong>Sentinel</strong> (Semgrep security), <strong>Deps</strong> (CVE scanner), <strong>Darwin</strong> (self-evolution).</p>
+      </div>
+      <div class="card" style="border-top:3px solid var(--cyan);">
+        <h4 style="color:var(--cyan);">Telemetry + Dashboard</h4>
+        <p>Per-agent cost, duration, rework rate. Day-aggregated trends. Degradation alerts after 3+ consecutive breaches.</p>
+      </div>
+      <div class="card" style="border-top:3px solid var(--green);">
+        <h4 style="color:var(--green);">Agent Teams</h4>
+        <p>Eva spawns parallel Colby instances for independent build units within a wave. Same persona, same enforcement.</p>
+      </div>
+    </div>
+    <div class="takeaway">
+      <div class="takeaway-label">Takeaway</div>
+      <p>The pipeline went from 8 agents with file-based memory to <strong>12+ agents with a persistent brain, self-evolution, security scanning, and mechanical enforcement.</strong></p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 3: What Changed - Feature Table -->
+<div class="slide" data-slide="2">
+  <div class="slide-inner">
+    <div class="section-label">Since Last Time</div>
+    <h2>13 major features in 14 days</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Feature</th><th>Ver</th><th>What It Does</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Atelier Brain</strong></td><td>v2.0</td><td>Persistent institutional memory (PostgreSQL + pgvector). Decisions, patterns, lessons across sessions.</td></tr>
+          <tr><td><strong>Mechanical Enforcement</strong></td><td>v2.0</td><td>PreToolUse hooks that block agents from writing outside their lanes.</td></tr>
+          <tr><td><strong>XML Prompt Architecture</strong></td><td>v3.0</td><td>All agent personas migrated to structured XML tags. Standardized invocation templates.</td></tr>
+          <tr><td><strong>Configurable Branching</strong></td><td>v3.1</td><td>Trunk-based or feature-branch strategy. MR mode with branch lifecycle.</td></tr>
+          <tr><td><strong>Agent Discovery</strong></td><td>v3.4</td><td>Custom agents auto-discovered at boot. Paste-to-convert. Core priority preserved.</td></tr>
+          <tr><td><strong>Sentinel + Agent Teams</strong></td><td>v3.5</td><td>Semgrep security audit at review juncture. Parallel Colby instances for wave execution.</td></tr>
+          <tr><td><strong>Observation Masking</strong></td><td>v3.6</td><td>Context window management &mdash; compaction API for long pipelines.</td></tr>
+          <tr><td><strong>Uninstall Skills</strong></td><td>v3.7</td><td>Clean removal of pipeline files and brain configuration.</td></tr>
+          <tr><td><strong>Telemetry + Deps + CI Watch</strong></td><td>v3.8</td><td>Agent telemetry capture. Dependency CVE scanner. Self-healing CI protocol.</td></tr>
+          <tr><td><strong>Darwin Engine</strong></td><td>v3.9</td><td>Self-evolving pipeline. Telemetry analysis, fitness eval, self-correction loop.</td></tr>
+          <tr><td><strong>Telemetry Dashboard</strong></td><td>v3.10</td><td>Visual dashboard with cost trends, rework rates, degradation alerts.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="lead-sm" style="margin-top:1rem;">All built using the pipeline itself. The pipeline is its own first customer.</p>
+    <div class="takeaway">
+      <div class="takeaway-label">Takeaway</div>
+      <p>The rest of this presentation covers <strong>how the full system works today</strong> &mdash; not just the delta. New features are marked throughout.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 4: The Problem -->
+<div class="slide" data-slide="3">
+  <div class="slide-inner">
+    <div class="section-label">The Problem</div>
+    <h2>AI writes confident code. Not correct code.</h2>
+    <p class="lead-sm" style="margin-bottom: 1.25rem;">LLMs generate code that compiles, passes a skim, and looks reasonable. Underneath:</p>
+    <div class="two-col">
+      <div class="col-card">
+        <div class="tag tag-coral">Failure Modes</div>
+        <div class="bl">
+          <div class="bl-item"><strong>Hallucinated APIs</strong> &mdash; calling methods that don't exist in your codebase</div>
+          <div class="bl-item"><strong>Pattern drift</strong> &mdash; inventing a new pattern when one exists 3 files away</div>
+          <div class="bl-item"><strong>Missing state handling</strong> &mdash; happy path works, error/empty/overflow forgotten</div>
+          <div class="bl-item"><strong>Security blindspots</strong> &mdash; no auth check, no validation, data in errors</div>
+        </div>
+      </div>
+      <div class="col-card">
+        <div class="tag tag-coral">Structural Problems</div>
+        <div class="bl">
+          <div class="bl-item"><strong>No memory</strong> &mdash; every session starts from zero context</div>
+          <div class="bl-item"><strong>No adversarial review</strong> &mdash; the builder rubber-stamps itself</div>
+          <div class="bl-item"><strong>No session recovery</strong> &mdash; crash mid-feature and start over</div>
+          <div class="bl-item"><strong>No learning</strong> &mdash; the 50th run makes the same mistakes as the 1st</div>
+        </div>
+      </div>
+    </div>
+    <div class="takeaway">
+      <div class="takeaway-label">Takeaway</div>
+      <p>The question isn't whether AI can write code &mdash; it's <strong>whether your system catches mistakes faster than your users do.</strong></p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 4: Eva -->
+<div class="slide" data-slide="4">
+  <div class="slide-inner">
+    <div class="section-label amber">The Orchestrator</div>
+    <h2>Eva: the central nervous system</h2>
+    <p class="lead-sm" style="margin-bottom: 1rem;">Without a dedicated orchestrator, the main thread is both designing and routing. That creates three problems:</p>
+    <div class="three-col">
+      <div class="card">
+        <div class="tag tag-coral">Context Pollution</div>
+        <p>The main thread accumulates every turn. By step 4, it forgets step 1. <strong>Eva externalizes state to disk.</strong></p>
+      </div>
+      <div class="card">
+        <div class="tag tag-coral">No Separation</div>
+        <p>When the thread is both designing and routing, concerns compete. <strong>Eva handles traffic so agents think deeply.</strong></p>
+      </div>
+      <div class="card">
+        <div class="tag tag-coral">No Recovery</div>
+        <p>Claude Code crashes mid-pipeline? <strong>Eva reads pipeline-state.md and resumes from the exact step.</strong></p>
+      </div>
+    </div>
+    <div class="table-wrap" style="margin-top:1rem;">
+      <table>
+        <thead><tr><th>Domain</th><th>Responsibility</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Traffic control</strong></td><td>Routes between agents, manages phase transitions, queues fixes back to Colby</td></tr>
+          <tr><td><strong>State management</strong></td><td>5 files on disk: pipeline state, context brief, error patterns, investigation ledger, last QA report</td></tr>
+          <tr><td><strong>Quality & learning</strong></td><td>Tracks error categories. Recurring patterns (3+) become warnings injected into agent prompts</td></tr>
+          <tr><td><strong>Phase sizing</strong></td><td>Micro / Small / Medium / Large &mdash; a bug fix doesn't need 12 agents</td></tr>
+          <tr><td><strong>Brain integration</strong></td><td>Pre-fetches brain context, injects into agent prompts, captures knowledge from agent output</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="takeaway">
+      <div class="takeaway-label">Takeaway</div>
+      <p><strong>Eva never writes code.</strong> She reads, routes, and tracks state. Separate orchestration from execution and both get better.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 5: Phase Sizing -->
+<div class="slide" data-slide="5">
+  <div class="slide-inner">
+    <div class="section-label">Orchestration</div>
+    <h2>Eva right-sizes every feature</h2>
+    <p class="lead-sm" style="margin-bottom: 0.75rem;">A bug fix doesn't need 12 agents. Eva assesses scope and adjusts ceremony accordingly.</p>
+
+    <!-- SVG Sizing Diagram -->
+    <svg viewBox="0 0 960 420" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;max-height:52vh;margin-top:0.5rem;">
+      <defs>
+        <marker id="arr" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5" fill="#94a3b8"/></marker>
+        <marker id="arrA" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5" fill="#e83e52"/></marker>
+      </defs>
+
+      <!-- Column headers -->
+      <text x="480" y="20" text-anchor="middle" fill="#94a3b8" font-size="9" font-weight="600" letter-spacing="0.15em" font-family="DM Sans,sans-serif">AGENTS ACTIVATED PER SIZE</text>
+
+      <!-- MICRO -->
+      <rect x="0" y="40" width="960" height="75" rx="10" fill="#ffffff" stroke="#dfe4ed" stroke-width="1"/>
+      <rect x="0" y="40" width="105" height="75" rx="10" fill="rgba(22,163,74,0.06)" stroke="none"/>
+      <text x="52" y="68" text-anchor="middle" fill="#16a34a" font-size="11" font-weight="800" font-family="DM Sans,sans-serif">MICRO</text>
+      <text x="52" y="82" text-anchor="middle" fill="#475569" font-size="7" font-family="DM Sans,sans-serif">&le;2 files</text>
+      <text x="52" y="93" text-anchor="middle" fill="#475569" font-size="7" font-family="DM Sans,sans-serif">mechanical only</text>
+
+      <rect x="125" y="58" width="64" height="30" rx="6" fill="rgba(13,148,136,0.08)" stroke="#0d9488" stroke-width="1"/>
+      <text x="157" y="76" text-anchor="middle" fill="#0d9488" font-size="9" font-weight="700" font-family="DM Sans,sans-serif">Colby</text>
+      <line x1="189" y1="73" x2="210" y2="73" stroke="#94a3b8" stroke-width="1" marker-end="url(#arr)"/>
+      <rect x="214" y="58" width="80" height="30" rx="6" fill="rgba(22,163,74,0.08)" stroke="#16a34a" stroke-width="1"/>
+      <text x="254" y="76" text-anchor="middle" fill="#16a34a" font-size="9" font-weight="700" font-family="DM Sans,sans-serif">test suite</text>
+      <line x1="294" y1="73" x2="315" y2="73" stroke="#94a3b8" stroke-width="1" marker-end="url(#arr)"/>
+      <rect x="319" y="58" width="56" height="30" rx="6" fill="rgba(22,163,74,0.08)" stroke="#16a34a" stroke-width="1"/>
+      <text x="347" y="76" text-anchor="middle" fill="#16a34a" font-size="9" font-weight="700" font-family="DM Sans,sans-serif">Ellis</text>
+
+      <text x="440" y="76" fill="#94a3b8" font-size="8" font-style="italic" font-family="DM Sans,sans-serif">Roz skipped &mdash; test suite is the safety valve</text>
+
+      <!-- SMALL -->
+      <rect x="0" y="130" width="960" height="75" rx="10" fill="#ffffff" stroke="#dfe4ed" stroke-width="1"/>
+      <rect x="0" y="130" width="105" height="75" rx="10" fill="rgba(2,132,199,0.06)" stroke="none"/>
+      <text x="52" y="158" text-anchor="middle" fill="#0284c7" font-size="11" font-weight="800" font-family="DM Sans,sans-serif">SMALL</text>
+      <text x="52" y="172" text-anchor="middle" fill="#475569" font-size="7" font-family="DM Sans,sans-serif">&lt;3 files, bug fix</text>
+      <text x="52" y="183" text-anchor="middle" fill="#475569" font-size="7" font-family="DM Sans,sans-serif">test addition</text>
+
+      <rect x="125" y="148" width="64" height="30" rx="6" fill="rgba(13,148,136,0.08)" stroke="#0d9488" stroke-width="1"/>
+      <text x="157" y="166" text-anchor="middle" fill="#0d9488" font-size="9" font-weight="700" font-family="DM Sans,sans-serif">Colby</text>
+      <line x1="189" y1="163" x2="210" y2="163" stroke="#94a3b8" stroke-width="1" marker-end="url(#arr)"/>
+      <rect x="214" y="148" width="48" height="30" rx="6" fill="rgba(219,39,119,0.08)" stroke="#db2777" stroke-width="1"/>
+      <text x="238" y="166" text-anchor="middle" fill="#db2777" font-size="9" font-weight="700" font-family="DM Sans,sans-serif">Roz</text>
+      <line x1="262" y1="163" x2="283" y2="163" stroke="#94a3b8" stroke-width="1" marker-end="url(#arr)"/>
+      <rect x="287" y="148" width="70" height="30" rx="6" fill="rgba(202,138,4,0.08)" stroke="#ca8a04" stroke-width="1"/>
+      <text x="322" y="166" text-anchor="middle" fill="#ca8a04" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">Agatha?</text>
+      <line x1="357" y1="163" x2="378" y2="163" stroke="#94a3b8" stroke-width="1" marker-end="url(#arr)"/>
+      <rect x="382" y="148" width="56" height="30" rx="6" fill="rgba(22,163,74,0.08)" stroke="#16a34a" stroke-width="1"/>
+      <text x="410" y="166" text-anchor="middle" fill="#16a34a" font-size="9" font-weight="700" font-family="DM Sans,sans-serif">Ellis</text>
+
+      <text x="490" y="166" fill="#94a3b8" font-size="8" font-style="italic" font-family="DM Sans,sans-serif">Agatha only if Roz flags doc impact</text>
+
+      <!-- MEDIUM -->
+      <rect x="0" y="220" width="960" height="80" rx="10" fill="#ffffff" stroke="#dfe4ed" stroke-width="1"/>
+      <rect x="0" y="220" width="105" height="80" rx="10" fill="rgba(202,138,4,0.06)" stroke="none"/>
+      <text x="52" y="248" text-anchor="middle" fill="#ca8a04" font-size="11" font-weight="800" font-family="DM Sans,sans-serif">MEDIUM</text>
+      <text x="52" y="262" text-anchor="middle" fill="#475569" font-size="7" font-family="DM Sans,sans-serif">2-4 ADR steps</text>
+      <text x="52" y="273" text-anchor="middle" fill="#475569" font-size="7" font-family="DM Sans,sans-serif">typical feature</text>
+
+      <rect x="125" y="236" width="62" height="28" rx="6" fill="rgba(232,62,82,0.08)" stroke="#e83e52" stroke-width="1"/>
+      <text x="156" y="253" text-anchor="middle" fill="#e83e52" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">Robert</text>
+      <line x1="187" y1="250" x2="200" y2="250" stroke="#94a3b8" stroke-width="1" marker-end="url(#arr)"/>
+      <rect x="204" y="236" width="42" height="28" rx="6" fill="rgba(2,132,199,0.08)" stroke="#0284c7" stroke-width="1"/>
+      <text x="225" y="253" text-anchor="middle" fill="#0284c7" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">Cal</text>
+      <line x1="246" y1="250" x2="259" y2="250" stroke="#94a3b8" stroke-width="1" marker-end="url(#arr)"/>
+      <rect x="263" y="236" width="42" height="28" rx="6" fill="rgba(219,39,119,0.08)" stroke="#db2777" stroke-width="1"/>
+      <text x="284" y="253" text-anchor="middle" fill="#db2777" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">Roz</text>
+      <line x1="305" y1="250" x2="318" y2="250" stroke="#94a3b8" stroke-width="1" marker-end="url(#arr)"/>
+
+      <!-- Colby <-> Roz interleaved -->
+      <rect x="322" y="236" width="58" height="28" rx="6" fill="rgba(13,148,136,0.08)" stroke="#0d9488" stroke-width="1"/>
+      <text x="351" y="253" text-anchor="middle" fill="#0d9488" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">Colby</text>
+      <text x="387" y="253" fill="#e83e52" font-size="10" font-family="DM Sans,sans-serif">&lrarr;</text>
+      <rect x="398" y="236" width="42" height="28" rx="6" fill="rgba(219,39,119,0.08)" stroke="#db2777" stroke-width="1"/>
+      <text x="419" y="253" text-anchor="middle" fill="#db2777" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">Roz</text>
+
+      <line x1="440" y1="250" x2="453" y2="250" stroke="#94a3b8" stroke-width="1" marker-end="url(#arr)"/>
+
+      <!-- Poirot parallel -->
+      <rect x="457" y="230" width="52" height="24" rx="5" fill="rgba(2,132,199,0.08)" stroke="#0284c7" stroke-width="0.75"/>
+      <text x="483" y="245" text-anchor="middle" fill="#0284c7" font-size="7" font-weight="700" font-family="DM Sans,sans-serif">Poirot</text>
+      <!-- Robert verify parallel -->
+      <rect x="457" y="256" width="52" height="24" rx="5" fill="rgba(232,62,82,0.06)" stroke="#e83e52" stroke-width="0.75"/>
+      <text x="483" y="271" text-anchor="middle" fill="#e83e52" font-size="7" font-weight="700" font-family="DM Sans,sans-serif">Robert</text>
+      <text x="515" y="254" fill="#94a3b8" font-size="7" font-family="DM Sans,sans-serif">parallel</text>
+
+      <line x1="540" y1="250" x2="553" y2="250" stroke="#94a3b8" stroke-width="1" marker-end="url(#arr)"/>
+      <rect x="557" y="236" width="58" height="28" rx="6" fill="rgba(202,138,4,0.08)" stroke="#ca8a04" stroke-width="1"/>
+      <text x="586" y="253" text-anchor="middle" fill="#ca8a04" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">Agatha</text>
+      <line x1="615" y1="250" x2="628" y2="250" stroke="#94a3b8" stroke-width="1" marker-end="url(#arr)"/>
+      <rect x="632" y="236" width="48" height="28" rx="6" fill="rgba(22,163,74,0.08)" stroke="#16a34a" stroke-width="1"/>
+      <text x="656" y="253" text-anchor="middle" fill="#16a34a" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">Ellis</text>
+
+      <!-- LARGE -->
+      <rect x="0" y="315" width="960" height="100" rx="10" fill="#ffffff" stroke="#dfe4ed" stroke-width="1"/>
+      <rect x="0" y="315" width="105" height="100" rx="10" fill="rgba(232,62,82,0.06)" stroke="none"/>
+      <text x="52" y="348" text-anchor="middle" fill="#e83e52" font-size="11" font-weight="800" font-family="DM Sans,sans-serif">LARGE</text>
+      <text x="52" y="362" text-anchor="middle" fill="#475569" font-size="7" font-family="DM Sans,sans-serif">5+ ADR steps</text>
+      <text x="52" y="373" text-anchor="middle" fill="#475569" font-size="7" font-family="DM Sans,sans-serif">new system</text>
+      <text x="52" y="384" text-anchor="middle" fill="#475569" font-size="7" font-family="DM Sans,sans-serif">multi-concern</text>
+
+      <!-- Row 1 -->
+      <rect x="125" y="330" width="62" height="26" rx="5" fill="rgba(232,62,82,0.08)" stroke="#e83e52" stroke-width="1"/>
+      <text x="156" y="347" text-anchor="middle" fill="#e83e52" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">Robert</text>
+      <line x1="187" y1="343" x2="197" y2="343" stroke="#94a3b8" stroke-width="1" marker-end="url(#arr)"/>
+      <rect x="201" y="330" width="52" height="26" rx="5" fill="rgba(139,63,160,0.08)" stroke="#8b3fa0" stroke-width="1"/>
+      <text x="227" y="347" text-anchor="middle" fill="#8b3fa0" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">Sable</text>
+      <text x="259" y="347" fill="#94a3b8" font-size="6" font-family="DM Sans,sans-serif">+</text>
+      <rect x="268" y="330" width="58" height="26" rx="5" fill="rgba(202,138,4,0.08)" stroke="#ca8a04" stroke-width="1"/>
+      <text x="297" y="347" text-anchor="middle" fill="#ca8a04" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">Agatha</text>
+      <line x1="326" y1="343" x2="336" y2="343" stroke="#94a3b8" stroke-width="1" marker-end="url(#arr)"/>
+      <rect x="340" y="330" width="58" height="26" rx="5" fill="rgba(13,148,136,0.08)" stroke="#0d9488" stroke-width="1"/>
+      <text x="369" y="342" text-anchor="middle" fill="#0d9488" font-size="7" font-weight="700" font-family="DM Sans,sans-serif">Colby</text>
+      <text x="369" y="352" text-anchor="middle" fill="#475569" font-size="6" font-family="DM Sans,sans-serif">mockup</text>
+      <line x1="398" y1="343" x2="408" y2="343" stroke="#94a3b8" stroke-width="1" marker-end="url(#arr)"/>
+      <rect x="412" y="330" width="42" height="26" rx="5" fill="rgba(2,132,199,0.08)" stroke="#0284c7" stroke-width="1"/>
+      <text x="433" y="347" text-anchor="middle" fill="#0284c7" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">Cal</text>
+      <line x1="454" y1="343" x2="464" y2="343" stroke="#94a3b8" stroke-width="1" marker-end="url(#arr)"/>
+      <rect x="468" y="330" width="42" height="26" rx="5" fill="rgba(219,39,119,0.08)" stroke="#db2777" stroke-width="1"/>
+      <text x="489" y="347" text-anchor="middle" fill="#db2777" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">Roz</text>
+
+      <!-- Row 2: build loop -->
+      <line x1="489" y1="356" x2="489" y2="366" stroke="#94a3b8" stroke-width="1" marker-end="url(#arr)"/>
+      <rect x="125" y="370" width="58" height="26" rx="5" fill="rgba(13,148,136,0.08)" stroke="#0d9488" stroke-width="1"/>
+      <text x="154" y="387" text-anchor="middle" fill="#0d9488" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">Colby</text>
+      <text x="190" y="387" fill="#e83e52" font-size="10" font-family="DM Sans,sans-serif">&lrarr;</text>
+      <rect x="200" y="370" width="42" height="26" rx="5" fill="rgba(219,39,119,0.08)" stroke="#db2777" stroke-width="1"/>
+      <text x="221" y="387" text-anchor="middle" fill="#db2777" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">Roz</text>
+      <text x="248" y="382" fill="#94a3b8" font-size="6" font-family="DM Sans,sans-serif">+</text>
+      <rect x="256" y="370" width="52" height="26" rx="5" fill="rgba(2,132,199,0.08)" stroke="#0284c7" stroke-width="0.75"/>
+      <text x="282" y="387" text-anchor="middle" fill="#0284c7" font-size="7" font-weight="700" font-family="DM Sans,sans-serif">Poirot</text>
+      <line x1="308" y1="383" x2="318" y2="383" stroke="#94a3b8" stroke-width="1" marker-end="url(#arr)"/>
+
+      <!-- Review juncture -->
+      <rect x="322" y="370" width="58" height="26" rx="5" fill="rgba(232,62,82,0.06)" stroke="#e83e52" stroke-width="0.75"/>
+      <text x="351" y="387" text-anchor="middle" fill="#e83e52" font-size="7" font-weight="700" font-family="DM Sans,sans-serif">Robert</text>
+      <text x="386" y="382" fill="#94a3b8" font-size="6" font-family="DM Sans,sans-serif">+</text>
+      <rect x="394" y="370" width="52" height="26" rx="5" fill="rgba(139,63,160,0.06)" stroke="#8b3fa0" stroke-width="0.75"/>
+      <text x="420" y="387" text-anchor="middle" fill="#8b3fa0" font-size="7" font-weight="700" font-family="DM Sans,sans-serif">Sable</text>
+      <text x="452" y="382" fill="#94a3b8" font-size="6" font-family="DM Sans,sans-serif">+</text>
+      <rect x="460" y="370" width="62" height="26" rx="5" fill="rgba(220,38,38,0.06)" stroke="#dc2626" stroke-width="0.75"/>
+      <text x="491" y="387" text-anchor="middle" fill="#dc2626" font-size="7" font-weight="700" font-family="DM Sans,sans-serif">Sentinel</text>
+
+      <line x1="522" y1="383" x2="535" y2="383" stroke="#94a3b8" stroke-width="1" marker-end="url(#arr)"/>
+      <rect x="539" y="370" width="58" height="26" rx="5" fill="rgba(202,138,4,0.08)" stroke="#ca8a04" stroke-width="1"/>
+      <text x="568" y="387" text-anchor="middle" fill="#ca8a04" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">Agatha</text>
+      <line x1="597" y1="383" x2="610" y2="383" stroke="#94a3b8" stroke-width="1" marker-end="url(#arr)"/>
+      <rect x="614" y="370" width="48" height="26" rx="5" fill="rgba(22,163,74,0.08)" stroke="#16a34a" stroke-width="1"/>
+      <text x="638" y="387" text-anchor="middle" fill="#16a34a" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">Ellis</text>
+
+      <text x="710" y="387" fill="#e83e52" font-size="8" font-weight="600" font-family="DM Sans,sans-serif">full pipeline &mdash; nothing skipped</text>
+    </svg>
+
+    <div class="takeaway">
+      <div class="takeaway-label">Takeaway</div>
+      <p><strong>Colby &rarr; Roz &rarr; Ellis is the minimum pipeline.</strong> Eva scales ceremony up, never down past the safety floor. Micro runs the test suite as a valve; everything else gets Roz.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 6: Agent Teams -->
+<div class="slide" data-slide="6">
+  <div class="slide-inner">
+    <div class="section-label teal">Scaling</div>
+    <h2>Agent Teams: parallel Colby instances within a wave</h2>
+    <p class="lead-sm" style="margin-bottom: 0.75rem;">When Agent Teams is enabled, Eva spawns multiple Colby instances to execute independent build units simultaneously.</p>
+
+    <!-- SVG Agent Teams Diagram -->
+    <svg viewBox="0 0 900 380" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;max-height:50vh;margin-top:0.5rem;">
+      <defs>
+        <marker id="at-arr" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5" fill="#94a3b8"/></marker>
+        <marker id="at-arrT" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5" fill="#0d9488"/></marker>
+        <marker id="at-arrP" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5" fill="#db2777"/></marker>
+      </defs>
+
+      <!-- Eva box -->
+      <rect x="20" y="140" width="120" height="70" rx="12" fill="rgba(202,138,4,0.06)" stroke="#ca8a04" stroke-width="2"/>
+      <text x="80" y="168" text-anchor="middle" fill="#ca8a04" font-size="14" font-weight="800" font-family="DM Sans,sans-serif">Eva</text>
+      <text x="80" y="185" text-anchor="middle" fill="#475569" font-size="8" font-family="DM Sans,sans-serif">Team Lead</text>
+      <text x="80" y="197" text-anchor="middle" fill="#475569" font-size="7" font-family="DM Sans,sans-serif">groups units into waves</text>
+
+      <!-- Arrow Eva -> fan out -->
+      <line x1="140" y1="175" x2="195" y2="175" stroke="#ca8a04" stroke-width="2" marker-end="url(#at-arr)"/>
+      <text x="168" y="168" text-anchor="middle" fill="#ca8a04" font-size="7" font-weight="600" font-family="DM Sans,sans-serif">spawn</text>
+
+      <!-- Wave 1 box -->
+      <rect x="200" y="20" width="410" height="310" rx="14" fill="rgba(13,148,136,0.03)" stroke="#0d9488" stroke-width="1.5" stroke-dasharray="6,3"/>
+      <text x="405" y="42" text-anchor="middle" fill="#0d9488" font-size="9" font-weight="700" letter-spacing="0.12em" font-family="DM Sans,sans-serif">WAVE 1 &mdash; PARALLEL EXECUTION</text>
+
+      <!-- Unit A -->
+      <rect x="225" y="60" width="160" height="72" rx="10" fill="#ffffff" stroke="#0d9488" stroke-width="1.5"/>
+      <text x="305" y="80" text-anchor="middle" fill="#0d9488" font-size="10" font-weight="700" font-family="DM Sans,sans-serif">Colby (Teammate 1)</text>
+      <text x="305" y="95" text-anchor="middle" fill="#475569" font-size="8" font-family="DM Sans,sans-serif">ADR Step 1: API routes</text>
+      <rect x="245" y="104" width="56" height="18" rx="4" fill="rgba(13,148,136,0.1)"/>
+      <text x="273" y="116" text-anchor="middle" fill="#0d9488" font-size="7" font-weight="600" font-family="DM Sans,sans-serif">worktree A</text>
+      <rect x="310" y="104" width="56" height="18" rx="4" fill="rgba(22,163,74,0.1)"/>
+      <text x="338" y="116" text-anchor="middle" fill="#16a34a" font-size="7" font-weight="600" font-family="DM Sans,sans-serif">isolated</text>
+
+      <!-- Unit B -->
+      <rect x="225" y="148" width="160" height="72" rx="10" fill="#ffffff" stroke="#0d9488" stroke-width="1.5"/>
+      <text x="305" y="168" text-anchor="middle" fill="#0d9488" font-size="10" font-weight="700" font-family="DM Sans,sans-serif">Colby (Teammate 2)</text>
+      <text x="305" y="183" text-anchor="middle" fill="#475569" font-size="8" font-family="DM Sans,sans-serif">ADR Step 3: UI components</text>
+      <rect x="245" y="192" width="56" height="18" rx="4" fill="rgba(13,148,136,0.1)"/>
+      <text x="273" y="204" text-anchor="middle" fill="#0d9488" font-size="7" font-weight="600" font-family="DM Sans,sans-serif">worktree B</text>
+      <rect x="310" y="192" width="56" height="18" rx="4" fill="rgba(22,163,74,0.1)"/>
+      <text x="338" y="204" text-anchor="middle" fill="#16a34a" font-size="7" font-weight="600" font-family="DM Sans,sans-serif">isolated</text>
+
+      <!-- Unit C -->
+      <rect x="225" y="236" width="160" height="72" rx="10" fill="#ffffff" stroke="#0d9488" stroke-width="1.5"/>
+      <text x="305" y="256" text-anchor="middle" fill="#0d9488" font-size="10" font-weight="700" font-family="DM Sans,sans-serif">Colby (Teammate 3)</text>
+      <text x="305" y="271" text-anchor="middle" fill="#475569" font-size="8" font-family="DM Sans,sans-serif">ADR Step 4: DB migrations</text>
+      <rect x="245" y="280" width="56" height="18" rx="4" fill="rgba(13,148,136,0.1)"/>
+      <text x="273" y="292" text-anchor="middle" fill="#0d9488" font-size="7" font-weight="600" font-family="DM Sans,sans-serif">worktree C</text>
+      <rect x="310" y="280" width="56" height="18" rx="4" fill="rgba(22,163,74,0.1)"/>
+      <text x="338" y="292" text-anchor="middle" fill="#16a34a" font-size="7" font-weight="600" font-family="DM Sans,sans-serif">isolated</text>
+
+      <!-- Merge arrows -->
+      <line x1="385" y1="96" x2="430" y2="96" stroke="#0d9488" stroke-width="1" marker-end="url(#at-arrT)"/>
+      <line x1="385" y1="184" x2="430" y2="184" stroke="#0d9488" stroke-width="1" marker-end="url(#at-arrT)"/>
+      <line x1="385" y1="272" x2="430" y2="272" stroke="#0d9488" stroke-width="1" marker-end="url(#at-arrT)"/>
+
+      <!-- Merge column -->
+      <rect x="435" y="60" width="74" height="248" rx="10" fill="rgba(22,163,74,0.05)" stroke="#16a34a" stroke-width="1"/>
+      <text x="472" y="160" text-anchor="middle" fill="#16a34a" font-size="8" font-weight="700" letter-spacing="0.1em" transform="rotate(-90 472 160)" font-family="DM Sans,sans-serif">SEQUENTIAL MERGE</text>
+      <text x="472" y="298" text-anchor="middle" fill="#475569" font-size="7" font-family="DM Sans,sans-serif">one at a time</text>
+
+      <!-- Arrow merge -> QA -->
+      <line x1="509" y1="184" x2="540" y2="184" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#at-arr)"/>
+
+      <!-- QA column -->
+      <rect x="545" y="75" width="50" height="55" rx="8" fill="rgba(219,39,119,0.08)" stroke="#db2777" stroke-width="1"/>
+      <text x="570" y="100" text-anchor="middle" fill="#db2777" font-size="9" font-weight="700" font-family="DM Sans,sans-serif">Roz</text>
+      <text x="570" y="115" text-anchor="middle" fill="#475569" font-size="7" font-family="DM Sans,sans-serif">QA unit 1</text>
+
+      <rect x="545" y="145" width="50" height="55" rx="8" fill="rgba(219,39,119,0.08)" stroke="#db2777" stroke-width="1"/>
+      <text x="570" y="170" text-anchor="middle" fill="#db2777" font-size="9" font-weight="700" font-family="DM Sans,sans-serif">Roz</text>
+      <text x="570" y="185" text-anchor="middle" fill="#475569" font-size="7" font-family="DM Sans,sans-serif">QA unit 2</text>
+
+      <rect x="545" y="215" width="50" height="55" rx="8" fill="rgba(219,39,119,0.08)" stroke="#db2777" stroke-width="1"/>
+      <text x="570" y="240" text-anchor="middle" fill="#db2777" font-size="9" font-weight="700" font-family="DM Sans,sans-serif">Roz</text>
+      <text x="570" y="255" text-anchor="middle" fill="#475569" font-size="7" font-family="DM Sans,sans-serif">QA unit 3</text>
+
+      <!-- Sequential note between QA -->
+      <text x="600" y="137" fill="#db2777" font-size="6" font-weight="600" font-family="DM Sans,sans-serif">per unit</text>
+      <text x="600" y="147" fill="#db2777" font-size="6" font-weight="600" font-family="DM Sans,sans-serif">after merge</text>
+
+      <!-- Wave 2 hint -->
+      <rect x="640" y="120" width="240" height="120" rx="12" fill="rgba(139,63,160,0.03)" stroke="#8b3fa0" stroke-width="1" stroke-dasharray="5,3"/>
+      <text x="760" y="145" text-anchor="middle" fill="#8b3fa0" font-size="9" font-weight="700" letter-spacing="0.1em" font-family="DM Sans,sans-serif">WAVE 2</text>
+      <text x="760" y="165" text-anchor="middle" fill="#475569" font-size="8" font-family="DM Sans,sans-serif">Steps with deps on Wave 1</text>
+      <text x="760" y="180" text-anchor="middle" fill="#475569" font-size="8" font-family="DM Sans,sans-serif">execute after all Wave 1 QA passes</text>
+      <rect x="700" y="196" width="120" height="26" rx="6" fill="rgba(139,63,160,0.06)" stroke="#8b3fa0" stroke-width="0.75"/>
+      <text x="760" y="213" text-anchor="middle" fill="#8b3fa0" font-size="8" font-weight="600" font-family="DM Sans,sans-serif">same pattern repeats</text>
+
+      <!-- Fallback note -->
+      <rect x="640" y="270" width="240" height="50" rx="8" fill="rgba(202,138,4,0.06)" stroke="#ca8a04" stroke-width="1"/>
+      <text x="760" y="290" text-anchor="middle" fill="#ca8a04" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">Fallback: Sequential Mode</text>
+      <text x="760" y="306" text-anchor="middle" fill="#475569" font-size="7.5" font-family="DM Sans,sans-serif">Agent Teams disabled &rarr; same output, one Colby at a time</text>
+
+      <!-- Activation gates -->
+      <rect x="20" y="240" width="120" height="70" rx="8" fill="rgba(232,62,82,0.04)" stroke="#e83e52" stroke-width="1"/>
+      <text x="80" y="258" text-anchor="middle" fill="#e83e52" font-size="7" font-weight="700" letter-spacing="0.08em" font-family="DM Sans,sans-serif">TWO GATES</text>
+      <text x="80" y="274" text-anchor="middle" fill="#475569" font-size="7" font-family="DM Sans,sans-serif">1. CLAUDE_AGENT_TEAMS=1</text>
+      <text x="80" y="287" text-anchor="middle" fill="#475569" font-size="7" font-family="DM Sans,sans-serif">2. pipeline-config: true</text>
+      <text x="80" y="300" text-anchor="middle" fill="#94a3b8" font-size="6.5" font-style="italic" font-family="DM Sans,sans-serif">both must pass</text>
+    </svg>
+
+    <div class="takeaway">
+      <div class="takeaway-label">Takeaway</div>
+      <p><strong>Teammates are Colby instances, not a new agent.</strong> Same persona, same enforcement hooks. Eva merges worktrees sequentially to avoid conflicts. Roz QA runs per unit after merge. Pipeline output is identical &mdash; Agent Teams affects speed, not correctness.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 7: The Brain -->
+<div class="slide" data-slide="7">
+  <div class="slide-inner">
+    <div class="section-label amber">Institutional Memory</div>
+    <h2>The Brain: not what changed, but <em>why</em></h2>
+    <p class="lead-sm" style="margin-bottom:0.5rem;">Git tells you what changed. Commit messages tell you what was done. But why was Option A chosen over Option B? Why did the user reject that approach? <strong>That knowledge dies when the terminal closes.</strong></p>
+
+    <!-- SVG Brain Diagram -->
+    <svg viewBox="0 0 920 340" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;max-height:46vh;margin-top:0.25rem;">
+      <defs>
+        <marker id="br-in" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5" fill="#ca8a04"/></marker>
+        <marker id="br-out" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5" fill="#0284c7"/></marker>
+      </defs>
+
+      <!-- ===== WHAT FLOWS IN (left side) ===== -->
+      <text x="155" y="18" text-anchor="middle" fill="#ca8a04" font-size="9" font-weight="700" letter-spacing="0.15em" font-family="DM Sans,sans-serif">WHAT FLOWS IN</text>
+
+      <!-- Source cards -->
+      <rect x="0" y="30" width="310" height="44" rx="8" fill="#ffffff" stroke="#ca8a04" stroke-width="1"/>
+      <text x="12" y="48" fill="#ca8a04" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">Agent decisions</text>
+      <text x="12" y="63" fill="#475569" font-size="7" font-family="DM Sans,sans-serif">"Chose Argon2id over bcrypt &mdash; compliance requires memory-hard hashing"</text>
+
+      <rect x="0" y="82" width="310" height="44" rx="8" fill="#ffffff" stroke="#ca8a04" stroke-width="1"/>
+      <text x="12" y="100" fill="#ca8a04" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">User corrections</text>
+      <text x="12" y="115" fill="#475569" font-size="7" font-family="DM Sans,sans-serif">"Don't mock the DB &mdash; mocked tests passed but prod migration failed"</text>
+
+      <rect x="0" y="134" width="310" height="44" rx="8" fill="#ffffff" stroke="#ca8a04" stroke-width="1"/>
+      <text x="12" y="152" fill="#ca8a04" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">Rejected alternatives</text>
+      <text x="12" y="167" fill="#475569" font-size="7" font-family="DM Sans,sans-serif">"Considered WebSocket for invites &mdash; SSE simpler, firm sizes small"</text>
+
+      <rect x="0" y="186" width="310" height="44" rx="8" fill="#ffffff" stroke="#ca8a04" stroke-width="1"/>
+      <text x="12" y="204" fill="#ca8a04" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">QA lessons</text>
+      <text x="12" y="219" fill="#475569" font-size="7" font-family="DM Sans,sans-serif">"RLS regression &mdash; always test policy changes with cross-firm fixtures"</text>
+
+      <rect x="0" y="238" width="310" height="44" rx="8" fill="#ffffff" stroke="#ca8a04" stroke-width="1"/>
+      <text x="12" y="256" fill="#ca8a04" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">Telemetry</text>
+      <text x="12" y="271" fill="#475569" font-size="7" font-family="DM Sans,sans-serif">Per-agent cost, tokens, duration &mdash; every session, automatically</text>
+
+      <!-- Arrows IN -->
+      <line x1="310" y1="52" x2="390" y2="140" stroke="#ca8a04" stroke-width="1.2" marker-end="url(#br-in)" opacity="0.6"/>
+      <line x1="310" y1="104" x2="390" y2="150" stroke="#ca8a04" stroke-width="1.2" marker-end="url(#br-in)" opacity="0.6"/>
+      <line x1="310" y1="156" x2="390" y2="160" stroke="#ca8a04" stroke-width="1.2" marker-end="url(#br-in)"/>
+      <line x1="310" y1="208" x2="390" y2="175" stroke="#ca8a04" stroke-width="1.2" marker-end="url(#br-in)" opacity="0.6"/>
+      <line x1="310" y1="260" x2="390" y2="190" stroke="#ca8a04" stroke-width="1.2" marker-end="url(#br-in)" opacity="0.6"/>
+
+      <!-- ===== BRAIN (center) ===== -->
+      <ellipse cx="460" cy="165" rx="70" ry="60" fill="rgba(202,138,4,0.08)" stroke="#ca8a04" stroke-width="2.5"/>
+      <!-- Brain texture lines -->
+      <path d="M 460,107 C 458,125 462,145 460,160 C 458,175 462,195 460,223" fill="none" stroke="#ca8a04" stroke-width="0.6" opacity="0.25"/>
+      <path d="M 430,115 C 415,135 413,160 420,195" fill="none" stroke="#ca8a04" stroke-width="0.5" opacity="0.18"/>
+      <path d="M 490,115 C 505,135 507,160 500,195" fill="none" stroke="#ca8a04" stroke-width="0.5" opacity="0.18"/>
+      <text x="460" y="158" text-anchor="middle" fill="#ca8a04" font-size="13" font-weight="800" font-family="DM Serif Display,Georgia,serif">Brain</text>
+      <text x="460" y="175" text-anchor="middle" fill="#92710a" font-size="7.5" font-family="DM Sans,sans-serif">PostgreSQL + pgvector</text>
+      <text x="460" y="188" text-anchor="middle" fill="#92710a" font-size="7" font-family="DM Sans,sans-serif">searchable &bull; scoped &bull; versioned</text>
+
+      <!-- Arrows OUT -->
+      <line x1="530" y1="140" x2="608" y2="52" stroke="#0284c7" stroke-width="1.2" marker-end="url(#br-out)" opacity="0.6"/>
+      <line x1="530" y1="150" x2="608" y2="104" stroke="#0284c7" stroke-width="1.2" marker-end="url(#br-out)" opacity="0.6"/>
+      <line x1="530" y1="160" x2="608" y2="156" stroke="#0284c7" stroke-width="1.2" marker-end="url(#br-out)"/>
+      <line x1="530" y1="175" x2="608" y2="208" stroke="#0284c7" stroke-width="1.2" marker-end="url(#br-out)" opacity="0.6"/>
+      <line x1="530" y1="190" x2="608" y2="260" stroke="#0284c7" stroke-width="1.2" marker-end="url(#br-out)" opacity="0.6"/>
+
+      <!-- ===== WHAT FLOWS OUT (right side) ===== -->
+      <text x="765" y="18" text-anchor="middle" fill="#0284c7" font-size="9" font-weight="700" letter-spacing="0.15em" font-family="DM Sans,sans-serif">WHAT FLOWS OUT</text>
+
+      <rect x="610" y="30" width="310" height="44" rx="8" fill="#ffffff" stroke="#0284c7" stroke-width="1"/>
+      <text x="622" y="48" fill="#0284c7" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">Every agent, every session</text>
+      <text x="622" y="63" fill="#475569" font-size="7" font-family="DM Sans,sans-serif">Prior decisions relevant to the current task &mdash; injected before start</text>
+
+      <rect x="610" y="82" width="310" height="44" rx="8" fill="#ffffff" stroke="#0284c7" stroke-width="1"/>
+      <text x="622" y="100" fill="#0284c7" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">Eva at session boot</text>
+      <text x="622" y="115" fill="#475569" font-size="7" font-family="DM Sans,sans-serif">Full context recovery &mdash; "Resuming member mgmt at review juncture"</text>
+
+      <rect x="610" y="134" width="310" height="44" rx="8" fill="#ffffff" stroke="#0284c7" stroke-width="1"/>
+      <text x="622" y="152" fill="#0284c7" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">Darwin</text>
+      <text x="622" y="167" fill="#475569" font-size="7" font-family="DM Sans,sans-serif">Telemetry trends &mdash; proposes structural fixes when agents underperform</text>
+
+      <rect x="610" y="186" width="310" height="44" rx="8" fill="#ffffff" stroke="#0284c7" stroke-width="1"/>
+      <text x="622" y="204" fill="#0284c7" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">Degradation alerts</text>
+      <text x="622" y="219" fill="#475569" font-size="7" font-family="DM Sans,sans-serif">"Rework rate above threshold for 3 consecutive pipelines"</text>
+
+      <rect x="610" y="238" width="310" height="44" rx="8" fill="#ffffff" stroke="#0284c7" stroke-width="1"/>
+      <text x="622" y="256" fill="#0284c7" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">Dashboard</text>
+      <text x="622" y="271" fill="#475569" font-size="7" font-family="DM Sans,sans-serif">Visual cost/quality trends across all pipelines</text>
+
+      <!-- Bottom comparison -->
+      <rect x="100" y="300" width="320" height="34" rx="8" fill="rgba(232,62,82,0.05)" stroke="#e83e52" stroke-width="1"/>
+      <text x="260" y="314" text-anchor="middle" fill="#e83e52" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">Without brain</text>
+      <text x="260" y="327" text-anchor="middle" fill="#475569" font-size="7" font-family="DM Sans,sans-serif">Each session starts from zero. Agents re-discover. Users repeat.</text>
+
+      <rect x="500" y="300" width="320" height="34" rx="8" fill="rgba(22,163,74,0.05)" stroke="#16a34a" stroke-width="1"/>
+      <text x="660" y="314" text-anchor="middle" fill="#16a34a" font-size="8" font-weight="700" font-family="DM Sans,sans-serif">With brain</text>
+      <text x="660" y="327" text-anchor="middle" fill="#475569" font-size="7" font-family="DM Sans,sans-serif">Decisions, lessons, preferences, patterns &mdash; all searchable, all injected.</text>
+    </svg>
+
+    <div class="takeaway">
+      <div class="takeaway-label">Takeaway</div>
+      <p><strong>"The agent that fixed your auth bug last week remembers why it chose that approach &mdash; even though it's a completely new session."</strong></p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE: Brain Scoring -->
+<div class="slide" data-slide="8">
+  <div class="slide-inner">
+    <div class="section-label amber">How It Works</div>
+    <h2>Three-axis scoring: how the brain decides what matters</h2>
+    <p class="lead-sm" style="margin-bottom:0.5rem;">Every retrieval ranks thoughts by a weighted formula. Relevance dominates. Importance separates decisions from noise. Recency is a tiebreaker.</p>
+
+    <!-- Formula display -->
+    <div style="text-align:center;margin:0.75rem 0;padding:1rem 1.5rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:1.1rem;font-weight:600;color:var(--deep);letter-spacing:0.02em;">
+        score = <span style="color:#0284c7;">3.0</span> &times; similarity + <span style="color:#e83e52;">2.0</span> &times; importance + <span style="color:#ca8a04;">0.5</span> &times; recency
+      </div>
+      <div style="margin-top:0.5rem;font-size:0.72rem;color:var(--text-light);">
+        similarity = cosine(query_embedding, thought_embedding) &nbsp;&bull;&nbsp;
+        recency = 0.995<sup>hours_since_access</sup> &nbsp;&bull;&nbsp;
+        importance = 0&ndash;1 per thought type
+      </div>
+    </div>
+
+    <div class="three-col" style="margin-top:0.75rem;">
+      <!-- Axis 1: Relevance -->
+      <div class="card" style="border-top:3px solid var(--cyan);">
+        <h4 style="color:var(--cyan);">Relevance &nbsp;<span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;font-weight:800;">w=3.0</span></h4>
+        <p>Cosine similarity between your query and every stored thought (1536-dim vectors via text-embedding-3-small). <strong>What you're asking about matters most.</strong></p>
+      </div>
+      <!-- Axis 2: Importance -->
+      <div class="card" style="border-top:3px solid var(--accent);">
+        <h4 style="color:var(--accent);">Importance &nbsp;<span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;font-weight:800;">w=2.0</span></h4>
+        <p>Set at capture time per thought type. Preferences = 1.0, decisions = 0.9, lessons = 0.7, rejections = 0.5. <strong>Decisions outrank tactical findings.</strong></p>
+      </div>
+      <!-- Axis 3: Recency -->
+      <div class="card" style="border-top:3px solid var(--amber);">
+        <h4 style="color:var(--amber);">Recency &nbsp;<span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;font-weight:800;">w=0.5</span></h4>
+        <p>Exponential decay from last access time. Half-life ~6 days. Lowest weight on purpose &mdash; <strong>a 3-month-old decision still surfaces if it's relevant.</strong></p>
+      </div>
+    </div>
+
+    <!-- Conflict detection + lifecycle -->
+    <div class="two-col" style="margin-top:0.75rem;">
+      <div class="col-card" style="padding:1rem;">
+        <div class="tag tag-purple">Conflict Detection (on write)</div>
+        <div style="display:flex;flex-direction:column;gap:0.3rem;">
+          <div class="bl-item"><strong>Similarity &gt; 0.9</strong> &mdash; duplicate detected, <strong>merged</strong> into existing thought</div>
+          <div class="bl-item"><strong>Similarity 0.7&ndash;0.9</strong> &mdash; LLM classifies: DUPLICATE / CONTRADICTION / SUPERSESSION / COMPLEMENT / NOVEL</div>
+          <div class="bl-item"><strong>Similarity &lt; 0.7</strong> &mdash; novel thought, stored directly</div>
+          <div class="bl-item">Contradictions in same scope &rarr; auto-supersede. Cross-scope &rarr; flagged as <strong>conflicted</strong></div>
+        </div>
+      </div>
+      <div class="col-card" style="padding:1rem;">
+        <div class="tag tag-teal">Lifecycle (background)</div>
+        <div style="display:flex;flex-direction:column;gap:0.3rem;">
+          <div class="bl-item"><strong>TTL enforcement</strong> (hourly) &mdash; expires thoughts past their type's TTL. Decisions: never. Drift findings: 90 days</div>
+          <div class="bl-item"><strong>Consolidation</strong> (every 30 min) &mdash; clusters similar thoughts via union-find, synthesizes into higher-level <em>reflections</em></div>
+          <div class="bl-item"><strong>Relation graph</strong> &mdash; supersedes, triggered_by, evolves_from, contradicts, supports, synthesized_from</div>
+          <div class="bl-item"><strong>Access tracking</strong> &mdash; every retrieval updates <code style="font-family:'JetBrains Mono',monospace;font-size:0.68rem;">last_accessed_at</code>, feeding the recency axis</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="takeaway">
+      <div class="takeaway-label">Takeaway</div>
+      <p><strong>The brain doesn't just store everything &mdash; it deduplicates, detects contradictions, expires stale knowledge, and consolidates clusters into higher-level insights. Automatically.</strong></p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 5: Skills vs Subagents -->
+<div class="slide" data-slide="9">
+  <div class="slide-inner">
+    <div class="section-label">Architecture</div>
+    <h2>Skills vs. subagents: the hybrid model</h2>
+    <p class="lead-sm" style="margin-bottom: 1rem;">"Does this agent need to ask me questions, or does it already have everything it needs?" That's the only question that decides which mode to use.</p>
+    <div class="two-col">
+      <div class="col-card">
+        <div class="tag tag-purple">Skills &mdash; Main Thread</div>
+        <p style="font-size:0.82rem;color:var(--text-muted);line-height:1.5;margin-bottom:0.75rem;">Back-and-forth with the user. Conversational. Best for judgment, collaboration, clarification.</p>
+        <div class="bl">
+          <div class="bl-item"><strong>Robert</strong> &mdash; CPO, feature discovery, specs</div>
+          <div class="bl-item"><strong>Sable</strong> &mdash; UX designer, interaction design</div>
+          <div class="bl-item"><strong>Cal</strong> &mdash; Architecture clarification Q&A</div>
+          <div class="bl-item"><strong>Agatha</strong> &mdash; Doc planning (impact assessment)</div>
+          <div class="bl-item"><strong>Eva</strong> &mdash; Pipeline orchestration, DevOps</div>
+        </div>
+      </div>
+      <div class="col-card">
+        <div class="tag tag-teal">Subagents &mdash; Own Context</div>
+        <p style="font-size:0.82rem;color:var(--text-muted);line-height:1.5;margin-bottom:0.75rem;">Focused execution in isolation. Returns a result. Best for building, verifying, determinism.</p>
+        <div class="bl">
+          <div class="bl-item"><strong>Cal</strong> &mdash; ADR production (10-point self-validation)</div>
+          <div class="bl-item"><strong>Colby</strong> &mdash; Sr. Engineer, builds code</div>
+          <div class="bl-item"><strong>Roz</strong> &mdash; QA Engineer, tests + validation</div>
+          <div class="bl-item"><strong>Poirot</strong> &mdash; Blind code investigator (diff only)</div>
+          <div class="bl-item"><strong>Sentinel</strong> &mdash; Security audit (Semgrep SAST)</div>
+          <div class="bl-item"><strong>Ellis</strong> &mdash; Commit &amp; changelog</div>
+          <div class="bl-item"><strong>Agatha</strong> &mdash; Doc writing (after verification)</div>
+        </div>
+      </div>
+    </div>
+    <div class="takeaway">
+      <div class="takeaway-label">Takeaway</div>
+      <p>Some agents run in both modes. Cal clarifies interactively (skill), then produces the ADR in isolation (subagent). Mode follows need.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 6: Spec & Architecture -->
+<div class="slide" data-slide="10">
+  <div class="slide-inner">
+    <div class="section-label">Before Code</div>
+    <h2>Quality starts before code exists</h2>
+    <p class="lead-sm" style="margin-bottom: 1rem;">AI-generated code is only as good as the spec that drives it.</p>
+    <div class="three-col">
+      <div class="card" style="border-top: 3px solid var(--accent);">
+        <h4 style="color:var(--accent);">Robert &mdash; CPO</h4>
+        <div class="bl" style="margin-top:0.5rem;">
+          <div class="bl-item"><strong>Response shapes</strong> for every endpoint</div>
+          <div class="bl-item"><strong>Specific edge cases</strong> &mdash; not "handle errors"</div>
+          <div class="bl-item"><strong>Measurable acceptance criteria</strong></div>
+          <div class="bl-item"><strong>Incremental delivery slices</strong></div>
+        </div>
+      </div>
+      <div class="card" style="border-top: 3px solid var(--purple);">
+        <h4 style="color:var(--purple);">Sable &mdash; UX</h4>
+        <div class="bl" style="margin-top:0.5rem;">
+          <div class="bl-item"><strong>Jobs-to-be-Done</strong> analysis</div>
+          <div class="bl-item"><strong>All 5 states:</strong> empty, loading, populated, error, overflow</div>
+          <div class="bl-item"><strong>Accessibility:</strong> keyboard, screen reader, contrast</div>
+          <div class="bl-item"><strong>Production copy</strong> &mdash; not placeholders</div>
+        </div>
+      </div>
+      <div class="card" style="border-top: 3px solid var(--cyan);">
+        <h4 style="color:var(--cyan);">Cal &mdash; Architect</h4>
+        <div class="bl" style="margin-top:0.5rem;">
+          <div class="bl-item"><strong>10-point self-validation</strong> on every ADR</div>
+          <div class="bl-item"><strong>Vertical slices</strong> with producer + consumer</div>
+          <div class="bl-item"><strong>Test spec tables</strong> per step</div>
+          <div class="bl-item"><strong>Cross-layer wiring</strong> enforced</div>
+        </div>
+      </div>
+    </div>
+    <div class="takeaway">
+      <div class="takeaway-label">Takeaway</div>
+      <p>When the spec says "return user data" and the UX doc says "show a list" &mdash; <strong>the builder fills in the blanks. The builder's blanks become QA findings.</strong></p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 7: Contract-First TDD -->
+<div class="slide" data-slide="11">
+  <div class="slide-inner">
+    <div class="section-label pink">Testing</div>
+    <h2>Contract-first TDD: Roz writes tests. Colby makes them pass.</h2>
+    <p class="lead-sm" style="margin-bottom: 1rem;">The tester and builder are different agents. The tester defines the contract before any implementation exists.</p>
+    <div class="two-col">
+      <div class="col-card" style="border-left: 3px solid var(--pink);">
+        <div class="tag tag-pink">Roz &mdash; QA Engineer</div>
+        <div class="bl">
+          <div class="bl-item"><strong>Reviews</strong> Cal's test spec for gaps</div>
+          <div class="bl-item"><strong>Writes</strong> acceptance tests from the spec</div>
+          <div class="bl-item"><strong>All tests FAIL</strong> until Colby implements</div>
+          <div class="bl-item"><strong>Adversarial:</strong> failure tests &ge; happy path</div>
+          <div class="bl-item"><strong>Write access: test files ONLY</strong></div>
+        </div>
+      </div>
+      <div class="col-card" style="border-left: 3px solid var(--teal);">
+        <div class="tag tag-teal">Colby &mdash; Sr. Engineer</div>
+        <div class="bl">
+          <div class="bl-item"><strong>Reads</strong> Roz's tests as the contract</div>
+          <div class="bl-item"><strong>Implements</strong> to make acceptance tests pass</div>
+          <div class="bl-item"><strong>Adds</strong> unit tests for implementation details</div>
+          <div class="bl-item"><strong>Cannot modify</strong> Roz's acceptance test files</div>
+          <div class="bl-item"><strong>Self-validates:</strong> lint, typecheck, drift check</div>
+        </div>
+      </div>
+    </div>
+    <div class="takeaway">
+      <div class="takeaway-label">Takeaway</div>
+      <p><strong>The test becomes the contract, not a rubber stamp.</strong> When one agent writes the tests and another writes the code, the tests can't just agree with the implementation.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 8: Continuous QA -->
+<div class="slide" data-slide="12">
+  <div class="slide-inner">
+    <div class="section-label green">Quality</div>
+    <h2>Continuous QA: build one, review one</h2>
+    <p class="lead-sm" style="margin-bottom: 1rem;">We stopped reviewing code in batches. Eva groups independent build steps into waves and interleaves build with review.</p>
+    <div class="two-col">
+      <div class="col-card" style="border-top: 3px solid var(--red);">
+        <div class="tag tag-coral">Before: Batch Review</div>
+        <p style="font-size:0.82rem;color:var(--text-muted);line-height:1.5;">Build steps 1&ndash;6. Review all. Drift in step 2 <strong>corrupts everything after.</strong> Six steps thrown out.</p>
+      </div>
+      <div class="col-card" style="border-top: 3px solid var(--green);">
+        <div class="tag tag-green">After: Interleaved</div>
+        <pre class="codeblock" style="border:none;padding:0;background:none;font-size:0.68rem;margin:0;">Eva&rarr;Colby: Step 1 &rarr; Roz: QA &check;
+Eva&rarr;Colby: Step 2 &rarr; Roz: QA &cross;
+  &boxur; Eva queues fix &rarr; Colby &rarr; Roz &check;
+Eva&rarr;Colby: Step 3 &rarr; Roz: QA &check;
+Eva&rarr;Roz: Final full sweep
+Eva&rarr;Ellis: Commit</pre>
+      </div>
+    </div>
+    <div class="three-col" style="margin-top:0.75rem;">
+      <div class="card" style="padding:0.85rem;">
+        <h4 style="color:var(--green);">Wave Grouping</h4>
+        <p>Eva extracts file dependencies, groups independent steps into waves. Waves run sequentially; units within a wave can run in parallel.</p>
+      </div>
+      <div class="card" style="padding:0.85rem;">
+        <h4 style="color:var(--green);">Scoped Re-runs</h4>
+        <p>Fix cycles only re-run failed checks + affected tests. 60&ndash;70% fewer tokens per cycle. No full re-review.</p>
+      </div>
+      <div class="card" style="padding:0.85rem;">
+        <h4 style="color:var(--green);">Review Juncture</h4>
+        <p>After all waves pass: Roz final sweep + Poirot blind review + Robert verify + Sable verify + Sentinel (if enabled) &mdash; all in parallel.</p>
+      </div>
+    </div>
+    <div class="takeaway">
+      <div class="takeaway-label">Takeaway</div>
+      <p>Drift caught where it starts. Fix queues are small. <strong>Colby &rarr; Roz &rarr; Ellis is the minimum pipeline.</strong> No sizing level skips Roz or Ellis.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 10: What's New - Darwin -->
+<div class="slide" data-slide="13">
+  <div class="slide-inner">
+    <div class="section-label purple">What's New &mdash; v3.9+</div>
+    <h2>Darwin: the pipeline that improves itself</h2>
+    <p class="lead-sm" style="margin-bottom: 1rem;">Darwin analyzes telemetry, evaluates agent fitness, and proposes structural improvements. Then tracks whether its own edits helped or caused regressions.</p>
+    <div class="two-col">
+      <div class="col-card">
+        <div class="tag tag-purple">What Darwin Does</div>
+        <div class="bl">
+          <div class="bl-item"><strong>Analyzes telemetry</strong> across pipeline runs &mdash; cost, duration, rework rate, QA pass rate</div>
+          <div class="bl-item"><strong>Evaluates agent fitness</strong> &mdash; which agents are underperforming?</div>
+          <div class="bl-item"><strong>Proposes structural edits</strong> &mdash; persona changes, constraint adjustments, flow optimizations</div>
+          <div class="bl-item"><strong>Tracks its own impact</strong> &mdash; did the edit improve the target metric?</div>
+        </div>
+      </div>
+      <div class="col-card">
+        <div class="tag tag-coral">Self-Correction Loop</div>
+        <div class="bl">
+          <div class="bl-item"><strong>Baseline captured</strong> before each edit is applied</div>
+          <div class="bl-item"><strong>3+ subsequent pipelines</strong> required before measuring delta</div>
+          <div class="bl-item"><strong>Improvement logged:</strong> "Darwin edit #4: rework rate improved 2.1 &rarr; 1.4"</div>
+          <div class="bl-item"><strong>Regression flagged:</strong> "Warning: edit #7 may have caused regression. Consider reverting."</div>
+        </div>
+        <p style="font-size:0.75rem;color:var(--text-muted);margin-top:0.5rem;">Darwin edits require user approval. Read-only access to the codebase. Proposals, not autonomous changes.</p>
+      </div>
+    </div>
+    <div class="takeaway">
+      <div class="takeaway-label">Takeaway</div>
+      <p><strong>The pipeline evolves without manual tuning.</strong> Darwin's self-correction loop means bad edits get flagged and good edits get reinforced &mdash; automatically.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 11: What's New - New Agents -->
+<div class="slide" data-slide="14">
+  <div class="slide-inner">
+    <div class="section-label teal">What's New &mdash; Agents</div>
+    <h2>4 new agents since v1.0</h2>
+    <div class="four-col" style="margin-top:1.25rem;">
+      <div class="card" style="border-top: 3px solid var(--cyan);">
+        <h4 style="color:var(--cyan);">Poirot</h4>
+        <p>Blind code investigator. Reviews diffs with <strong>zero context</strong> &mdash; no spec, no ADR, just the diff. Catches what familiarity misses.</p>
+        <div style="margin-top:0.5rem;font-size:0.68rem;color:var(--text-light);">Read-only. Runs at review juncture alongside Roz.</div>
+      </div>
+      <div class="card" style="border-top: 3px solid var(--red);">
+        <h4 style="color:var(--red);">Sentinel</h4>
+        <p>Security audit backed by <strong>Semgrep static analysis</strong>. OWASP top 10, injection risks, misconfigurations. Opt-in per project.</p>
+        <div style="margin-top:0.5rem;font-size:0.68rem;color:var(--text-light);">Read-only + Semgrep MCP. Runs at review juncture.</div>
+      </div>
+      <div class="card" style="border-top: 3px solid var(--green);">
+        <h4 style="color:var(--green);">Deps</h4>
+        <p>Dependency scanner. <strong>CVE exposure</strong>, outdated packages, upgrade breakage prediction. Answers "is this safe to upgrade?"</p>
+        <div style="margin-top:0.5rem;font-size:0.68rem;color:var(--text-light);">Read-only + WebSearch. On-demand invocation.</div>
+      </div>
+      <div class="card" style="border-top: 3px solid var(--purple);">
+        <h4 style="color:var(--purple);">Darwin</h4>
+        <p>Self-evolving pipeline engine. Analyzes <strong>telemetry</strong>, evaluates agent fitness, proposes improvements. Tracks its own impact.</p>
+        <div style="margin-top:0.5rem;font-size:0.68rem;color:var(--text-light);">Read-only. Requires brain for trend data.</div>
+      </div>
+    </div>
+    <div class="two-col" style="margin-top:1rem;">
+      <div class="col-card" style="padding:1rem;">
+        <div class="tag tag-amber">Agent Discovery</div>
+        <p style="font-size:0.82rem;color:var(--text-muted);line-height:1.5;">Drop a persona <code class="mono" style="font-size:0.72rem;">.md</code> file into <code class="mono" style="font-size:0.72rem;">.claude/agents/</code> and Eva discovers it at boot. Paste an agent definition into chat and Eva offers to convert it. Custom agents get mechanical enforcement out of the box. <strong>Core agents can never be shadowed without explicit consent.</strong></p>
+      </div>
+      <div class="col-card" style="padding:1rem;">
+        <div class="tag tag-purple">Agent Teams <small style="font-size:0.5rem;letter-spacing:0;text-transform:none;font-weight:500;color:var(--text-light);margin-left:0.3rem;">EXPERIMENTAL</small></div>
+        <p style="font-size:0.82rem;color:var(--text-muted);line-height:1.5;">When enabled, Eva spawns <strong>parallel Colby instances</strong> to execute independent build units simultaneously within a wave. Same persona, same enforcement. Scope: wave execution only &mdash; no other agent runs in parallel mode.</p>
+      </div>
+    </div>
+    <div class="takeaway">
+      <div class="takeaway-label">Takeaway</div>
+      <p>The pipeline went from 8 agents to 12+custom. Each new agent has a clear, non-overlapping responsibility and read-only access by default.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 12: Mechanical Enforcement -->
+<div class="slide" data-slide="15">
+  <div class="slide-inner">
+    <div class="section-label">Enforcement</div>
+    <h2>Behavioral rules are nice. Shell scripts that block tool calls are better.</h2>
+    <p class="lead-sm" style="margin-bottom: 1rem;">PreToolUse hooks intercept every Write, Edit, and Bash call. They reject tool calls that violate agent boundaries &mdash; before the tool executes.</p>
+    <div class="two-col">
+      <div class="col-card">
+        <div class="tag tag-coral">What Gets Enforced</div>
+        <div class="bl">
+          <div class="bl-item"><strong>Eva</strong> &mdash; cannot Write or Edit any file outside <code class="mono" style="font-size:0.7rem;">docs/pipeline/</code></div>
+          <div class="bl-item"><strong>Roz</strong> &mdash; can only write to test files. Cannot touch implementation code</div>
+          <div class="bl-item"><strong>Ellis</strong> &mdash; blocked during active pipeline until Roz has passed QA</div>
+          <div class="bl-item"><strong>Colby</strong> &mdash; blocked from paths specified in config (e.g., infra files)</div>
+          <div class="bl-item"><strong>Read-only agents</strong> (Poirot, Robert, Sable, Sentinel, Deps, Darwin) &mdash; Write/Edit/MultiEdit blocked entirely</div>
+        </div>
+      </div>
+      <div class="col-card">
+        <div class="tag tag-green">How It Works</div>
+        <div class="bl">
+          <div class="bl-item"><strong>3 hook scripts</strong> in <code class="mono" style="font-size:0.7rem;">.claude/hooks/</code> + 1 config</div>
+          <div class="bl-item"><strong>enforce-paths.sh</strong> &mdash; blocks writes outside agent's lane</div>
+          <div class="bl-item"><strong>enforce-sequencing.sh</strong> &mdash; blocks agents from acting out of turn</div>
+          <div class="bl-item"><strong>enforce-quality-gate.sh</strong> &mdash; runs lint + tests on Stop</div>
+          <div class="bl-item"><strong>Result:</strong> a rejected tool call, not a polite suggestion to try again</div>
+        </div>
+      </div>
+    </div>
+    <div class="takeaway">
+      <div class="takeaway-label">Takeaway</div>
+      <p>Prompt instructions say "don't do this." Hooks say <strong>"you can't do this."</strong> The difference matters when agents are creative about workarounds.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 13: Telemetry Dashboard -->
+<div class="slide" data-slide="16">
+  <div class="slide-inner">
+    <div class="section-label cyan">What's New &mdash; Observability</div>
+    <h2>Telemetry: see what the pipeline is doing</h2>
+    <p class="lead-sm" style="margin-bottom: 1rem;">Every pipeline run captures agent-level telemetry. The dashboard shows trends. Eva reads degradation alerts at session boot.</p>
+    <div class="three-col">
+      <div class="card" style="border-top:3px solid var(--accent);">
+        <h4 style="color:var(--accent);">Per-Agent Metrics</h4>
+        <p>Cost, duration, token usage, model used, rework cycles. Captured automatically after each agent returns.</p>
+      </div>
+      <div class="card" style="border-top:3px solid var(--cyan);">
+        <h4 style="color:var(--cyan);">Pipeline Trends</h4>
+        <p>Day-aggregated cost trends. Rework rate over time. First-pass QA rate. EvoScore (Darwin fitness). Honest metrics &mdash; no vanity numbers.</p>
+      </div>
+      <div class="card" style="border-top:3px solid var(--amber);">
+        <h4 style="color:var(--amber);">Degradation Alerts</h4>
+        <p>Fire when thresholds are exceeded for 3+ consecutive pipelines. Cost trending up >25%. Rework rate >2.0. First-pass QA <60%.</p>
+      </div>
+    </div>
+    <div class="col-card" style="margin-top:1rem;padding:1rem;">
+      <div class="tag tag-green">CI Watch</div>
+      <p style="font-size:0.82rem;color:var(--text-muted);line-height:1.55;">Self-healing CI protocol. Monitors CI pipeline runs, detects failures, classifies the failure type, and routes fixes automatically. Configurable max retries. <strong>The CI doesn't just report red &mdash; it fixes red.</strong></p>
+    </div>
+    <div class="takeaway">
+      <div class="takeaway-label">Takeaway</div>
+      <p><strong>You can't improve what you can't measure.</strong> Telemetry + Darwin create a feedback loop: measure, propose, apply, re-measure.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 15: The Receipts -->
+<div class="slide" data-slide="17">
+  <div class="slide-inner">
+    <div class="section-label green">The Receipts</div>
+    <h2>By the numbers</h2>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="num" style="color:var(--accent);">12+</div><div class="desc">Specialized Agents</div></div>
+      <div class="stat-card"><div class="num" style="color:var(--cyan);">10</div><div class="desc">Mandatory Gates</div></div>
+      <div class="stat-card"><div class="num" style="color:var(--pink);">3</div><div class="desc">Roz Gates per Feature</div></div>
+      <div class="stat-card"><div class="num" style="color:var(--amber);">12</div><div class="desc">QA Checks per Review</div></div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="num" style="color:var(--green);">10</div><div class="desc">ADR Self-Validation Checks</div></div>
+      <div class="stat-card"><div class="num" style="color:var(--purple);">3</div><div class="desc">Enforcement Hook Scripts</div></div>
+      <div class="stat-card"><div class="num" style="color:var(--teal);">5</div><div class="desc">Pipeline State Files on Disk</div></div>
+      <div class="stat-card"><div class="num" style="color:var(--accent);">4</div><div class="desc">Phase Sizing Levels</div></div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="num" style="color:var(--cyan);">v3.11</div><div class="desc">Current Version</div></div>
+      <div class="stat-card"><div class="num" style="color:var(--green);">14 days</div><div class="desc">v1.0 &rarr; v3.11</div></div>
+      <div class="stat-card"><div class="num" style="color:var(--amber);">~2,000</div><div class="desc">Lines of Markdown</div></div>
+      <div class="stat-card"><div class="num" style="color:var(--purple);">1</div><div class="desc">Person + Agents</div></div>
+    </div>
+    <div class="takeaway">
+      <div class="takeaway-label">Takeaway</div>
+      <p><strong>No framework. No SDK. No vendor lock-in.</strong> Claude Code plugin format + structured markdown + shell scripts. Built by one person and a team of agents that follow the same pipeline every time.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 16: Takeaways -->
+<div class="slide" data-slide="18">
+  <div class="slide-inner">
+    <div class="section-label">Takeaways</div>
+    <h2>Six things to remember</h2>
+    <div style="margin-top:1rem;">
+      <div class="takeaway-row">
+        <div class="t-num" style="background:var(--accent);">1</div>
+        <div class="t-content">
+          <h3>Structure beats power.</h3>
+          <p>A well-designed workflow with Sonnet outperforms ad-hoc Opus prompting. The magic isn't the model &mdash; it's the roles, gates, and handoffs.</p>
+        </div>
+      </div>
+      <div class="takeaway-row">
+        <div class="t-num" style="background:var(--teal);">2</div>
+        <div class="t-content">
+          <h3>Separate who writes tests from who writes code.</h3>
+          <p>When the tester authors tests before the builder starts, tests become a contract &mdash; not the code agreeing with itself.</p>
+        </div>
+      </div>
+      <div class="takeaway-row">
+        <div class="t-num" style="background:var(--purple);">3</div>
+        <div class="t-content">
+          <h3>Enforce mechanically, not behaviorally.</h3>
+          <p>Shell scripts that reject tool calls beat prompt instructions that agents creatively work around. Trust but verify &mdash; with code.</p>
+        </div>
+      </div>
+      <div class="takeaway-row">
+        <div class="t-num" style="background:var(--cyan);">4</div>
+        <div class="t-content">
+          <h3>Build memory that outlives the session.</h3>
+          <p>Context briefs, error patterns, and a persistent brain mean the 50th pipeline run is harder to fool than the 5th.</p>
+        </div>
+      </div>
+      <div class="takeaway-row">
+        <div class="t-num" style="background:var(--amber);">5</div>
+        <div class="t-content">
+          <h3>Make QA continuous, not batch.</h3>
+          <p>Interleave build and review. Catch drift where it starts. Keep fix cycles small. The minimum pipeline is always Colby &rarr; Roz &rarr; Ellis.</p>
+        </div>
+      </div>
+      <div class="takeaway-row">
+        <div class="t-num" style="background:var(--green);">6</div>
+        <div class="t-content">
+          <h3>Let the pipeline improve itself.</h3>
+          <p>Telemetry + Darwin create a feedback loop. Measure agent performance, propose improvements, track whether edits helped. Self-evolving infrastructure.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 17: Close -->
+<div class="slide" data-slide="19">
+  <div class="slide-inner hero-center">
+    <div style="display:inline-block; padding:0.35rem 0.9rem; border:1px solid var(--border); border-radius:100px; font-size:0.7rem; font-weight:500; color:var(--accent); letter-spacing:0.05em; text-transform:uppercase; margin-bottom:2rem;">Atelier Pipeline v3.11</div>
+    <h1 style="font-size:clamp(2rem,4.5vw,3.5rem);"><span class="gradient-text">Zero trust in AI-generated code.</span></h1>
+    <p class="lead" style="margin:0 auto 2rem;">
+      12 agents. 10 mandatory gates. Persistent institutional memory.<br>
+      Mechanical enforcement. Self-evolving pipeline.<br>
+      Built with Claude Code and structured markdown.
+    </p>
+    <div style="display:flex; justify-content:center; gap:2rem; flex-wrap:wrap; margin-bottom:2.5rem;">
+      <div style="text-align:center;">
+        <div style="font-size:0.6rem;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.25rem;">Install</div>
+        <code class="mono" style="font-size:0.78rem;color:var(--accent);">claude plugin add /path/to/atelier-pipeline</code>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:0.6rem;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.25rem;">Setup</div>
+        <code class="mono" style="font-size:0.78rem;color:var(--accent);">/pipeline-setup</code>
+      </div>
+    </div>
+    <div style="font-size:1.05rem; font-weight:600; color:var(--accent);">Robert Sfeir</div>
+    <div style="margin-top:1.5rem; display:inline-block; padding: 0.35rem 0.9rem; border: 1px solid var(--border); border-radius: 100px; font-size: 0.65rem; color: var(--text-muted);">
+      Atelier Pipeline &mdash; March 2026
+    </div>
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const progress = document.getElementById('progress');
+  const counter = document.getElementById('counter');
+  let current = 0;
+  const total = slides.length;
+  let animating = false;
+
+  function updateSlide(next, direction) {
+    if (next < 0 || next >= total || next === current || animating) return;
+    animating = true;
+
+    const old = slides[current];
+    const now = slides[next];
+
+    old.classList.remove('active');
+    old.style.transform = direction === 'forward' ? 'translateX(-40px)' : 'translateX(40px)';
+    old.style.opacity = '0';
+
+    now.style.transition = 'none';
+    now.style.transform = direction === 'forward' ? 'translateX(40px)' : 'translateX(-40px)';
+    now.style.opacity = '0';
+    now.style.visibility = 'visible';
+
+    now.offsetHeight;
+    now.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+    now.classList.add('active');
+    now.style.transform = 'translateX(0)';
+    now.style.opacity = '1';
+
+    setTimeout(() => {
+      old.style.visibility = 'hidden';
+      animating = false;
+    }, 420);
+
+    current = next;
+    progress.style.width = ((current / (total - 1)) * 100) + '%';
+    counter.textContent = (current + 1) + ' / ' + total;
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+      e.preventDefault();
+      updateSlide(current + 1, 'forward');
+    } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+      e.preventDefault();
+      updateSlide(current - 1, 'backward');
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      updateSlide(0, 'backward');
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      updateSlide(total - 1, 'forward');
+    }
+  });
+
+  let touchStartX = 0;
+  document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
+  document.addEventListener('touchend', (e) => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 50) {
+      if (dx < 0) updateSlide(current + 1, 'forward');
+      else updateSlide(current - 1, 'backward');
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('a, button, code')) return;
+    const x = e.clientX / window.innerWidth;
+    if (x < 0.3) updateSlide(current - 1, 'backward');
+    else if (x > 0.5) updateSlide(current + 1, 'forward');
+  });
+
+  progress.style.width = '0%';
+  counter.textContent = '1 / ' + total;
+</script>
+
+</body>
+</html>

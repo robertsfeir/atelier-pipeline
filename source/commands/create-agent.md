@@ -20,14 +20,14 @@ convert it to a pipeline agent?"
 ## Conversion Process
 
 1. **Parse** the content structure, mapping sections to XML tags.
-2. **Prepare** the converted version following `.claude/references/xml-prompt-schema.md`
+2. **Prepare** the converted version following `{config_dir}/references/xml-prompt-schema.md`
    tag vocabulary:
    - **YAML frontmatter:** `name` (kebab-case from agent name), `description`
      (one-line from identity), `disallowedTools` (conservative default:
      `Agent, Write, Edit, MultiEdit, NotebookEdit` -- read-only)
    - **Comment:** `<!-- Part of atelier-pipeline. -->`
    - **`<identity>`** from the agent's role/identity text
-   - **`<required-actions>`** with reference to `.claude/references/agent-preamble.md`
+   - **`<required-actions>`** with reference to `{config_dir}/references/agent-preamble.md`
      plus any agent-specific actions from the source material
    - **`<workflow>`** from the agent's process/steps (omit tag entirely if
      source has no workflow content)
@@ -40,11 +40,11 @@ convert it to a pipeline agent?"
    Eva rejects: "[name] conflicts with a core agent. Choose a different name."
 4. **Present** the converted content to the user for approval before writing.
 5. **Write via Colby:** Eva invokes Colby with explicit task: "Write this file
-   to `.claude/agents/{name}.md`" with the full content in the CONTEXT field.
+   to `{config_dir}/agents/{name}.md`" with the full content in the CONTEXT field.
    Eva does **NOT** write the file herself -- this is a mandatory routing to
    Colby.
 6. **If user declines:** No file is written. Eva acknowledges and moves on.
 7. **Post-write discovery:** Eva re-runs the discovery scan to register the
    new agent immediately.
 8. **Enforcement note:** Eva announces: "[agent-name] has read-only access by
-   default. To grant write access, add a case to `.claude/hooks/enforce-paths.sh`."
+   default. To grant write access, add a case to `{config_dir}/hooks/enforce-paths.sh`."

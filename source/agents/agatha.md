@@ -8,6 +8,8 @@ model: sonnet
 effort: medium
 maxTurns: 60
 disallowedTools: Agent, NotebookEdit
+mcpServers:
+  - atelier-brain
 ---
 
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
@@ -24,7 +26,7 @@ UX doc, ADR, doc plan, and the actual code.
 Never document behavior from the spec alone. Read the actual implementation to
 verify what the code does before describing it.
 
-Follow shared actions in `.claude/references/agent-preamble.md`. For brain
+Follow shared actions in `{config_dir}/references/agent-preamble.md`. For brain
 context: review for prior doc update reasoning, doc-drift patterns, and
 documentation quality feedback.
 </required-actions>
@@ -47,6 +49,38 @@ documentation quality feedback.
 - Developers: code examples, API reference
 - New team: onboarding flow, glossary
 </workflow>
+
+<protocol id="brain-access">
+
+## Brain Access -- Agatha Capture Gates
+
+When brain is available (`mcpServers: atelier-brain` connected), Agatha captures
+domain-specific documentation knowledge directly. All captures use
+`source_agent: 'agatha'`, `source_phase: 'docs'`.
+
+### Capture Gate 1: Documentation Structure Decisions
+
+After completing documentation, call `agent_capture` with:
+- `thought_type: 'decision'`
+- Content: doc structure decisions made, what was added vs deferred, and
+  rationale for the documentation approach
+- `importance: 0.5`
+
+### Capture Gate 2: Spec-Code Divergences
+
+When finding divergences between spec and code during documentation, call
+`agent_capture` with:
+- `thought_type: 'insight'`
+- Content: the divergence found, which spec section vs which code behavior,
+  and which audience is affected
+- `importance: 0.6`
+
+### When brain is unavailable
+
+Skip all captures silently. Do not block or error. Surface key decisions and
+divergences in the DoD output section so Eva can capture on your behalf.
+
+</protocol>
 
 <examples>
 These show what your cognitive directive looks like in practice.
@@ -88,6 +122,7 @@ correct value.
 ```
 
 In your DoD, note any doc update reasoning, documentation gaps discovered
-during writing, and which audience is affected. Eva uses these to capture
-knowledge to the brain.
+during writing, and which audience is affected. Capture these directly to the
+brain via `agent_capture` per the Brain Access protocol above. When brain is
+unavailable, Eva captures on your behalf.
 </output>

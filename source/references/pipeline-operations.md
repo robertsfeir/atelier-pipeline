@@ -8,8 +8,8 @@ Eva reads this file at pipeline start for detailed operational procedures.
 
 All subagent invocations use XML tags. Eva constructs prompts with `<task>`,
 `<brain-context>`, `<context>`, `<hypotheses>`, `<read>`, `<warn>`,
-`<constraints>`, and `<output>` tags. See `.claude/references/xml-prompt-schema.md`
-and `.claude/references/invocation-templates.md` for the full tag vocabulary
+`<constraints>`, and `<output>` tags. See `{config_dir}/references/xml-prompt-schema.md`
+and `{config_dir}/references/invocation-templates.md` for the full tag vocabulary
 and per-agent examples.
 
 </section>
@@ -18,17 +18,16 @@ and per-agent examples.
 
 ## Brain Context Prefetch
 
-Eva is responsible for all brain interactions. Before invoking any agent, Eva:
+Eva prefetches brain context before invoking agents. Agents with brain access
+also capture directly. Reinforced by `prompt-brain-prefetch.sh` PreToolUse hook.
 
 1. Calls `agent_search` with a query derived from the feature area
 2. Injects results into the `<brain-context>` tag in the invocation prompt
-3. Agents consume injected brain context as data -- they do not call
-   `agent_search` themselves
+3. Agents with `mcpServers: atelier-brain` (Cal, Colby, Roz, Agatha) capture
+   domain-specific knowledge directly via their Brain Access protocols
 
-After an agent returns, Eva inspects the output for capturable knowledge
-(decisions, patterns, lessons, insights noted in the agent's DoD) and calls
-`agent_capture`. Agents surface knowledge in their `<output>` section; Eva
-captures it.
+Eva captures cross-cutting concerns only (best-effort). See agent personas for
+domain-specific capture gates.
 
 </protocol>
 
@@ -80,7 +79,7 @@ Cal's ADR steps become work units grouped into waves. Roz writes tests per wave,
 9. Eva invokes Robert-subagent in doc review mode to verify Agatha's output
 10. If Robert-subagent or Sable-subagent flagged DRIFT: hard pause. Human
     decides fix code or update spec/UX.
-11. Final delivery (strategy-dependent, see `.claude/rules/branch-lifecycle.md`):
+11. Final delivery (strategy-dependent, see `{config_dir}/rules/branch-lifecycle.md`):
     - **Trunk-based:** Eva invokes Ellis in standard mode. Ellis commits and
       pushes to main. Hard pause before push to remote.
     - **MR-based strategies (GitHub Flow, GitLab Flow, GitFlow):** Eva invokes
@@ -279,7 +278,7 @@ Wave: N of M, Unit: K of L
 maxTurns: 25
 ```
 
-Teammates run Colby's persona (`.claude/agents/colby.md`). They run lint
+Teammates run Colby's persona (`{config_dir}/agents/colby.md`). They run lint
 after implementation. They do NOT run the full test suite and do NOT commit.
 
 After all TaskCompleted events arrive for the wave, Eva merges each worktree
@@ -328,8 +327,8 @@ read-only review in a future version.
 ### Teammate Identity
 
 Teammates are Colby instances. They are NOT a new agent type. Teammates load
-Colby's persona from `.claude/agents/colby.md` and project rules from
-`.claude/rules/`. No new persona file exists for Teammates. Teammates match
+Colby's persona from `{config_dir}/agents/colby.md` and project rules from
+`{config_dir}/rules/`. No new persona file exists for Teammates. Teammates match
 the `colby` case in `enforce-paths.sh` and have full write access to the
 codebase (same as a standard Colby subagent invocation).
 

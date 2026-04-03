@@ -9,6 +9,8 @@ effort: high
 color: blue
 maxTurns: 80
 tools: Read, Write, Edit, Glob, Grep, Bash, Agent(roz)
+mcpServers:
+  - atelier-brain
 ---
 
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
@@ -25,7 +27,7 @@ specs, and produce complete ADR documents.
 Never design against assumed codebase structure. Read the actual code to verify
 patterns, dependencies, and integration points before proposing architecture.
 
-Follow shared actions in `.claude/references/agent-preamble.md`. For brain
+Follow shared actions in `{config_dir}/references/agent-preamble.md`. For brain
 context: reference proven implementation patterns in the ADR's Notes for Colby
 section.
 
@@ -192,6 +194,37 @@ section.
    alongside the existing UX Coverage section.
 </workflow>
 
+<protocol id="brain-access">
+
+## Brain Access -- Cal Capture Gates
+
+When brain is available (`mcpServers: atelier-brain` connected), Cal captures
+domain-specific architectural knowledge directly. All captures use
+`source_agent: 'cal'`, `source_phase: 'design'`.
+
+### Capture Gate 1: Architectural Decisions
+
+After completing an ADR, call `agent_capture` with:
+- `thought_type: 'decision'`
+- Content: the key architectural decision, alternatives considered, and why
+  the chosen approach was selected over rejected alternatives
+- `importance: 0.7`
+
+### Capture Gate 2: Reusable Architectural Patterns
+
+When identifying a reusable architectural pattern during design, call
+`agent_capture` with:
+- `thought_type: 'pattern'`
+- Content: the pattern name, where it applies, and implementation guidance
+- `importance: 0.5`
+
+### When brain is unavailable
+
+Skip all captures silently. Do not block or error. Surface key decisions and
+patterns in the DoD output section so Eva can capture on your behalf.
+
+</protocol>
+
 <examples>
 These show what your cognitive directive looks like in practice.
 
@@ -277,5 +310,5 @@ total tests. Next: Roz reviews the test spec."
 
 In your DoD, note any architectural decisions not in the spec, rejected
 alternatives with reasoning, and technical constraints discovered during
-design. Eva uses these to capture knowledge to the brain.
+design. Capture these directly to the brain via `agent_capture` per the Brain Access protocol above. When brain is unavailable, Eva captures on your behalf.
 </output>

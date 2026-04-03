@@ -283,13 +283,28 @@ EOF
 # ── Hook Runners ─────────────────────────────────────────────────────
 # These run hooks with the correct SCRIPT_DIR pointing to our temp config.
 # The hook's SCRIPT_DIR detection uses `dirname "$0"`, so we copy the hook
-# to $TEST_TMPDIR (which already has enforcement-config.json).
+# to $TEST_TMPDIR/.claude/hooks/ and copy enforcement-config.json there too.
 
-# Prepare a hook for execution: copy it to $TEST_TMPDIR.
+# Prepare a hook for execution: copy it to $TEST_TMPDIR/.claude/hooks
+# (matching production directory structure {config_dir}/hooks/script.sh where
+# {config_dir} is .claude or .cursor).
+# For backward compatibility with tests that run hooks directly from the root,
+# also copy the hook directly to the root level (not symlinked).
 # Usage: prepare_hook "enforce-paths.sh"
 prepare_hook() {
   local hook_name="$1"
+  mkdir -p "$TEST_TMPDIR/.claude/hooks"
+  cp "$HOOKS_DIR/$hook_name" "$TEST_TMPDIR/.claude/hooks/$hook_name"
+  # Also copy directly to root for backward compatibility with tests that invoke
+  # hooks from outside the .claude/hooks directory (they'll use env var fallback)
   cp "$HOOKS_DIR/$hook_name" "$TEST_TMPDIR/$hook_name"
+  # Hooks that use SCRIPT_DIR to locate enforcement-config.json need the config
+  # present in the same directory as the hook ($TEST_TMPDIR/.claude/hooks/).
+  # Copy whatever config is currently at $TEST_TMPDIR/enforcement-config.json
+  # (default or custom) so hooks running from .claude/hooks/ find it via SCRIPT_DIR.
+  if [ -f "$TEST_TMPDIR/enforcement-config.json" ]; then
+    cp "$TEST_TMPDIR/enforcement-config.json" "$TEST_TMPDIR/.claude/hooks/enforcement-config.json"
+  fi
 }
 
 # Run a stdin-based hook with JSON piped in.
@@ -300,17 +315,17 @@ run_hook_with_input() {
   local hook_name="$1"
   local input="$2"
   prepare_hook "$hook_name"
-  echo "$input" | bash "$TEST_TMPDIR/$hook_name"
+  echo "$input" | bash "$TEST_TMPDIR/.claude/hooks/$hook_name"
 }
 
 # Run a hook with CLAUDE_PROJECT_DIR set to TEST_TMPDIR.
 # Usage: run_hook_with_project_dir "log-agent-start.sh" "$json_input"
-# Used for hooks that reference $CLAUDE_PROJECT_DIR instead of SCRIPT_DIR.
+# Used for hooks that derive config_dir from SCRIPT_DIR or reference CLAUDE_PROJECT_DIR env var.
 run_hook_with_project_dir() {
   local hook_name="$1"
   local input="$2"
   prepare_hook "$hook_name"
-  echo "$input" | CLAUDE_PROJECT_DIR="$TEST_TMPDIR" bash "$TEST_TMPDIR/$hook_name"
+  echo "$input" | CLAUDE_PROJECT_DIR="$TEST_TMPDIR" bash "$TEST_TMPDIR/.claude/hooks/$hook_name"
 }
 
 # Run a hook with CLAUDE_PROJECT_DIR unset.
@@ -319,5 +334,5 @@ run_hook_without_project_dir() {
   local hook_name="$1"
   local input="$2"
   prepare_hook "$hook_name"
-  echo "$input" | env -u CLAUDE_PROJECT_DIR -u CURSOR_PROJECT_DIR bash "$TEST_TMPDIR/$hook_name"
+  echo "$input" | env -u CLAUDE_PROJECT_DIR -u CURSOR_PROJECT_DIR bash "$TEST_TMPDIR/.claude/hooks/$hook_name"
 }

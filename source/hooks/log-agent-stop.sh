@@ -1,7 +1,7 @@
 #!/bin/bash
 # SubagentStop telemetry hook -- logs agent stop events
 # Fires on SubagentStop alongside warn-dor-dod.sh. Appends a JSON line
-# to .claude/telemetry/session-hooks.jsonl with event, agent_type,
+# to {config_dir}/telemetry/session-hooks.jsonl with event, agent_type,
 # agent_id, session_id, timestamp, and has_output (boolean).
 #
 # Does NOT inspect or log last_assistant_message content (privacy).
@@ -11,14 +11,18 @@
 # Do NOT use set -e -- we want to continue on write failure
 set -uo pipefail
 
-# Require CLAUDE_PROJECT_DIR (or CURSOR_PROJECT_DIR)
-PROJECT_DIR="${CURSOR_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-}}"
-if [ -z "$PROJECT_DIR" ]; then
-  echo "WARNING: log-agent-stop.sh: CLAUDE_PROJECT_DIR is not set. Skipping." >&2
-  exit 0
+# Derive config directory from this script's location.
+# Hook lives at {config_dir}/hooks/log-agent-stop.sh, so dirname "$0"/.. gives config dir.
+# Follow symlinks to handle both direct execution and symlinked invocation.
+SCRIPT_PATH="$0"
+# If symlinked, resolve to canonical path
+if [ -L "$SCRIPT_PATH" ]; then
+  SCRIPT_PATH="$(cd "$(dirname "$SCRIPT_PATH")" && readlink -f "$SCRIPT_PATH")"
 fi
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+CONFIG_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-TELEMETRY_DIR="$PROJECT_DIR/.claude/telemetry"
+TELEMETRY_DIR="$CONFIG_DIR/telemetry"
 JSONL_FILE="$TELEMETRY_DIR/session-hooks.jsonl"
 
 # Read stdin

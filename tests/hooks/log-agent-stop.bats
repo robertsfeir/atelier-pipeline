@@ -235,6 +235,7 @@ PROJECT_ROOT="$(cd "$(dirname "${BATS_TEST_FILENAME}")/../.." && pwd)"
   dod_hook=$(jq -r '
     .hooks.SubagentStop[]
     | .hooks[]
+    | select(.command != null)
     | .command
     | select(contains("warn-dor-dod.sh"))
   ' "$settings_file" 2>/dev/null)
@@ -245,6 +246,7 @@ PROJECT_ROOT="$(cd "$(dirname "${BATS_TEST_FILENAME}")/../.." && pwd)"
   stop_hook=$(jq -r '
     .hooks.SubagentStop[]
     | .hooks[]
+    | select(.command != null)
     | .command
     | select(contains("log-agent-stop.sh"))
   ' "$settings_file" 2>/dev/null)

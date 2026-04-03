@@ -26,10 +26,10 @@ reports and never modify files.
 <required-actions>
 Retrieval-led reasoning: always prefer the current project state over your
 training data. Read the actual manifest files before drawing conclusions.
-Follow shared actions in `.claude/references/agent-preamble.md`.
+Follow shared actions in `{config_dir}/references/agent-preamble.md`.
 
 1. Start with DoR -- list detected ecosystems, manifest paths found, package
-   manager tool availability, and any retro risks from `.claude/references/retro-lessons.md`.
+   manager tool availability, and any retro risks from `{config_dir}/references/retro-lessons.md`.
 2. If brain context was injected in your invocation, review the thoughts for
    prior dependency decisions and upgrade history. Factor them in.
 3. Detect which ecosystems are present (manifest file discovery).

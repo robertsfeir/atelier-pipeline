@@ -21,8 +21,8 @@ matches the design by reading the actual components.
 </required-actions>
 
 <required-reading>
-- `.claude/references/dor-dod.md` -- DoR/DoD framework (your output format)
-- `.claude/references/retro-lessons.md` -- lessons from past runs
+- `{config_dir}/references/dor-dod.md` -- DoR/DoD framework (your output format)
+- `{config_dir}/references/retro-lessons.md` -- lessons from past runs
 - Robert's spec (`docs/product/`) -- personas, stories, edge cases, acceptance criteria
 </required-reading>
 
@@ -57,7 +57,7 @@ matches the design by reading the actual components.
 
 ## Subagent Mode
 
-Sable also has a subagent mode (`.claude/agents/sable.md`) -- a UX acceptance
+Sable also has a subagent mode (`{config_dir}/agents/sable.md`) -- a UX acceptance
 reviewer invoked by Eva at two points. Sable-skill (this file) is the author
 and updater of UX docs. Sable-subagent is the verifier.
 

@@ -32,9 +32,9 @@ This file uses just-in-time (JIT) loading. Sections marked `[ALWAYS]` are loaded
 
 <protocol id="brain-capture">
 
-## Brain Access (MANDATORY when brain is available)
+## Brain Access (when brain is available)
 
-When `brain_available: true`, Eva performs these brain operations at mechanical gates — not discretionary.
+When `brain_available: true`, Eva performs these brain operations at mechanical gates. Agent domain-specific captures are wired via `mcpServers: atelier-brain` frontmatter -- see agent personas (Cal, Colby, Roz, Agatha) for capture gates.
 
 ### Hybrid Capture Model
 
@@ -47,7 +47,7 @@ Eva captures **cross-cutting concerns only** — things no single agent owns:
 - Before each wave: calls `agent_search` once for the wave's feature area. Injects results into all agent invocations within that wave. Does NOT call `agent_search` per individual agent invocation.
 - Health check: calls `atelier_stats` at pipeline start to verify brain is live.
 
-**Writes (cross-cutting only):**
+**Writes (cross-cutting only, best-effort -- reinforced by prompt hook):**
 - User decisions: calls `agent_capture` with `source_agent: 'eva'`, `thought_type: 'decision'` when the user expresses a preference, correction, or override during conversation.
 - Phase transitions: calls `agent_capture` with `source_agent: 'eva'`, `thought_type: 'decision'` at each pipeline phase transition with outcome summary.
 - Cross-agent patterns: when the same issue is found by multiple reviewers (e.g., Roz and Robert both flag the same drift), calls `agent_capture` with `source_agent: 'eva'`, `thought_type: 'insight'` noting the convergence.
@@ -57,9 +57,6 @@ Eva captures **cross-cutting concerns only** — things no single agent owns:
 - Pipeline end: calls `agent_capture` with `thought_type: 'decision'` for session summary linking key decisions from the run.
 - Wave decisions: calls `agent_capture` with `source_agent: 'eva'`, `thought_type: 'decision'`, `source_phase: 'build'` after wave grouping with step-to-wave mapping and rationale.
 - Model-vs-outcome: calls `agent_capture` with `source_agent: 'eva'`, `thought_type: 'lesson'`, `source_phase: 'build'` after each Colby unit completes QA, recording: model used, step description, Roz verdict, issue count.
-
-**Verification (spot-check, not duplicate):**
-- After each agent completes work, Eva spot-checks that the agent performed its brain captures. If an agent with a Brain Access section returned output but did not capture, Eva logs the gap — she does NOT re-capture on the agent's behalf (that would produce duplicates with `source_agent: 'eva'` instead of the real author).
 
 ### /devops Capture Gates
 
@@ -92,7 +89,7 @@ pipeline?" The user decides — seeds are suggestions, not requirements.
 
 <protocol id="telemetry-capture">
 
-## Telemetry Capture Protocol (MANDATORY when brain is available)
+## Telemetry Capture Protocol (when brain is available)
 
 Eva captures quantitative pipeline metrics at three gates. All captures use:
 - `thought_type: 'insight'`
@@ -130,7 +127,7 @@ data is captured in bulk at wave end as part of the Tier 2 capture.
 **Micro pipelines:** Tier 1 captures run as normal. Micro pipelines capture Tier 1 only --
 skip Tier 2 and Tier 3. Micro runs do not contribute to boot trend data (which queries Tier 3).
 
-### Tier 2 Gate (per-wave) -- After Each Wave Passes Roz QA PASS
+### Tier 2 Gate (per-wave, best-effort) -- After Each Wave Passes Roz QA PASS
 
 After each wave passes Roz QA, Eva captures a single Tier 2 record covering
 all units in the wave. The capture includes per-unit breakdowns (rework cycles,
@@ -157,7 +154,7 @@ first-pass QA, costs) as array fields in metadata.
 
 **Skipped on Micro pipelines.**
 
-### Tier 3 Gate (per-pipeline) -- At Pipeline End After Ellis Final Commit
+### Tier 3 Gate (per-pipeline, best-effort) -- At Pipeline End After Ellis Final Commit
 
 At pipeline end, after Ellis final commit and before end-of-pipeline checks, Eva:
 
@@ -293,7 +290,7 @@ After the Pattern Staleness Check (and Darwin auto-trigger if applicable), if
 `dashboard_mode` is set to `"plan-visualizer"` in `pipeline-config.json`, Eva runs
 the bridge script:
 
-1. Eva runs `.claude/dashboard/telemetry-bridge.sh` via Bash.
+1. Eva runs `{config_dir}/dashboard/telemetry-bridge.sh` via Bash.
 2. If the script succeeds: Eva logs "Dashboard updated -- PIPELINE_PLAN.md regenerated."
 3. If the script fails: Eva logs "Dashboard update failed: [reason]. Pipeline complete." and continues.
 
@@ -728,7 +725,7 @@ commit. For MR-based strategies (GitHub Flow, GitLab Flow, GitFlow), per-unit
 commits go to the feature branch. For trunk-based, per-unit commits go to main
 (or the current branch). The feature branch accumulates granular commits.
 After the review juncture, delivery depends on the branching strategy (see
-`.claude/rules/branch-lifecycle.md`).
+`{config_dir}/rules/branch-lifecycle.md`).
 
 ### Review Juncture (after all Colby units pass QA)
 
@@ -761,7 +758,7 @@ Eva stops and asks the user at these points (strategy-dependent):
   - After Roz diagnosis on a **user-reported bug** (not pipeline-internal findings)
   - **CI Watch fix ready** -- after Roz verifies Colby's CI fix, Eva presents failure summary + fix delta + Roz verdict and waits for user approval before Ellis pushes the fix
 
-Branch lifecycle details are in `.claude/rules/branch-lifecycle.md` (strategy-specific, installed at setup time).
+Branch lifecycle details are in `{config_dir}/rules/branch-lifecycle.md` (strategy-specific, installed at setup time).
 
 Also requires user input: UAT review, scope questions from Robert/Cal.
 User overrides: "skip to [agent]", "back to [agent]", "check with [agent]", "stop".
@@ -831,7 +828,7 @@ failure log truncation rules.
 ### Activation Gate
 
 CI Watch activates when **both** conditions hold:
-1. `ci_watch_enabled: true` in `.claude/pipeline-config.json`
+1. `ci_watch_enabled: true` in `{config_dir}/pipeline-config.json`
 2. Ellis has just pushed to remote (Ellis reports a successful push)
 
 If either condition is false, Eva does not launch a watch. CI Watch is orthogonal to pipeline
@@ -859,7 +856,7 @@ After launching a watch, Eva sets `ci_watch_active: true`, `ci_watch_retry_count
 
 After Ellis confirms a successful push, Eva:
 1. Reads `platform_cli`, `ci_watch_poll_command`, and `ci_watch_max_retries` from
-   `.claude/pipeline-config.json`.
+   `{config_dir}/pipeline-config.json`.
 2. If `ci_watch_poll_command` is empty or missing, Eva logs: "CI Watch commands not
    configured. Run /pipeline-setup to configure." and skips watch launch.
 3. Announces: "CI Watch active -- monitoring CI for commit {sha} on {branch}."

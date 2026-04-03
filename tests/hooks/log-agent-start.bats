@@ -194,12 +194,12 @@ PROJECT_ROOT="$(cd "$(dirname "${BATS_TEST_FILENAME}")/../.." && pwd)"
 
 @test "T-0020-020: writes JSONL correctly when CLAUDE_PROJECT_DIR path contains a space" {
   local spaced_dir="$TEST_TMPDIR/my project"
-  mkdir -p "$spaced_dir"
+  mkdir -p "$spaced_dir/.claude/hooks"
 
   local input
   input=$(build_subagent_start_input "colby" "agent-abc" "sess-xyz")
-  prepare_hook "log-agent-start.sh"
-  run bash -c "echo '$input' | CLAUDE_PROJECT_DIR='$spaced_dir' bash '$TEST_TMPDIR/log-agent-start.sh'"
+  cp "$HOOKS_DIR/log-agent-start.sh" "$spaced_dir/.claude/hooks/log-agent-start.sh"
+  run bash -c "echo '$input' | bash '$spaced_dir/.claude/hooks/log-agent-start.sh'"
   [ "$status" -eq 0 ]
 
   local jsonl_file="$spaced_dir/.claude/telemetry/session-hooks.jsonl"
@@ -220,9 +220,9 @@ PROJECT_ROOT="$(cd "$(dirname "${BATS_TEST_FILENAME}")/../.." && pwd)"
   input2=$(build_subagent_start_input "roz" "agent-2" "sess-concurrent")
 
   # Launch both in background
-  echo "$input1" | CLAUDE_PROJECT_DIR="$TEST_TMPDIR" bash "$TEST_TMPDIR/log-agent-start.sh" &
+  echo "$input1" | bash "$TEST_TMPDIR/.claude/hooks/log-agent-start.sh" &
   local pid1=$!
-  echo "$input2" | CLAUDE_PROJECT_DIR="$TEST_TMPDIR" bash "$TEST_TMPDIR/log-agent-start.sh" &
+  echo "$input2" | bash "$TEST_TMPDIR/.claude/hooks/log-agent-start.sh" &
   local pid2=$!
 
   wait "$pid1"

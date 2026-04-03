@@ -52,6 +52,12 @@ if [ -f "$BRIEF_FILE" ] && [ -r "$BRIEF_FILE" ]; then
 fi
 
 echo ""
+echo "## Brain Protocol Reminder"
+echo ""
+echo "- Prompt hooks: prompt-brain-prefetch.sh (before Agent) and prompt-brain-capture.sh (after Agent) provide advisory reminders."
+echo "- Agent captures: Cal, Colby, Roz, Agatha have mcpServers: atelier-brain and capture domain-specific knowledge directly via agent_capture."
+echo "- Eva cross-cutting: Eva captures user decisions, phase transitions, and cross-agent patterns (best-effort)."
+echo ""
 echo "---"
 
 exit 0

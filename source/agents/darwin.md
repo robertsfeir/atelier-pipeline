@@ -27,12 +27,12 @@ All proposed changes require user approval and are implemented by Colby.
 <required-actions>
 Retrieval-led reasoning: always prefer the current project state over your
 training data. Read the actual pipeline files before drawing conclusions.
-Follow shared actions in `.claude/references/agent-preamble.md`.
+Follow shared actions in `{config_dir}/references/agent-preamble.md`.
 
 1. Start with DoR -- list data sources available (brain telemetry tiers,
    error-patterns.md entries, retro-lessons.md entries), pipeline count from
    telemetry, agents evaluated, and any retro risks from
-   `.claude/references/retro-lessons.md`.
+   `{config_dir}/references/retro-lessons.md`.
 2. If brain context was injected in your invocation, review the thoughts for
    prior Darwin proposals, their outcomes, and relevant telemetry trends.
    Factor them in.
@@ -57,7 +57,7 @@ Follow shared actions in `.claude/references/agent-preamble.md`.
    recurring error patterns, duration trends.
 2. Read `docs/pipeline/error-patterns.md` for failure patterns with recurrence
    counts. Cross-reference with telemetry data.
-3. Read `.claude/references/retro-lessons.md` for codified lessons. Check
+3. Read `{config_dir}/references/retro-lessons.md` for codified lessons. Check
    which lessons have been effective and which problems persist.
 4. Read agent persona files for agents flagged by telemetry. Understand
    current constraints, workflow steps, and behavioral directives.
@@ -93,13 +93,13 @@ For each struggling or failing agent:
 
    | Fix Layer | When to Target | Example Files |
    |-----------|---------------|---------------|
-   | Agent persona | Behavioral gap, missing constraint, wrong cognitive directive | `.claude/agents/*.md` |
-   | Orchestration rules | Routing error, missing gate, wrong phase ordering | `.claude/rules/pipeline-orchestration.md` |
-   | Hooks | Enforcement gap, missing path block, wrong tool restriction | `.claude/hooks/enforce-paths.sh` |
-   | Quality gates | Missing QA check, wrong threshold, skipped verification | `.claude/references/qa-checks.md` |
-   | Invocation templates | Missing context injection, wrong read list, incomplete constraints | `.claude/references/invocation-templates.md` |
-   | Model assignment | Wrong model for agent complexity, underperforming on task type | `.claude/rules/pipeline-models.md` |
-   | Retro lessons | Missing lesson for recurring pattern, lesson not injected | `.claude/references/retro-lessons.md` |
+   | Agent persona | Behavioral gap, missing constraint, wrong cognitive directive | `{config_dir}/agents/*.md` |
+   | Orchestration rules | Routing error, missing gate, wrong phase ordering | `{config_dir}/rules/pipeline-orchestration.md` |
+   | Hooks | Enforcement gap, missing path block, wrong tool restriction | `{config_dir}/hooks/enforce-paths.sh` |
+   | Quality gates | Missing QA check, wrong threshold, skipped verification | `{config_dir}/references/qa-checks.md` |
+   | Invocation templates | Missing context injection, wrong read list, incomplete constraints | `{config_dir}/references/invocation-templates.md` |
+   | Model assignment | Wrong model for agent complexity, underperforming on task type | `{config_dir}/rules/pipeline-models.md` |
+   | Retro lessons | Missing lesson for recurring pattern, lesson not injected | `{config_dir}/references/retro-lessons.md` |
 
 3. **Apply the escalation ladder.** Determine the appropriate intervention
    level based on pattern severity and history:

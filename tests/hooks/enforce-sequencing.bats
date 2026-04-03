@@ -370,7 +370,7 @@ EOF
 # ── T-GATE3-002: Happy -- Ellis allowed when telemetry_captured=true ──
 
 @test "T-GATE3-002: Ellis allowed when pipeline active and telemetry_captured is true" {
-  write_pipeline_status '{"roz_qa":"PASS","phase":"review","sizing":"medium","telemetry_captured":"true"}'
+  write_pipeline_status '{"roz_qa":"PASS","phase":"review","sizing":"medium","telemetry_captured":"true","poirot_reviewed":"true","robert_reviewed":"true"}'
 
   cat > "$TEST_TMPDIR/enforcement-config.json" << EOF
 {
@@ -405,6 +405,173 @@ EOF
 
 @test "T-GATE3-004: Ellis allowed during CI Watch without telemetry_captured" {
   write_pipeline_status '{"roz_qa":"CI_VERIFIED","phase":"review","sizing":"medium","ci_watch_active":"true"}'
+
+  cat > "$TEST_TMPDIR/enforcement-config.json" << EOF
+{
+  "pipeline_state_dir": "$TEST_TMPDIR/docs/pipeline"
+}
+EOF
+
+  local input
+  input=$(build_agent_input "ellis")
+  run run_hook_with_input "enforce-sequencing.sh" "$input"
+  [ "$status" -eq 0 ]
+}
+
+# ═══════════════════════════════════════════════════════════════════════
+# Gate 4: Ellis requires Poirot review during active pipelines
+# Tests T-GATE4-001 through T-GATE4-004
+# ═══════════════════════════════════════════════════════════════════════
+
+# ── T-GATE4-001: Failure -- Ellis blocked when poirot_reviewed is missing ──
+
+@test "T-GATE4-001: Ellis blocked when pipeline active and poirot_reviewed is missing" {
+  write_pipeline_status '{"roz_qa":"PASS","phase":"build","sizing":"small","telemetry_captured":"true"}'
+
+  cat > "$TEST_TMPDIR/enforcement-config.json" << EOF
+{
+  "pipeline_state_dir": "$TEST_TMPDIR/docs/pipeline"
+}
+EOF
+
+  local input
+  input=$(build_agent_input "ellis")
+  run run_hook_with_input "enforce-sequencing.sh" "$input"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"BLOCKED"* ]]
+  [[ "$output" == *"Poirot"* ]]
+}
+
+# ── T-GATE4-002: Happy -- Ellis allowed when poirot_reviewed=true ──
+
+@test "T-GATE4-002: Ellis allowed when poirot_reviewed is true" {
+  write_pipeline_status '{"roz_qa":"PASS","phase":"build","sizing":"small","telemetry_captured":"true","poirot_reviewed":"true"}'
+
+  cat > "$TEST_TMPDIR/enforcement-config.json" << EOF
+{
+  "pipeline_state_dir": "$TEST_TMPDIR/docs/pipeline"
+}
+EOF
+
+  local input
+  input=$(build_agent_input "ellis")
+  run run_hook_with_input "enforce-sequencing.sh" "$input"
+  [ "$status" -eq 0 ]
+}
+
+# ── T-GATE4-003: Happy -- Ellis allowed on micro without poirot_reviewed ──
+
+@test "T-GATE4-003: Ellis allowed on micro pipeline without poirot_reviewed" {
+  write_pipeline_status '{"roz_qa":"PASS","phase":"review","sizing":"micro"}'
+
+  cat > "$TEST_TMPDIR/enforcement-config.json" << EOF
+{
+  "pipeline_state_dir": "$TEST_TMPDIR/docs/pipeline"
+}
+EOF
+
+  local input
+  input=$(build_agent_input "ellis")
+  run run_hook_with_input "enforce-sequencing.sh" "$input"
+  [ "$status" -eq 0 ]
+}
+
+# ── T-GATE4-004: Happy -- Ellis allowed during CI Watch without poirot_reviewed ──
+
+@test "T-GATE4-004: Ellis allowed during CI Watch without poirot_reviewed" {
+  write_pipeline_status '{"roz_qa":"CI_VERIFIED","phase":"review","sizing":"small","ci_watch_active":"true"}'
+
+  cat > "$TEST_TMPDIR/enforcement-config.json" << EOF
+{
+  "pipeline_state_dir": "$TEST_TMPDIR/docs/pipeline"
+}
+EOF
+
+  local input
+  input=$(build_agent_input "ellis")
+  run run_hook_with_input "enforce-sequencing.sh" "$input"
+  [ "$status" -eq 0 ]
+}
+
+# ═══════════════════════════════════════════════════════════════════════
+# Gate 5: Ellis requires Robert review on Medium/Large at review phase
+# Tests T-GATE5-001 through T-GATE5-005
+# ═══════════════════════════════════════════════════════════════════════
+
+# ── T-GATE5-001: Failure -- Ellis blocked on medium review phase without robert_reviewed ──
+
+@test "T-GATE5-001: Ellis blocked on medium review phase without robert_reviewed" {
+  write_pipeline_status '{"roz_qa":"PASS","phase":"review","sizing":"medium","telemetry_captured":"true","poirot_reviewed":"true"}'
+
+  cat > "$TEST_TMPDIR/enforcement-config.json" << EOF
+{
+  "pipeline_state_dir": "$TEST_TMPDIR/docs/pipeline"
+}
+EOF
+
+  local input
+  input=$(build_agent_input "ellis")
+  run run_hook_with_input "enforce-sequencing.sh" "$input"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"BLOCKED"* ]]
+  [[ "$output" == *"Robert"* ]]
+}
+
+# ── T-GATE5-002: Happy -- Ellis allowed on medium review with robert_reviewed=true ──
+
+@test "T-GATE5-002: Ellis allowed on medium review with robert_reviewed=true" {
+  write_pipeline_status '{"roz_qa":"PASS","phase":"review","sizing":"medium","telemetry_captured":"true","poirot_reviewed":"true","robert_reviewed":"true"}'
+
+  cat > "$TEST_TMPDIR/enforcement-config.json" << EOF
+{
+  "pipeline_state_dir": "$TEST_TMPDIR/docs/pipeline"
+}
+EOF
+
+  local input
+  input=$(build_agent_input "ellis")
+  run run_hook_with_input "enforce-sequencing.sh" "$input"
+  [ "$status" -eq 0 ]
+}
+
+# ── T-GATE5-003: Happy -- Ellis allowed on small review without robert_reviewed (small exempt) ──
+
+@test "T-GATE5-003: Ellis allowed on small review without robert_reviewed (small exempt)" {
+  write_pipeline_status '{"roz_qa":"PASS","phase":"review","sizing":"small","telemetry_captured":"true","poirot_reviewed":"true"}'
+
+  cat > "$TEST_TMPDIR/enforcement-config.json" << EOF
+{
+  "pipeline_state_dir": "$TEST_TMPDIR/docs/pipeline"
+}
+EOF
+
+  local input
+  input=$(build_agent_input "ellis")
+  run run_hook_with_input "enforce-sequencing.sh" "$input"
+  [ "$status" -eq 0 ]
+}
+
+# ── T-GATE5-004: Happy -- Ellis allowed during build phase on medium without robert_reviewed ──
+
+@test "T-GATE5-004: Ellis allowed during build phase on medium without robert_reviewed (build phase exempt)" {
+  write_pipeline_status '{"roz_qa":"PASS","phase":"build","sizing":"medium","telemetry_captured":"true","poirot_reviewed":"true"}'
+
+  cat > "$TEST_TMPDIR/enforcement-config.json" << EOF
+{
+  "pipeline_state_dir": "$TEST_TMPDIR/docs/pipeline"
+}
+EOF
+
+  local input
+  input=$(build_agent_input "ellis")
+  run run_hook_with_input "enforce-sequencing.sh" "$input"
+  [ "$status" -eq 0 ]
+}
+
+# ── T-GATE5-005: Happy -- Ellis allowed on large review with robert_reviewed=true ──
+
+@test "T-GATE5-005: Ellis allowed on large review with robert_reviewed=true" {
+  write_pipeline_status '{"roz_qa":"PASS","phase":"review","sizing":"large","telemetry_captured":"true","poirot_reviewed":"true","robert_reviewed":"true"}'
 
   cat > "$TEST_TMPDIR/enforcement-config.json" << EOF
 {

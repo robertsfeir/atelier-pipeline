@@ -17,6 +17,14 @@
      here as the telemetry timing source for Tier 1 duration_ms. Eva does not add
      timing instructions to individual templates. -->
 
+<!-- Brain-context tag: Eva prefetches brain context via agent_search and injects
+     results into the <brain-context> tag in invocations. This is for READ context
+     only -- it gives agents prior decisions, patterns, and lessons relevant to
+     their task. Agents with mcpServers: atelier-brain (Cal, Colby, Roz, Agatha)
+     also capture independently via agent_capture per their Brain Access protocol.
+     The brain-context tag is for reads; agent captures are separate writes that
+     happen within the agent's own workflow. -->
+
 Eva loads this file just-in-time when constructing sub-agent invocation
 prompts. These are not pre-loaded into Eva's always-on context.
 

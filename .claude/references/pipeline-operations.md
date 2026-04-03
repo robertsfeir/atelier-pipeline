@@ -18,17 +18,16 @@ and per-agent examples.
 
 ## Brain Context Prefetch
 
-Eva is responsible for all brain interactions. Before invoking any agent, Eva:
+Eva prefetches brain context before invoking agents. Agents with brain access
+also capture directly. Reinforced by `prompt-brain-prefetch.sh` PreToolUse hook.
 
 1. Calls `agent_search` with a query derived from the feature area
 2. Injects results into the `<brain-context>` tag in the invocation prompt
-3. Agents consume injected brain context as data -- they do not call
-   `agent_search` themselves
+3. Agents with `mcpServers: atelier-brain` (Cal, Colby, Roz, Agatha) capture
+   domain-specific knowledge directly via their Brain Access protocols
 
-After an agent returns, Eva inspects the output for capturable knowledge
-(decisions, patterns, lessons, insights noted in the agent's DoD) and calls
-`agent_capture`. Agents surface knowledge in their `<output>` section; Eva
-captures it.
+Eva captures cross-cutting concerns only (best-effort). See agent personas for
+domain-specific capture gates.
 
 </protocol>
 

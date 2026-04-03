@@ -1,5 +1,22 @@
 # Project Agent System -- Hybrid Architecture
 
+<!-- CONFIGURE: Update the placeholders below to match your project -->
+<!--
+  docs/pipeline  = directory for pipeline state files (default: docs/pipeline/)
+  docs/architecture    = directory for ADR files (default: docs/architecture/)
+  docs/product   = directory for product specs (default: docs/product/)
+  docs/ux         = directory for UX design docs (default: docs/ux/)
+  docs/CONVENTIONS.md    = path to conventions doc (default: docs/CONVENTIONS.md)
+  CHANGELOG.md      = path to changelog (default: CHANGELOG.md)
+  {test_command}        = command to run full test suite (e.g., npx vitest run, npm test, pytest)
+  {lint_command}        = command to run linter (e.g., npm run lint, ruff check)
+  {typecheck_command}   = command to run type checker (e.g., npm run typecheck, mypy .)
+  {fast_test_command}   = command for rapid inner-loop tests (e.g., npm run test:fast)
+  source          = project source directory (e.g., src/, lib/, app/)
+  source        = feature directory pattern (e.g., src/features/, app/domains/)
+  {mockup_route_prefix} = route prefix for UAT mockups (default: /mock/)
+  .claude          = IDE config directory (.claude for Claude Code, .cursor for Cursor)
+-->
 
 <section id="brain-config">
 
@@ -9,8 +26,8 @@ The atelier brain provides persistent institutional memory across sessions. It i
 
 - **Detection:** Eva calls `atelier_stats` at pipeline start. If the tool is unavailable or returns `brain_enabled: false`, the pipeline runs in baseline mode — identical to operation without brain. The response includes `brain_name` — use this name in all announcements and reports instead of "Brain" (e.g., "My Noodle is online" instead of "Brain is connected").
 - **State:** `brain_available: true | false` and `brain_name` are persisted in `docs/pipeline/pipeline-state.md`.
-- **Brain reads are Eva's responsibility.** Eva pre-fetches brain context via `agent_search` before invoking an agent and injects results into the `<brain-context>` tag in the invocation prompt. Agents consume injected brain context as data -- they do not call `agent_search` themselves.
-- **Brain writes are Eva's responsibility.** When an agent returns, Eva inspects the output for capturable knowledge (decisions, patterns, lessons, insights) and calls `agent_capture`. Agents surface knowledge in their `<output>` section; Eva captures it.
+- **Brain reads:** Eva prefetches via `agent_search` and injects into `<brain-context>`. Prompt hook reinforcement: `prompt-brain-prefetch.sh`.
+- **Brain writes:** Agents with `mcpServers: atelier-brain` (Cal, Colby, Roz, Agatha) capture domain-specific knowledge directly. Eva captures cross-cutting concerns only (best-effort -- reinforced by `prompt-brain-capture.sh`). See individual agent personas for capture gates.
 - **Tools:** `agent_capture`, `agent_search`, `atelier_browse`, `atelier_stats`, `atelier_relation`, `atelier_trace` — separate from personal mybrain tools.
 
 </section>
@@ -263,7 +280,7 @@ Agent persona files use XML tags for structure: `<identity>`, `<required-actions
 - **Read upstream artifacts -- and prove it.** Extract specific requirements into the DoR section.
 - **One question at a time.** Conversational agents (Robert, Sable, Cal) do not dump a list.
 - **Retro lessons.** Every agent reads `.claude/references/retro-lessons.md`. Note relevant lessons in DoR's "Retro risks" field.
-- **Brain context consumption.** Eva pre-fetches brain context and injects it via the `<brain-context>` tag in invocations. Agents review injected thoughts for relevant prior decisions, patterns, and lessons -- they do not call `agent_search` themselves. Eva captures knowledge from agent output after they return.
+- **Brain context consumption.** Eva prefetches brain context and injects it via the `<brain-context>` tag in invocations. Agents with `mcpServers: atelier-brain` (Cal, Colby, Roz, Agatha) also capture domain-specific knowledge directly. Eva captures cross-cutting concerns only. See agent personas for capture gates.
 - **Context lookup order: Brain -> Git -> Docs.** When investigating the history or reasoning behind a change, check injected brain context first (if provided). Brain captures *why* decisions were made -- reasoning, rejected alternatives, user corrections. Verify against git history (the *what*). If no brain context was provided, fall back to git log/blame, then check docs (specs, ADRs, UX docs).
 
 </section>

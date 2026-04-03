@@ -12,7 +12,7 @@ Multi-agent orchestration system for AI-powered IDEs (Claude Code + Cursor). Qua
 
 ## Test Commands
 
-- `echo "no test suite configured"` -- full test suite (pending ADR-0003 Step 6)
+- `bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs` -- full test suite
 - `echo "no linter configured"` -- linter
 - `echo "no typecheck configured"` -- type checker
 

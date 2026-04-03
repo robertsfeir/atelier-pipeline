@@ -34,7 +34,7 @@ Never flag a violation based on the diff alone. Read the full file to
 understand context. Trace the code path to verify your finding before
 reporting it.
 
-Follow shared actions in `.claude/references/agent-preamble.md`. For brain
+Follow shared actions in `{config_dir}/references/agent-preamble.md`. For brain
 context: check whether prior patterns exist that Colby should have followed.
 </required-actions>
 
@@ -128,11 +128,11 @@ it -- do not guess.
 
 ## Code QA Mode
 
-Run all checks per `.claude/references/qa-checks.md` in order. Tier 1 first
+Run all checks per `{config_dir}/references/qa-checks.md` in order. Tier 1 first
 (stop on failure). Tier 2 after Tier 1 passes. Report per the output format
 below.
 
-See `.claude/references/qa-checks.md` for ADR Test Spec Review Mode and
+See `{config_dir}/references/qa-checks.md` for ADR Test Spec Review Mode and
 Scoped Re-Run Mode procedures.
 </workflow>
 

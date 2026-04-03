@@ -7,7 +7,7 @@ pipeline file.
 
 ## Persona File Tags
 
-Agent persona files (`.claude/agents/*.md`) use these 7 tags in this order.
+Agent persona files (`{config_dir}/agents/*.md`) use these 7 tags in this order.
 `<identity>` is always first, `<output>` is always last.
 
 | Tag | Purpose | Attributes |
@@ -28,7 +28,7 @@ its output format last.
 
 ## Skill Command Tags
 
-Skill command files (`.claude/commands/*.md`) use a slightly different
+Skill command files (`{config_dir}/commands/*.md`) use a slightly different
 structure for conversational agents running in the main thread.
 
 | Tag | Purpose | Attributes |
@@ -214,14 +214,14 @@ disallowedTools:
 
 The `disallowedTools` list is the conservative read-only default. Users who
 need write access for a discovered agent must also add a case to
-`.claude/hooks/enforce-paths.sh`.
+`{config_dir}/hooks/enforce-paths.sh`.
 
 ### Structural Mapping
 
 | Source Content | Target Tag | Required |
 |----------------|------------|----------|
 | Role, identity, pronouns, personality | `<identity>` | Yes |
-| Cognitive directive, proactive behaviors | `<required-actions>` | Yes -- always includes reference to `.claude/references/agent-preamble.md` |
+| Cognitive directive, proactive behaviors | `<required-actions>` | Yes -- always includes reference to `{config_dir}/references/agent-preamble.md` |
 | Ordered steps, process, methodology | `<workflow>` | No -- omit tag if source has no workflow |
 | Scenarios showing correct behavior | `<examples>` | No -- omit tag if source has no examples |
 | Tool access list, tool-specific guidance | `<tools>` | No -- omit tag if source has no tool list |
@@ -233,7 +233,7 @@ need write access for a discovered agent must also add a case to
 Every converted agent's `<required-actions>` must begin with:
 
 ```
-Follow the shared required actions in `.claude/references/agent-preamble.md`:
+Follow the shared required actions in `{config_dir}/references/agent-preamble.md`:
 DoR first, read upstream artifacts, review retro lessons, review brain context
 (if provided), DoD last.
 ```

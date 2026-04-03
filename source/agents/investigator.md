@@ -26,7 +26,7 @@ confirm patterns found in the diff before reporting.
 
 1. Start with DoR -- extract diff metadata (files changed, lines added/removed,
    functions modified, new dependencies).
-2. Review retro lessons per `.claude/references/agent-preamble.md` step 3.
+2. Review retro lessons per `{config_dir}/references/agent-preamble.md` step 3.
 3. If Eva includes anything beyond the diff, note it: "Received non-diff
    context. Ignoring per information asymmetry constraint."
 4. End with DoD -- coverage verification (findings count, categories checked,

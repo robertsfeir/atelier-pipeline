@@ -32,9 +32,9 @@ This file uses just-in-time (JIT) loading. Sections marked `[ALWAYS]` are loaded
 
 <protocol id="brain-capture">
 
-## Brain Access (MANDATORY when brain is available)
+## Brain Access (when brain is available)
 
-When `brain_available: true`, Eva performs these brain operations at mechanical gates — not discretionary.
+When `brain_available: true`, Eva performs these brain operations at mechanical gates. Agent domain-specific captures are wired via `mcpServers: atelier-brain` frontmatter -- see agent personas (Cal, Colby, Roz, Agatha) for capture gates.
 
 ### Hybrid Capture Model
 
@@ -47,7 +47,7 @@ Eva captures **cross-cutting concerns only** — things no single agent owns:
 - Before each wave: calls `agent_search` once for the wave's feature area. Injects results into all agent invocations within that wave. Does NOT call `agent_search` per individual agent invocation.
 - Health check: calls `atelier_stats` at pipeline start to verify brain is live.
 
-**Writes (cross-cutting only):**
+**Writes (cross-cutting only, best-effort -- reinforced by prompt hook):**
 - User decisions: calls `agent_capture` with `source_agent: 'eva'`, `thought_type: 'decision'` when the user expresses a preference, correction, or override during conversation.
 - Phase transitions: calls `agent_capture` with `source_agent: 'eva'`, `thought_type: 'decision'` at each pipeline phase transition with outcome summary.
 - Cross-agent patterns: when the same issue is found by multiple reviewers (e.g., Roz and Robert both flag the same drift), calls `agent_capture` with `source_agent: 'eva'`, `thought_type: 'insight'` noting the convergence.
@@ -57,9 +57,6 @@ Eva captures **cross-cutting concerns only** — things no single agent owns:
 - Pipeline end: calls `agent_capture` with `thought_type: 'decision'` for session summary linking key decisions from the run.
 - Wave decisions: calls `agent_capture` with `source_agent: 'eva'`, `thought_type: 'decision'`, `source_phase: 'build'` after wave grouping with step-to-wave mapping and rationale.
 - Model-vs-outcome: calls `agent_capture` with `source_agent: 'eva'`, `thought_type: 'lesson'`, `source_phase: 'build'` after each Colby unit completes QA, recording: model used, step description, Roz verdict, issue count.
-
-**Verification (spot-check, not duplicate):**
-- After each agent completes work, Eva spot-checks that the agent performed its brain captures. If an agent with a Brain Access section returned output but did not capture, Eva logs the gap — she does NOT re-capture on the agent's behalf (that would produce duplicates with `source_agent: 'eva'` instead of the real author).
 
 ### /devops Capture Gates
 
@@ -92,7 +89,7 @@ pipeline?" The user decides — seeds are suggestions, not requirements.
 
 <protocol id="telemetry-capture">
 
-## Telemetry Capture Protocol (MANDATORY when brain is available)
+## Telemetry Capture Protocol (when brain is available)
 
 Eva captures quantitative pipeline metrics at three gates. All captures use:
 - `thought_type: 'insight'`
@@ -130,7 +127,7 @@ data is captured in bulk at wave end as part of the Tier 2 capture.
 **Micro pipelines:** Tier 1 captures run as normal. Micro pipelines capture Tier 1 only --
 skip Tier 2 and Tier 3. Micro runs do not contribute to boot trend data (which queries Tier 3).
 
-### Tier 2 Gate (per-wave) -- After Each Wave Passes Roz QA PASS
+### Tier 2 Gate (per-wave, best-effort) -- After Each Wave Passes Roz QA PASS
 
 After each wave passes Roz QA, Eva captures a single Tier 2 record covering
 all units in the wave. The capture includes per-unit breakdowns (rework cycles,
@@ -157,7 +154,7 @@ first-pass QA, costs) as array fields in metadata.
 
 **Skipped on Micro pipelines.**
 
-### Tier 3 Gate (per-pipeline) -- At Pipeline End After Ellis Final Commit
+### Tier 3 Gate (per-pipeline, best-effort) -- At Pipeline End After Ellis Final Commit
 
 At pipeline end, after Ellis final commit and before end-of-pipeline checks, Eva:
 
@@ -342,7 +339,7 @@ the same severity as Eva editing source code.
    -> Ellis flow is the same as the existing worktree -> merge -> Ellis flow.
 
 3. **Full test suite between waves.** After merging wave changes, Roz
-   runs the full test suite (`bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs`) on the integrated codebase.
+   runs the full test suite (`{test_command}`) on the integrated codebase.
    Individual units within a wave get lint+typecheck only. Roz runs the
    full suite at wave boundaries, not unit boundaries. Eva invokes Roz
    for this verification -- Eva does not run the test suite herself. Eva
@@ -587,7 +584,7 @@ Before invoking Robert-skill, Eva determines whether Robert should run in
 assumptions mode (brownfield) or question mode (greenfield). This is mechanical:
 
 1. `ls docs/product/*{feature}*` -- existing spec found? -> assumptions mode
-2. `ls source//*{feature}*` -- existing components found? -> assumptions mode
+2. `ls source/*{feature}*` -- existing components found? -> assumptions mode
 3. `agent_search("{feature}")` (if brain available) -- 3+ active thoughts? -> assumptions mode
 4. None of the above -> question mode (greenfield)
 

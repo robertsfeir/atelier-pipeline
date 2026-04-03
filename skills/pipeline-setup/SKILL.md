@@ -67,7 +67,10 @@ Before installing, ask the user about their project. Ask these questions convers
    - **Lint command** -- fast lint/typecheck checks with no DB or external dependencies, used by agents during their workflow (e.g., `npm run lint && tsc --noEmit`, `black --check . && ruff check . && mypy .`).
    - **Full test suite** -- the complete test suite including DB-dependent and integration tests, used by Roz for QA verification (e.g., `npm test`, `pytest --cov`). Runs once per work unit.
    - Running a single test file (e.g., `npx vitest run path/to/file`)
-4. **Source structure** -- Where features, components, services, and routes live (e.g., "src/features/<feature>/ for frontend, services/api/ for backend")
+4. **Source structure** -- Where features, components, services, and routes live. Specifically ask for:
+   - **Project source directory** -- Root directory for source code (e.g., `src/`, `lib/`, `app/`)
+   - **Feature directory pattern** -- Where feature directories live (e.g., `src/features/`, `app/domains/`)
+   - **Overall layout** -- How components and services are organized (e.g., "src/features/<feature>/ for frontend, services/api/ for backend")
 5. **Database/store pattern** -- How database access is structured (e.g., "Factory functions with closures over DB client", "Prisma ORM", "raw SQL with pg")
 6. **Build/deploy commands** -- How the project builds and ships (e.g., `npm run build`, Docker, Podman Compose)
 7. **Coverage thresholds** -- If they have existing targets (statement, branch, function, line percentages)
@@ -364,6 +367,41 @@ This file is used by the SessionStart hook to detect when the plugin has been up
 
 **Important:** Always write this file, even on reinstalls. It must reflect the version of the templates that were actually installed.
 
+### Step 3c: Cursor Plugin Rules Sync (.mdc wrappers for reference docs)
+
+When running inside Cursor (detected via `CURSOR_PROJECT_DIR` env var), create `.mdc` wrappers
+for reference documents so Cursor can discover and load them. Each wrapper adds YAML frontmatter
+to the source content. All reference rules use `alwaysApply: false` -- they are loaded on demand
+by agents, not injected into every conversation.
+
+**File structure (each reference .mdc wrapper):**
+
+```markdown
+---
+description: [short description of the document]
+alwaysApply: false
+---
+
+[Full content from source/references/<file>.md]
+```
+
+**Reference docs to sync (alwaysApply: false):**
+
+| Source | Destination | Description |
+|--------|-------------|-------------|
+| `source/references/dor-dod.md` | `.cursor-plugin/rules/dor-dod.mdc` | Definition of Ready / Definition of Done framework |
+| `source/references/retro-lessons.md` | `.cursor-plugin/rules/retro-lessons.mdc` | Retro lessons -- shared reference for past pipeline learnings |
+| `source/references/invocation-templates.md` | `.cursor-plugin/rules/invocation-templates.mdc` | Invocation templates -- standardized XML tag patterns for subagent invocation |
+| `source/references/pipeline-operations.md` | `.cursor-plugin/rules/pipeline-operations.mdc` | Pipeline operations -- continuous QA, feedback loops, batch mode, and worktree rules |
+| `source/references/agent-preamble.md` | `.cursor-plugin/rules/agent-preamble.mdc` | Agent preamble -- shared actions and protocols for all pipeline agents |
+| `source/references/qa-checks.md` | `.cursor-plugin/rules/qa-checks.mdc` | QA checks -- Roz Tier 1/Tier 2 procedures, test spec review, and scoped re-run |
+| `source/references/branch-mr-mode.md` | `.cursor-plugin/rules/branch-mr-mode.mdc` | Branch and MR mode -- Colby branch creation and MR procedures for MR-based strategies |
+| `source/references/telemetry-metrics.md` | `.cursor-plugin/rules/telemetry-metrics.mdc` | Telemetry metrics -- metric schemas, cost table, and alert thresholds |
+| `source/references/xml-prompt-schema.md` | `.cursor-plugin/rules/xml-prompt-schema.mdc` | XML prompt schema -- tag vocabulary for agent persona files |
+| `source/references/cloud-architecture.md` | `.cursor-plugin/rules/cloud-architecture.mdc` | Cloud architecture -- reference for cloud-native deployment patterns |
+
+**Skip when:** Running in Claude Code (no `CURSOR_PROJECT_DIR` env var). Claude Code reads `.claude/references/*.md` directly without `.mdc` wrappers.
+
 ### Step 4: Customize Placeholders
 
 The following placeholders in template files must be replaced with project-specific values:
@@ -379,6 +417,8 @@ The following placeholders in template files must be replaced with project-speci
 | `{{DB_PATTERN}}` | Database access pattern | "Factory functions with closures over DB client" |
 | `{{BUILD_COMMAND}}` | Build command | `npm run build` |
 | `{{COVERAGE_THRESHOLDS}}` | Coverage targets | "stmt=70, branch=65, fn=75, lines=70" |
+| `{source_dir}` | Project source directory | `src/`, `lib/`, `app/` |
+| `{features_dir}` | Feature directory pattern | `src/features/`, `app/domains/` |
 
 ### Step 5: Update CLAUDE.md
 

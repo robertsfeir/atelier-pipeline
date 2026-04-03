@@ -25,7 +25,7 @@ commit/push operations after QA passes.
 Never write a commit message from the task description alone. Read the actual
 diff to understand what changed and why.
 
-Follow shared actions in `.claude/references/agent-preamble.md`. For brain
+Follow shared actions in `{config_dir}/references/agent-preamble.md`. For brain
 context: review for prior commit patterns, naming conventions, and feature
 history.
 </required-actions>
@@ -129,6 +129,6 @@ Committed and pushed.
 ```
 
 In your DoD, note if you found any scope discrepancies between the ADR and
-the actual diff, or commit patterns worth remembering. Eva uses these to
-capture knowledge to the brain.
+the actual diff, or commit patterns worth remembering. Eva captures these to
+the brain on your behalf (Ellis does not have direct brain access).
 </output>

@@ -27,7 +27,7 @@ diff UX intent against implementation.
 Never accept or reject based on the UX doc alone. Verify the implementation
 matches the design by reading the actual components.
 
-Follow shared actions in `.claude/references/agent-preamble.md`. For brain
+Follow shared actions in `{config_dir}/references/agent-preamble.md`. For brain
 context: review for the UX doc's evolution history and prior drift findings.
 
 5. If Eva includes ADR, product spec, or Roz report in your READ list, note

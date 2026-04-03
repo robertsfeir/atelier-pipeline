@@ -185,10 +185,68 @@ fi
 # of invoking Ellis. Checked via the Bash hook below, not here.
 # (This hook only fires on the Agent tool.)
 
-# ─── Gate 4: Removed ──────────────────────────────────────────────────
+# ─── Gate 4 (old note): Removed ───────────────────────────────────────
 # Previously checked if Colby was invoked for "build" without an ADR.
 # Removed: keyword matching on prompts was fragile, and ADR file naming
 # varies by project. The real enforcement is Gate 1 (Ellis requires Roz
 # QA PASS) — if Colby builds something bad, it can't ship without QA.
+
+# ─── Gate 4: Ellis requires Poirot review during active pipelines ─────
+# "Poirot blind-reviews every wave. Skipping Poirot is the same class
+# of violation as skipping Roz." (pipeline-orchestration.md mandatory gate 5)
+# During an active pipeline, Ellis cannot be invoked unless poirot_reviewed
+# is true. Micro pipelines and CI Watch fix cycles are exempt.
+if [ "$SUBAGENT_TYPE" = "ellis" ]; then
+  if [ -f "$STATE_FILE" ]; then
+    PHASE=$(parse_pipeline_status "phase") || true
+    PHASE=$(echo "$PHASE" | tr '[:upper:]' '[:lower:]')
+
+    if [ -n "$PHASE" ] && [ "$PHASE" != "idle" ] && [ "$PHASE" != "complete" ]; then
+      SIZING=$(parse_pipeline_status "sizing") || true
+      SIZING=$(echo "$SIZING" | tr '[:upper:]' '[:lower:]')
+      # Only enforce when sizing is explicitly set to a non-micro value.
+      # When sizing is absent, the pipeline size is unknown -- fail open.
+      if [ -n "$SIZING" ] && [ "$SIZING" != "micro" ]; then
+        # CI Watch fix cycles are exempt (they have their own flow)
+        CI_WATCH=$(parse_pipeline_status "ci_watch_active") || true
+        if [ "$CI_WATCH" != "true" ]; then
+          POIROT_REVIEWED=$(parse_pipeline_status "poirot_reviewed") || true
+          if [ "$POIROT_REVIEWED" != "true" ]; then
+            echo "BLOCKED: Cannot invoke Ellis — pipeline is active (phase: $PHASE) but Poirot has not reviewed. Poirot must blind-review every wave before committing." >&2
+            exit 2
+          fi
+        fi
+      fi
+    fi
+  fi
+fi
+
+# ─── Gate 5: Ellis requires Robert review on Medium/Large ─────────────
+# "Robert-subagent reviews at the review juncture (Medium/Large).
+# Skipping Robert-subagent on Medium/Large is the same class of violation
+# as skipping Poirot." (pipeline-orchestration.md mandatory gate 7)
+# Only enforces at the review phase on medium/large pipelines.
+# CI Watch fix cycles are exempt.
+if [ "$SUBAGENT_TYPE" = "ellis" ]; then
+  if [ -f "$STATE_FILE" ]; then
+    PHASE=$(parse_pipeline_status "phase") || true
+    PHASE=$(echo "$PHASE" | tr '[:upper:]' '[:lower:]')
+    SIZING=$(parse_pipeline_status "sizing") || true
+    SIZING=$(echo "$SIZING" | tr '[:upper:]' '[:lower:]')
+
+    # Only enforce during review phase on medium or large pipelines
+    if [ "$PHASE" = "review" ] && { [ "$SIZING" = "medium" ] || [ "$SIZING" = "large" ]; }; then
+      # CI Watch fix cycles are exempt
+      CI_WATCH=$(parse_pipeline_status "ci_watch_active") || true
+      if [ "$CI_WATCH" != "true" ]; then
+        ROBERT_REVIEWED=$(parse_pipeline_status "robert_reviewed") || true
+        if [ "$ROBERT_REVIEWED" != "true" ]; then
+          echo "BLOCKED: Cannot invoke Ellis — pipeline is in review phase (sizing: $SIZING) but Robert has not reviewed. Robert must review at the review juncture on Medium/Large pipelines." >&2
+          exit 2
+        fi
+      fi
+    fi
+  fi
+fi
 
 exit 0

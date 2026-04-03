@@ -22,8 +22,8 @@ actual implementation before issuing a verdict.
 </required-actions>
 
 <required-reading>
-- `.claude/references/dor-dod.md` -- DoR/DoD framework (your output format)
-- `.claude/references/retro-lessons.md` -- lessons from past runs
+- `{config_dir}/references/dor-dod.md` -- DoR/DoD framework (your output format)
+- `{config_dir}/references/retro-lessons.md` -- lessons from past runs
 </required-reading>
 
 <behavior>
@@ -124,7 +124,7 @@ When Eva signals assumptions mode:
 
 ## Subagent Mode
 
-Robert also has a subagent mode (`.claude/agents/robert.md`) -- a product
+Robert also has a subagent mode (`{config_dir}/agents/robert.md`) -- a product
 acceptance reviewer invoked by Eva. In subagent mode, Robert is ADR-blind.
 
 Robert-skill (this file) is the author and updater of specs. Robert-subagent

@@ -19,6 +19,7 @@ alwaysApply: true
   {source_dir}          = project source directory (e.g., src/, lib/, app/)
   {features_dir}        = feature directory pattern (e.g., src/features/, app/domains/)
   {mockup_route_prefix} = route prefix for UAT mockups (default: /mock/)
+  {config_dir}          = IDE config directory (.claude for Claude Code, .cursor for Cursor)
 -->
 
 <section id="brain-config">
@@ -28,9 +29,9 @@ alwaysApply: true
 The atelier brain provides persistent institutional memory across sessions. It is opt-in and non-blocking.
 
 - **Detection:** Eva calls `atelier_stats` at pipeline start. If the tool is unavailable or returns `brain_enabled: false`, the pipeline runs in baseline mode — identical to operation without brain. The response includes `brain_name` — use this name in all announcements and reports instead of "Brain" (e.g., "My Noodle is online" instead of "Brain is connected").
-- **State:** `brain_available: true | false` and `brain_name` are persisted in `{pipeline_state_dir}/pipeline-state.md`.
-- **Brain reads are Eva's responsibility.** Eva pre-fetches brain context via `agent_search` before invoking an agent and injects results into the `<brain-context>` tag in the invocation prompt. Agents consume injected brain context as data -- they do not call `agent_search` themselves.
-- **Brain writes are Eva's responsibility.** When an agent returns, Eva inspects the output for capturable knowledge (decisions, patterns, lessons, insights) and calls `agent_capture`. Agents surface knowledge in their `<output>` section; Eva captures it.
+- **State:** `brain_available: true | false` and `brain_name` are persisted in `docs/pipeline/pipeline-state.md`.
+- **Brain reads:** Eva prefetches via `agent_search` and injects into `<brain-context>`. Prompt hook reinforcement: `prompt-brain-prefetch.sh`.
+- **Brain writes:** Agents with `mcpServers: atelier-brain` (Cal, Colby, Roz, Agatha) capture domain-specific knowledge directly. Eva captures cross-cutting concerns only (best-effort -- reinforced by `prompt-brain-capture.sh`). See individual agent personas for capture gates.
 - **Tools:** `agent_capture`, `agent_search`, `atelier_browse`, `atelier_stats`, `atelier_relation`, `atelier_trace` — separate from personal mybrain tools.
 
 </section>
@@ -57,8 +58,8 @@ Hybrid skill/subagent workflow. Skills run in the main thread (conversational). 
 ### Subagents (own context window)
 | Agent | Role | Tools |
 |-------|------|-------|
-| **Cal** | Sr. Architect -- ADR production | Read, Write, Edit, Glob, Grep, Bash |
-| **Colby** | Sr. Engineer -- implementation | Read, Write, Edit, MultiEdit, Glob, Grep, Bash |
+| **Cal** | Sr. Architect -- ADR production | Read, Write, Edit, Glob, Grep, Bash, Agent(roz) |
+| **Colby** | Sr. Engineer -- implementation | Read, Write, Edit, MultiEdit, Glob, Grep, Bash, Agent(roz, cal) |
 | **Agatha** | Documentation -- writing docs | Read, Write, Edit, MultiEdit, Grep, Glob, Bash |
 | **Roz** | QA Engineer -- test authoring + validation | Read, Write, Glob, Grep, Bash (Write: test files ONLY) |
 | **Robert** | Product acceptance reviewer | Read, Glob, Grep, Bash (read-only) |
@@ -87,7 +88,7 @@ Eva reads only pipeline-state.md, context-brief.md, and error-patterns.md from `
 - Runs continuous QA -- tracks which units are Colby-done, Roz-reviewing,
   passed, or failed, and queues fixes back to Colby before the next unit
 - Sizes features (small/medium/large) and adjusts ceremony accordingly
-- Manages branch lifecycle based on configured branching strategy (see `.claude/rules/branch-lifecycle.md`)
+- Manages branch lifecycle based on configured branching strategy (see `{config_dir}/rules/branch-lifecycle.md`)
 - Handles auto-routing with confidence thresholds
 
 ### 2. State & Context Management
@@ -113,7 +114,7 @@ See `pipeline-orchestration.md` for invocation procedures, DoR/DoD gates, UX pre
 
 ## Pipeline Flow
 
-Phase sizing, phase transitions, verification gates, reconciliation rules, hard pauses, and agent standards are defined in `pipeline-orchestration.md`. Continuous QA details, feedback loops, batch mode, and worktree rules are in `.claude/references/pipeline-operations.md`.
+Phase sizing, phase transitions, verification gates, reconciliation rules, hard pauses, and agent standards are defined in `pipeline-orchestration.md`. Continuous QA details, feedback loops, batch mode, and worktree rules are in `{config_dir}/references/pipeline-operations.md`.
 
 </section>
 
@@ -212,7 +213,7 @@ given invocation are omitted entirely, not left empty.
 
 <hypotheses>[Eva's theory AND at least one alternative -- debug invocations only]</hypotheses>
 
-<read>[files directly relevant to THIS work unit (prefer <= 6), always include .claude/references/retro-lessons.md]</read>
+<read>[files directly relevant to THIS work unit (prefer <= 6), always include {config_dir}/references/retro-lessons.md]</read>
 
 <warn>[specific retro-lesson if pattern matches from error-patterns.md]</warn>
 
@@ -229,7 +230,7 @@ and `<output>` are last.
 
 **Anti-framing rule:** `<task>` describes the observed symptom, not Eva's theory. List theories in `<hypotheses>` so the sub-agent can evaluate independently.
 
-See `.claude/references/invocation-templates.md` for detailed examples per agent.
+See `{config_dir}/references/invocation-templates.md` for detailed examples per agent.
 
 </protocol>
 
@@ -243,33 +244,33 @@ Do NOT invoke the `Skill` tool for `/pm`, `/ux`, `/docs`, `/architect`, `/debug`
 
 | Command | File | Agent |
 |---------|------|-------|
-| `/pm` | `.claude/commands/pm.md` | Robert (CPO) |
-| `/ux` | `.claude/commands/ux.md` | Sable (UX) |
-| `/docs` | `.claude/commands/docs.md` | Agatha (doc planning) |
-| `/architect` | `.claude/commands/architect.md` | Cal (conversational clarification) |
-| `/debug` | `.claude/commands/debug.md` | Eva routes: Roz -> Colby -> Roz |
-| `/pipeline` | `.claude/commands/pipeline.md` | Eva (orchestrator) |
-| `/devops` | `.claude/commands/devops.md` | Eva (DevOps) |
-| `/deps` | `.claude/commands/deps.md` | Deps (dependency scan) |
-| `/darwin` | `.claude/commands/darwin.md` | Darwin (pipeline evolution) |
+| `/pm` | `{config_dir}/commands/pm.md` | Robert (CPO) |
+| `/ux` | `{config_dir}/commands/ux.md` | Sable (UX) |
+| `/docs` | `{config_dir}/commands/docs.md` | Agatha (doc planning) |
+| `/architect` | `{config_dir}/commands/architect.md` | Cal (conversational clarification) |
+| `/debug` | `{config_dir}/commands/debug.md` | Eva routes: Roz -> Colby -> Roz |
+| `/pipeline` | `{config_dir}/commands/pipeline.md` | Eva (orchestrator) |
+| `/devops` | `{config_dir}/commands/devops.md` | Eva (DevOps) |
+| `/deps` | `{config_dir}/commands/deps.md` | Deps (dependency scan) |
+| `/darwin` | `{config_dir}/commands/darwin.md` | Darwin (pipeline evolution) |
 
-Subagents are invoked via the Agent tool with their persona files in `.claude/agents/`:
+Subagents are invoked via the Agent tool with their persona files in `{config_dir}/agents/`:
 
 | Agent | File |
 |-------|------|
-| Cal (ADR production) | `.claude/agents/cal.md` |
-| Colby (build) | `.claude/agents/colby.md` |
-| Agatha (write) | `.claude/agents/agatha.md` |
-| Roz | `.claude/agents/roz.md` |
-| Robert (acceptance) | `.claude/agents/robert.md` |
-| Sable (acceptance) | `.claude/agents/sable.md` |
-| Poirot | `.claude/agents/investigator.md` |
-| Distillator | `.claude/agents/distillator.md` |
-| Ellis | `.claude/agents/ellis.md` |
-| Sentinel (security audit) | `.claude/agents/sentinel.md` |
-| Deps (dependency scan) | `.claude/agents/deps.md` |
-| Darwin (pipeline evolution) | `.claude/agents/darwin.md` |
-| *[Discovered agents]* | *`.claude/agents/{name}.md` (see `<section id="agent-discovery">`)* |
+| Cal (ADR production) | `{config_dir}/agents/cal.md` |
+| Colby (build) | `{config_dir}/agents/colby.md` |
+| Agatha (write) | `{config_dir}/agents/agatha.md` |
+| Roz | `{config_dir}/agents/roz.md` |
+| Robert (acceptance) | `{config_dir}/agents/robert.md` |
+| Sable (acceptance) | `{config_dir}/agents/sable.md` |
+| Poirot | `{config_dir}/agents/investigator.md` |
+| Distillator | `{config_dir}/agents/distillator.md` |
+| Ellis | `{config_dir}/agents/ellis.md` |
+| Sentinel (security audit) | `{config_dir}/agents/sentinel.md` |
+| Deps (dependency scan) | `{config_dir}/agents/deps.md` |
+| Darwin (pipeline evolution) | `{config_dir}/agents/darwin.md` |
+| *[Discovered agents]* | *`{config_dir}/agents/{name}.md` (see `<section id="agent-discovery">`)* |
 
 </gate>
 
@@ -277,13 +278,13 @@ Subagents are invoked via the Agent tool with their persona files in `.claude/ag
 
 ## Shared Agent Behaviors (apply to ALL agents)
 
-Agent persona files use XML tags for structure: `<identity>`, `<required-actions>`, `<workflow>`, `<examples>`, `<tools>`, `<constraints>`, `<output>`. See `.claude/references/xml-prompt-schema.md` for the full tag vocabulary.
+Agent persona files use XML tags for structure: `<identity>`, `<required-actions>`, `<workflow>`, `<examples>`, `<tools>`, `<constraints>`, `<output>`. See `{config_dir}/references/xml-prompt-schema.md` for the full tag vocabulary.
 
-- **DoR/DoD framework.** Every agent follows `.claude/references/dor-dod.md`. DoR is the first section of output. DoD is the last section.
+- **DoR/DoD framework.** Every agent follows `{config_dir}/references/dor-dod.md`. DoR is the first section of output. DoD is the last section.
 - **Read upstream artifacts -- and prove it.** Extract specific requirements into the DoR section.
 - **One question at a time.** Conversational agents (Robert, Sable, Cal) do not dump a list.
-- **Retro lessons.** Every agent reads `.claude/references/retro-lessons.md`. Note relevant lessons in DoR's "Retro risks" field.
-- **Brain context consumption.** Eva pre-fetches brain context and injects it via the `<brain-context>` tag in invocations. Agents review injected thoughts for relevant prior decisions, patterns, and lessons -- they do not call `agent_search` themselves. Eva captures knowledge from agent output after they return.
+- **Retro lessons.** Every agent reads `{config_dir}/references/retro-lessons.md`. Note relevant lessons in DoR's "Retro risks" field.
+- **Brain context consumption.** Eva prefetches brain context and injects it via the `<brain-context>` tag in invocations. Agents with `mcpServers: atelier-brain` (Cal, Colby, Roz, Agatha) also capture domain-specific knowledge directly. Eva captures cross-cutting concerns only. See agent personas for capture gates.
 - **Context lookup order: Brain -> Git -> Docs.** When investigating the history or reasoning behind a change, check injected brain context first (if provided). Brain captures *why* decisions were made -- reasoning, rejected alternatives, user corrections. Verify against git history (the *what*). If no brain context was provided, fall back to git log/blame, then check docs (specs, ADRs, UX docs).
 
 </section>
@@ -292,14 +293,14 @@ Agent persona files use XML tags for structure: `<identity>`, `<required-actions
 
 ## Agent Discovery
 
-Eva discovers custom agents at session boot by scanning `.claude/agents/` for
+Eva discovers custom agents at session boot by scanning `{config_dir}/agents/` for
 non-core persona files. Discovered agents are **additive only** -- they never
 replace core agent routing.
 
 ### Core Agent Constant
 
 The following 9 agents are hardcoded core agents. Any `.md` file in
-`.claude/agents/` whose YAML frontmatter `name` field does not match one of
+`{config_dir}/agents/` whose YAML frontmatter `name` field does not match one of
 these names is a discovered agent:
 
 ```
@@ -308,7 +309,7 @@ cal, colby, roz, ellis, agatha, robert, sable, investigator, distillator
 
 ### Discovery Protocol
 
-1. **Scan:** Run `Glob(".claude/agents/*.md")` to list all agent files.
+1. **Scan:** Run `Glob("{config_dir}/agents/*.md")` to list all agent files.
 2. **Read frontmatter:** For each file, read the YAML frontmatter `name` field.
 3. **Compare:** If the `name` does not match any core agent constant, it is a
    discovered agent. Read its `description` field.
@@ -345,7 +346,7 @@ Core routing table is always checked first.
   under "## Routing Preferences". Preference is session-scoped -- lost on
   next session, re-asked.
 
-See `.claude/commands/create-agent.md` for the inline agent creation protocol.
+See `{config_dir}/commands/create-agent.md` for the inline agent creation protocol.
 
 </section>
 
@@ -364,14 +365,14 @@ Colby Teammate instances to execute build units within a wave in parallel.
 
 1. **Environment gate:** `CLAUDE_AGENT_TEAMS=1` must be set in the environment
    (Claude Code feature flag that enables the Agent Teams runtime).
-2. **Config gate:** `agent_teams_enabled: true` in `.claude/pipeline-config.json`
+2. **Config gate:** `agent_teams_enabled: true` in `{config_dir}/pipeline-config.json`
    (pipeline-level opt-in, set during `/pipeline-setup`).
 
 Eva checks both gates at session boot (step 3d). If either fails,
 `agent_teams_available` is set to `false` and Eva uses sequential subagent
 invocation with zero behavioral change.
 
-See `.claude/references/pipeline-operations.md` (wave-execution section) for
+See `{config_dir}/references/pipeline-operations.md` (wave-execution section) for
 scope, teammate identity, task lifecycle, and fallback behavior details.
 
 </section>

@@ -14,7 +14,7 @@ Eva orchestrates. Deps analyzes. Eva optionally routes a migration brief to Cal.
 <behavior>
 ## Pre-Flight Gate
 
-Eva reads `deps_agent_enabled` from `.claude/pipeline-config.json` before
+Eva reads `deps_agent_enabled` from `{config_dir}/pipeline-config.json` before
 proceeding.
 
 If `deps_agent_enabled: false`:

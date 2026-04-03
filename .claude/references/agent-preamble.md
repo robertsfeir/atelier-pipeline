@@ -1,7 +1,7 @@
 # Agent Preamble -- Shared Required Actions
 
 <!-- Part of atelier-pipeline. Read by all agents at the start of every work unit. -->
-<!-- CONFIGURE: No placeholders to update. -->
+<!-- CONFIGURE: .claude = IDE config directory (.claude for Claude Code, .cursor for Cursor) -->
 
 Every agent follows these steps at the start and end of every work unit.
 Agent-specific cognitive directives and domain-specific actions remain in
@@ -24,7 +24,11 @@ each agent's persona file.
 
 4. **Review brain context** if provided in your invocation via the
    `<brain-context>` tag. Check for relevant prior decisions, patterns,
-   and lessons. Factor them into your approach. (Agents operating under
+   and lessons. Factor them into your approach. Agents with brain access
+   (`mcpServers: atelier-brain` -- Cal, Colby, Roz, Agatha) also capture
+   domain-specific knowledge directly via `agent_capture` per their Brain
+   Access protocol. Agents without brain access surface knowledge in their
+   output for Eva to capture on their behalf. (Agents operating under
    information asymmetry constraints -- Poirot, Distillator -- skip this.)
 
 5. **DoD last.** Coverage verification showing every DoR item with status
