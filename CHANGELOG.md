@@ -5,6 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.19.0] - 2026-04-03
+
+### Added
+- T3 telemetry schema: `invocations_by_model` (per-model invocation counts), `total_tokens` (aggregate token consumption), `project_name` (cross-project scope identifier)
+- `project_name` field in `pipeline-config.json` — collected during `/pipeline-setup`, used as telemetry scope with git remote fallback
+- State file guard in `/pipeline-setup` — `docs/pipeline/` state files and `pipeline-config.json` are no longer overwritten on re-install
+
+### Changed
+- T2 and T3 telemetry captures now include `scope` parameter with `pipeline_project_name` for cross-project analysis
+- Boot sequence step 3b derives `pipeline_project_name` from config, git remote, or directory basename
+
 ## [3.18.0] - 2026-04-03
 
 ### Added
