@@ -172,55 +172,40 @@ Eva sizes every request and runs the right amount of process. A large feature ge
 
 ```mermaid
 flowchart TD
-    IDEA([💡 Idea]):::system
-    IDEA --> ROBERT(Robert — Feature Spec):::robert
-
-    ROBERT --> SABLE_UX(Sable — UX Design):::sable
+    IDEA([Idea]):::system --> ROBERT(Robert — Spec):::robert
+    ROBERT --> SABLE_UX(Sable — UX):::sable
     ROBERT --> AGATHA_PLAN(Agatha — Doc Plan):::agatha
-
     SABLE_UX --> COLBY_MOCK(Colby — Mockup):::colby
     AGATHA_PLAN --> COLBY_MOCK
+    COLBY_MOCK --> SABLE_V(Sable — Verify):::sable
+    SABLE_V --> UAT([User UAT]):::user
+    UAT --> CAL(Cal — ADR + Tests):::cal
+    CAL --> ROZ_SPEC(Roz — Spec Review):::roz
+    ROZ_SPEC --> ROZ_WRITE(Roz — Write Tests):::roz
 
-    COLBY_MOCK --> SABLE_VERIFY(Sable — Verify Mockup):::sable
-    SABLE_VERIFY -->|UX acceptance| UAT([👤 User UAT Review]):::user
-    UAT --> CAL(Cal — ADR + Test Spec):::cal
-    CAL --> ROZ_SPEC(Roz — Test Spec Review):::roz
-    ROZ_SPEC --> ROZ_AUTHOR(Roz — Test Authoring):::roz
+    ROZ_WRITE --> BUILD
 
-    ROZ_AUTHOR --> WAVE_START
-
-    subgraph WAVE ["🔁 Wave Build Cycle — repeats per wave"]
-        WAVE_START(Colby — Build Units):::colby
-        WAVE_START --> LINT{Lint + Typecheck}:::gate
-        LINT -->|pass| WAVE_QA(Roz — Wave QA):::roz
-        LINT -->|pass| POIROT_W(Poirot — Blind Review):::poirot
-        WAVE_QA --> ELLIS_W(Ellis — Wave Commit):::ellis
-        POIROT_W --> ELLIS_W
+    subgraph BUILD [Wave Build Cycle - repeats]
+        COLBY_B(Colby — Build Units):::colby --> QA_SPLIT
+        QA_SPLIT(Roz — Wave QA):::roz --> ELLIS_W(Ellis — Commit):::ellis
+        POIROT_W(Poirot — Blind Review):::poirot --> ELLIS_W
+        COLBY_B --> POIROT_W
     end
 
-    ELLIS_W --> MORE{More waves?}:::gate
-    MORE -->|yes| WAVE_START
-    MORE -->|no| JUNCTURE_START
+    ELLIS_W --> REVIEW
 
-    subgraph JUNCTURE ["⚖️ Review Juncture — parallel"]
-        JUNCTURE_START(All reviewers in parallel):::system
-        JUNCTURE_START --> ROZ_F(Roz — Final QA):::roz
-        JUNCTURE_START --> POIROT_F(Poirot — Final Review):::poirot
-        JUNCTURE_START --> ROBERT_F(Robert — Acceptance):::robert
-        JUNCTURE_START --> SABLE_F(Sable — UX Review):::sable
-        JUNCTURE_START --> SENTINEL_F(Sentinel — Security):::sentinel
+    subgraph REVIEW [Review Juncture - parallel]
+        ROZ_F(Roz — Final QA):::roz
+        POIROT_F(Poirot — Review):::poirot
+        ROBERT_F(Robert — Acceptance):::robert
+        SABLE_F(Sable — UX):::sable
+        SENTINEL_F(Sentinel — Security):::sentinel
     end
 
-    ROZ_F --> AGATHA_DOCS(Agatha — Write Docs):::agatha
-    POIROT_F --> AGATHA_DOCS
-    ROBERT_F --> AGATHA_DOCS
-    SABLE_F --> AGATHA_DOCS
-    SENTINEL_F --> AGATHA_DOCS
-
-    AGATHA_DOCS --> ROBERT_ACCEPT(Robert — Verify Docs):::robert
-    ROBERT_ACCEPT --> RECONCILE{Spec/UX Reconciliation}:::gate
-    RECONCILE -->|aligned| ELLIS_FINAL(Ellis — Commit + Changelog):::ellis
-    ELLIS_FINAL --> DONE([🚀 Shipped]):::user
+    REVIEW --> AGATHA(Agatha — Docs):::agatha
+    AGATHA --> RECONCILE{Reconciliation}:::gate
+    RECONCILE --> ELLIS_F(Ellis — Final Commit):::ellis
+    ELLIS_F --> DONE([Shipped]):::user
 
     classDef cal fill:#3b82f6,stroke:#2563eb,color:#fff,font-weight:bold
     classDef colby fill:#22c55e,stroke:#16a34a,color:#fff,font-weight:bold
@@ -233,10 +218,10 @@ flowchart TD
     classDef sentinel fill:#ef4444,stroke:#dc2626,color:#fff,font-weight:bold
     classDef system fill:#6b7280,stroke:#4b5563,color:#fff,font-weight:bold
     classDef user fill:#f1f5f9,stroke:#64748b,stroke-width:2px,color:#334155,font-weight:bold
-    classDef gate fill:#f8fafc,stroke:#94a3b8,stroke-width:2px,color:#475569,font-weight:bold
+    classDef gate fill:#f8fafc,stroke:#94a3b8,stroke-width:2px,color:#475569
 
-    style WAVE fill:#f0fdf4,stroke:#86efac,stroke-width:2px,stroke-dasharray:5 5,color:#166534
-    style JUNCTURE fill:#faf5ff,stroke:#c4b5fd,stroke-width:2px,stroke-dasharray:5 5,color:#5b21b6
+    style BUILD fill:#f0fdf4,stroke:#86efac,stroke-width:2px,stroke-dasharray:5 5
+    style REVIEW fill:#faf5ff,stroke:#c4b5fd,stroke-width:2px,stroke-dasharray:5 5
 ```
 
 ### Phase sizing
