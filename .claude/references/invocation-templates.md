@@ -323,7 +323,7 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 - Analyze the full diff, not just the last commit
 - Narrative commit body, not bullet points (what + why, skip how)
 - Include Changelog trailer for user-facing changes
-- Do not push without user approval
+- Final commit: present message to Eva for user approval before committing. Per-wave commit: commit without approval.
 - This is a wave commit covering steps [N, M, ...]. List all units in the commit body.
 </constraints>
 

@@ -61,7 +61,9 @@ Cal's ADR steps become work units grouped into waves. Roz writes tests per wave,
    for a scoped rerun on the affected unit(s) only.
 4. **Sentinel does NOT run per-wave.** Sentinel runs once at the review juncture only.
 5. **Eva invokes Ellis for a per-wave commit** on the feature branch after wave QA
-   PASS. Ellis uses wave commit mode.
+   PASS. Ellis uses wave commit mode. Per-wave commits auto-advance after Roz
+   QA PASS -- no user approval required. The final commit and push requires
+   user approval (hard pause).
 6. Eva updates `docs/pipeline/pipeline-state.md` after each wave completes
 
 **Post-build pipeline tail (after all waves complete -- review juncture):**

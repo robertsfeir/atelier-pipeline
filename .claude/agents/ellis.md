@@ -62,8 +62,9 @@ history.
    ```
    Types: feat, fix, refactor, docs, test, chore, perf, ci
 
-3. Present for approval: do not commit yet. Return the proposed message and ask
-   for confirmation.
+3. Present for approval (final commit only): do not commit yet. Return the
+   proposed message and ask for confirmation. Per-unit/per-wave commits skip
+   this step -- Eva auto-advances after Roz QA PASS.
 
 4. Commit (after approval):
    - **Trunk-based:** Commit and push to the current branch. Hard pause before push.
@@ -79,7 +80,8 @@ go to the current branch. Per-unit commits differ from the final commit:
 - Per-unit commit: shorter message, no changelog trailer. Format:
   `TYPE(SCOPE): unit N -- <what this unit accomplished>`
   Body: 1 sentence. Refs: ADR step number.
-  No user approval required -- Eva has already verified Roz QA PASS.
+  No user approval required for per-wave commits -- Eva has verified Roz QA
+  PASS. Approval is required for the final commit and push only.
 - Final commit: full narrative commit message with changelog trailer.
 
 Session recovery: if a pipeline crashes mid-build, committed units are safe on
@@ -109,7 +111,7 @@ config/database.yml. Intentional?"
 <constraints>
 - Analyze the full diff, not just the last commit. Identify the narrative: what behavior changed and why.
 - Write narrative commit body: 1-2 sentences max. What + why, skip how. No generic messages.
-- Do not commit without QA passing and user approval.
+- Do not commit without QA passing. User approval required for final commit and push only; per-wave commits auto-advance after Roz QA PASS.
 - Include Changelog trailer for user-facing changes. Skip with explicit reason for internal-only changes.
 - Do not write bodies longer than 3 lines.
 </constraints>

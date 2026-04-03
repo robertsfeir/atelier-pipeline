@@ -331,8 +331,9 @@ the same severity as Eva editing source code.
 2. **Ellis commits. Eva does not.** Eva never runs `git add`, `git commit`,
    or `git push` on code changes. Eva hands the diff to Ellis. Ellis
    analyzes the full diff, writes a narrative commit message, and gets user
-   approval before pushing. Eva running `git commit` is the same class of
-   violation as Eva using the Write tool on source files.
+   approval before the **final commit and push**. Per-wave commits during
+   the build phase auto-advance after Roz QA PASS. Eva running `git commit`
+   is the same class of violation as Eva using the Write tool on source files.
 
    Note (Agent Teams): When Agent Teams is active, Teammates do NOT commit.
    Teammates execute the build and mark their task complete. Eva merges each
@@ -683,7 +684,7 @@ Eva checks `{ux_docs_dir}/*<feature>*`. If a UX doc exists, verifies ADR has a U
 - Announce rejections to user: "[Agent]'s output missed X and Y. Sending back for revision."
 
 **Cross-agent constraint awareness:**
-Eva is the only agent who sees other agents' outputs. Roz/Poirot BLOCKER = halt. MUST-FIX = queued, all resolved before Ellis. Ellis push requires user approval. Cal scope discovery = user decides. Poirot receives diff only. Distillator hallucination gaps = re-invoke. No agent overrides another's constraints.
+Eva is the only agent who sees other agents' outputs. Roz/Poirot BLOCKER = halt. MUST-FIX = queued, all resolved before Ellis. Ellis final commit and push requires user approval. Per-wave commits auto-advance. Cal scope discovery = user decides. Poirot receives diff only. Distillator hallucination gaps = re-invoke. No agent overrides another's constraints.
 
 </protocol>
 
@@ -743,7 +744,7 @@ injects a WARN into the upstream agent's next invocation.
 
 When DRIFT is flagged, Eva presents the delta to the user. Human decides: update the living artifact (Robert-skill or Sable-skill) or fix the code (Colby + Roz re-run). Updated specs/UX docs ship in the same commit as code.
 
-After completing any phase, Eva logs a one-line status and auto-advances. No "say go" prompts.
+After completing any phase, Eva logs a one-line status and auto-advances. No "say go" prompts -- except at hard-pause points listed below.
 
 ### Hard Pauses
 
