@@ -172,81 +172,71 @@ Eva sizes every request and runs the right amount of process. A large feature ge
 
 ```mermaid
 flowchart TD
-    IDEA([Idea]):::system
-    IDEA --> ROBERT(Robert\nFeature Spec):::robert
+    IDEA([💡 Idea]):::system
+    IDEA --> ROBERT(Robert — Feature Spec):::robert
 
-    ROBERT --> SABLE_UX(Sable\nUX Design):::sable
-    ROBERT --> AGATHA_PLAN(Agatha\nDoc Plan):::agatha
+    ROBERT --> SABLE_UX(Sable — UX Design):::sable
+    ROBERT --> AGATHA_PLAN(Agatha — Doc Plan):::agatha
 
-    SABLE_UX --> COLBY_MOCK(Colby\nMockup):::colby
+    SABLE_UX --> COLBY_MOCK(Colby — Mockup):::colby
     AGATHA_PLAN --> COLBY_MOCK
 
-    COLBY_MOCK --> SABLE_VERIFY(Sable\nVerify Mockup):::sable
-    SABLE_VERIFY -->|UX acceptance| UAT([User UAT Review]):::user
-    UAT --> CAL(Cal\nADR + Test Spec):::cal
-    CAL --> ROZ_REVIEW(Roz\nTest Spec Review):::roz
-    ROZ_REVIEW --> ROZ_AUTHOR(Roz\nTest Authoring):::roz
+    COLBY_MOCK --> SABLE_VERIFY(Sable — Verify Mockup):::sable
+    SABLE_VERIFY -->|UX acceptance| UAT([👤 User UAT Review]):::user
+    UAT --> CAL(Cal — ADR + Test Spec):::cal
+    CAL --> ROZ_SPEC(Roz — Test Spec Review):::roz
+    ROZ_SPEC --> ROZ_AUTHOR(Roz — Test Authoring):::roz
 
     ROZ_AUTHOR --> WAVE_START
 
-    subgraph WAVE ["Wave Build Cycle"]
-        direction TB
-        WAVE_START(Roz\nTests for Wave):::roz
-        WAVE_START --> UNIT1(Colby\nUnit N):::colby
-        UNIT1 --> LINT1{Lint +\nTypecheck}:::gate
-        LINT1 -->|pass| UNIT2(Colby\nUnit N+1):::colby
-        UNIT2 --> LINT2{Lint +\nTypecheck}:::gate
-        LINT2 -->|pass| WAVE_END_SPLIT[ ]:::hidden
-        WAVE_END_SPLIT --> WAVE_QA(Roz\nWave QA):::roz
-        WAVE_END_SPLIT --> POIROT_W(Poirot\nBlind Review):::poirot
-        WAVE_QA --> WAVE_COMMIT(Ellis\nWave Commit):::ellis
-        POIROT_W --> WAVE_COMMIT
+    subgraph WAVE ["🔁 Wave Build Cycle — repeats per wave"]
+        WAVE_START(Colby — Build Units):::colby
+        WAVE_START --> LINT{Lint + Typecheck}:::gate
+        LINT -->|pass| WAVE_QA(Roz — Wave QA):::roz
+        LINT -->|pass| POIROT_W(Poirot — Blind Review):::poirot
+        WAVE_QA --> ELLIS_W(Ellis — Wave Commit):::ellis
+        POIROT_W --> ELLIS_W
     end
 
-    WAVE_COMMIT -->|repeats per wave| MORE_WAVES{More\nwaves?}:::gate
-    MORE_WAVES -->|yes| WAVE_START
-    MORE_WAVES -->|no| JUNCTURE_IN
+    ELLIS_W --> MORE{More waves?}:::gate
+    MORE -->|yes| WAVE_START
+    MORE -->|no| JUNCTURE_START
 
-    subgraph JUNCTURE ["Review Juncture"]
-        direction TB
-        JUNCTURE_IN[ ]:::hidden
-        JUNCTURE_IN --> ROZ_FINAL(Roz\nFinal QA):::roz
-        JUNCTURE_IN --> POIROT_FINAL(Poirot\nFinal Review):::poirot
-        JUNCTURE_IN --> ROBERT_FINAL(Robert\nAcceptance):::robert
-        JUNCTURE_IN --> SABLE_FINAL(Sable\nUX Review):::sable
-        JUNCTURE_IN --> SENTINEL_FINAL(Sentinel\nSecurity Audit):::sentinel
+    subgraph JUNCTURE ["⚖️ Review Juncture — parallel"]
+        JUNCTURE_START(All reviewers in parallel):::system
+        JUNCTURE_START --> ROZ_F(Roz — Final QA):::roz
+        JUNCTURE_START --> POIROT_F(Poirot — Final Review):::poirot
+        JUNCTURE_START --> ROBERT_F(Robert — Acceptance):::robert
+        JUNCTURE_START --> SABLE_F(Sable — UX Review):::sable
+        JUNCTURE_START --> SENTINEL_F(Sentinel — Security):::sentinel
     end
 
-    ROZ_FINAL --> AGATHA_DOCS
-    POIROT_FINAL --> AGATHA_DOCS
-    ROBERT_FINAL --> AGATHA_DOCS
-    SABLE_FINAL --> AGATHA_DOCS
-    SENTINEL_FINAL --> AGATHA_DOCS
+    ROZ_F --> AGATHA_DOCS(Agatha — Write Docs):::agatha
+    POIROT_F --> AGATHA_DOCS
+    ROBERT_F --> AGATHA_DOCS
+    SABLE_F --> AGATHA_DOCS
+    SENTINEL_F --> AGATHA_DOCS
 
-    AGATHA_DOCS(Agatha\nWrite Docs):::agatha
-    AGATHA_DOCS --> ROBERT_ACCEPT(Robert\nVerify Docs):::robert
-    ROBERT_ACCEPT --> RECONCILE{Spec + UX\nReconciliation}:::gate
-    RECONCILE -->|aligned| ELLIS_FINAL(Ellis\nCommit + Changelog):::ellis
-    ELLIS_FINAL --> DONE([Shipped]):::user
+    AGATHA_DOCS --> ROBERT_ACCEPT(Robert — Verify Docs):::robert
+    ROBERT_ACCEPT --> RECONCILE{Spec/UX Reconciliation}:::gate
+    RECONCILE -->|aligned| ELLIS_FINAL(Ellis — Commit + Changelog):::ellis
+    ELLIS_FINAL --> DONE([🚀 Shipped]):::user
 
-    classDef cal fill:#3b82f6,stroke:#2563eb,color:#fff,font-weight:bold,rx:12,ry:12
-    classDef colby fill:#22c55e,stroke:#16a34a,color:#fff,font-weight:bold,rx:12,ry:12
-    classDef roz fill:#eab308,stroke:#ca8a04,color:#000,font-weight:bold,rx:12,ry:12
-    classDef ellis fill:#06b6d4,stroke:#0891b2,color:#fff,font-weight:bold,rx:12,ry:12
-    classDef robert fill:#f97316,stroke:#ea580c,color:#fff,font-weight:bold,rx:12,ry:12
-    classDef sable fill:#ec4899,stroke:#db2777,color:#fff,font-weight:bold,rx:12,ry:12
-    classDef poirot fill:#8b5cf6,stroke:#7c3aed,color:#fff,font-weight:bold,rx:12,ry:12
-    classDef agatha fill:#14b8a6,stroke:#0d9488,color:#fff,font-weight:bold,rx:12,ry:12
-    classDef sentinel fill:#ef4444,stroke:#dc2626,color:#fff,font-weight:bold,rx:12,ry:12
+    classDef cal fill:#3b82f6,stroke:#2563eb,color:#fff,font-weight:bold
+    classDef colby fill:#22c55e,stroke:#16a34a,color:#fff,font-weight:bold
+    classDef roz fill:#eab308,stroke:#ca8a04,color:#000,font-weight:bold
+    classDef ellis fill:#06b6d4,stroke:#0891b2,color:#fff,font-weight:bold
+    classDef robert fill:#f97316,stroke:#ea580c,color:#fff,font-weight:bold
+    classDef sable fill:#ec4899,stroke:#db2777,color:#fff,font-weight:bold
+    classDef poirot fill:#8b5cf6,stroke:#7c3aed,color:#fff,font-weight:bold
+    classDef agatha fill:#14b8a6,stroke:#0d9488,color:#fff,font-weight:bold
+    classDef sentinel fill:#ef4444,stroke:#dc2626,color:#fff,font-weight:bold
     classDef system fill:#6b7280,stroke:#4b5563,color:#fff,font-weight:bold
     classDef user fill:#f1f5f9,stroke:#64748b,stroke-width:2px,color:#334155,font-weight:bold
     classDef gate fill:#f8fafc,stroke:#94a3b8,stroke-width:2px,color:#475569,font-weight:bold
-    classDef hidden fill:none,stroke:none,color:transparent,width:0px,height:0px
 
-    style WAVE fill:#f0fdf4,stroke:#86efac,stroke-width:2px,stroke-dasharray:8 4,color:#166534,font-weight:bold
-    style JUNCTURE fill:#faf5ff,stroke:#c4b5fd,stroke-width:2px,stroke-dasharray:8 4,color:#5b21b6,font-weight:bold
-
-    linkStyle default stroke:#94a3b8,stroke-width:2px
+    style WAVE fill:#f0fdf4,stroke:#86efac,stroke-width:2px,stroke-dasharray:5 5,color:#166534
+    style JUNCTURE fill:#faf5ff,stroke:#c4b5fd,stroke-width:2px,stroke-dasharray:5 5,color:#5b21b6
 ```
 
 ### Phase sizing
