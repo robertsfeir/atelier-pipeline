@@ -23,7 +23,7 @@ model selection at invocation time.
 | Agent | Micro | Small | Medium | Large |
 |-------|-------|-------|--------|-------|
 | **Cal** | _(skipped)_ | _(skipped)_ | Opus | Opus |
-| **Colby** | Haiku | Sonnet | Sonnet | Opus |
+| **Colby** | Haiku | Sonnet | Opus | Opus |
 | **Agatha** | _(skipped)_ | _(per doc type, Roz doc-impact trigger)_ | _(per doc type)_ | _(per doc type)_ |
 | **Ellis** | Haiku | Haiku | Haiku | Haiku |
 
@@ -96,12 +96,12 @@ run at Opus. Distillator is always exempt (Haiku regardless).
 Note: Sentinel's auth/security promotion is already covered by the universal
 `+2` for auth/security/crypto signal — no separate override needed.
 
-### Brain Integration
+### Brain Integration (best-effort -- reinforced by prompt hook)
 
-- **Read:** Before scoring any agent invocation, call `agent_search` for prior
+- **Read (best-effort):** Before scoring any agent invocation, call `agent_search` for prior
   model-outcome data on similar tasks for that agent. If 3+ Sonnet failures
   (similarity > 0.7) exist for the agent on a task category, auto-add +3.
-- **Write:** After each agent unit completes QA, `agent_capture` with
+- **Write (best-effort):** After each agent unit completes QA, `agent_capture` with
   `thought_type: 'lesson'`, `source_agent: 'eva'`, `source_phase: 'build'`,
   content: "[Agent] model: [model] on [step description]. Roz verdict:
   [PASS/FAIL]. Issues: [count]."
