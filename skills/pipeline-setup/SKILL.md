@@ -234,6 +234,13 @@ Copy each template to its destination in the user's project, customizing placeho
 
 **Total: 34 mandatory files across 5 directories (before hooks and config).**
 
+**State file guard:** The 5 pipeline state files in `docs/pipeline/` and `.claude/pipeline-config.json` are live state — they contain active pipeline progress, user decisions, and project configuration. On re-install or update:
+- If the destination file already exists, **skip it** — do not overwrite
+- If the destination file does not exist, copy the template (fresh install)
+- To force a reset, the user must explicitly delete the file first
+
+This guard does NOT apply to rules, agents, commands, references, or hooks — those are always overwritten from source templates on re-sync.
+
 ### Step 3a: Install Enforcement Hooks
 
 Copy the hook scripts from the plugin's `source/hooks/` directory to `.claude/hooks/`

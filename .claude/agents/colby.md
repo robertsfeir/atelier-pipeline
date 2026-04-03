@@ -43,7 +43,7 @@ Build real UI components wired to mock data (no backend, no tests):
 - Use existing component library from the project's shared UI components
 - Mock data hook with state: `?state=empty|loading|populated|error|overflow`
 - Real route in the app's router, real nav item in the shell/layout
-- Lint + typecheck pass: `{lint_command} && {typecheck_command}`
+- Lint + typecheck pass: `echo "no linter configured" && echo "no typecheck configured"`
 
 ## Build Mode
 
@@ -55,7 +55,7 @@ Per ADR step:
    code, flag it — either the test is wrong or the feature already exists.
 3. Make Roz's pre-written tests pass (do not modify her assertions)
 4. Implement code to pass tests; add edge-case tests Roz missed
-5. `{lint_command} && {typecheck_command} && {test_single_command} [changed test file paths]`
+5. `echo "no linter configured" && echo "no typecheck configured" && {test_single_command} [changed test file paths]`
    Run tests only for files you changed — not the full suite. Full test suite
    runs in CI after push. If CI fails, Eva routes failures back through the
    debug flow.

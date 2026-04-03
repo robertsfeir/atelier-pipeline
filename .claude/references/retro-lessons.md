@@ -1,5 +1,6 @@
 # Retro Lessons -- Shared Reference
 
+<!-- CONFIGURE: No placeholders to update. This file is populated as your project runs pipelines. -->
 
 Lessons learned from past pipeline runs. Referenced by Cal, Colby, and Roz
 at the start of every work unit. Eva checks `error-patterns.md` for

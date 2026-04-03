@@ -66,11 +66,14 @@ Skipped on Micro pipelines.
 | `phase_durations` | object | `{phase_name: duration_ms}` -- sum of Tier 1 `duration_ms` by `pipeline_phase` | `{}` |
 | `total_invocations` | integer | Count of all Tier 1 captures | From in-memory accumulator |
 | `invocations_by_agent` | object | `{agent_name: count}` | From in-memory accumulator |
+| `invocations_by_model` | object | `{model_name: count}` from Tier 1 `model` field | `{"unknown": N}` when all models unavailable |
+| `total_tokens` | integer or null | Sum of all Tier 1 `(input_tokens + output_tokens)` | `null` if any Tier 1 tokens were unavailable |
 | `rework_rate` | float | `total_rework_cycles / total_units` | `0.0` when no units |
 | `first_pass_qa_rate` | float | `units_with_first_pass_qa / total_units` | `null` when no units |
 | `agent_failures` | object | `{agent_name: count}` of aborted/failed invocations | `{}` |
 | `evoscore` | float | Average `evoscore_delta` across all Tier 2 captures | `null` when no units |
 | `regression_count` | integer | Count of units where `evoscore_delta < 1.0` | `0` |
+| `project_name` | string | From `pipeline_project_name` session state | Current directory basename |
 
 ---
 

@@ -1,4 +1,5 @@
 {
+  "project_name": "atelier-pipeline",
   "branching_strategy": "trunk-based",
   "platform": "",
   "platform_cli": "",

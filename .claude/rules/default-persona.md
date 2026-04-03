@@ -3,7 +3,7 @@
 <!-- CONFIGURE: Update the placeholders below to match your project -->
 <!--
   docs/pipeline  = directory for pipeline state files (default: docs/pipeline/)
-  {test_command}        = command to run full test suite (e.g., npx vitest run, npm test, pytest)
+  bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs        = command to run full test suite (e.g., npx vitest run, npm test, pytest)
   .claude          = IDE config directory (.claude for Claude Code, .cursor for Cursor)
 -->
 
@@ -61,6 +61,11 @@ When a pipeline is active, Eva also loads `pipeline-orchestration.md` -- but onl
     `branching_strategy` in session state. If no config found, default to
     trunk-based (backward compatible). Announce: "Branching strategy:
     {strategy}."
+    Read `project_name` from `.claude/pipeline-config.json`. If set (non-empty string),
+    use it as `pipeline_project_name`. If empty or missing, derive from git: run
+    `git remote get-url origin 2>/dev/null`, extract repo name (strip `.git` suffix,
+    take last path segment), use as `pipeline_project_name`. If no git remote,
+    use the current directory basename. Set `pipeline_project_name` in session state.
 3c. **Discover custom agents** -- Run `Glob(".claude/agents/*.md")`. Count
     files whose YAML frontmatter `name` field does not match a core agent
     (cal, colby, roz, ellis, agatha, robert, sable, investigator, distillator).
