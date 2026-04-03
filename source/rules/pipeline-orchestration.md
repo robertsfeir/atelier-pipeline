@@ -121,7 +121,7 @@ data is captured in bulk at wave end as part of the Tier 2 capture.
    If model unknown or not in the pricing table: set `cost_usd: null`, log "Cost unavailable -- model not in pricing table".
 4. Computes `context_utilization` as `(input_tokens + output_tokens) / context_window_max`
    (model-dependent from `telemetry-metrics.md`). Set `null` when tokens unavailable.
-5. Adds to in-memory accumulators: `total_cost`, `total_invocations`, `invocations_by_agent`,
+5. Adds to in-memory accumulators: `total_cost`, `total_invocations`, `invocations_by_agent`, `invocations_by_model`,
    and per-invocation records (agent, phase, duration, model, tokens, cost) for bulk capture.
 
 **Micro pipelines:** Tier 1 captures run as normal. Micro pipelines capture Tier 1 only --
@@ -145,6 +145,7 @@ first-pass QA, costs) as array fields in metadata.
 5. Calls `agent_capture` (single call for the entire wave):
    - `content`: `"Telemetry T2: wave {wave_id} units={N} rework={total_rework} first_pass={first_pass_count}/{total_units}"`
    - `importance: 0.5`
+   - `scope: ["{pipeline_project_name}"]`
    - `metadata`: full Tier 2 schema populated, plus `telemetry_tier: 2`, `pipeline_id`,
      `wave_id`, and `unit_breakdowns` array containing per-unit records
      (work_unit_id, rework_cycles, first_pass_qa, unit_cost_usd).
@@ -166,10 +167,11 @@ At pipeline end, after Ellis final commit and before end-of-pipeline checks, Eva
 6. Calls `agent_capture`:
    - `content`: `"Telemetry T3: {pipeline_id} cost=${total_cost_usd} rework={rework_rate} evoscore={evoscore}"`
    - `importance: 0.7`
+   - `scope: ["{pipeline_project_name}"]`
    - `metadata`: full Tier 3 schema populated, plus `telemetry_tier: 3` and `pipeline_id`
    - Fields: `total_cost_usd`, `total_duration_ms`, `phase_durations`, `total_invocations`,
-     `invocations_by_agent`, `rework_rate`, `first_pass_qa_rate`, `agent_failures`, `evoscore`,
-     `regression_count`, `sizing`
+     `invocations_by_agent`, `invocations_by_model`, `total_tokens`, `rework_rate`,
+     `first_pass_qa_rate`, `agent_failures`, `evoscore`, `regression_count`, `sizing`, `project_name`
 7. On failure: log and continue -- `"Telemetry T3 capture failed: {reason}. Continuing."` Never block the pipeline.
    Pipeline-end summary still prints from in-memory accumulators.
 8. After a successful Tier 3 capture, Eva sets `telemetry_captured: true` in PIPELINE_STATUS.

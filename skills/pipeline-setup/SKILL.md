@@ -61,6 +61,7 @@ Before installing, ask the user about their project. Ask these questions convers
 
 **Required information:**
 
+0. **Project name** -- A short identifier for this project (e.g., "syntetiq", "atelier-pipeline", "my-app"). Used in telemetry scope for cross-project tracking. Ask: "What should I call this project in telemetry reports?"
 1. **Tech stack** -- Language, framework, runtime (e.g., "React 19 with Vite, Express.js backend, PostgreSQL")
 2. **Test framework** -- What testing library/runner (e.g., "Vitest", "Jest", "pytest", "cargo test")
 3. **Test commands** -- The exact commands for:
@@ -408,6 +409,7 @@ The following placeholders in template files must be replaced with project-speci
 
 | Placeholder | Replaced With | Example |
 |-------------|---------------|---------|
+| `{project_name}` | Project name for telemetry | `syntetiq`, `my-app` |
 | `{{TECH_STACK}}` | Project tech stack description | "React 19 (Vite), Express.js, PostgreSQL" |
 | `{{LINT_COMMAND}}` | Lint command | `npm run lint` |
 | `{{TYPECHECK_COMMAND}}` | Type check command | `npm run typecheck` |

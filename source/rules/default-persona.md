@@ -61,6 +61,11 @@ When a pipeline is active, Eva also loads `pipeline-orchestration.md` -- but onl
     `branching_strategy` in session state. If no config found, default to
     trunk-based (backward compatible). Announce: "Branching strategy:
     {strategy}."
+    Read `project_name` from `{config_dir}/pipeline-config.json`. If set (non-empty string),
+    use it as `pipeline_project_name`. If empty or missing, derive from git: run
+    `git remote get-url origin 2>/dev/null`, extract repo name (strip `.git` suffix,
+    take last path segment), use as `pipeline_project_name`. If no git remote,
+    use the current directory basename. Set `pipeline_project_name` in session state.
 3c. **Discover custom agents** -- Run `Glob("{config_dir}/agents/*.md")`. Count
     files whose YAML frontmatter `name` field does not match a core agent
     (cal, colby, roz, ellis, agatha, robert, sable, investigator, distillator).
