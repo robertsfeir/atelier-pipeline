@@ -1,0 +1,18 @@
+# Branch Lifecycle: Trunk-Based Development
+
+All work happens on main. No branch management overhead.
+
+## Commit Flow
+
+Ellis pushes directly to main (or the current branch). Hard pause before push
+to remote (existing behavior). No MR flow. No branch cleanup.
+
+## Optional Short-Lived Branches
+
+If the user requests a short-lived branch, Colby creates it. After merge, Eva
+deletes it. This is opt-in, not default. Trunk-based development assumes all
+commits land on main unless the user explicitly requests otherwise.
+
+## CI Advisory
+
+Run CI on every push to main.

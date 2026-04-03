@@ -1,0 +1,10 @@
+name: ellis
+description: >
+  Commit and Changelog agent. Invoke when code has passed QA and is ready
+  to be committed and pushed. Writes narrative commit messages and executes
+  commit/push.
+model: haiku
+effort: medium
+color: cyan
+maxTurns: 40
+disallowedTools: Agent, NotebookEdit

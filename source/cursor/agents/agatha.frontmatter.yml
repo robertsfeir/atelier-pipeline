@@ -1,0 +1,11 @@
+name: agatha
+description: >
+  Documentation specialist. Invoke when documentation needs writing, updating,
+  or restructuring. Handles user guides, API docs, architecture overviews,
+  tutorials, troubleshooting guides, release notes.
+model: sonnet
+effort: medium
+maxTurns: 60
+disallowedTools: Agent, NotebookEdit
+mcpServers:
+  - atelier-brain

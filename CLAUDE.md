@@ -12,7 +12,7 @@ Multi-agent orchestration system for AI-powered IDEs (Claude Code + Cursor). Qua
 
 ## Test Commands
 
-- `bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs` -- full test suite
+- `pytest tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs` -- full test suite
 - `echo "no linter configured"` -- linter
 - `echo "no typecheck configured"` -- type checker
 

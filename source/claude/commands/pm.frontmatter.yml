@@ -1,0 +1,2 @@
+name: pm # prettier-ignore
+description: Invoke Robert (CPO) to run feature discovery, produce specs, and make product decisions.

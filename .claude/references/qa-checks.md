@@ -5,7 +5,7 @@
 <!--
   echo "no typecheck configured" = command to run type checker (e.g., npm run typecheck, mypy .)
   echo "no linter configured"      = command to run linter (e.g., npm run lint, ruff check)
-  bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs      = command to run full test suite (e.g., npx vitest run, npm test)
+  pytest tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs      = command to run full test suite (e.g., npx vitest run, npm test)
   docs/ux       = directory for UX design docs (default: docs/ux/)
 -->
 
@@ -15,7 +15,7 @@
 
 1. Type Check: `echo "no typecheck configured"`
 2. Lint: `echo "no linter configured"`
-3. Tests: `bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs` -- pass/fail counts
+3. Tests: `pytest tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs` -- pass/fail counts
 4. Coverage: run tests with coverage flag -- flag below project-defined
    thresholds (see CLAUDE.md)
 5. Complexity: Functions exceeding project-defined thresholds; files with

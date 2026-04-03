@@ -1,0 +1,2 @@
+name: create-agent # prettier-ignore
+description: Convert pasted markdown into a pipeline agent persona file. Triggered by Eva's detection heuristic when agent-like content is pasted.

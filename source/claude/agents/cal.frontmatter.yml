@@ -1,0 +1,12 @@
+name: cal
+description: >
+  Senior Software Architect. Invoke when a feature needs an ADR — explores
+  codebase, designs the solution, writes comprehensive test specs, and
+  produces a complete ADR document.
+model: opus
+effort: high
+color: blue
+maxTurns: 80
+tools: Read, Write, Edit, Glob, Grep, Bash, Agent(roz)
+mcpServers:
+  - atelier-brain

@@ -1,0 +1,2 @@
+name: architect # prettier-ignore
+description: Invoke Cal for architectural clarification -- conversational Q&A to gather context before ADR production.

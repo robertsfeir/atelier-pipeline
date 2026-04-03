@@ -1,0 +1,13 @@
+name: roz
+description: >
+  QA Engineer. Invoke for pre-build test authoring OR post-build validation.
+  Writes test assertions that define correct behavior before Colby builds.
+  Runs all quality checks and produces detailed QA reports. Write access
+  restricted to test files only.
+model: sonnet
+effort: high
+color: yellow
+maxTurns: 100
+disallowedTools: Agent, Edit, MultiEdit, NotebookEdit
+mcpServers:
+  - atelier-brain

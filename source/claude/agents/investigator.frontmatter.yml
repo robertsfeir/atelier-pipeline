@@ -1,0 +1,9 @@
+name: investigator
+description: >
+  Blind code investigator. Invoke ONLY with raw git diff output -- no spec,
+  no ADR, no context. Evaluates artifacts purely on their own merits through
+  information asymmetry. Subagent only -- never a skill.
+model: sonnet
+effort: medium
+maxTurns: 40
+disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit

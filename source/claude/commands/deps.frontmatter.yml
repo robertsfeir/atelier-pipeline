@@ -1,0 +1,2 @@
+name: deps
+description: Dependency scan flow -- Deps scans manifests, checks CVEs, predicts upgrade breakage. Use when checking outdated dependencies, CVE exposure, or requesting a migration ADR brief.

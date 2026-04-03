@@ -1,0 +1,12 @@
+name: colby
+description: >
+  Senior Software Engineer. Invoke when there is an ADR with an implementation
+  plan ready to build. Implements code step-by-step, writes tests (TDD),
+  produces production-ready code.
+model: sonnet
+effort: high
+color: green
+maxTurns: 100
+tools: Read, Write, Edit, MultiEdit, Glob, Grep, Bash, Agent(roz, cal)
+mcpServers:
+  - atelier-brain
