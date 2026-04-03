@@ -111,19 +111,17 @@ Describe a feature idea, or type `/pipeline` to start Eva. She sizes the work an
 
 ## Updating the Plugin
 
-Three steps:
+**Claude Code:**
+```
+claude plugin marketplace update atelier-pipeline
+claude plugin update atelier-pipeline@atelier-pipeline
+```
+Then restart Claude Code and re-run `/pipeline-setup`.
 
-1. **Refresh the marketplace and pull the update:**
-   ```
-   claude plugin marketplace update atelier-pipeline
-   claude plugin update atelier-pipeline@atelier-pipeline
-   ```
+**Cursor:**
+Pull the latest from the marketplace in Cursor's plugin settings, restart Cursor, and re-run `/pipeline-setup`.
 
-2. **Restart Claude Code** to load the new plugin version.
-
-3. **Re-run `/pipeline-setup`** to sync the updated templates into your project's `.claude/` directory. The setup detects existing files and asks whether to merge or replace.
-
-A session-start hook automatically notifies you when your project's pipeline files are outdated. You'll see: "Update available: installed vX.Y.Z, plugin vA.B.C."
+A session-start hook notifies you when your project's pipeline files are outdated.
 
 ### Manual Setup (without plugin system)
 
@@ -217,8 +215,8 @@ flowchart TD
     classDef agatha fill:#14b8a6,stroke:#0d9488,color:#fff,font-weight:bold
     classDef sentinel fill:#ef4444,stroke:#dc2626,color:#fff,font-weight:bold
     classDef system fill:#6b7280,stroke:#4b5563,color:#fff,font-weight:bold
-    classDef user fill:#94a3b8,stroke:#64748b,color:#fff,font-weight:bold
-    classDef gate fill:#475569,stroke:#334155,color:#fff,font-weight:bold
+    classDef user fill:#6b7280,stroke:#4b5563,color:#fff,font-weight:bold
+    classDef gate fill:#9ca3af,stroke:#6b7280,color:#fff,font-weight:bold
 
     style BUILD fill:#f0fdf4,stroke:#86efac,stroke-width:2px,stroke-dasharray:5 5
     style REVIEW fill:#faf5ff,stroke:#c4b5fd,stroke-width:2px,stroke-dasharray:5 5
@@ -235,43 +233,9 @@ Not every feature runs every phase. Eva adjusts:
 | **Medium** | 2-4 ADR steps, typical feature | Robert -> Cal -> wave build/QA cycle -> review juncture -> Agatha -> Ellis |
 | **Large** | 5+ ADR steps, new system | Full pipeline above |
 
-### What's New in v3.15
+### Changelog
 
-**Wave-based build ceremony.** QA, blind review, and commits now happen per wave instead of per unit. A 25-unit pipeline that previously required 150+ agent invocations now completes in ~47. Roz writes tests and reviews at wave boundaries; Poirot reviews the cumulative wave diff; Ellis commits once per wave. Sentinel moves to the review juncture only.
-
-**Universal model classifier.** All agents now use a scope-based classifier instead of hardcoded Opus. Roz, Poirot, Robert, Sable, and Sentinel default to Sonnet and promote to Opus only when task complexity warrants it. Ellis moves to Haiku. Estimated 60-70% cost reduction on typical pipelines.
-
-**Agent output masking.** Eva replaces full agent outputs with structured one-line receipts after processing. Full outputs stay on disk. This keeps Eva's context window lean across long pipelines — 98% reduction in carried context.
-
-**Just-in-time rule loading.** Eva's orchestration rules are split into always-loaded core (mandatory gates, masking) and JIT sections (telemetry protocols, Darwin, CI Watch) that load only when needed.
-
-**Brain operations batched per wave.** Prefetch, telemetry capture, and state writes happen at wave boundaries instead of per invocation.
-
-**Cursor IDE support.** Full feature parity with Claude Code — same agents, hooks, brain, commands. Install from the Cursor Marketplace or manually.
-
-### What's New in v3.6
-
-**Compaction API integration.** Server-side context management replaces manual context hygiene. A `PreCompact` hook (`pre-compact.sh`) writes a timestamped marker to `pipeline-state.md` before compaction fires, so Eva can detect and recover from compaction events. Path-scoped rules survive compaction automatically because Claude Code re-injects them from disk on every turn.
-
-**Observation masking.** Eva's primary within-session context hygiene. Superseded tool outputs are replaced with structured placeholders that include a re-read command. Distillator is now reserved for structured document compression at phase boundaries where lossless preservation of decisions, constraints, and relationships matters.
-
-**Context cleanup advisory updated.** Eva no longer estimates context usage or counts agent handoffs. For very long pipelines, Eva may suggest a fresh session only if response quality visibly degrades.
-
-### What's New in v3.5
-
-**Sentinel security agent (opt-in).** A Semgrep MCP-backed security audit agent that scans changed files for vulnerabilities, injection risks, and security misconfigurations. Runs at the review juncture in parallel with Roz and Poirot. Enable during `/pipeline-setup` or set `sentinel_enabled: true` in `pipeline-config.json`. Sentinel failure never blocks the pipeline.
-
-**Agent Teams (experimental).** Parallel wave execution using Claude Code's Agent Teams feature. When enabled, Eva creates Colby Teammate instances that execute independent build units within a wave simultaneously. Two gates must pass: `agent_teams_enabled: true` in pipeline config and `CLAUDE_AGENT_TEAMS=1` in the environment. Falls back to sequential execution transparently when either gate fails.
-
-**Security hardening.** Word boundary regex in enforcement hooks prevents false-positive blocks.
-
-### What's New in v3.4
-
-**DoR/DoD warn hook.** A `SubagentStop` hook (`warn-dor-dod.sh`) warns when Colby or Roz subagent output is missing DoR/DoD sections. Advisory only -- never blocks.
-
-**Agent discovery.** Eva discovers custom agents at session boot by scanning `.claude/agents/` for non-core persona files. Discovered agents are available via explicit name mention and can be routed to automatically after user consent for overlapping domains.
-
-**Eva test blocking.** `enforce-git.sh` blocks test commands from the main thread. Roz runs the full test suite, not Eva.
+See [CHANGELOG.md](CHANGELOG.md) for the full release history.
 
 ## Agents
 
@@ -291,9 +255,11 @@ Not every feature runs every phase. Eva adjusts:
 | **Darwin** | Pipeline Evolution Engine (opt-in) | Subagent |
 | **Deps** | Dependency Management (opt-in) | Subagent |
 
-**Skills** run in the main Claude Code thread for conversational work. **Subagents** run in their own context windows for focused execution. Some agents have both modes -- conversational for authoring, subagent for verification. Custom agents can be added via [agent discovery](#agent-discovery) without modifying core pipeline files.
+**Skills** run in the main conversation thread (Claude Code or Cursor) for conversational work. **Subagents** run in their own context windows for focused execution. Some agents have both modes -- conversational for authoring, subagent for verification. Custom agents can be added via [agent discovery](#agent-discovery) without modifying core pipeline files.
 
-### Agent Teams (Experimental)
+> **Note:** On Cursor, subagents run as skills in the main thread since Cursor does not support Agent spawning. All agents are available on both platforms.
+
+### Agent Teams (Experimental, Claude Code only)
 
 Agent Teams enables parallel wave execution during the Colby build phase. When multiple ADR steps are independent (no shared files), Eva normally executes them sequentially. With Agent Teams enabled, Eva creates Colby Teammate instances that execute those steps simultaneously.
 
@@ -350,7 +316,7 @@ Agents capture thoughts during pipeline runs and search for relevant context bef
 ```
 your-project/
   .claude/
-    rules/                       # Always loaded by Claude Code
+    rules/                       # Always loaded by the IDE
       default-persona.md         # Eva orchestrator persona
       agent-system.md            # Orchestration rules, routing, gates
       pipeline-orchestration.md  # Pipeline operations (path-scoped, loads during active pipelines)
