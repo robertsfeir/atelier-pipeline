@@ -2,6 +2,12 @@
 # Phase 2 supplement: Prevent Eva from running git write operations or test suites directly
 # PreToolUse hook on Bash
 #
+# Performance: This hook has an `if` conditional in settings.json:
+#   "if": "tool_input.command.includes('git ')"
+# Claude Code evaluates this before spawning the process, skipping ~90%
+# of Bash calls that have no git commands. When the `if` passes (command
+# contains 'git '), this script runs and enforces the full check.
+#
 # Eva must route commits through Ellis. This hook blocks git add,
 # git commit, and git push from the main thread. Subagents (Ellis)
 # are allowed. Eva must also route test suite execution through Roz --

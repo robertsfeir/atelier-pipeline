@@ -73,7 +73,7 @@ Open your IDE (Claude Code or Cursor) in your project directory and run:
 /pipeline-setup
 ```
 
-The setup asks about your project one question at a time: tech stack, test commands, source structure, coverage thresholds, and branching strategy. It then installs ~41 files into your project (agent personas, commands, references, enforcement hooks, path-scoped rules, branch lifecycle rules, and state tracking). At the end, it offers optional features: Sentinel security agent, Agent Teams parallel execution, CI Watch, Deps agent, and Atelier Brain persistent memory.
+The setup asks about your project one question at a time: tech stack, test commands, source structure, coverage thresholds, and branching strategy. It then installs ~45 files into your project (agent personas, commands, references, enforcement hooks, path-scoped rules, branch lifecycle rules, and state tracking). At the end, it offers optional features: Sentinel security agent, Agent Teams parallel execution, CI Watch, Deps agent, and Atelier Brain persistent memory.
 
 ### 3. Build something
 
@@ -1168,7 +1168,7 @@ Eva reads this file at session start. Agents reference it to determine branch na
 
 ## Mechanical Enforcement
 
-The pipeline does not rely solely on instructions to keep agents in their lanes. Six shell-script hooks run automatically on tool calls, blocking actions that would violate agent boundaries before they happen.
+The pipeline does not rely solely on instructions to keep agents in their lanes. Ten shell-script hooks run automatically on tool calls, blocking actions that would violate agent boundaries, tracking agent telemetry, and preserving context across compaction events.
 
 ### What gets blocked
 
@@ -1180,15 +1180,35 @@ The pipeline does not rely solely on instructions to keep agents in their lanes.
 | Eva invokes Ellis during an active pipeline before Roz passes QA | "BLOCKED: Cannot invoke Ellis — pipeline is active (phase: build) but no Roz QA PASS found. Roz must verify Colby's output before committing." |
 | Eva invokes Agatha during the build phase | "BLOCKED: Cannot invoke Agatha during the build phase. Agatha writes docs after Roz's final sweep against verified code." |
 | Eva invokes Ellis during an active pipeline before telemetry is captured | "BLOCKED: Cannot invoke Ellis — pipeline is active but telemetry has not been captured. Eva must capture T3 telemetry before committing." |
-| Eva runs `npm test` directly | "BLOCKED: Eva cannot run test commands directly. Route test execution through Roz." |
+| Eva runs `npm test` directly | "BLOCKED: Eva cannot run test suites directly. Route QA verification through Roz." |
+| Eva invokes Colby or Ellis without an active pipeline | "BLOCKED: Invoking [agent] without an active pipeline. No telemetry will be captured." |
 | Colby or Roz output is missing DoR/DoD | Advisory warning: "Output may be missing DoR/DoD sections" (does not block) |
 
 When an agent sees a block message, it adjusts: Eva routes the work to the correct agent, or waits until the prerequisite gate is satisfied. You do not need to intervene.
 
+### Non-enforcement hooks
+
+Beyond the blocking hooks, four additional hooks handle telemetry and context preservation:
+
+- **Agent telemetry** (`log-agent-start.sh`, `log-agent-stop.sh`) -- fire on SubagentStart and SubagentStop events, logging agent lifecycle events to `.claude/telemetry/session-hooks.jsonl`. These provide the raw data for pipeline duration and agent performance analysis.
+- **Context re-injection** (`post-compact-reinject.sh`) -- fires on PostCompact events (after context compaction) and re-injects `pipeline-state.md` and `context-brief.md` into the post-compaction context, ensuring Eva retains pipeline progress and conversational decisions.
+- **Failure tracking** (`log-stop-failure.sh`) -- fires on StopFailure events (when an agent turn ends due to an API error), appending structured entries to `error-patterns.md` for post-pipeline analysis.
+
+These hooks never block -- they exit 0 always and degrade gracefully if the telemetry directory or pipeline files are unavailable.
+
+### Performance: `if` conditionals
+
+Two hooks use `if` conditionals in their `settings.json` registration to skip hook execution when the condition is not met. Claude Code evaluates these expressions before spawning the hook process:
+
+- **`enforce-git.sh`** -- `"if": "tool_input.command.includes('git ')"` skips the hook for Bash calls that do not contain a git command.
+- **`warn-dor-dod.sh`** -- `"if": "agent_type == 'colby' || agent_type == 'roz'"` skips the hook for subagent completions that are not Colby or Roz.
+
+This reduces overhead on high-frequency tool calls (Bash calls happen constantly; most are not git commands).
+
 ### What you need to know
 
 - **Nothing to configure.** `/pipeline-setup` installs the hook scripts, registers them in `.claude/settings.json`, and customizes the config file with your project's directory paths and test command. It all happens during setup.
-- **jq is required.** The hooks use `jq` to parse tool input. If `jq` is not installed, the hooks degrade gracefully (they allow everything rather than blocking). Install it with `brew install jq` (macOS) or `apt install jq` (Linux).
+- **jq is required for enforcement hooks.** The blocking hooks use `jq` to parse tool input. If `jq` is not installed, the enforcement hooks degrade gracefully (they allow everything rather than blocking). Install it with `brew install jq` (macOS) or `apt install jq` (Linux). The telemetry and compaction hooks do not require `jq`.
 - **Quality checks are agent-driven.** Colby runs lint and typecheck during implementation, Roz runs the full test suite during QA, and Ellis verifies before commit. There are no hook-based quality gates -- quality enforcement lives in the pipeline agents themselves.
 
 ### Why this matters
@@ -1353,12 +1373,17 @@ your-project/
       qa-checks.md                  # Roz QA check procedures
       branch-mr-mode.md             # Colby branch/MR procedures
       telemetry-metrics.md          # Telemetry metric schemas, cost table, alert thresholds
-    hooks/                          # Mechanical enforcement (PreToolUse + SubagentStop + PreCompact)
+    hooks/                          # Mechanical enforcement + telemetry + compaction
       enforce-paths.sh              # Blocks Write/Edit outside agent's allowed paths
       enforce-sequencing.sh         # Blocks out-of-order agent invocations
       enforce-git.sh                # Blocks git write ops and test commands from main thread
+      enforce-pipeline-activation.sh # Blocks Colby/Ellis without active pipeline
       warn-dor-dod.sh               # Warns on missing DoR/DoD sections (advisory)
+      log-agent-start.sh            # Logs agent start events to telemetry JSONL
+      log-agent-stop.sh             # Logs agent stop events to telemetry JSONL
       pre-compact.sh                # Compaction marker for pipeline state preservation
+      post-compact-reinject.sh      # Re-injects pipeline state after compaction
+      log-stop-failure.sh           # Tracks agent API failures in error-patterns.md
       enforcement-config.json       # Project-specific paths and rules
     pipeline-config.json            # Branching strategy, Sentinel, Agent Teams config
     settings.json                   # Hook registration

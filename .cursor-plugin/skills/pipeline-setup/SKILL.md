@@ -33,6 +33,28 @@ Before gathering project information, understand where the pipeline installs fil
 - The plugin itself (installed via `claude plugin add`) is user-level, but the project files it generates are project-level.
 - To remove all installed files later, use the `/pipeline-uninstall` skill.
 
+### Step 0: Clean Up Deprecated quality-gate.sh
+
+Before gathering any project information, unconditionally run this cleanup on every /pipeline-setup invocation. It is silent unless it finds something to remove.
+
+1. **Check file:** Check if `.cursor/hooks/quality-gate.sh` exists. If found: delete the file. Note that removal occurred.
+2. **Check settings.json:** Check if `.cursor/settings.json` exists and contains a hook entry referencing `quality-gate.sh` in any command string across all hook event types (PreToolUse, SubagentStop, PreCompact, etc.). If found:
+   - Parse the JSON. If the JSON is malformed or invalid, log a warning ("Warning: .cursor/settings.json is malformed JSON -- skipping quality-gate.sh entry removal. Does not block setup.") and continue to step 3.
+   - Remove the hook entry containing "quality-gate" from the command string.
+   - If removing that entry leaves an empty hooks array for an event type, remove the event type entry entirely (no empty arrays left behind).
+   - Write the updated JSON back to `.cursor/settings.json`.
+   - Note that removal occurred.
+3. **Print notice (conditional):** If either artifact was found and removed: print exactly `Removed deprecated quality-gate.sh (see retro lesson #003).`
+4. **Silent no-op:** If neither found: do nothing. No output.
+
+**Edge case handling:**
+- File exists but settings.json entry already removed: detect file, delete it, print notice. Check settings.json independently of file existence.
+- settings.json has quality-gate.sh entry but file does not exist: detect entry in settings.json, remove it, print notice.
+- Both found: remove both, print single notice (not two).
+- Neither found: silent no-op.
+
+This cleanup targets only quality-gate.sh entries. Other hook entries (enforce-paths.sh, enforce-sequencing.sh, enforce-git.sh, etc.) are not affected.
+
 ### Step 1: Gather Project Information
 
 Before installing, ask the user about their project. Ask these questions conversationally, one at a time -- do not dump a list.
@@ -148,6 +170,20 @@ plugins/atelier-pipeline/source/
     branch-lifecycle-gitflow.md       # GitFlow branch lifecycle
 ```
 
+> **Enforcement hook bypass:** Before the first write operation below, create
+> the setup-mode sentinel file to disable enforcement hooks for this session.
+> This allows /pipeline-setup to write to `.cursor/` paths even when
+> enforcement hooks are already installed (re-install or update scenario).
+>
+> 1. Ensure `docs/pipeline/` exists: `mkdir -p docs/pipeline`
+> 2. Create sentinel: write an empty file to `docs/pipeline/.setup-mode`
+>
+> After all files are installed (end of Step 6f), remove the sentinel:
+> delete `docs/pipeline/.setup-mode`.
+>
+> The sentinel file is also checked into `.gitignore` patterns in the
+> pipeline state directory template to avoid accidental commits.
+
 ### Step 3: Install Files
 
 Copy each template to its destination in the user's project, customizing placeholders with the project-specific values gathered in Step 1.
@@ -207,7 +243,11 @@ optional and must be installed for the pipeline to function correctly.
 | `source/hooks/enforce-pipeline-activation.sh` | `.cursor/hooks/enforce-pipeline-activation.sh` | Blocks Colby/Ellis invocation when no active pipeline exists |
 | `source/hooks/enforce-git.sh` | `.cursor/hooks/enforce-git.sh` | Blocks git write operations from main thread (must go through Ellis) |
 | `source/hooks/warn-dor-dod.sh` | `.cursor/hooks/warn-dor-dod.sh` | Warns when Colby/Roz output missing DoR/DoD sections (SubagentStop) |
+| `source/hooks/log-agent-start.sh` | `.cursor/hooks/log-agent-start.sh` | Logs agent start events to JSONL telemetry file (SubagentStart) |
+| `source/hooks/log-agent-stop.sh` | `.cursor/hooks/log-agent-stop.sh` | Logs agent stop events to JSONL telemetry file (SubagentStop) |
 | `source/hooks/pre-compact.sh` | `.cursor/hooks/pre-compact.sh` | Writes compaction marker to pipeline-state.md before context is compacted (PreCompact) |
+| `source/hooks/post-compact-reinject.sh` | `.cursor/hooks/post-compact-reinject.sh` | Re-injects pipeline-state.md and context-brief.md after compaction (PostCompact) |
+| `source/hooks/log-stop-failure.sh` | `.cursor/hooks/log-stop-failure.sh` | Appends error entry to error-patterns.md on agent failure (StopFailure) |
 | `source/hooks/enforcement-config.json` | `.cursor/hooks/enforcement-config.json` | Project-specific paths and agent rules |
 
 After copying, make the `.sh` files executable: `chmod +x .cursor/hooks/*.sh`
@@ -257,17 +297,32 @@ file already exists. Add this hooks section:
       },
       {
         "matcher": "Bash",
-        "hooks": [{"type": "command", "command": "\"$CURSOR_PROJECT_DIR\"/.cursor/hooks/enforce-git.sh"}]
+        "hooks": [{"type": "command", "command": "\"$CURSOR_PROJECT_DIR\"/.cursor/hooks/enforce-git.sh", "if": "tool_input.command.includes('git ')"}]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [{"type": "command", "command": "\"$CURSOR_PROJECT_DIR\"/.cursor/hooks/log-agent-start.sh"}]
       }
     ],
     "SubagentStop": [
       {
-        "hooks": [{"type": "command", "command": "\"$CURSOR_PROJECT_DIR\"/.cursor/hooks/warn-dor-dod.sh"}]
+        "hooks": [{"type": "command", "command": "\"$CURSOR_PROJECT_DIR\"/.cursor/hooks/warn-dor-dod.sh", "if": "agent_type == 'colby' || agent_type == 'roz'"}, {"type": "command", "command": "\"$CURSOR_PROJECT_DIR\"/.cursor/hooks/log-agent-stop.sh"}]
       }
     ],
     "PreCompact": [
       {
         "hooks": [{"type": "command", "command": "\"$CURSOR_PROJECT_DIR\"/.cursor/hooks/pre-compact.sh"}]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [{"type": "command", "command": "\"$CURSOR_PROJECT_DIR\"/.cursor/hooks/post-compact-reinject.sh"}]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [{"type": "command", "command": "\"$CURSOR_PROJECT_DIR\"/.cursor/hooks/log-stop-failure.sh"}]
       }
     ]
   }
@@ -358,7 +413,7 @@ After installation, print:
 3. The configured branching strategy and any CI recommendations
 4. A reminder of available slash commands
 5. Instructions to start their first pipeline run
-6. **Offer optional features** -- Sentinel security agent, Agent Teams parallel execution, CI Watch automated CI monitoring, Deps Agent dependency scanning, Darwin self-evolving pipeline, and Atelier Brain persistent memory (Steps 6a through 6e)
+6. **Offer optional features** -- Sentinel security agent, Agent Teams parallel execution, CI Watch automated CI monitoring, Deps Agent dependency scanning, Darwin self-evolving pipeline, Dashboard integration, and Atelier Brain persistent memory (Steps 6a through 6f)
 
 **Example summary:**
 
@@ -388,6 +443,7 @@ Agent Teams: [enabled (experimental) | not enabled]
 CI Watch: [enabled (max retries: N) | not enabled]
 Deps agent: [enabled | not enabled]
 Darwin: [enabled | not enabled]
+Dashboard: [PlanVisualizer | claude-code-kanban | not enabled]
 Compaction API: PreCompact hook installed for pipeline state preservation
 
 Available commands:
@@ -567,9 +623,68 @@ setup."
 | `source/agents/darwin.md` | `.cursor/agents/darwin.md` | User enables Darwin in Step 6e |
 | `source/commands/darwin.md` | `.cursor/commands/darwin.md` | User enables Darwin in Step 6e |
 
+### Step 6f: Dashboard Integration (Opt-In)
+
+After the Darwin offer (whether user said yes or no), offer dashboard integration:
+
+```
+Dashboard integration (optional):
+  1. PlanVisualizer -- project-level tracking with kanban, cost trends,
+     traceability across pipeline runs
+     https://github.com/ksyed0/PlanVisualizer
+  2. claude-code-kanban -- real-time session dashboard, watch agents
+     work live (lightweight, instant setup)
+     https://github.com/NikiforovAll/claude-code-kanban
+  3. None
+
+Choose [1/2/3]:
+```
+
+**Pre-check (before showing menu):** Detect current state by checking:
+- Does `.plan-visualizer/` directory exist? (PlanVisualizer installed)
+- Do claude-code-kanban hooks exist in `~/.cursor/hooks/`? (kanban installed)
+
+**If both dashboards detected:** Force choice before proceeding. Print:
+"Both dashboards detected. Pick one or remove both." Then show the menu.
+
+**Idempotency:** Before running any install or cleanup, read `dashboard_mode` from `.cursor/pipeline-config.json`. If it already matches the user's choice, skip mutation and announce: "Dashboard is already set to [choice]." Do not re-run install.
+
+**If user picks 1 (PlanVisualizer):**
+
+1. Check Node.js: run `node --version`. If node is not found or the version is < 18: warn "PlanVisualizer requires Node.js 18+. Skipping." Set `dashboard_mode: "none"` in `.cursor/pipeline-config.json` and skip remaining steps.
+2. **Switch cleanup:** If switching from claude-code-kanban, run `npx claude-code-kanban --uninstall` (if npx available). If that fails or npx is unavailable, manually remove kanban hooks from `~/.cursor/hooks/`. Log any uninstall failure but continue -- manual cleanup is the fallback.
+3. Clone PlanVisualizer to `.plan-visualizer/` in the project root (e.g., `git clone https://github.com/ksyed0/PlanVisualizer .plan-visualizer`). Pin to a known-good tag if available.
+   Add `.plan-visualizer/` to the project's `.gitignore` if not already present.
+4. Run PlanVisualizer's install script from within `.plan-visualizer/`.
+5. Copy bridge script: `source/dashboard/telemetry-bridge.sh` -> `.cursor/dashboard/telemetry-bridge.sh`.
+6. Set `dashboard_mode: "plan-visualizer"` in `.cursor/pipeline-config.json`.
+7. Print: "Dashboard: PlanVisualizer installed. Run `node tools/generate-plan.js` to view."
+
+**Note:** PlanVisualizer works without the Atelier Brain. When brain is not configured, the bridge script falls back to reading `docs/pipeline/pipeline-state.md` to populate the dashboard.
+
+**If user picks 2 (claude-code-kanban):**
+
+1. Check npx: run `command -v npx`. If not found: warn "claude-code-kanban requires npm/npx. Skipping." Set `dashboard_mode: "none"` in `.cursor/pipeline-config.json` and skip remaining steps.
+2. **Switch cleanup from PlanVisualizer:** If switching from PlanVisualizer, remove the `.plan-visualizer/` directory and bridge script (`.cursor/dashboard/telemetry-bridge.sh`).
+3. Run `npx claude-code-kanban@latest --install` to register hooks (use `npx claude-code-kanban --install` if `@latest` is unavailable in your npm registry).
+   **Note:** `@latest` prevents stale cached versions. For production environments, pin a specific version (e.g., `npx claude-code-kanban@1.2.3 --install`) for reproducibility.
+   claude-code-kanban installs hooks at `~/.cursor/hooks/` (user-level, affects all projects).
+4. Set `dashboard_mode: "claude-code-kanban"` in `.cursor/pipeline-config.json`.
+5. Print: "Dashboard: claude-code-kanban installed. Run `npx claude-code-kanban --open` to view."
+
+**If user picks 3 (None):**
+
+1. **Switch cleanup:** If switching from an existing dashboard:
+   - If switching from PlanVisualizer: remove `.plan-visualizer/` directory and bridge script.
+   - If switching from claude-code-kanban: run `npx claude-code-kanban --uninstall` (if available), or manually remove kanban hooks from `~/.cursor/hooks/`.
+2. Set `dashboard_mode: "none"` in `.cursor/pipeline-config.json`.
+3. Print: "Dashboard: not enabled"
+
+**Error handling:** If any install step fails (clone fails, install script errors, npx install errors): log the error with "Dashboard install failed: [reason]. Skipping.", set `dashboard_mode: "none"` in `.cursor/pipeline-config.json`, and continue setup. Never block setup on dashboard install failure.
+
 **Brain setup offer (always ask):**
 
-After the Darwin offer (whether user said yes or no), ask the user:
+After the Dashboard offer (whether user said yes or no), ask the user:
 
 > The pipeline is ready. Would you also like to set up the **Atelier Brain**?
 > It gives your agents persistent memory across sessions -- architectural

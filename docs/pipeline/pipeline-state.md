@@ -2,8 +2,8 @@
 
 ## Active Pipeline
 **Feature:** Agent frontmatter enrichment — Waves 2 & 3 (#28, #29)
-**Phase:** architecture
-<!-- PIPELINE_STATUS: {"phase": "architecture", "sizing": "medium", "roz_qa": "PASS", "telemetry_captured": true, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": ""} -->
+**Phase:** review
+<!-- PIPELINE_STATUS: {"phase": "commit", "sizing": "medium", "roz_qa": "PASS", "telemetry_captured": true, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": ""} -->
 **Sizing:** Medium
 **Started:** 2026-04-02
 

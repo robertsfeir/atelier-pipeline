@@ -942,7 +942,7 @@ The skill:
 
 1. **Gathers project information** one question at a time: tech stack, test framework, test commands, source structure, database patterns, build/deploy commands, coverage thresholds, complexity limits, and branching strategy.
 2. **Reads template files** from `source/` in the plugin directory.
-3. **Copies ~41 files** to the target project (28 template files + 3 path-scoped rules + 6 enforcement hooks + 1 branching config + 1 branching variant + settings + version marker), replacing placeholders with project-specific values. The branching strategy variant file is selected from `source/variants/` and installed as `.claude/rules/branch-lifecycle.md`. Optional: Sentinel persona (`sentinel.md`, Step 6a), Deps agent persona + command (`deps.md`, Step 6d).
+3. **Copies ~45 files** to the target project (28 template files + 3 path-scoped rules + 10 enforcement hooks + 1 branching config + 1 branching variant + settings + version marker), replacing placeholders with project-specific values. The branching strategy variant file is selected from `source/variants/` and installed as `.claude/rules/branch-lifecycle.md`. Optional: Sentinel persona (`sentinel.md`, Step 6a), Deps agent persona + command (`deps.md`, Step 6d).
 4. **Customizes enforcement hooks** in `.claude/hooks/` -- sets project-specific paths and test commands in `enforcement-config.json`, registers hooks in `.claude/settings.json`, and makes scripts executable. After copying and customizing, setup validates `enforcement-config.json` by checking that all required fields are present and non-empty: `pipeline_state_dir`, `architecture_dir`, `product_specs_dir`, `ux_docs_dir`, `test_command`, `test_patterns`. An absent or empty `lint_command` produces a note (not a blocker). Validation failure prints a warning but does not block installation.
 5. **Writes version marker** to `.claude/.atelier-version` for update detection.
 6. **Updates `CLAUDE.md`** with a pipeline section.
@@ -1115,17 +1115,22 @@ Only these two files are modified during reconfig.
 
 The enforcement hooks are shell scripts registered as Claude Code PreToolUse hooks. They run automatically on every tool invocation and mechanically enforce agent boundaries that persona instructions describe but cannot guarantee. Behavioral guidance tells agents what to do; hooks ensure they cannot do what they should not.
 
-The three PreToolUse scripts require `jq` for JSON parsing. If `jq` is not installed, the hooks degrade gracefully (exit 0, allowing the action) rather than blocking all tool calls.
+The PreToolUse scripts require `jq` for JSON parsing. If `jq` is not installed, the hooks degrade gracefully (exit 0, allowing the action) rather than blocking all tool calls.
 
-### The Six Hook Scripts
+### The Ten Hook Scripts
 
 | Script | Hook Type | Trigger | Purpose |
 |--------|-----------|---------|---------|
 | `enforce-paths.sh` | PreToolUse | `Write\|Edit\|MultiEdit` | Blocks file writes outside each agent's allowed directory paths |
 | `enforce-sequencing.sh` | PreToolUse | `Agent` | Blocks out-of-order agent invocations from the main thread |
-| `enforce-git.sh` | PreToolUse | `Bash` | Blocks git write operations (`add`, `commit`, `push`, `reset`, `checkout --`, `restore`, `clean`) from the main thread |
-| `warn-dor-dod.sh` | SubagentStop | *(all subagent completions)* | Warns when a Colby or Roz subagent output is missing DoR/DoD sections |
+| `enforce-git.sh` | PreToolUse | `Bash` | Blocks git write operations (`add`, `commit`, `push`, `reset`, `checkout --`, `restore`, `clean`) and test commands from the main thread |
+| `enforce-pipeline-activation.sh` | PreToolUse | `Agent` | Blocks Colby and Ellis invocations when no active pipeline exists |
+| `warn-dor-dod.sh` | SubagentStop | *(Colby and Roz completions)* | Warns when a Colby or Roz subagent output is missing DoR/DoD sections |
+| `log-agent-start.sh` | SubagentStart | *(all subagent starts)* | Logs agent start events to `.claude/telemetry/session-hooks.jsonl` |
+| `log-agent-stop.sh` | SubagentStop | *(all subagent completions)* | Logs agent stop events to `.claude/telemetry/session-hooks.jsonl` |
 | `pre-compact.sh` | PreCompact | *(compaction events)* | Writes a timestamped compaction marker to `pipeline-state.md` before context is compacted |
+| `post-compact-reinject.sh` | PostCompact | *(after compaction)* | Re-injects `pipeline-state.md` and `context-brief.md` into post-compaction context |
+| `log-stop-failure.sh` | StopFailure | *(agent API failures)* | Appends structured error entries to `error-patterns.md` when an agent turn fails |
 
 ### How Hooks Identify the Caller
 
@@ -1168,9 +1173,37 @@ The hook only enforces from the main thread (empty `agent_id`). Most subagents c
 
 ### Git Operation Guard (`enforce-git.sh`)
 
-This hook intercepts Bash tool calls from the main thread and blocks git write operations: `git add`, `git commit`, `git push`, `git reset`, `git checkout --`, `git restore`, and `git clean`. Read-only git operations (`git status`, `git diff`, `git log`, `git branch`) are allowed.
+This hook intercepts Bash tool calls from the main thread and blocks git write operations: `git add`, `git commit`, `git push`, `git reset`, `git checkout --`, `git restore`, and `git clean`. Read-only git operations (`git status`, `git diff`, `git log`, `git branch`) are allowed. The hook also blocks test suite execution from the main thread (`bats`, `pytest`, `jest`, `vitest`, `mocha`, `npm test`, etc.) -- Roz owns QA verification.
 
 Ellis, running as a subagent (non-empty `agent_id`), is not affected by this hook. This ensures that all code commits flow through Ellis, who applies Conventional Commits formatting and verifies QA status.
+
+**Performance optimization.** This hook has an `if` conditional in `settings.json`: `"if": "tool_input.command.includes('git ')"`. Claude Code evaluates this expression before spawning the hook process, skipping the vast majority of Bash calls that contain no git commands. When the `if` condition passes, the full script runs and enforces both git and test command checks.
+
+### Pipeline Activation Guard (`enforce-pipeline-activation.sh`)
+
+This hook intercepts Agent tool calls from the main thread and blocks invocation of Colby or Ellis when no active pipeline exists. It ensures telemetry capture and quality gates are not bypassed by ad-hoc agent invocations. The hook reads `pipeline-state.md` and checks for a `PIPELINE_STATUS` marker with an active phase. Phases `none`, `idle`, and `complete` are treated as inactive. A missing state file or missing marker also triggers a block.
+
+### DoR/DoD Compliance Warning (`warn-dor-dod.sh`)
+
+This hook fires on SubagentStop and checks Colby and Roz output for `## DoR` and `## DoD` section headers. When either section is missing, it emits a warning on stderr. This hook is advisory only -- it never blocks (exit 0 always). Eva's DoR/DoD gate is the primary enforcement; this hook is a safety net.
+
+**Performance optimization.** This hook has an `if` conditional in `settings.json`: `"if": "agent_type == 'colby' || agent_type == 'roz'"`. Claude Code evaluates this expression before spawning the hook process, so the script only runs for Colby and Roz completions rather than every subagent stop event.
+
+### Agent Start Telemetry (`log-agent-start.sh`)
+
+This hook fires on SubagentStart and appends a JSON line to `.claude/telemetry/session-hooks.jsonl` with the event type (`start`), `agent_type`, `agent_id`, `session_id`, and an ISO 8601 timestamp. It is a non-enforcement hook (exit 0 always) and does not require `jq` -- it falls back to `grep`/`sed` parsing when `jq` is unavailable. Requires `CLAUDE_PROJECT_DIR` (or `CURSOR_PROJECT_DIR`) to locate the telemetry directory.
+
+### Agent Stop Telemetry (`log-agent-stop.sh`)
+
+This hook fires on SubagentStop alongside `warn-dor-dod.sh` and appends a JSON line to `.claude/telemetry/session-hooks.jsonl` with the event type (`stop`), `agent_type`, `agent_id`, `session_id`, timestamp, and a `has_output` boolean indicating whether the agent produced non-empty output. The hook does not inspect or log the `last_assistant_message` content for privacy. It is a non-enforcement hook (exit 0 always) and does not require `jq`.
+
+### Context Re-injection (`post-compact-reinject.sh`)
+
+This hook fires on PostCompact (after Claude Code compacts the context window) and outputs `pipeline-state.md` and `context-brief.md` to stdout for re-injection into the post-compaction context. Only these two small files (~3KB total) are re-injected -- larger pipeline files (`error-patterns.md`, `investigation-ledger.md`, `last-qa-report.md`) are read on-demand. The hook exits 0 always and outputs nothing if `pipeline-state.md` does not exist.
+
+### Agent Failure Tracking (`log-stop-failure.sh`)
+
+This hook fires on StopFailure (when an agent turn ends due to an API error) and appends a structured markdown entry to `error-patterns.md` with the `agent_type`, timestamp, error type, and a truncated error message (200 characters max). It creates `error-patterns.md` with a header if the file does not exist. It is a non-enforcement hook (exit 0 always) and does not require `jq`.
 
 ### Configuration (`enforcement-config.json`)
 
@@ -1220,18 +1253,49 @@ The configuration file lives at `.claude/hooks/enforcement-config.json` and is c
       },
       {
         "matcher": "Agent",
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-sequencing.sh"}]
+        "hooks": [
+          {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-sequencing.sh"},
+          {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-pipeline-activation.sh"}
+        ]
       },
       {
         "matcher": "Bash",
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-git.sh"}]
+        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-git.sh", "if": "tool_input.command.includes('git ')"}]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/log-agent-start.sh"}]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/warn-dor-dod.sh", "if": "agent_type == 'colby' || agent_type == 'roz'"},
+          {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/log-agent-stop.sh"}
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-compact.sh"}]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-compact-reinject.sh"}]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/log-stop-failure.sh"}]
       }
     ]
   }
 }
 ```
 
-Each matcher determines which tool invocations trigger the hook. The pipe-separated `Write|Edit|MultiEdit` matcher fires `enforce-paths.sh` on any file write operation. Existing settings in the file are preserved during the merge.
+Each matcher determines which tool invocations trigger the hook. The pipe-separated `Write|Edit|MultiEdit` matcher fires `enforce-paths.sh` on any file write operation. The `"if"` property is a JavaScript expression evaluated by Claude Code before spawning the hook process -- when it evaluates to false, the hook is skipped entirely, reducing overhead on high-frequency tool calls. Existing settings in the file are preserved during the merge.
 
 ### Blocking vs. Non-Blocking
 
@@ -1240,9 +1304,9 @@ Hooks signal their result via exit code:
 - **Exit 0** -- action allowed (or hook not applicable)
 - **Exit 2** -- action blocked; the reason message on stderr is shown to the agent
 
-The three PreToolUse hooks (`enforce-paths.sh`, `enforce-sequencing.sh`, `enforce-git.sh`) exit 2 on violations. The SubagentStop hook (`warn-dor-dod.sh`) exits 0 always -- it is advisory only and never blocks. The PreCompact hook (`pre-compact.sh`) exits 0 always -- it is a side-effect hook, not a gate.
+The four PreToolUse hooks (`enforce-paths.sh`, `enforce-sequencing.sh`, `enforce-git.sh`, `enforce-pipeline-activation.sh`) exit 2 on violations. The SubagentStop hook (`warn-dor-dod.sh`) exits 0 always -- it is advisory only and never blocks. The telemetry hooks (`log-agent-start.sh`, `log-agent-stop.sh`, `log-stop-failure.sh`) exit 0 always -- they are observability hooks, not gates. The compaction hooks (`pre-compact.sh`, `post-compact-reinject.sh`) exit 0 always -- they are side-effect hooks, not gates.
 
-The three PreToolUse hooks exit 0 immediately when `jq` is not installed, when the config file is missing, or when the tool call is not one they care about. This ensures the hooks never interfere with unrelated tool usage or with projects that have not yet run `/pipeline-setup`.
+The four PreToolUse hooks exit 0 immediately when `jq` is not installed, when the config file is missing, or when the tool call is not one they care about. This ensures the hooks never interfere with unrelated tool usage or with projects that have not yet run `/pipeline-setup`. The telemetry and compaction hooks do not require `jq` -- they fall back to `grep`/`sed` parsing when `jq` is unavailable.
 
 ---
 
@@ -1999,10 +2063,15 @@ The Compaction API (v3.6) provides server-side context management for Claude Cod
 | Pipeline state files | Phase progress, decisions | Written to disk at every phase transition |
 | Brain captures | Decisions, findings, lessons | Queryable after compaction via `agent_search` |
 | PreCompact hook | Compaction visibility | Writes timestamped marker to `pipeline-state.md` before compaction |
+| PostCompact hook | State continuity | Re-injects `pipeline-state.md` and `context-brief.md` into post-compaction context |
 
 ### PreCompact Hook (`pre-compact.sh`)
 
 Fires before Claude Code compacts the context window. Appends a timestamped `<!-- COMPACTION: ... -->` HTML comment to `pipeline-state.md`. Lightweight by design: no brain calls, no subagent invocations, no test runs. Exits 0 always -- never blocks compaction.
+
+### PostCompact Hook (`post-compact-reinject.sh`)
+
+Fires after Claude Code compacts the context window. Outputs the contents of `pipeline-state.md` and `context-brief.md` to stdout for re-injection into the post-compaction context, ensuring Eva retains pipeline progress and conversational decisions. Only these two small files are re-injected -- larger pipeline files are read on-demand. Exits 0 always.
 
 ### Behavioral Changes
 

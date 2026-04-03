@@ -343,14 +343,18 @@ Update documentation to reflect the new hooks and `if` conditionals.
 
 | ID | Category | Description |
 |----|----------|-------------|
-| T-0020-001 | Happy | settings.json contains `"if"` field on enforce-git.sh Bash hook entry with `tool_input.command.includes('git ')` |
-| T-0020-002 | Happy | settings.json contains `"if"` field on warn-dor-dod.sh SubagentStop hook entry with `agent_type == 'colby' \|\| agent_type == 'roz'` |
+| T-0020-001 | Happy | settings.json contains `"if"` field on enforce-git.sh Bash hook entry with value `tool_input.command.includes('git ')` |
+| T-0020-002 | Happy | settings.json contains `"if"` field on warn-dor-dod.sh SubagentStop hook entry with value `agent_type == 'colby' \|\| agent_type == 'roz'` |
 | T-0020-003 | Regression | All existing enforce-git.bats tests pass without modification |
 | T-0020-004 | Regression | All existing enforce-paths.bats tests pass without modification |
 | T-0020-005 | Regression | All existing enforce-sequencing.bats tests pass without modification |
 | T-0020-006 | Regression | All existing enforce-pipeline-activation.bats tests pass without modification |
-| T-0020-007 | Boundary | SKILL.md hook registration template matches installed settings.json `if` fields exactly |
-| T-0020-008 | Failure | enforce-git.sh still blocks git commit when called directly (if filter only prevents spawning, not script behavior) |
+| T-0020-007 | Boundary | SKILL.md hook registration template contains the same `if` field values as installed settings.json for both enforce-git.sh and warn-dor-dod.sh |
+| T-0020-008 | Failure | After Step 1 changes to settings.json, enforce-git.sh called directly (bypassing the `if` filter) with a `git commit` command still exits 2 with BLOCKED output -- verifying that the `if` optimization did not alter the script's enforcement behavior |
+| T-0020-009 | Failure | settings.json enforce-git.sh hook entry has a non-empty `"if"` field that is a string (not null, not missing, not an empty string) -- structural validation that Colby did not ship a broken registration |
+| T-0020-010 | Failure | settings.json warn-dor-dod.sh hook entry has a non-empty `"if"` field that is a string (not null, not missing, not an empty string) -- structural validation that Colby did not ship a broken registration |
+
+Step 1 ratio: Happy=2, Failure=3. Met (3 >= 2).
 
 ### Step 1 Telemetry
 
@@ -360,14 +364,23 @@ Telemetry: Hook spawn count metric. Trigger: after a full pipeline session with 
 
 | ID | Category | Description |
 |----|----------|-------------|
-| T-0020-009 | Happy | log-agent-start.sh creates `.claude/telemetry/` directory and writes a JSON line with event=start, agent_type, agent_id, session_id, timestamp |
-| T-0020-010 | Happy | JSON line is valid JSON (parseable by jq) |
-| T-0020-011 | Failure | Hook exits 0 when `.claude/telemetry/` directory cannot be created (read-only filesystem simulation) |
-| T-0020-012 | Failure | Hook exits 0 when jq is not available -- falls back to printf-based JSON generation |
-| T-0020-013 | Boundary | Hook handles empty agent_type gracefully (writes "unknown" or empty string, does not fail) |
-| T-0020-014 | Boundary | Hook handles missing session_id gracefully |
-| T-0020-015 | Boundary | Multiple sequential calls append multiple lines (not overwrite) |
-| T-0020-016 | Security | Hook does not log any content from the agent prompt or context |
+| T-0020-011 | Happy | log-agent-start.sh creates `.claude/telemetry/` directory when missing and appends exactly one JSON line to `session-hooks.jsonl` |
+| T-0020-012 | Happy | The appended JSON line is valid JSON (parseable by `jq .`) and contains all required fields: `event` (value "start"), `agent_type`, `agent_id`, `session_id`, `timestamp` |
+| T-0020-013 | Failure | Hook exits 0 when `.claude/telemetry/` parent directory is unwritable (test: set parent dir to chmod 444 on macOS, or point CLAUDE_PROJECT_DIR to `/dev/null/subdir` as a portable alternative) and no JSONL file is created |
+| T-0020-014 | Failure | Hook exits 0 when jq is not available (PATH manipulated via `hide_jq` helper) AND a valid JSON line is still written to the JSONL file via printf fallback |
+| T-0020-015 | Failure | Hook exits 0 and writes a stderr warning when CLAUDE_PROJECT_DIR is unset or empty -- no file is written to the filesystem root |
+| T-0020-016 | Boundary | Hook writes `"unknown"` (not empty string) for `agent_type` when the input JSON has an empty or missing `agent_type` field |
+| T-0020-017 | Boundary | Hook writes `"unknown"` for `session_id` when the input JSON has an absent `session_id` key |
+| T-0020-018 | Boundary | 3 sequential invocations of log-agent-start.sh produce exactly 3 lines in the JSONL file (verified by `wc -l`), confirming append-not-overwrite behavior |
+| T-0020-019 | Boundary | `timestamp` field in the JSONL output matches ISO8601 format (regex: `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}`) -- consumer contract for hydrate-telemetry.mjs |
+| T-0020-020 | Boundary | Hook writes JSONL correctly when CLAUDE_PROJECT_DIR path contains a space (e.g., `"/tmp/my project"`) -- verifies path quoting in the script |
+| T-0020-021 | Concurrency | Two simultaneous invocations of log-agent-start.sh (launched as background processes writing to the same JSONL file) produce two independently valid JSON lines with no interleaved content |
+| T-0020-022 | Security | Hook does not log any content from the agent prompt or context -- JSONL line contains only the 5 contract fields |
+| T-0020-023 | Happy | settings.json contains a SubagentStart hook entry with `hooks_file` pointing to log-agent-start.sh (AC6 registration test) |
+| T-0020-024 | Happy | SKILL.md installation manifest includes log-agent-start.sh as a SubagentStart hook entry (AC7 registration test) |
+| T-0020-025 | Failure | Hook exits 0 when the JSONL file exists but is not writable (chmod 444 on the file itself) -- verifies write-failure handling distinct from directory-creation failure |
+
+Step 2a ratio: Happy=4, Failure=4. Met (4 >= 4).
 
 ### Step 2a Telemetry
 
@@ -377,14 +390,21 @@ Telemetry: `session-hooks.jsonl` line with `event: "start"`. Trigger: every Suba
 
 | ID | Category | Description |
 |----|----------|-------------|
-| T-0020-017 | Happy | log-agent-stop.sh appends a JSON line with event=stop, agent_type, agent_id, session_id, timestamp, has_output=true when last_assistant_message is present |
-| T-0020-018 | Happy | has_output is false when last_assistant_message is empty or null |
-| T-0020-019 | Failure | Hook exits 0 when JSONL write fails |
-| T-0020-020 | Failure | Hook exits 0 when jq is not available |
-| T-0020-021 | Boundary | Hook does NOT log the content of last_assistant_message (only boolean presence) |
-| T-0020-022 | Regression | warn-dor-dod.sh still receives SubagentStop events and functions correctly (both hooks coexist) |
-| T-0020-023 | Concurrency | Two SubagentStop hooks registered in the same event array -- both execute without interference |
-| T-0020-024 | Boundary | JSONL file can be read by `jq -s` after multiple start+stop pairs |
+| T-0020-026 | Happy | log-agent-stop.sh appends a JSON line with event=stop, agent_type, agent_id, session_id, timestamp, and `has_output` set to JSON boolean `true` (not the string "true") when `last_assistant_message` is a non-empty string |
+| T-0020-027 | Happy | `has_output` is JSON boolean `false` (not string "false") when `last_assistant_message` is an empty string `""` |
+| T-0020-028 | Happy | `has_output` is JSON boolean `false` when `last_assistant_message` is JSON `null` |
+| T-0020-029 | Failure | Hook exits 0 when JSONL write fails (directory exists but file is unwritable) |
+| T-0020-030 | Failure | Hook exits 0 when jq is not available (PATH manipulated via `hide_jq` helper) AND a valid JSON line with correct `has_output` boolean is still written via printf fallback |
+| T-0020-031 | Failure | Hook exits 0 and writes a stderr warning when CLAUDE_PROJECT_DIR is unset or empty -- no file is written to the filesystem root |
+| T-0020-032 | Boundary | `has_output` is JSON boolean `false` when the `last_assistant_message` key is entirely absent from the input JSON (not null, not empty -- absent). Verifies `jq -r '.last_assistant_message // empty'` vs `jq -r '.last_assistant_message'` handling |
+| T-0020-033 | Boundary | Hook does NOT log the content of `last_assistant_message` -- JSONL line contains `has_output` boolean but no message text, verified by asserting the JSONL line does not contain a known unique string placed in the test input's `last_assistant_message` |
+| T-0020-034 | Boundary | `timestamp` field in the JSONL output matches ISO8601 format (regex: `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}`) -- consumer contract for hydrate-telemetry.mjs |
+| T-0020-035 | Regression | warn-dor-dod.sh called directly with a Colby SubagentStop input (via `build_subagent_stop_input`) exits 0 and produces DoR/DoD output, confirming Step 2b settings.json changes did not alter warn-dor-dod.sh behavior |
+| T-0020-036 | Regression | settings.json SubagentStop hook array contains entries for both warn-dor-dod.sh and log-agent-stop.sh (AC6 coexistence verification) |
+| T-0020-037 | Concurrency | Two sequential invocations of log-agent-stop.sh appending to the same JSONL file produce exactly 2 lines, each independently valid JSON (verified by `jq -c . < file | wc -l`) |
+| T-0020-038 | Boundary | JSONL file containing interleaved start and stop events can be read in full by `jq -s .` without errors (cross-step integration with Step 2a) |
+
+Step 2b ratio: Happy=3, Failure=3. Met (3 >= 3).
 
 ### Step 2b Telemetry
 
@@ -394,15 +414,20 @@ Telemetry: `session-hooks.jsonl` line with `event: "stop"`. Trigger: every Subag
 
 | ID | Category | Description |
 |----|----------|-------------|
-| T-0020-025 | Happy | post-compact-reinject.sh outputs pipeline-state.md content to stdout when the file exists |
-| T-0020-026 | Happy | Output includes context-brief.md content when both files exist |
-| T-0020-027 | Happy | Output includes a clear header marker (`--- Re-injected after compaction ---`) |
-| T-0020-028 | Failure | Hook outputs nothing and exits 0 when pipeline-state.md does not exist |
-| T-0020-029 | Boundary | Hook outputs only pipeline-state.md when context-brief.md does not exist |
-| T-0020-030 | Boundary | Output contains file path labels so Eva knows which file content is which |
-| T-0020-031 | Regression | Existing pre-compact.sh continues to write compaction markers independently |
-| T-0020-032 | Failure | Hook exits 0 when both files are empty |
-| T-0020-033 | Security | Hook does not output error-patterns.md or investigation-ledger.md (only pipeline-state + context-brief) |
+| T-0020-039 | Happy | post-compact-reinject.sh outputs pipeline-state.md content to stdout when the file exists in `$CLAUDE_PROJECT_DIR/docs/pipeline/` |
+| T-0020-040 | Happy | Output includes context-brief.md content when both files exist |
+| T-0020-041 | Happy | Output begins with the header marker `--- Re-injected after compaction ---` (exact string match) |
+| T-0020-042 | Failure | Hook outputs nothing (empty stdout) and exits 0 when pipeline-state.md does not exist |
+| T-0020-043 | Failure | Hook exits 0 when pipeline-state.md exists but cannot be read (chmod 000) -- outputs nothing or partial content, does not crash |
+| T-0020-044 | Failure | Hook exits 0 when CLAUDE_PROJECT_DIR is unset or empty -- outputs nothing, does not attempt to read from filesystem root |
+| T-0020-045 | Failure | Hook exits 0 when both pipeline-state.md and context-brief.md exist but are empty (0 bytes) -- outputs the header marker and file labels but no file content |
+| T-0020-046 | Boundary | Hook outputs only pipeline-state.md content (with its label) when context-brief.md does not exist -- no error, no placeholder for the missing file |
+| T-0020-047 | Boundary | Output contains the exact file path labels `## From: docs/pipeline/pipeline-state.md` and `## From: docs/pipeline/context-brief.md` (matching Notes for Colby #4 format) |
+| T-0020-048 | Boundary | settings.json contains a PostCompact hook entry pointing to post-compact-reinject.sh (registration AC test) |
+| T-0020-049 | Regression | Existing pre-compact.sh continues to write compaction markers independently of post-compact-reinject.sh |
+| T-0020-050 | Security | Hook does not output error-patterns.md or investigation-ledger.md content. Setup: all 5 pipeline files present with unique identifiable content strings. Assert: stdout contains pipeline-state.md's unique string, stdout contains context-brief.md's unique string, stdout does NOT contain error-patterns.md's unique string, stdout does NOT contain investigation-ledger.md's unique string |
+
+Step 3 ratio: Happy=3, Failure=4. Met (4 >= 3).
 
 ### Step 3 Telemetry
 
@@ -412,16 +437,21 @@ Telemetry: Post-compaction context includes pipeline-state.md content. Trigger: 
 
 | ID | Category | Description |
 |----|----------|-------------|
-| T-0020-034 | Happy | log-stop-failure.sh appends a structured entry to error-patterns.md with agent_type, timestamp, error type, and truncated message |
-| T-0020-035 | Happy | Entry format follows markdown structure: `### StopFailure: {agent_type} at {timestamp}` followed by bullet points |
-| T-0020-036 | Failure | Hook creates error-patterns.md with header when file does not exist |
-| T-0020-037 | Failure | Hook exits 0 when write to error-patterns.md fails |
-| T-0020-038 | Failure | Hook exits 0 when jq is not available |
-| T-0020-039 | Boundary | Error message is truncated to 200 characters |
-| T-0020-040 | Boundary | Hook handles missing error fields gracefully (writes "unknown" for missing fields) |
-| T-0020-041 | Boundary | Hook handles error message containing special markdown characters (backticks, pipes, brackets) |
-| T-0020-042 | Security | Hook does not log full stack traces or sensitive error details beyond 200 chars |
-| T-0020-043 | Regression | Existing error-patterns.md content is preserved (append only, not overwrite) |
+| T-0020-051 | Happy | log-stop-failure.sh appends a structured entry to error-patterns.md with agent_type, timestamp, error type, and truncated message |
+| T-0020-052 | Happy | Entry format matches: `### StopFailure: {agent_type} at {timestamp}` as the section heading, followed by `- Error: {error_type}` and `- Message: {message}` as bullet points |
+| T-0020-053 | Failure | Hook exits 0 when error-patterns.md exists but is not writable (chmod 444) -- logs to stderr, does not crash |
+| T-0020-054 | Failure | Hook exits 0 when jq is not available (PATH manipulated via `hide_jq` helper) and still appends a valid entry via printf fallback |
+| T-0020-055 | Failure | Hook exits 0 and writes a stderr warning when CLAUDE_PROJECT_DIR is unset or empty -- no file is written to the filesystem root |
+| T-0020-056 | Boundary | Hook creates error-patterns.md with a `# Error Patterns` header when the file does not exist, then appends the entry below the header |
+| T-0020-057 | Boundary | A 201-character error message in input is truncated to exactly 200 characters in the appended entry (exact boundary test at 201->200) |
+| T-0020-058 | Boundary | Hook writes `"unknown"` for missing `agent_type`, `error_type`, and `error_message` fields in the input JSON |
+| T-0020-059 | Boundary | Hook handles error message containing special markdown characters (backticks, pipes, brackets) without breaking the markdown structure of the appended entry |
+| T-0020-060 | Boundary | Two sequential invocations of log-stop-failure.sh produce two markdown sections separated by at least one blank line (valid markdown rendering) |
+| T-0020-061 | Boundary | settings.json contains a StopFailure hook entry pointing to log-stop-failure.sh (AC8 registration test) |
+| T-0020-062 | Security | A 500-character error message containing a multi-line stack trace is truncated to 200 characters with no additional lines, stack frames, or sensitive details appearing after the truncation point |
+| T-0020-063 | Regression | Existing error-patterns.md content (3 lines of pre-existing text) is preserved after hook appends a new entry -- verified by asserting the original 3 lines still appear at the start of the file |
+
+Step 4 ratio: Happy=2, Failure=3. Met (3 >= 2).
 
 ### Step 4 Telemetry
 
@@ -431,10 +461,14 @@ Telemetry: New `### StopFailure` entry in error-patterns.md. Trigger: agent turn
 
 | ID | Category | Description |
 |----|----------|-------------|
-| T-0020-044 | Happy | technical-reference.md documents all 10 hooks with event type, script name, and purpose |
-| T-0020-045 | Happy | user-guide.md mentions `if` conditionals and new hook events |
-| T-0020-046 | Regression | All installed .claude/hooks/ files match source/hooks/ files |
-| T-0020-047 | Regression | Cursor plugin SKILL.md hook registration matches Claude Code SKILL.md |
+| T-0020-064 | Happy | technical-reference.md documents all 10 hooks with event type, script name, and one-line purpose description |
+| T-0020-065 | Happy | user-guide.md mentions `if` conditionals and lists the 4 new hook events (SubagentStart, SubagentStop telemetry, PostCompact, StopFailure) |
+| T-0020-066 | Failure | A source/hooks/ script file (e.g., log-agent-start.sh) without a corresponding .claude/hooks/ installed copy is detected as a mismatch by comparing file lists (`ls source/hooks/*.sh` vs `ls .claude/hooks/*.sh`) |
+| T-0020-067 | Failure | Cursor plugin SKILL.md containing a hook entry that is absent from Claude Code SKILL.md is detected as a divergence by diffing the hook registration sections of both files |
+| T-0020-068 | Regression | All installed .claude/hooks/ files are byte-identical to their source/hooks/ counterparts (verified by `diff` or `cmp`) |
+| T-0020-069 | Regression | Cursor plugin SKILL.md hook registration section matches Claude Code SKILL.md hook registration section |
+
+Step 5 ratio: Happy=2, Failure=2. Met (2 >= 2).
 
 ### Step 5 Telemetry
 

@@ -119,6 +119,74 @@ build_bash_input() {
   fi
 }
 
+# Build a SubagentStart-style JSON input for log-agent-start hooks
+# Usage: build_subagent_start_input "colby" "agent-abc123" "session-xyz789"
+build_subagent_start_input() {
+  local agent_type="${1:-}"
+  local agent_id="${2:-}"
+  local session_id="${3:-}"
+
+  printf '{"agent_type":"%s","agent_id":"%s","session_id":"%s"}' \
+    "$agent_type" "$agent_id" "$session_id"
+}
+
+# Build a SubagentStop-style JSON input for log-agent-stop / warn-dor-dod hooks
+# Usage: build_subagent_stop_input "colby" "agent-abc123" "session-xyz789" "output text"
+# Pass "" for last_message to simulate empty output, or omit for null
+build_subagent_stop_input() {
+  local agent_type="${1:-}"
+  local agent_id="${2:-}"
+  local session_id="${3:-}"
+  local last_message="${4-__UNSET__}"
+
+  if [ "$last_message" = "__UNSET__" ]; then
+    # No last_assistant_message key at all
+    printf '{"agent_type":"%s","agent_id":"%s","session_id":"%s"}' \
+      "$agent_type" "$agent_id" "$session_id"
+  elif [ -z "$last_message" ]; then
+    # Empty string last_assistant_message
+    printf '{"agent_type":"%s","agent_id":"%s","session_id":"%s","last_assistant_message":""}' \
+      "$agent_type" "$agent_id" "$session_id"
+  else
+    # Non-empty last_assistant_message -- escape embedded quotes
+    local escaped_message
+    escaped_message=$(printf '%s' "$last_message" | sed 's/\\/\\\\/g; s/"/\\"/g' | tr '\n' ' ')
+    printf '{"agent_type":"%s","agent_id":"%s","session_id":"%s","last_assistant_message":"%s"}' \
+      "$agent_type" "$agent_id" "$session_id" "$escaped_message"
+  fi
+}
+
+# Build a SubagentStop-style JSON input with null last_assistant_message
+# Usage: build_subagent_stop_input_null "colby" "agent-abc123" "session-xyz789"
+build_subagent_stop_input_null() {
+  local agent_type="${1:-}"
+  local agent_id="${2:-}"
+  local session_id="${3:-}"
+
+  printf '{"agent_type":"%s","agent_id":"%s","session_id":"%s","last_assistant_message":null}' \
+    "$agent_type" "$agent_id" "$session_id"
+}
+
+# Build a StopFailure-style JSON input for log-stop-failure hooks
+# Usage: build_stop_failure_input "colby" "rate_limit" "Rate limit exceeded for model"
+build_stop_failure_input() {
+  local agent_type="${1:-}"
+  local error_type="${2:-}"
+  local error_message="${3:-}"
+
+  # Escape embedded quotes in error_message
+  local escaped_message
+  escaped_message=$(printf '%s' "$error_message" | sed 's/\\/\\\\/g; s/"/\\"/g' | tr '\n' ' ')
+  printf '{"agent_type":"%s","error_type":"%s","error_message":"%s"}' \
+    "$agent_type" "$error_type" "$escaped_message"
+}
+
+# Build a StopFailure-style JSON input with missing fields
+# Usage: build_stop_failure_input_minimal
+build_stop_failure_input_minimal() {
+  printf '{}'
+}
+
 # ── jq Manipulation ─────────────────────────────────────────────────
 
 # Hide jq from PATH so hooks see it as missing.
@@ -227,4 +295,23 @@ run_hook_with_input() {
   local input="$2"
   prepare_hook "$hook_name"
   echo "$input" | bash "$TEST_TMPDIR/$hook_name"
+}
+
+# Run a hook with CLAUDE_PROJECT_DIR set to TEST_TMPDIR.
+# Usage: run_hook_with_project_dir "log-agent-start.sh" "$json_input"
+# Used for hooks that reference $CLAUDE_PROJECT_DIR instead of SCRIPT_DIR.
+run_hook_with_project_dir() {
+  local hook_name="$1"
+  local input="$2"
+  prepare_hook "$hook_name"
+  echo "$input" | CLAUDE_PROJECT_DIR="$TEST_TMPDIR" bash "$TEST_TMPDIR/$hook_name"
+}
+
+# Run a hook with CLAUDE_PROJECT_DIR unset.
+# Usage: run_hook_without_project_dir "log-agent-start.sh" "$json_input"
+run_hook_without_project_dir() {
+  local hook_name="$1"
+  local input="$2"
+  prepare_hook "$hook_name"
+  echo "$input" | env -u CLAUDE_PROJECT_DIR -u CURSOR_PROJECT_DIR bash "$TEST_TMPDIR/$hook_name"
 }
