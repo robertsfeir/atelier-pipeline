@@ -1,8 +1,31 @@
 # Atelier Pipeline -- Technical Reference
 
-Version: 3.15.0
+Version: 3.17.0
 
-This document is the comprehensive technical reference for the atelier-pipeline plugin. It covers plugin architecture, agent system design, orchestration logic, brain infrastructure, and customization points. The pipeline runs on both Claude Code and Cursor. For usage-oriented documentation, see [the user guide](user-guide.md).
+This document is the comprehensive technical reference for the atelier-pipeline plugin. It covers plugin architecture, agent system design, orchestration logic, brain infrastructure, and customization points. The pipeline runs on both Claude Code and Cursor with near-complete feature parity. For usage-oriented documentation, see [the user guide](user-guide.md).
+
+---
+
+## Platform Differences
+
+| Feature | Claude Code | Cursor |
+|---------|------------|--------|
+| Agent Teams (parallel wave execution) | Yes (experimental) | Not available |
+| Distributed routing (Agent spawning by Cal/Colby) | Yes | Not available |
+| Telemetry hydration | Automatic (SessionStart) + manual | Automatic (SessionStart) + manual |
+| Worktrees | Yes | Not available |
+| Hook enforcement | Full (10 hooks) | Full (10 hooks) |
+| Brain integration | Full | Full |
+| All 13 agents | Full | Full |
+| Installed file directory | `.claude/` | `.cursor/` |
+| Rules file extension | `.md` | `.mdc` (with frontmatter) |
+| Project env variable | `$CLAUDE_PROJECT_DIR` | `$CURSOR_PROJECT_DIR` |
+| Plugin root env variable | `$CLAUDE_PLUGIN_ROOT` | `$CURSOR_PLUGIN_ROOT` |
+| Project instructions file | `CLAUDE.md` | `AGENTS.md` |
+| Settings file | `.claude/settings.json` | `.cursor/settings.json` |
+| Plugin metadata location | `.claude-plugin/plugin.json` | `.cursor-plugin/plugin.json` |
+
+Throughout this document, paths like `.claude/` refer to `.cursor/` on Cursor, and `$CLAUDE_PROJECT_DIR` refers to `$CURSOR_PROJECT_DIR` on Cursor, unless explicitly noted otherwise.
 
 ---
 
@@ -42,19 +65,19 @@ This document is the comprehensive technical reference for the atelier-pipeline 
 
 ## Plugin Architecture
 
-Atelier Pipeline is a plugin for Claude Code and Cursor distributed via the Claude Code plugin marketplace. It consists of two subsystems:
+Atelier Pipeline is a plugin for Claude Code and Cursor distributed via the plugin marketplace. It consists of two subsystems:
 
-1. **Multi-agent orchestration** -- template files installed into the target project's `.claude/` and `docs/pipeline/` directories. These define agent personas, slash commands, quality references, and state files.
+1. **Multi-agent orchestration** -- template files installed into the target project's `.claude/` (Claude Code) or `.cursor/` (Cursor) directory, plus `docs/pipeline/`. These define agent personas, slash commands, quality references, and state files.
 2. **Atelier Brain** -- an MCP server (`brain/server.mjs`) that runs as a sidecar, providing persistent institutional memory backed by PostgreSQL and vector embeddings.
 
-The plugin itself lives in the Claude Code plugin directory (typically `~/.claude/plugins/atelier-pipeline/`). The plugin metadata is in `.claude-plugin/plugin.json`.
+The plugin itself lives in the IDE's plugin directory. On Claude Code, this is typically `~/.claude/plugins/atelier-pipeline/`. Plugin metadata is in `.claude-plugin/plugin.json` (Claude Code) or `.cursor-plugin/plugin.json` (Cursor).
 
 ### Plugin-Level Files (stay in the plugin directory)
 
 ```
 atelier-pipeline/                         # Plugin root (CLAUDE_PLUGIN_ROOT)
   .claude-plugin/
-    plugin.json                           # Plugin metadata, hooks, version (3.15.0)
+    plugin.json                           # Plugin metadata, hooks, version
   source/                                 # Template files -- copied to target project
     rules/
       default-persona.md
@@ -116,30 +139,30 @@ atelier-pipeline/                         # Plugin root (CLAUDE_PLUGIN_ROOT)
 
 ### Hooks
 
-The plugin registers a `SessionStart` hook in `plugin.json` that runs three commands on every Claude Code session start:
+The plugin registers a `SessionStart` hook in `plugin.json` that runs three commands on every session start (both Claude Code and Cursor):
 
 1. **Dependency install** -- runs `npm install` in the `brain/` directory if `node_modules` does not exist.
-2. **Update check** -- runs `scripts/check-updates.sh` to compare the installed template version (`.claude/.atelier-version`) against the current plugin version. If they differ, it notifies the user that pipeline files may be outdated.
-3. **Telemetry hydration** -- runs `brain/scripts/hydrate-telemetry.mjs` in `--silent` mode to capture per-agent telemetry from any new session JSONL files into the brain. Errors are suppressed (`2>/dev/null || true`) so hydration never blocks session startup.
+2. **Update check** -- runs `scripts/check-updates.sh` to compare the installed template version (`.claude/.atelier-version` or `.cursor/.atelier-version`) against the current plugin version. If they differ, it notifies the user that pipeline files may be outdated.
+3. **Telemetry hydration** -- runs `brain/scripts/hydrate-telemetry.mjs` in `--silent` mode to capture per-agent telemetry from any new session JSONL files into the brain. Uses `$CLAUDE_PROJECT_DIR` (Claude Code) or `$CURSOR_PROJECT_DIR` (Cursor) to locate the project. Errors are suppressed (`2>/dev/null || true`) so hydration never blocks session startup.
 
 ---
 
 ## File Tree -- What Lives Where
 
-After running `/pipeline-setup`, 41 mandatory files are installed into the target project (plus optional agent files). The plugin templates remain in the plugin directory and are never modified.
+After running `/pipeline-setup`, 41 mandatory files are installed into the target project (plus optional agent files). The plugin templates remain in the plugin directory and are never modified. Files install into `.claude/` (Claude Code) or `.cursor/` (Cursor).
 
 ### Target Project (installed by /pipeline-setup)
 
 ```
 your-project/
-  .claude/
+  .claude/ (or .cursor/)
     .atelier-version                      # Plugin version marker for update detection
-    rules/                                # Always loaded by Claude Code
-      default-persona.md                  # Eva orchestrator persona (identity)
-      agent-system.md                     # Orchestration rules, routing (identity)
-      pipeline-orchestration.md           # Mandatory gates, triage, wave execution (path-scoped: docs/pipeline/**)
-      pipeline-models.md                  # Model selection, Micro tier, complexity classifier (path-scoped: docs/pipeline/**)
-      branch-lifecycle.md                 # Branch lifecycle rules for selected strategy (path-scoped: docs/pipeline/**)
+    rules/                                # Always loaded by the IDE
+      default-persona.md (.mdc on Cursor) # Eva orchestrator persona (identity)
+      agent-system.md (.mdc on Cursor)    # Orchestration rules, routing (identity)
+      pipeline-orchestration.md (.mdc)    # Mandatory gates, triage, wave execution (path-scoped: docs/pipeline/**)
+      pipeline-models.md (.mdc)           # Model selection, Micro tier, complexity classifier (path-scoped: docs/pipeline/**)
+      branch-lifecycle.md (.mdc)          # Branch lifecycle rules for selected strategy (path-scoped: docs/pipeline/**)
     agents/                               # Loaded when subagents are invoked
       cal.md                              # Architect
       colby.md                            # Engineer
@@ -185,7 +208,7 @@ your-project/
       last-qa-report.md                   # Roz's most recent QA report
 ```
 
-**Total: 41 mandatory files across 7 directories, plus the `.atelier-version` marker and an update to `CLAUDE.md`.** The `telemetry-metrics.md` reference file (v3.8) provides metric schemas, cost estimation tables, and degradation alert thresholds. Optional files: Sentinel persona (`sentinel.md`, Step 6a), Deps persona + command (`deps.md`, Step 6d).
+**Total: 41 mandatory files across 7 directories, plus the `.atelier-version` marker and an update to `CLAUDE.md` (Claude Code) or `AGENTS.md` (Cursor).** The `telemetry-metrics.md` reference file provides metric schemas, cost estimation tables, and degradation alert thresholds. Optional files: Sentinel persona (`sentinel.md`, Step 6a), Deps persona + command (`deps.md`, Step 6d).
 
 ### What Does NOT Live on Disk
 
@@ -197,41 +220,41 @@ your-project/
 
 ## Loading Mechanics -- What Loads When
 
-Claude Code has specific loading behaviors for each directory under `.claude/`:
+Both Claude Code and Cursor have specific loading behaviors for each directory under `.claude/` (or `.cursor/`):
 
 | Directory | When Loaded | Loaded By | Scope |
 |-----------|-------------|-----------|-------|
-| `.claude/rules/` | **Every conversation**, automatically | Claude Code runtime | Global -- all messages see these files |
-| `.claude/agents/` | When a subagent is invoked via the Agent tool | Claude Code Agent tool | Per-subagent -- only the invoked agent's file |
-| `.claude/commands/` | When the user types a `/command` | Claude Code command system | Per-command -- only the triggered command's file |
-| `.claude/references/` | On demand, when an agent reads them | Agents via `Read` tool | Per-read -- loaded just-in-time |
+| `rules/` | **Every conversation**, automatically | IDE runtime | Global -- all messages see these files |
+| `agents/` | When a subagent is invoked via the Agent tool | IDE Agent tool | Per-subagent -- only the invoked agent's file |
+| `commands/` | When the user types a `/command` | IDE command system | Per-command -- only the triggered command's file |
+| `references/` | On demand, when an agent reads them | Agents via `Read` tool | Per-read -- loaded just-in-time |
 | `docs/pipeline/` | At session start by Eva, during pipeline | Eva via `Read` tool | Per-read |
 
-**Critical implication:** `default-persona.md` and `agent-system.md` are always in context. This is why Eva is the default persona -- she is present in every conversation whether or not `/pipeline` is invoked. All other files are loaded only when needed, keeping context usage efficient.
+**Critical implication:** `default-persona.md` (or `.mdc` on Cursor) and `agent-system.md` are always in context. This is why Eva is the default persona -- she is present in every conversation whether or not `/pipeline` is invoked. All other files are loaded only when needed, keeping context usage efficient.
 
-**Eva's always-loaded context** consists of exactly three files: `default-persona.md`, `agent-system.md`, and `CLAUDE.md`. She does NOT pre-load `CONVENTIONS.md`, `dor-dod.md`, or `retro-lessons.md` -- those are subagent concerns.
+**Eva's always-loaded context** consists of exactly three files: `default-persona.md`, `agent-system.md`, and `CLAUDE.md` (Claude Code) or `AGENTS.md` (Cursor). She does NOT pre-load `CONVENTIONS.md`, `dor-dod.md`, or `retro-lessons.md` -- those are subagent concerns.
 
 ### Path-Scoped Rules (Identity vs. Operations Split)
 
 Eva's rules are split into two categories to stay under Anthropic's recommended ~200 lines per rules file:
 
-**Identity files** (always-loaded via `.claude/rules/`):
-- `default-persona.md` -- who Eva is, what she never does, session boot sequence
-- `agent-system.md` -- architecture, agent tables, routing, sizing, invocation template
+**Identity files** (always-loaded via `rules/`):
+- `default-persona.md` (`.mdc` on Cursor) -- who Eva is, what she never does, session boot sequence
+- `agent-system.md` (`.mdc` on Cursor) -- architecture, agent tables, routing, sizing, invocation template
 
 **Operations files** (path-scoped via YAML frontmatter):
-- `pipeline-orchestration.md` -- mandatory gates, brain capture model, wave execution, observation masking, investigation discipline, agent standards, review juncture, reconciliation. Uses just-in-time (JIT) section loading: sections marked `[ALWAYS]` load at pipeline activation; sections marked `[JIT]` load only when their trigger condition is met (e.g., investigation discipline loads only when a debug flow is entered). Eva reads section headers to know what exists without loading every section at activation.
-- `pipeline-models.md` -- universal scope classifier, size-dependent model tables, Agatha doc-type model, enforcement rules
-- `branch-lifecycle.md` -- branching strategy lifecycle rules (selected variant only: trunk-based, github-flow, gitlab-flow, or gitflow)
+- `pipeline-orchestration.md` (`.mdc` on Cursor) -- mandatory gates, brain capture model, wave execution, observation masking, investigation discipline, agent standards, review juncture, reconciliation. Uses just-in-time (JIT) section loading: sections marked `[ALWAYS]` load at pipeline activation; sections marked `[JIT]` load only when their trigger condition is met (e.g., investigation discipline loads only when a debug flow is entered). Eva reads section headers to know what exists without loading every section at activation.
+- `pipeline-models.md` (`.mdc` on Cursor) -- universal scope classifier, size-dependent model tables, Agatha doc-type model, enforcement rules
+- `branch-lifecycle.md` (`.mdc` on Cursor) -- branching strategy lifecycle rules (selected variant only: trunk-based, github-flow, gitlab-flow, or gitflow)
 
-Operations files use a `paths: ["docs/pipeline/**"]` frontmatter declaration. Claude Code loads them automatically when any file matching that glob is read. Since Eva's boot sequence reads `docs/pipeline/pipeline-state.md` on every session with an active pipeline, the operational rules load exactly when needed.
+Operations files use a `paths: ["docs/pipeline/**"]` frontmatter declaration (or the Cursor equivalent `globs: ["docs/pipeline/**"]`). The IDE loads them automatically when any file matching that glob is read. Since Eva's boot sequence reads `docs/pipeline/pipeline-state.md` on every session with an active pipeline, the operational rules load exactly when needed.
 
 **Why this matters:**
-- **Compaction resilience.** Rules files are re-injected from disk after `/compact`. Content loaded via the Read tool gets summarized (potentially lossy). For mandatory gates and triage logic, lossy summarization is unacceptable.
+- **Compaction resilience.** Rules files are re-injected from disk after compaction on both Claude Code and Cursor. Content loaded via the Read tool gets summarized (potentially lossy). For mandatory gates and triage logic, lossy summarization is unacceptable.
 - **Context efficiency.** Casual Eva (no active pipeline) carries only identity + routing (~350 lines). Active-pipeline Eva gets the full operational ruleset (~430 additional lines) loaded on demand.
 - **Feature isolation.** New pipeline features (wave execution, triage matrix, model routing) land in the operations files, not the always-loaded identity files.
 
-### XML Tag Structure (v2.4 -- ADR-0006)
+### XML Tag Structure (ADR-0006)
 
 All agent-facing instruction files use semantic XML tags per Anthropic's recommendation. Tags wrap logical sections that benefit from unambiguous boundaries: gates, protocols, routing tables, operation blocks. Short, self-contained sections that are already clear from their `##` headers do not need wrapping.
 
@@ -254,9 +277,9 @@ The full tag vocabulary is documented in `.claude/references/xml-prompt-schema.m
 
 The system uses a hybrid architecture with two execution modes:
 
-**Skills** run in the main Claude Code thread. They are conversational, support back-and-forth with the user, and share the main context window. When Eva adopts a skill persona (e.g., Robert for `/pm`), she reads the command file and behaves as that agent within the main thread.
+**Skills** run in the main IDE thread (Claude Code or Cursor). They are conversational, support back-and-forth with the user, and share the main context window. When Eva adopts a skill persona (e.g., Robert for `/pm`), she reads the command file and behaves as that agent within the main thread.
 
-**Subagents** run in their own context windows via Claude Code's Agent tool. They receive focused prompts, execute their task, and return results. Their context window is isolated -- they cannot see what other agents produced unless Eva includes it in their invocation prompt.
+**Subagents** run in their own context windows via the IDE's Agent tool. They receive focused prompts, execute their task, and return results. Their context window is isolated -- they cannot see what other agents produced unless Eva includes it in their invocation prompt.
 
 Some agents operate in both modes:
 - **Robert**: skill mode for spec authoring (`/pm`), subagent mode for product acceptance review
@@ -266,7 +289,7 @@ Some agents operate in both modes:
 
 ### Custom Commands Are Not Skills
 
-The slash commands (`/pm`, `/ux`, `/docs`, `/architect`, `/debug`, `/pipeline`, `/devops`) are **custom agent persona commands**, not Claude Code skills. The `Skill` tool must not be invoked for them. When the user types one, Eva reads the corresponding `.claude/commands/*.md` file and adopts that agent's persona. This distinction matters because skills use the `Skill` tool invocation path, while custom commands trigger persona adoption in the main thread.
+The slash commands (`/pm`, `/ux`, `/docs`, `/architect`, `/debug`, `/pipeline`, `/devops`) are **custom agent persona commands**, not IDE skills. The `Skill` tool must not be invoked for them. When the user types one, Eva reads the corresponding `commands/*.md` file (from `.claude/commands/` or `.cursor/commands/`) and adopts that agent's persona. This distinction matters because skills use the `Skill` tool invocation path, while custom commands trigger persona adoption in the main thread.
 
 The eight actual plugin skills (`/pipeline-setup`, `/pipeline-uninstall`, `/pipeline-overview`, `/brain-setup`, `/brain-uninstall`, `/brain-hydrate`, `/dashboard`, `/telemetry-hydrate`) live in the plugin's `skills/` directory and are invoked through the `Skill` tool.
 
@@ -315,7 +338,7 @@ Most agent persona files use `disallowedTools` (denylist) in their frontmatter. 
 | **Darwin** | Write/Edit/MultiEdit any file. Implement proposals directly (Colby implements). Touch the brain directly (Eva captures proposals). Auto-approve proposals without user review. Reuse a `darwin_proposal_id` that already exists in the brain (each proposal is unique). |
 | **Ellis** | Commit without QA passing. Use generic commit messages. Commit without user approval. Use `git add -A` or `git add .`. |
 
-### Cal: ADR Production Requirements (v2.4)
+### Cal: ADR Production Requirements
 
 Every ADR Cal produces must include these sections:
 
@@ -327,7 +350,7 @@ Every ADR Cal produces must include these sections:
 
 **Telemetry per step.** Each ADR implementation step specifies what log line, metric, or event proves the step succeeded in production. Format: "Telemetry: [what]. Trigger: [when emitted]. Absence means: [failure mode]." Purely structural steps (file moves, renames) may omit this.
 
-### Colby: Build Mode Requirements (v2.4)
+### Colby: Build Mode Requirements
 
 **Retrieval-led reasoning.** Colby reads actual project files before writing implementation. She never assumes code structure from the ADR alone, never guesses at function signatures, and does not rely on training-data patterns when the local codebase has an established convention. CLAUDE.md and the local project are primary sources; training data is a fallback.
 
@@ -348,7 +371,7 @@ Every agent persona file declares four standard fields in its YAML frontmatter. 
 
 **`model` vs `pipeline-models.md`:** The frontmatter `model` field is the base/default. Eva always runs the universal scope classifier from `pipeline-models.md` before every invocation and sets the model parameter explicitly in the Agent tool call. The classifier result can promote an agent from its base model to Opus. On Large pipelines, all agents run at Opus regardless of frontmatter. Eva is required to set the model parameter explicitly in every invocation -- omitting it is a violation even if the frontmatter declares a default.
 
-**Distributed routing (Cal and Colby):** Instead of `disallowedTools`, Cal and Colby declare an explicit `tools` allowlist with scoped `Agent(...)` entries. All other 10 agents use `disallowedTools: Agent` (or its equivalent denylist) and cannot spawn subagents.
+**Distributed routing (Cal and Colby, Claude Code only):** Instead of `disallowedTools`, Cal and Colby declare an explicit `tools` allowlist with scoped `Agent(...)` entries. All other 10 agents use `disallowedTools: Agent` (or its equivalent denylist) and cannot spawn subagents. Distributed routing is available on Claude Code only. On Cursor, Eva routes all agent invocations centrally.
 
 ---
 
@@ -390,8 +413,8 @@ Eva runs this sequence on every new session:
 2. Read `docs/pipeline/context-brief.md` -- verify it matches pipeline-state's feature (stale = reset)
 3. Scan `docs/pipeline/error-patterns.md` -- note entries with recurrence count >= 3 for WARN injection
 3b. Read branching strategy from `.claude/pipeline-config.json`. Announce strategy.
-3c. Discover custom agents -- scan `.claude/agents/` for non-core persona files. Compare against core agent constant (cal, colby, roz, ellis, agatha, robert, sable, investigator, distillator). Announce discovered agents.
-3d. Detect Agent Teams availability -- read `agent_teams_enabled` from config. If `true`, check `CLAUDE_AGENT_TEAMS` env var. Both must pass for `agent_teams_available: true`.
+3c. Discover custom agents -- scan `.claude/agents/` (Claude Code) or `.cursor/agents/` (Cursor) for non-core persona files. Compare against core agent constant (cal, colby, roz, ellis, agatha, robert, sable, investigator, distillator). Announce discovered agents.
+3d. Detect Agent Teams availability -- read `agent_teams_enabled` from config. If `true`, check `CLAUDE_AGENT_TEAMS` env var. Both must pass for `agent_teams_available: true`. On Cursor, Agent Teams is not available regardless of config.
 4. Brain health check -- call `atelier_stats`. Two gates: tool available? returns `brain_enabled: true`? Both pass = `brain_available: true`
 5. Brain context retrieval (if available) -- call `agent_search` with query from current feature area. Also search for seed thoughts matching current feature.
 6. Announce session state to user (including brain status, custom agent count, Agent Teams status)
@@ -669,7 +692,7 @@ This ensures lessons are both version-controlled and brain-searchable. Agents se
 
 ### Cross-Layer Wiring Enforcement
 
-A recurring pattern where Colby built strong backends but forgot to wire frontend consumers led to four structural safeguards (v3.3.0):
+A recurring pattern where Colby built strong backends but forgot to wire frontend consumers led to four structural safeguards:
 
 1. **Cal: Vertical slice design.** ADR steps must include both producer (API/store) and consumer (UI/caller) in the same step. A new Hard Gate (#4) rejects plans with orphan producers. A Wiring Coverage section maps every endpoint to its consumer.
 2. **Colby: Contract artifacts.** DoD includes Contracts Produced and Contracts Consumed tables documenting exact response shapes. Eva injects prior step's contracts into downstream invocations.
@@ -918,7 +941,7 @@ Eva manages context aggressively to prevent context window exhaustion:
 
 Between major phases, subagent sessions start fresh. Within Colby+Roz interleaving, each unit is a separate subagent invocation with fresh context. Eva never carries Roz reports in her context -- she reads the verdict (PASS/FAIL + blockers), not the full report.
 
-### Context Cleanup Advisory (v3.6)
+### Context Cleanup Advisory
 
 Server-side compaction (Compaction API) manages Eva's context window automatically during long pipeline sessions. Eva no longer counts agent handoffs or estimates context usage percentage -- the Compaction API handles context management transparently.
 
@@ -936,16 +959,16 @@ The PreCompact hook (`pre-compact.sh`) appends a timestamped `<!-- COMPACTION: .
 
 ### /pipeline-setup
 
-The `pipeline-setup` skill is conversational. All files it installs are project-local (inside the project directory), committed to git, and shared with team members when they clone the repository. Nothing is written to `~/.claude/` or other user-level locations. The plugin itself (installed via `claude plugin add`) is user-level, but the project files it generates are project-level.
+The `pipeline-setup` skill is conversational and works identically on Claude Code and Cursor. All files it installs are project-local (inside the project directory), committed to git, and shared with team members when they clone the repository. Nothing is written to `~/.claude/` (Claude Code) or `~/.cursor/` (Cursor) or other user-level locations. The plugin itself is user-level, but the project files it generates are project-level.
 
 The skill:
 
 1. **Gathers project information** one question at a time: tech stack, test framework, test commands, source structure, database patterns, build/deploy commands, coverage thresholds, complexity limits, and branching strategy.
 2. **Reads template files** from `source/` in the plugin directory.
 3. **Copies ~45 files** to the target project (28 template files + 3 path-scoped rules + 10 enforcement hooks + 1 branching config + 1 branching variant + settings + version marker), replacing placeholders with project-specific values. The branching strategy variant file is selected from `source/variants/` and installed as `.claude/rules/branch-lifecycle.md`. Optional: Sentinel persona (`sentinel.md`, Step 6a), Deps agent persona + command (`deps.md`, Step 6d).
-4. **Customizes enforcement hooks** in `.claude/hooks/` -- sets project-specific paths and test commands in `enforcement-config.json`, registers hooks in `.claude/settings.json`, and makes scripts executable. After copying and customizing, setup validates `enforcement-config.json` by checking that all required fields are present and non-empty: `pipeline_state_dir`, `architecture_dir`, `product_specs_dir`, `ux_docs_dir`, `test_command`, `test_patterns`. An absent or empty `lint_command` produces a note (not a blocker). Validation failure prints a warning but does not block installation.
-5. **Writes version marker** to `.claude/.atelier-version` for update detection.
-6. **Updates `CLAUDE.md`** with a pipeline section.
+4. **Customizes enforcement hooks** in the project's hooks directory (`.claude/hooks/` or `.cursor/hooks/`) -- sets project-specific paths and test commands in `enforcement-config.json`, registers hooks in the settings file (`.claude/settings.json` or `.cursor/settings.json`), and makes scripts executable. After copying and customizing, setup validates `enforcement-config.json` by checking that all required fields are present and non-empty: `pipeline_state_dir`, `architecture_dir`, `product_specs_dir`, `ux_docs_dir`, `test_command`, `test_patterns`. An absent or empty `lint_command` produces a note (not a blocker). Validation failure prints a warning but does not block installation.
+5. **Writes version marker** to `.claude/.atelier-version` (Claude Code) or `.cursor/.atelier-version` (Cursor) for update detection.
+6. **Updates `CLAUDE.md`** (Claude Code) or **`AGENTS.md`** (Cursor) with a pipeline section.
 7. **Offers brain setup** at the end.
 
 Placeholder replacement:
@@ -1113,7 +1136,7 @@ Only these two files are modified during reconfig.
 
 ### Overview
 
-The enforcement hooks are shell scripts registered as Claude Code PreToolUse hooks. They run automatically on every tool invocation and mechanically enforce agent boundaries that persona instructions describe but cannot guarantee. Behavioral guidance tells agents what to do; hooks ensure they cannot do what they should not.
+The enforcement hooks are shell scripts registered as PreToolUse hooks on both Claude Code and Cursor. They run automatically on every tool invocation and mechanically enforce agent boundaries that persona instructions describe but cannot guarantee. Behavioral guidance tells agents what to do; hooks ensure they cannot do what they should not.
 
 The PreToolUse scripts require `jq` for JSON parsing. If `jq` is not installed, the hooks degrade gracefully (exit 0, allowing the action) rather than blocking all tool calls.
 
@@ -1134,7 +1157,7 @@ The PreToolUse scripts require `jq` for JSON parsing. If `jq` is not installed, 
 
 ### How Hooks Identify the Caller
 
-Claude Code passes a JSON payload to each hook via stdin. Two fields identify who is calling:
+The IDE (Claude Code or Cursor) passes a JSON payload to each hook via stdin. Two fields identify who is calling:
 
 - **`agent_type`** -- the subagent's frontmatter name (e.g., `colby`, `roz`, `ellis`, `cal`, `agatha`). Empty string for the main thread.
 - **`agent_id`** -- a unique identifier for the subagent instance. Empty string for the main thread.
@@ -1155,7 +1178,7 @@ This hook intercepts every Write, Edit, and MultiEdit call and checks the target
 | **Agatha** (`agatha`) | `docs/` | Source code, config files |
 | **All other agents** (Poirot, Distillator, Robert-subagent, Sable-subagent) | None (read-only) | Everything -- their `disallowedTools` already blocks writes, this is a safety net |
 
-**The main thread limitation.** Eva, Robert-skill, and Sable-skill share the main Claude Code thread. The hook cannot distinguish between them because all three have an empty `agent_type`. The solution is to allow all three agents' write directories: `docs/pipeline/` (Eva), `docs/product/` (Robert-skill), and `docs/ux/` (Sable-skill). This is a pragmatic trade-off -- the alternative would be blocking legitimate writes from one of the three.
+**The main thread limitation.** Eva, Robert-skill, and Sable-skill share the main IDE thread. The hook cannot distinguish between them because all three have an empty `agent_type`. The solution is to allow all three agents' write directories: `docs/pipeline/` (Eva), `docs/product/` (Robert-skill), and `docs/ux/` (Sable-skill). This is a pragmatic trade-off -- the alternative would be blocking legitimate writes from one of the three.
 
 Test files are identified by patterns configured in `enforcement-config.json` (e.g., `.test.`, `.spec.`, `/tests/`, `/__tests__/`, `conftest`). These patterns are customized during `/pipeline-setup` to match the project's test file conventions.
 
@@ -1167,9 +1190,9 @@ This hook intercepts Agent tool calls from the main thread and enforces three ma
 
 **Gate 2 -- Agatha blocked during build phase.** Eva cannot invoke Agatha (or `agatha`) while `pipeline-state.md` indicates the current phase is `build` or `implement`. Agatha writes docs after Roz's final sweep against verified code, not during active construction.
 
-**Gate 3 -- Ellis requires telemetry capture (v3.9).** During an active non-Micro pipeline, Eva cannot invoke Ellis unless the `PIPELINE_STATUS` JSON marker has `telemetry_captured` set to `"true"`. Eva must capture T3 telemetry before committing to ensure quality metrics (rework rate, first-pass QA, EvoScore) are never lost. Exempt when `sizing` is `"micro"`, when `ci_watch_active` is `"true"` (CI Watch fix cycles have their own flow), or when `sizing` is absent (fail-open when pipeline size is unknown).
+**Gate 3 -- Ellis requires telemetry capture.** During an active non-Micro pipeline, Eva cannot invoke Ellis unless the `PIPELINE_STATUS` JSON marker has `telemetry_captured` set to `"true"`. Eva must capture T3 telemetry before committing to ensure quality metrics (rework rate, first-pass QA, EvoScore) are never lost. Exempt when `sizing` is `"micro"`, when `ci_watch_active` is `"true"` (CI Watch fix cycles have their own flow), or when `sizing` is absent (fail-open when pipeline size is unknown).
 
-The hook only enforces from the main thread (empty `agent_id`). Most subagents cannot invoke other subagents because the Agent tool is in their `disallowedTools` list. Cal and Colby are the only exceptions: they use explicit `tools` allowlists that include scoped `Agent(...)` access. The `Agent(roz)` and `Agent(roz, cal)` grants are mechanically enforced by the Claude Code runtime, so Cal and Colby can only spawn the agents named in their allowlist -- they cannot invoke each other arbitrarily or reach Ellis, Poirot, or any other agent. Eva's wave-level gates, phase transitions, and mandatory gates are unaffected by this tactical autonomy.
+The hook only enforces from the main thread (empty `agent_id`). Most subagents cannot invoke other subagents because the Agent tool is in their `disallowedTools` list. Cal and Colby are the only exceptions on Claude Code: they use explicit `tools` allowlists that include scoped `Agent(...)` access. The `Agent(roz)` and `Agent(roz, cal)` grants are mechanically enforced by the Claude Code runtime, so Cal and Colby can only spawn the agents named in their allowlist -- they cannot invoke each other arbitrarily or reach Ellis, Poirot, or any other agent. On Cursor, distributed routing is not available, so Eva routes all agent invocations centrally. Eva's wave-level gates, phase transitions, and mandatory gates are unaffected by this difference.
 
 ### Git Operation Guard (`enforce-git.sh`)
 
@@ -1177,7 +1200,7 @@ This hook intercepts Bash tool calls from the main thread and blocks git write o
 
 Ellis, running as a subagent (non-empty `agent_id`), is not affected by this hook. This ensures that all code commits flow through Ellis, who applies Conventional Commits formatting and verifies QA status.
 
-**Performance optimization.** This hook has an `if` conditional in `settings.json`: `"if": "tool_input.command.includes('git ')"`. Claude Code evaluates this expression before spawning the hook process, skipping the vast majority of Bash calls that contain no git commands. When the `if` condition passes, the full script runs and enforces both git and test command checks.
+**Performance optimization.** This hook has an `if` conditional in `settings.json`: `"if": "tool_input.command.includes('git ')"`. The IDE evaluates this expression before spawning the hook process, skipping the vast majority of Bash calls that contain no git commands. When the `if` condition passes, the full script runs and enforces both git and test command checks.
 
 ### Pipeline Activation Guard (`enforce-pipeline-activation.sh`)
 
@@ -1187,11 +1210,11 @@ This hook intercepts Agent tool calls from the main thread and blocks invocation
 
 This hook fires on SubagentStop and checks Colby and Roz output for `## DoR` and `## DoD` section headers. When either section is missing, it emits a warning on stderr. This hook is advisory only -- it never blocks (exit 0 always). Eva's DoR/DoD gate is the primary enforcement; this hook is a safety net.
 
-**Performance optimization.** This hook has an `if` conditional in `settings.json`: `"if": "agent_type == 'colby' || agent_type == 'roz'"`. Claude Code evaluates this expression before spawning the hook process, so the script only runs for Colby and Roz completions rather than every subagent stop event.
+**Performance optimization.** This hook has an `if` conditional in `settings.json`: `"if": "agent_type == 'colby' || agent_type == 'roz'"`. The IDE evaluates this expression before spawning the hook process, so the script only runs for Colby and Roz completions rather than every subagent stop event.
 
 ### Agent Start Telemetry (`log-agent-start.sh`)
 
-This hook fires on SubagentStart and appends a JSON line to `.claude/telemetry/session-hooks.jsonl` with the event type (`start`), `agent_type`, `agent_id`, `session_id`, and an ISO 8601 timestamp. It is a non-enforcement hook (exit 0 always) and does not require `jq` -- it falls back to `grep`/`sed` parsing when `jq` is unavailable. Requires `CLAUDE_PROJECT_DIR` (or `CURSOR_PROJECT_DIR`) to locate the telemetry directory.
+This hook fires on SubagentStart and appends a JSON line to the telemetry JSONL file (`.claude/telemetry/session-hooks.jsonl` on Claude Code, `.cursor/telemetry/session-hooks.jsonl` on Cursor) with the event type (`start`), `agent_type`, `agent_id`, `session_id`, and an ISO 8601 timestamp. It is a non-enforcement hook (exit 0 always) and does not require `jq` -- it falls back to `grep`/`sed` parsing when `jq` is unavailable. Uses `$CLAUDE_PROJECT_DIR` (Claude Code) or `$CURSOR_PROJECT_DIR` (Cursor) to locate the telemetry directory.
 
 ### Agent Stop Telemetry (`log-agent-stop.sh`)
 
@@ -1207,7 +1230,7 @@ This hook fires on StopFailure (when an agent turn ends due to an API error) and
 
 ### Configuration (`enforcement-config.json`)
 
-The configuration file lives at `.claude/hooks/enforcement-config.json` and is customized during `/pipeline-setup` with project-specific values:
+The configuration file lives at `.claude/hooks/enforcement-config.json` (Claude Code) or `.cursor/hooks/enforcement-config.json` (Cursor) and is customized during `/pipeline-setup` with project-specific values:
 
 ```json
 {
@@ -1239,9 +1262,11 @@ The configuration file lives at `.claude/hooks/enforcement-config.json` and is c
 | `test_command` | Roz (QA verification) | Full test suite command (e.g., `npm test`, `pytest`). Used by Roz for QA verification. |
 | `test_patterns` | `enforce-paths.sh` | Patterns identifying test files for Roz's write boundary |
 
-### Hook Registration in `.claude/settings.json`
+### Hook Registration
 
-`/pipeline-setup` merges the hook registration into the project's `.claude/settings.json`:
+`/pipeline-setup` merges the hook registration into the project's settings file. The format is the same on both platforms, but uses the platform-appropriate project directory variable.
+
+**Claude Code** (`.claude/settings.json`, uses `$CLAUDE_PROJECT_DIR`):
 
 ```json
 {
@@ -1295,7 +1320,9 @@ The configuration file lives at `.claude/hooks/enforcement-config.json` and is c
 }
 ```
 
-Each matcher determines which tool invocations trigger the hook. The pipe-separated `Write|Edit|MultiEdit` matcher fires `enforce-paths.sh` on any file write operation. The `"if"` property is a JavaScript expression evaluated by Claude Code before spawning the hook process -- when it evaluates to false, the hook is skipped entirely, reducing overhead on high-frequency tool calls. Existing settings in the file are preserved during the merge.
+**Cursor** (`.cursor/settings.json`, uses `$CURSOR_PROJECT_DIR`): Identical structure with `$CURSOR_PROJECT_DIR` and `.cursor/hooks/` paths instead.
+
+Each matcher determines which tool invocations trigger the hook. The pipe-separated `Write|Edit|MultiEdit` matcher fires `enforce-paths.sh` on any file write operation. The `"if"` property is a JavaScript expression evaluated by the IDE before spawning the hook process -- when it evaluates to false, the hook is skipped entirely, reducing overhead on high-frequency tool calls. Existing settings in the file are preserved during the merge.
 
 ### Blocking vs. Non-Blocking
 
@@ -1306,7 +1333,7 @@ Hooks signal their result via exit code:
 
 The four PreToolUse hooks (`enforce-paths.sh`, `enforce-sequencing.sh`, `enforce-git.sh`, `enforce-pipeline-activation.sh`) exit 2 on violations. The SubagentStop hook (`warn-dor-dod.sh`) exits 0 always -- it is advisory only and never blocks. The telemetry hooks (`log-agent-start.sh`, `log-agent-stop.sh`, `log-stop-failure.sh`) exit 0 always -- they are observability hooks, not gates. The compaction hooks (`pre-compact.sh`, `post-compact-reinject.sh`) exit 0 always -- they are side-effect hooks, not gates.
 
-The four PreToolUse hooks exit 0 immediately when `jq` is not installed, when the config file is missing, or when the tool call is not one they care about. This ensures the hooks never interfere with unrelated tool usage or with projects that have not yet run `/pipeline-setup`. The telemetry and compaction hooks do not require `jq` -- they fall back to `grep`/`sed` parsing when `jq` is unavailable.
+The four PreToolUse hooks exit 0 immediately when `jq` is not installed, when the config file is missing, or when the tool call is not one they care about. This ensures the hooks never interfere with unrelated tool usage or with projects that have not yet run `/pipeline-setup`. The telemetry and compaction hooks do not require `jq` -- they fall back to `grep`/`sed` parsing when `jq` is unavailable. All hooks work identically on Claude Code and Cursor.
 
 ---
 
@@ -1314,7 +1341,7 @@ The four PreToolUse hooks exit 0 immediately when `jq` is not installed, when th
 
 ### Overview
 
-Sentinel is an opt-in security audit agent backed by Semgrep MCP static analysis (v3.5). It operates under partial information asymmetry: Sentinel receives the diff and Semgrep scan results, but no spec, ADR, or UX doc. It evaluates security independently of what the code was "intended" to do.
+Sentinel is an opt-in security audit agent backed by Semgrep MCP static analysis. It operates under partial information asymmetry: Sentinel receives the diff and Semgrep scan results, but no spec, ADR, or UX doc. It evaluates security independently of what the code was "intended" to do.
 
 **Model:** Opus (fixed). **Pronouns:** they/them.
 
@@ -1365,7 +1392,9 @@ Sentinel does not touch the brain directly. Eva captures Sentinel findings post-
 
 ### Overview
 
-Agent Teams is an experimental feature (v3.5) that enables parallel wave execution during the Colby build phase using Claude Code's Agent Teams runtime. When multiple ADR steps within a wave are independent (no shared files), Eva creates Colby Teammate instances that execute those steps simultaneously.
+> **Claude Code only.** Agent Teams requires the Claude Code Agent Teams runtime. On Cursor, the pipeline always runs sequentially with identical output and quality gates.
+
+Agent Teams is an experimental feature that enables parallel wave execution during the Colby build phase using Claude Code's Agent Teams runtime. When multiple ADR steps within a wave are independent (no shared files), Eva creates Colby Teammate instances that execute those steps simultaneously.
 
 ### Activation (Two Gates)
 
@@ -1373,10 +1402,10 @@ Both gates must pass for `agent_teams_available: true`:
 
 | Gate | Source | Check |
 |------|--------|-------|
-| Config gate | `.claude/pipeline-config.json` | `agent_teams_enabled: true` (set during `/pipeline-setup` Step 6b) |
-| Environment gate | Shell environment | `CLAUDE_AGENT_TEAMS=1` (Claude Code feature flag) |
+| Config gate | `.claude/pipeline-config.json` (Claude Code) or `.cursor/pipeline-config.json` (Cursor) | `agent_teams_enabled: true` (set during `/pipeline-setup` Step 6b) |
+| Environment gate | Shell environment | `CLAUDE_AGENT_TEAMS=1` (Claude Code feature flag -- not available on Cursor) |
 
-Eva checks both gates at session boot (step 3d). If either fails, `agent_teams_available: false` and Eva uses sequential subagent invocation.
+Eva checks both gates at session boot (step 3d). If either fails, `agent_teams_available: false` and Eva uses sequential subagent invocation. On Cursor, the environment gate always fails, so Agent Teams is never active.
 
 ### Scope
 
@@ -1384,7 +1413,7 @@ Agent Teams applies exclusively to Colby build units within a wave. All other ag
 
 ### Teammate Identity
 
-Teammates are Colby instances. They load Colby's persona from `.claude/agents/colby.md` and match the `colby` case in `enforce-paths.sh` (full write access). No new persona file exists for Teammates.
+Teammates are Colby instances. They load Colby's persona from `.claude/agents/colby.md` (Claude Code) and match the `colby` case in `enforce-paths.sh` (full write access). No new persona file exists for Teammates.
 
 ### Task Lifecycle
 
@@ -1418,7 +1447,7 @@ When `agent_teams_available: false`, Eva falls back to sequential subagent invoc
 
 ### Overview
 
-CI Watch (v3.7) is an opt-in, session-scoped Eva orchestration protocol that monitors CI after Ellis pushes and autonomously drives a fix cycle on failure. It uses a background polling loop with short individual commands rather than long-running blocking processes, providing resilience across both GitHub Actions and GitLab CI.
+CI Watch is an opt-in, session-scoped Eva orchestration protocol that monitors CI after Ellis pushes and autonomously drives a fix cycle on failure. It uses a background polling loop with short individual commands rather than long-running blocking processes, providing resilience across both GitHub Actions and GitLab CI.
 
 Design rationale: ADR-0013. The polling approach (not `gh run watch`) was chosen for platform uniformity -- `glab` has no equivalent to `gh run watch` -- and for resilience against `run_in_background` timeout constraints.
 
@@ -1517,7 +1546,7 @@ This builds institutional memory for CI failure patterns. Eva can inject WARN co
 
 ### Overview
 
-The Deps agent (v3.8) is an opt-in, read-only dependency management agent that scans dependency manifests, checks CVEs via audit tools, predicts upgrade breakage by cross-referencing code usage against changelogs, and produces structured risk-grouped reports. It follows the Sentinel opt-in pattern: config flag, conditional install during setup, and auto-routing with a pre-flight gate.
+The Deps agent is an opt-in, read-only dependency management agent that scans dependency manifests, checks CVEs via audit tools, predicts upgrade breakage by cross-referencing code usage against changelogs, and produces structured risk-grouped reports. It follows the Sentinel opt-in pattern: config flag, conditional install during setup, and auto-routing with a pre-flight gate.
 
 Design rationale: ADR-0015. The agent is analysis-only -- it never modifies dependency files.
 
@@ -1621,7 +1650,7 @@ Deps does not touch the brain directly. Eva captures scan results post-invocatio
 
 ### Overview
 
-Darwin (v3.10) is an opt-in, read-only pipeline evolution agent. It analyzes telemetry data (all three tiers) and error patterns to produce evidence-backed structural improvement proposals targeting agent personas, orchestration rules, invocation templates, model assignments, and quality gates. Darwin never modifies files -- all proposals require user approval and are implemented by Colby.
+Darwin is an opt-in, read-only pipeline evolution agent. It analyzes telemetry data (all three tiers) and error patterns to produce evidence-backed structural improvement proposals targeting agent personas, orchestration rules, invocation templates, model assignments, and quality gates. Darwin never modifies files -- all proposals require user approval and are implemented by Colby.
 
 Design rationale: ADR-0016. Darwin is activated automatically at pipeline end when degradation alerts fire, or invoked on demand.
 
@@ -1684,7 +1713,7 @@ Darwin does not touch the brain directly. Eva captures proposals and their outco
 
 ### Overview
 
-Agent Telemetry (v3.8) is Eva's quantitative metrics capture and trend analysis system. It captures cost, duration, rework rates, and quality scores across pipeline runs and surfaces trends at session boot. All telemetry data is stored in the Atelier Brain -- when the brain is unavailable, telemetry capture is skipped entirely with no behavioral change to the pipeline.
+Agent Telemetry is Eva's quantitative metrics capture and trend analysis system. It captures cost, duration, rework rates, and quality scores across pipeline runs and surfaces trends at session boot. All telemetry data is stored in the Atelier Brain -- when the brain is unavailable, telemetry capture is skipped entirely with no behavioral change to the pipeline.
 
 Design rationale: ADR-0014. This feature subsumes the previously separate EvoScore (#12) and eval-driven outcome metrics (#14) proposals into a unified telemetry system.
 
@@ -1957,7 +1986,7 @@ Embeddings are generated via OpenRouter when an API key is configured; otherwise
 
 ### Overview
 
-Eva discovers custom agents at session boot (v3.4) by scanning `.claude/agents/` for non-core persona files. Discovered agents are additive only -- they never replace core agent routing.
+Eva discovers custom agents at session boot by scanning `.claude/agents/` for non-core persona files. Discovered agents are additive only -- they never replace core agent routing.
 
 ### Core Agent Constant
 
@@ -1990,7 +2019,7 @@ When a user pastes markdown containing an agent definition pattern, Eva recogniz
 
 ### Overview
 
-Observation masking (v3.6, extended in v3.15) is Eva's primary within-session context hygiene procedure. It replaces full agent outputs with structured receipts after Eva processes them, and replaces superseded tool outputs with structured placeholders.
+Observation masking is Eva's primary within-session context hygiene procedure. It replaces full agent outputs with structured receipts after Eva processes them, and replaces superseded tool outputs with structured placeholders.
 
 **Design principle:** Mechanical substitution, not intelligent compression. The full agent output remains available on disk or in the brain. Eva re-reads from disk only when constructing a downstream invocation.
 
@@ -2053,13 +2082,13 @@ Distillator is reserved for structured document compression where lossless prese
 
 ### Overview
 
-The Compaction API (v3.6) provides server-side context management for Claude Code. When the context window fills, the Compaction API compacts it automatically. The pipeline is designed to survive compaction with zero data loss.
+The Compaction API provides server-side context management. On Claude Code, this uses the Compaction API. On Cursor, an equivalent compaction mechanism performs the same function. When the context window fills, compaction fires automatically on both platforms. The pipeline is designed to survive compaction with zero data loss.
 
 ### Survival Mechanisms
 
 | Mechanism | What it protects | How |
 |-----------|-----------------|-----|
-| Path-scoped rules | Mandatory gates, triage logic | Re-injected from disk on every turn (ADR-0004 design) |
+| Path-scoped rules | Mandatory gates, triage logic | Re-injected from disk on every turn on both platforms (ADR-0004 design) |
 | Pipeline state files | Phase progress, decisions | Written to disk at every phase transition |
 | Brain captures | Decisions, findings, lessons | Queryable after compaction via `agent_search` |
 | PreCompact hook | Compaction visibility | Writes timestamped marker to `pipeline-state.md` before compaction |
@@ -2139,13 +2168,15 @@ When Eva receives multiple issues at once:
 
 ### Worktree Integration
 
-When agents work in isolated git worktrees:
+> **Claude Code only.** Worktrees require Claude Code's worktree support. On Cursor, worktrees are not available and the pipeline runs without them.
+
+When agents work in isolated git worktrees (Claude Code only):
 - Changes integrate via `git merge` or `git cherry-pick`, never file copying
 - Conflicts are resolved before advancing (route to Colby, then Roz)
 - One worktree merge at a time with test suite between each
 - Worktree agents do not see each other's changes
 
-When Agent Teams is active, worktrees are managed by Claude Code (not by Eva via Bash). Merge order is deterministic (task creation order). Full test suite runs between each Teammate merge. Merge conflicts trigger fallback to sequential for the conflicting unit.
+When Agent Teams is active (Claude Code only), worktrees are managed by Claude Code (not by Eva via Bash). Merge order is deterministic (task creation order). Full test suite runs between each Teammate merge. Merge conflicts trigger fallback to sequential for the conflicting unit.
 
 ---
 
