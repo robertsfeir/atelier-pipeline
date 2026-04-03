@@ -217,8 +217,8 @@ flowchart TD
     classDef agatha fill:#14b8a6,stroke:#0d9488,color:#fff,font-weight:bold
     classDef sentinel fill:#ef4444,stroke:#dc2626,color:#fff,font-weight:bold
     classDef system fill:#6b7280,stroke:#4b5563,color:#fff,font-weight:bold
-    classDef user fill:#f1f5f9,stroke:#64748b,stroke-width:2px,color:#334155,font-weight:bold
-    classDef gate fill:#f8fafc,stroke:#94a3b8,stroke-width:2px,color:#475569
+    classDef user fill:#94a3b8,stroke:#64748b,color:#fff,font-weight:bold
+    classDef gate fill:#475569,stroke:#334155,color:#fff,font-weight:bold
 
     style BUILD fill:#f0fdf4,stroke:#86efac,stroke-width:2px,stroke-dasharray:5 5
     style REVIEW fill:#faf5ff,stroke:#c4b5fd,stroke-width:2px,stroke-dasharray:5 5

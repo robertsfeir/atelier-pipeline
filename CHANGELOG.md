@@ -1,0 +1,218 @@
+# Changelog
+
+All notable changes to Atelier Pipeline are documented in this file.
+Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
+
+## [Unreleased]
+
+## [3.17.0] - 2026-04-02
+
+### Added
+- Four new lifecycle hooks: `log-agent-start.sh` (SubagentStart), `log-agent-stop.sh` (SubagentStop telemetry), `post-compact-reinject.sh` (PostCompact context preservation), `log-stop-failure.sh` (StopFailure error tracking)
+- `if` conditional support in `settings.json` hook entries -- added to `enforce-git.sh` and `warn-dor-dod.sh`, reducing ~50% hook process spawns
+
+### Changed
+- Hook system modernized (Wave 2) -- hooks now support conditional evaluation and lifecycle-aware triggers
+- README pipeline diagram replaced with Mermaid flowchart for better GitHub rendering
+
+## [3.16.1] - 2026-04-02
+
+### Fixed
+- Restored distributed routing capability that was missing after 3.16.0 merge
+
+### Changed
+- Upgraded Roz and Colby default model from Sonnet to Opus for higher-quality output
+
+## [3.16.0] - 2026-04-02
+
+### Added
+- Agent frontmatter enrichment with YAML metadata (name, description, tools, allowed_write_paths)
+- Distributed routing -- Cal and Colby can spawn scoped Agent sub-invocations (Cal spawns Roz for test spec review; Colby spawns Roz for per-unit QA and Cal for architectural consultation)
+
+### Changed
+- Updated technical reference and agent-system documentation for distributed routing
+
+## [3.15.2] - 2026-04-02
+
+### Fixed
+- Cursor plugin version aligned to match Claude Code release version
+- Stale metadata corrected -- marketplace version sync, CLAUDE.md agent counts
+
+## [3.15.1] - 2026-04-02
+
+### Fixed
+- Enforcement hook bypass switched from environment variable to file sentinel for improved security
+
+## [3.15.0] - 2026-04-02
+
+### Added
+- Wave-based build ceremony -- QA, blind review, and commits happen per wave instead of per unit, reducing agent invocations by ~70%
+- Universal model classifier -- scope-based model selection replaces hardcoded Opus; estimated 60-70% cost reduction
+- Cursor IDE support with full feature parity (same agents, hooks, brain, commands)
+- Agent output masking -- Eva replaces full outputs with structured receipts for 98% context reduction
+- Just-in-time rule loading -- Eva's orchestration rules split into always-loaded and on-demand sections
+- Brain operations batched per wave instead of per invocation
+
+## [3.14.0] - 2026-04-01
+
+### Added
+- Dashboard integration with pipeline telemetry visualization
+- Quality-gate cleanup and consolidation
+- Setup hook bypass for smoother installation flow
+
+## [3.12.2] - 2026-03-31
+
+### Fixed
+- Brain MCP server hardened against all 7 identified crash vectors (ADR-0017)
+
+## [3.12.1] - 2026-03-30
+
+### Added
+- Pipeline-activation enforcement hook -- blocks Colby and Ellis from operating without an active pipeline
+
+## [3.12.0] - 2026-03-30
+
+### Added
+- Cal sizing gate for architectural reviews
+- Context diet protocol to reduce token consumption
+- Template index for easier file discovery
+
+### Fixed
+- Brain-setup scope defaulting bug (was using "default" instead of project-derived value)
+- Dashboard chart canvas destruction on scope switch
+
+## [3.11.0] - 2026-03-30
+
+### Changed
+- Dashboard metrics now show honest, day-aggregated cost trends with hydration timestamps
+- Telemetry charts improved for accuracy and readability
+
+## [3.10.1] - 2026-03-30
+
+### Fixed
+- Enforcement-config.json validation added after installation to catch setup issues
+
+## [3.10.0] - 2026-03-30
+
+### Added
+- Dashboard improvements with enhanced telemetry visualization
+- Telemetry hydration for populating dashboards from brain data
+- Tier 3 enforcement gate for telemetry quality
+
+### Fixed
+- Brain MCP server environment variable passthrough for plugin contexts
+
+## [3.9.0] - 2026-03-29
+
+### Added
+- Darwin pipeline evolution engine -- analyzes telemetry, evaluates agent fitness, proposes structural improvements (opt-in, requires brain)
+- Telemetry dashboard for visualizing pipeline health metrics
+
+## [3.8.0] - 2026-03-29
+
+### Added
+- Agent telemetry capture -- duration, cost, and outcome tracking per agent invocation
+- Deps dependency scanner -- outdated package detection, CVE checking, and upgrade breakage prediction (opt-in)
+- CI Watch self-healing CI protocol for automated CI failure detection and recovery (ADR-0013)
+
+## [3.7.0] - 2026-03-29
+
+### Added
+- `pipeline-uninstall` and `brain-uninstall` skills for clean removal
+
+### Fixed
+- Atelier Brain MCP server restored in plugin `.mcp.json` configuration
+
+## [3.6.6] - 2026-03-29
+
+### Fixed
+- Ellis allowed on Micro pipelines where Roz is skipped
+
+## [3.6.5] - 2026-03-29
+
+### Fixed
+- Sentinel uses Semgrep plugin as prerequisite instead of standalone install
+- Legacy Sentinel setup artifacts cleaned up
+
+## [3.6.4] - 2026-03-29
+
+### Changed
+- Replaced deprecated `semgrep-mcp` with built-in Semgrep MCP integration
+
+## [3.6.3] - 2026-03-29
+
+### Fixed
+- Semgrep MCP setup updated to use built-in integration
+
+## [3.6.2] - 2026-03-29
+
+### Fixed
+- Semgrep CLI install step added to Sentinel setup to prevent missing-binary failures
+
+## [3.6.1] - 2026-03-29
+
+### Fixed
+- Sentinel install hardened against Python 3.14 and setuptools >= 81 compatibility issues
+
+## [3.6.0] - 2026-03-29
+
+### Added
+- Compaction API integration -- server-side context management with `PreCompact` hook for pipeline state preservation
+- Observation masking -- superseded tool outputs replaced with structured placeholders to keep Eva's context lean
+- Distillator reserved for structured document compression at phase boundaries
+
+### Changed
+- Context cleanup advisory updated -- Eva no longer estimates context usage or counts handoffs
+
+## [3.5.1] - 2026-03-29
+
+### Fixed
+- Sentinel security audit hardened with improved scan reliability
+
+### Security
+- Word boundary regex in enforcement hooks prevents false-positive blocks
+
+## [3.5.0] - 2026-03-29
+
+### Added
+- Sentinel security agent (opt-in) -- Semgrep-backed SAST scanning at the review juncture
+- Agent Teams experimental feature -- parallel wave execution with Colby Teammate instances
+- ADR-0009 (Sentinel) and ADR-0010 (Agent Teams) architecture documentation
+
+## [3.4.1] - 2026-03-28
+
+### Added
+- DoR/DoD warn hook (`SubagentStop`) -- advisory warning when Colby or Roz output is missing quality sections
+- Agent discovery -- Eva scans for custom agent personas at session boot
+- Eva test blocking -- enforcement hook prevents test commands from the main thread (Roz owns all QA)
+
+### Fixed
+- Ellis sequencing gate -- allows non-pipeline commits while still gating during active pipelines
+
+[Unreleased]: https://github.com/robertsfeir/atelier-pipeline/compare/main...HEAD
+[3.17.0]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.16.1...v3.17.0
+[3.16.1]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.16.0...v3.16.1
+[3.16.0]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.15.2...v3.16.0
+[3.15.2]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.15.1...v3.15.2
+[3.15.1]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.15.0...v3.15.1
+[3.15.0]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.14.0...v3.15.0
+[3.14.0]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.12.2...v3.14.0
+[3.12.2]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.12.1...v3.12.2
+[3.12.1]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.12.0...v3.12.1
+[3.12.0]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.11.0...v3.12.0
+[3.11.0]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.10.1...v3.11.0
+[3.10.1]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.10.0...v3.10.1
+[3.10.0]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.9.0...v3.10.0
+[3.9.0]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.8.0...v3.9.0
+[3.8.0]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.7.0...v3.8.0
+[3.7.0]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.6.6...v3.7.0
+[3.6.6]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.6.5...v3.6.6
+[3.6.5]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.6.4...v3.6.5
+[3.6.4]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.6.3...v3.6.4
+[3.6.3]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.6.2...v3.6.3
+[3.6.2]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.6.1...v3.6.2
+[3.6.1]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.6.0...v3.6.1
+[3.6.0]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.5.1...v3.6.0
+[3.5.1]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.5.0...v3.5.1
+[3.5.0]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.4.1...v3.5.0
+[3.4.1]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.4.0...v3.4.1
