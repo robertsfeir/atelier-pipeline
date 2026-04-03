@@ -2,8 +2,8 @@
 
 ## Active Pipeline
 **Feature:** v3.17.0 review findings remediation
-**Phase:** build
-<!-- PIPELINE_STATUS: {"phase": "build", "sizing": "small", "roz_qa": "PASS", "telemetry_captured": true, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": true, "robert_reviewed": false} -->
+**Phase:** review
+<!-- PIPELINE_STATUS: {"phase": "review", "sizing": "small", "roz_qa": "PASS", "telemetry_captured": true, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": true, "robert_reviewed": false} -->
 **Sizing:** Small
 **Started:** 2026-04-03
 

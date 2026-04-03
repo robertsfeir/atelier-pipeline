@@ -5,6 +5,27 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.18.0] - 2026-04-03
+
+### Added
+- Hybrid agent brain capture model (ADR-0021) — Cal, Colby, Roz, and Agatha now capture domain-specific knowledge directly via `mcpServers: atelier-brain` frontmatter
+- Three prompt hooks for brain integration: `prompt-brain-prefetch` (pre-invocation context), `prompt-brain-capture` (post-invocation reminder), `warn-brain-capture` (brain offline warning)
+- Seed capture protocol — agents can capture out-of-scope ideas as seeds for future pipelines
+- Poirot (gate 5) and Robert (gate 7) enforcement in `enforce-sequencing.sh`
+- `colby_blocked_paths` in `enforcement-config.json` — 14 blocked prefixes prevent Colby from writing to docs/, infra/, deploy/, etc.
+- Five new Cursor plugin reference docs (`.mdc`): `qa-checks`, `branch-mr-mode`, `telemetry-metrics`, `xml-prompt-schema`, `cloud-architecture`
+- Pipeline-setup Step 3c for Cursor reference doc sync
+
+### Changed
+- Agent personas enriched with `model`, `effort`, `color`, `maxTurns` frontmatter and brain-access protocol sections
+- `{config_dir}` placeholder replaces hardcoded `.claude/` in source templates (IDE-agnostic)
+- `{features_dir}` and `{source_dir}` placeholders added to pipeline-setup
+
+### Fixed
+- Cursor plugin agent drift — all 12 agents synced from source/ (byte-identical)
+- Duplicate YAML frontmatter in `.cursor-plugin/agents/colby.md` and `robert.md`
+- Three `.mdc` rule files regenerated from source/ (`agent-system`, `default-persona`, `pipeline-orchestration`)
+
 ## [3.17.0] - 2026-04-02
 
 ### Added
@@ -190,6 +211,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - Ellis sequencing gate -- allows non-pipeline commits while still gating during active pipelines
 
 [Unreleased]: https://github.com/robertsfeir/atelier-pipeline/compare/main...HEAD
+[3.18.0]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.17.0...v3.18.0
 [3.17.0]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.16.1...v3.17.0
 [3.16.1]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.16.0...v3.16.1
 [3.16.0]: https://github.com/robertsfeir/atelier-pipeline/compare/v3.15.2...v3.16.0

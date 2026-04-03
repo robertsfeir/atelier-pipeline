@@ -1,6 +1,6 @@
 # Atelier Pipeline -- Technical Reference
 
-Version: 3.17.0
+Version: 3.18.0
 
 This document is the comprehensive technical reference for the atelier-pipeline plugin. It covers plugin architecture, agent system design, orchestration logic, brain infrastructure, and customization points. The pipeline runs on both Claude Code and Cursor with near-complete feature parity. For usage-oriented documentation, see [the user guide](user-guide.md).
 
