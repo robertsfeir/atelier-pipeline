@@ -170,45 +170,83 @@ Eva sizes every request and runs the right amount of process. A large feature ge
 
 ### Full pipeline (Large)
 
-```
-                       Idea
-                        |
-                   Robert (spec)
-                     /      \
-              Sable (UX)    Agatha (doc plan)         --- parallel
-                     \      /
-                  Colby (mockup)
-                        |
-               Sable verifies mockup                  --- UX acceptance
-                        |
-                   User UAT review
-                        |
-              Cal (architecture + test spec)
-                        |
-                Roz (test spec review)
-                        |
-                Roz (test authoring)
-                        |
-         ┌─── Wave 1 ────────────────────┐
-         │  Roz (tests for wave)          │
-         │  Colby (unit 1) → lint/tc      │
-         │  Colby (unit 2) → lint/tc      │
-         │  Roz (wave QA) + Poirot        │ --- wave-level review
-         │  Ellis (wave commit)           │
-         └────────────────────────────────┘
-         ┌─── Wave 2 ────────────────────┐
-         │  ...same pattern...            │
-         └────────────────────────────────┘
-                        |
-    Roz + Poirot + Robert + Sable + Sentinel           --- review juncture (parallel)
-                        |
-                 Agatha (docs)                         --- against final verified code
-                        |
-             Robert verifies docs                      --- product acceptance
-                        |
-         Spec/UX reconciliation (if drift)             --- living artifacts updated
-                        |
-              Ellis (commit + changelog)               --- one atomic commit
+```mermaid
+flowchart TD
+    IDEA([Idea]):::system
+    IDEA --> ROBERT(Robert\nFeature Spec):::robert
+
+    ROBERT --> SABLE_UX(Sable\nUX Design):::sable
+    ROBERT --> AGATHA_PLAN(Agatha\nDoc Plan):::agatha
+
+    SABLE_UX --> COLBY_MOCK(Colby\nMockup):::colby
+    AGATHA_PLAN --> COLBY_MOCK
+
+    COLBY_MOCK --> SABLE_VERIFY(Sable\nVerify Mockup):::sable
+    SABLE_VERIFY -->|UX acceptance| UAT([User UAT Review]):::user
+    UAT --> CAL(Cal\nADR + Test Spec):::cal
+    CAL --> ROZ_REVIEW(Roz\nTest Spec Review):::roz
+    ROZ_REVIEW --> ROZ_AUTHOR(Roz\nTest Authoring):::roz
+
+    ROZ_AUTHOR --> WAVE_START
+
+    subgraph WAVE ["Wave Build Cycle"]
+        direction TB
+        WAVE_START(Roz\nTests for Wave):::roz
+        WAVE_START --> UNIT1(Colby\nUnit N):::colby
+        UNIT1 --> LINT1{Lint +\nTypecheck}:::gate
+        LINT1 -->|pass| UNIT2(Colby\nUnit N+1):::colby
+        UNIT2 --> LINT2{Lint +\nTypecheck}:::gate
+        LINT2 -->|pass| WAVE_END_SPLIT[ ]:::hidden
+        WAVE_END_SPLIT --> WAVE_QA(Roz\nWave QA):::roz
+        WAVE_END_SPLIT --> POIROT_W(Poirot\nBlind Review):::poirot
+        WAVE_QA --> WAVE_COMMIT(Ellis\nWave Commit):::ellis
+        POIROT_W --> WAVE_COMMIT
+    end
+
+    WAVE_COMMIT -->|repeats per wave| MORE_WAVES{More\nwaves?}:::gate
+    MORE_WAVES -->|yes| WAVE_START
+    MORE_WAVES -->|no| JUNCTURE_IN
+
+    subgraph JUNCTURE ["Review Juncture"]
+        direction TB
+        JUNCTURE_IN[ ]:::hidden
+        JUNCTURE_IN --> ROZ_FINAL(Roz\nFinal QA):::roz
+        JUNCTURE_IN --> POIROT_FINAL(Poirot\nFinal Review):::poirot
+        JUNCTURE_IN --> ROBERT_FINAL(Robert\nAcceptance):::robert
+        JUNCTURE_IN --> SABLE_FINAL(Sable\nUX Review):::sable
+        JUNCTURE_IN --> SENTINEL_FINAL(Sentinel\nSecurity Audit):::sentinel
+    end
+
+    ROZ_FINAL --> AGATHA_DOCS
+    POIROT_FINAL --> AGATHA_DOCS
+    ROBERT_FINAL --> AGATHA_DOCS
+    SABLE_FINAL --> AGATHA_DOCS
+    SENTINEL_FINAL --> AGATHA_DOCS
+
+    AGATHA_DOCS(Agatha\nWrite Docs):::agatha
+    AGATHA_DOCS --> ROBERT_ACCEPT(Robert\nVerify Docs):::robert
+    ROBERT_ACCEPT --> RECONCILE{Spec + UX\nReconciliation}:::gate
+    RECONCILE -->|aligned| ELLIS_FINAL(Ellis\nCommit + Changelog):::ellis
+    ELLIS_FINAL --> DONE([Shipped]):::user
+
+    classDef cal fill:#3b82f6,stroke:#2563eb,color:#fff,font-weight:bold,rx:12,ry:12
+    classDef colby fill:#22c55e,stroke:#16a34a,color:#fff,font-weight:bold,rx:12,ry:12
+    classDef roz fill:#eab308,stroke:#ca8a04,color:#000,font-weight:bold,rx:12,ry:12
+    classDef ellis fill:#06b6d4,stroke:#0891b2,color:#fff,font-weight:bold,rx:12,ry:12
+    classDef robert fill:#f97316,stroke:#ea580c,color:#fff,font-weight:bold,rx:12,ry:12
+    classDef sable fill:#ec4899,stroke:#db2777,color:#fff,font-weight:bold,rx:12,ry:12
+    classDef poirot fill:#8b5cf6,stroke:#7c3aed,color:#fff,font-weight:bold,rx:12,ry:12
+    classDef agatha fill:#14b8a6,stroke:#0d9488,color:#fff,font-weight:bold,rx:12,ry:12
+    classDef sentinel fill:#ef4444,stroke:#dc2626,color:#fff,font-weight:bold,rx:12,ry:12
+    classDef system fill:#6b7280,stroke:#4b5563,color:#fff,font-weight:bold
+    classDef user fill:#f1f5f9,stroke:#64748b,stroke-width:2px,color:#334155,font-weight:bold
+    classDef gate fill:#f8fafc,stroke:#94a3b8,stroke-width:2px,color:#475569,font-weight:bold
+    classDef hidden fill:none,stroke:none,color:transparent,width:0px,height:0px
+
+    style WAVE fill:#f0fdf4,stroke:#86efac,stroke-width:2px,stroke-dasharray:8 4,color:#166534,font-weight:bold
+    style JUNCTURE fill:#faf5ff,stroke:#c4b5fd,stroke-width:2px,stroke-dasharray:8 4,color:#5b21b6,font-weight:bold
+
+    linkStyle default stroke:#94a3b8,stroke-width:2px
 ```
 
 ### Phase sizing
