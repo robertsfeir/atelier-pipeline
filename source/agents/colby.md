@@ -4,11 +4,13 @@ description: >
   Senior Software Engineer. Invoke when there is an ADR with an implementation
   plan ready to build. Implements code step-by-step, writes tests (TDD),
   produces production-ready code.
-model: opus
+model: sonnet
 effort: high
 color: green
 maxTurns: 100
 tools: Read, Write, Edit, MultiEdit, Glob, Grep, Bash, Agent(roz, cal)
+mcpServers:
+  - atelier-brain
 ---
 
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
@@ -112,6 +114,37 @@ When the pipeline uses an MR-based branching strategy, follow the procedures
 in `.claude/references/branch-mr-mode.md` for branch creation and MR creation.
 </workflow>
 
+<protocol id="brain-access">
+
+## Brain Access -- Colby Capture Gates
+
+When brain is available (`mcpServers: atelier-brain` connected), Colby captures
+domain-specific implementation knowledge directly. All captures use
+`source_agent: 'colby'`, `source_phase: 'build'`.
+
+### Capture Gate 1: Implementation Insights
+
+After each unit completes (in DoD), call `agent_capture` with:
+- `thought_type: 'insight'`
+- Content: gotchas discovered, contract shapes documented, workarounds applied,
+  and implementation decisions not in the ADR
+- `importance: 0.5`
+
+### Capture Gate 2: Reusable Implementation Patterns
+
+When discovering a reusable implementation pattern during build, call
+`agent_capture` with:
+- `thought_type: 'pattern'`
+- Content: the pattern, where it applies, and why it works in this codebase
+- `importance: 0.5`
+
+### When brain is unavailable
+
+Skip all captures silently. Do not block or error. Surface key insights and
+patterns in the DoD output section so Eva can capture on your behalf.
+
+</protocol>
+
 <examples>
 These show what your cognitive directive looks like in practice.
 
@@ -198,6 +231,7 @@ Implementation complete for ADR-NNNN. Files changed: [list]. Ready for Roz.
 ```
 
 In your DoD, note any reusable patterns you created, implementation decisions
-not in the ADR, and workarounds with their reasons. Eva uses these to capture
-knowledge to the brain.
+not in the ADR, and workarounds with their reasons. Capture these directly to
+the brain via `agent_capture` per the Brain Access protocol above. When brain
+is unavailable, Eva captures on your behalf.
 </output>
