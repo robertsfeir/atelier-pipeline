@@ -55,11 +55,79 @@ load test_helper
   [ "$status" -eq 0 ]
 }
 
-@test "enforce-git: git commit from subagent (agent_id set) exits 0" {
+@test "enforce-git: git commit from Ellis (agent_type=ellis) exits 0" {
   local input
-  input=$(build_bash_input "git commit -m test" "ellis-123")
+  input=$(build_bash_input "git commit -m test" "ellis-123" "ellis")
   run run_hook_with_input "enforce-git.sh" "$input"
   [ "$status" -eq 0 ]
+}
+
+@test "enforce-git: git commit from Colby (agent_type=colby) exits 2 BLOCKED" {
+  local input
+  input=$(build_bash_input "git commit -m test" "colby-456" "colby")
+  run run_hook_with_input "enforce-git.sh" "$input"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"BLOCKED"* ]]
+}
+
+@test "enforce-git: git commit from Roz (agent_type=roz) exits 2 BLOCKED" {
+  local input
+  input=$(build_bash_input "git commit -m test" "roz-789" "roz")
+  run run_hook_with_input "enforce-git.sh" "$input"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"BLOCKED"* ]]
+}
+
+@test "enforce-git: git push from Ellis (agent_type=ellis) exits 0" {
+  local input
+  input=$(build_bash_input "git push origin main" "ellis-123" "ellis")
+  run run_hook_with_input "enforce-git.sh" "$input"
+  [ "$status" -eq 0 ]
+}
+
+@test "enforce-git: git add from Cal (agent_type=cal) exits 2 BLOCKED" {
+  local input
+  input=$(build_bash_input "git add ." "cal-111" "cal")
+  run run_hook_with_input "enforce-git.sh" "$input"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"BLOCKED"* ]]
+}
+
+@test "enforce-git: git status from Colby (read-only) exits 0" {
+  local input
+  input=$(build_bash_input "git status" "colby-456" "colby")
+  run run_hook_with_input "enforce-git.sh" "$input"
+  [ "$status" -eq 0 ]
+}
+
+@test "enforce-git: test execution from Roz (agent_type=roz) exits 0" {
+  local input
+  input=$(build_bash_input "bats tests/hooks/enforce-git.bats" "roz-789" "roz")
+  run run_hook_with_input "enforce-git.sh" "$input"
+  [ "$status" -eq 0 ]
+}
+
+@test "enforce-git: test execution from Colby (agent_type=colby) exits 0" {
+  local input
+  input=$(build_bash_input "jest --testPathPattern=foo.test.ts" "colby-456" "colby")
+  run run_hook_with_input "enforce-git.sh" "$input"
+  [ "$status" -eq 0 ]
+}
+
+@test "enforce-git: test execution from Cal (agent_type=cal) exits 2 BLOCKED" {
+  local input
+  input=$(build_bash_input "pytest tests/" "cal-111" "cal")
+  run run_hook_with_input "enforce-git.sh" "$input"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"BLOCKED"* ]]
+}
+
+@test "enforce-git: subagent with agent_id but no agent_type is blocked" {
+  local input
+  input=$(build_bash_input "git commit -m test" "unknown-999")
+  run run_hook_with_input "enforce-git.sh" "$input"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"BLOCKED"* ]]
 }
 
 @test "enforce-git: non-Bash tool_name exits 0" {

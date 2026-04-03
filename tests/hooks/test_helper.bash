@@ -105,12 +105,18 @@ build_agent_input() {
 }
 
 # Build a Bash tool input for enforce-git
-# Usage: build_bash_input "git commit -m test" "" (main thread)
+# Usage: build_bash_input "git commit -m test" "" "" (main thread)
+#        build_bash_input "git commit -m test" "ellis-123" "ellis" (Ellis subagent)
+#        build_bash_input "git commit -m test" "colby-456" "colby" (Colby subagent)
 build_bash_input() {
   local command="${1:-}"
   local agent_id="${2:-}"
+  local agent_type="${3:-}"
 
-  if [ -n "$agent_id" ]; then
+  if [ -n "$agent_id" ] && [ -n "$agent_type" ]; then
+    printf '{"tool_name":"Bash","tool_input":{"command":"%s"},"agent_id":"%s","agent_type":"%s"}' \
+      "$command" "$agent_id" "$agent_type"
+  elif [ -n "$agent_id" ]; then
     printf '{"tool_name":"Bash","tool_input":{"command":"%s"},"agent_id":"%s"}' \
       "$command" "$agent_id"
   else

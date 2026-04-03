@@ -1,5 +1,5 @@
 #!/bin/bash
-# Phase 2 supplement: Prevent Eva from running git write operations or test suites directly
+# Phase 2 supplement: Prevent unauthorized agents from running git write operations or test suites
 # PreToolUse hook on Bash
 #
 # Performance: This hook has an `if` conditional in settings.json:
@@ -8,10 +8,11 @@
 # of Bash calls that have no git commands. When the `if` passes (command
 # contains 'git '), this script runs and enforces the full check.
 #
-# Eva must route commits through Ellis. This hook blocks git add,
-# git commit, and git push from the main thread. Subagents (Ellis)
-# are allowed. Eva must also route test suite execution through Roz --
-# this hook blocks test commands from the main thread.
+# Git write operations (add, commit, push, reset, checkout --, restore, clean)
+# are allowed ONLY for Ellis. All other agents and the main thread (Eva) are blocked.
+#
+# Test suite execution is allowed ONLY for Roz and Colby. All other agents
+# and the main thread (Eva) are blocked.
 
 set -euo pipefail
 [ "${ATELIER_SETUP_MODE:-}" = "1" ] && exit 0
@@ -27,10 +28,7 @@ fi
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
 [ "$TOOL_NAME" != "Bash" ] && exit 0
 
-# Only block from main thread
-AGENT_ID=$(echo "$INPUT" | jq -r '.agent_id // empty')
-[ -n "$AGENT_ID" ] && exit 0
-
+AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // empty')
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 [ -z "$COMMAND" ] && exit 0
 
@@ -50,16 +48,22 @@ if [ -f "$CONFIG_FILE" ]; then
   fi
 fi
 
-# Block git add, git commit, git push from main thread
-# Allow git status, git diff, git log, git branch (read-only git operations)
+# Block git write operations -- only Ellis is allowed
+# Allow git status, git diff, git log, git branch (read-only git operations) for everyone
 if echo "$COMMAND" | grep -qE "\bgit\s+(add|commit|push|reset|checkout\s+--|restore|clean)\b" 2>/dev/null; then
-  echo "BLOCKED: Eva cannot run git write operations directly. Route commits through Ellis. Allowed: git status, git diff, git log, git branch." >&2
+  if [ "$AGENT_TYPE" = "ellis" ]; then
+    exit 0
+  fi
+  echo "BLOCKED: Only Ellis can run git write operations. Route commits through Ellis. Allowed for all: git status, git diff, git log, git branch." >&2
   exit 2
 fi
 
-# Block test execution from main thread -- Roz owns QA verification
+# Block test execution -- only Roz and Colby are allowed
 if echo "$COMMAND" | grep -qE "\b(bats|pytest|jest|vitest|mocha|rspec|phpunit)\b|(\b(npm|yarn|pnpm)\s+test\b)|(\bnode\s+--test\b)|(\b(go|cargo|make|dotnet|gradle|mvn)\s+test\b)" 2>/dev/null; then
-  echo "BLOCKED: Eva cannot run test suites directly. Route QA verification through Roz." >&2
+  if [ "$AGENT_TYPE" = "roz" ] || [ "$AGENT_TYPE" = "colby" ]; then
+    exit 0
+  fi
+  echo "BLOCKED: Only Roz and Colby can run test suites. Route QA verification through Roz." >&2
   exit 2
 fi
 
@@ -67,4 +71,6 @@ fi
 # of git/test commands but can be bypassed via indirection (bash -c, env, wrapper
 # scripts). The behavioral rules in pipeline-orchestration.md are the primary
 # constraint; these hooks are the mechanical backstop.
+# agent_type comes from the subagent's frontmatter name field; empty for
+# the main thread (Eva).
 exit 0
