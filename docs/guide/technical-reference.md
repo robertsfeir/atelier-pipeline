@@ -14,9 +14,9 @@ This document is the comprehensive technical reference for the atelier-pipeline 
 | Distributed routing (Agent spawning by Cal/Colby) | Yes | Not available |
 | Telemetry hydration | Automatic (SessionStart) + manual | Automatic (SessionStart) + manual |
 | Worktrees | Yes | Not available |
-| Hook enforcement | Full (10 hooks) | Full (10 hooks) |
+| Hook enforcement | Full (20 hooks) | Full (20 hooks) |
 | Brain integration | Full | Full |
-| All 13 agents | Full | Full |
+| All 14 agents | Full | Full |
 | Installed file directory | `.claude/` | `.cursor/` |
 | Rules file extension | `.md` | `.mdc` (with frontmatter) |
 | Project env variable | `$CLAUDE_PROJECT_DIR` | `$CURSOR_PROJECT_DIR` |
@@ -1147,7 +1147,7 @@ The enforcement hooks are shell scripts registered as PreToolUse hooks on both C
 
 The PreToolUse scripts require `jq` for JSON parsing. If `jq` is not installed, the hooks degrade gracefully (exit 0, allowing the action) rather than blocking all tool calls.
 
-### The Ten Hook Scripts
+### Hook Scripts
 
 | Script | Hook Type | Trigger | Purpose |
 |--------|-----------|---------|---------|

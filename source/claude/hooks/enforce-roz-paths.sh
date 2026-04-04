@@ -27,6 +27,9 @@ if [[ "$FILE_PATH" == /* ]]; then
   exit 2
 fi
 
+# Reject path traversal
+[[ "$FILE_PATH" == *..* ]] && { echo "BLOCKED: Path traversal detected in $FILE_PATH" >&2; exit 2; }
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG="$SCRIPT_DIR/enforcement-config.json"
 

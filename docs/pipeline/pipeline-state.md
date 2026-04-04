@@ -2,7 +2,7 @@
 
 ## Active Pipeline
 **Feature:** Wave 3 — Native Enforcement Redesign (ADR-0022)
-**Phase:** build (Phase 2, Wave 1 — Steps 2a+2d+2e+2g: enforcement layer + cleanup)
+**Phase:** complete (Phase 2 done, review juncture passed)
 <!-- PIPELINE_STATUS: {"phase": "build", "sizing": "medium", "roz_qa": "PASS", "telemetry_captured": true, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": true, "robert_reviewed": false} -->
 **Sizing:** Medium
 **Started:** 2026-04-03

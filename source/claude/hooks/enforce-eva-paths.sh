@@ -27,6 +27,9 @@ if [[ "$FILE_PATH" == /* ]]; then
   exit 2
 fi
 
+# Reject path traversal
+[[ "$FILE_PATH" == *..* ]] && { echo "BLOCKED: Path traversal detected in $FILE_PATH" >&2; exit 2; }
+
 case "$FILE_PATH" in docs/pipeline/*) exit 0 ;; esac
 echo "BLOCKED: Eva can only write to docs/pipeline/. Attempted: $FILE_PATH" >&2
 exit 2

@@ -46,9 +46,9 @@ Atelier Pipeline runs on both Claude Code and Cursor with near-complete feature 
 | Distributed routing (Agent spawning by Cal/Colby) | Yes | Not available |
 | Telemetry hydration | Automatic (SessionStart) + manual | Automatic (SessionStart) + manual |
 | Worktrees | Yes | Not available |
-| Hook enforcement | Full (10 hooks) | Full (10 hooks) |
+| Hook enforcement | Full (20 hooks) | Full (20 hooks) |
 | Brain integration | Full | Full |
-| All 13 agents | Full | Full |
+| All 14 agents | Full | Full |
 | Installed file directory | `.claude/` | `.cursor/` |
 | Rules file extension | `.md` | `.mdc` (with frontmatter) |
 | Project env variable | `$CLAUDE_PROJECT_DIR` | `$CURSOR_PROJECT_DIR` |

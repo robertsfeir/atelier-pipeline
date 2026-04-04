@@ -27,6 +27,9 @@ if [[ "$FILE_PATH" == /* ]]; then
   exit 2
 fi
 
+# Reject path traversal
+[[ "$FILE_PATH" == *..* ]] && { echo "BLOCKED: Path traversal detected in $FILE_PATH" >&2; exit 2; }
+
 case "$FILE_PATH" in docs/product/*) exit 0 ;; esac
 echo "BLOCKED: Robert-spec can only write to docs/product/. Attempted: $FILE_PATH" >&2
 exit 2

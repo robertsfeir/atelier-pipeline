@@ -32,7 +32,7 @@ source/          # Template files -- copied to target projects by /pipeline-setu
     dashboard/   # Dashboard templates
   claude/        # Claude Code overlays
     agents/      # Claude Code frontmatter overlays (*.frontmatter.yml)
-    hooks/       # Enforcement hook scripts (6 scripts + 1 config)
+    hooks/       # Enforcement hook scripts (20 scripts + 1 config)
     commands/    # Command frontmatter overlays
     rules/       # Rule frontmatter overlays
     variants/    # Variant frontmatter overlays

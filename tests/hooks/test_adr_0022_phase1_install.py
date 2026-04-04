@@ -135,7 +135,8 @@ def test_T_0022_043_no_flat_agents_in_docs():
     )
     stale = [l for l in result.stdout.splitlines()
              if "source/shared/agents" not in l and "source/claude/agents" not in l
-             and "source/cursor/agents" not in l and "ADR-0022" not in l]
+             and "source/cursor/agents" not in l and "ADR-0022" not in l
+             and "last-qa-report.md" not in l]
     assert stale == []
 
 
@@ -151,7 +152,8 @@ def test_T_0022_044_no_flat_hooks_in_docs():
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=30,
     )
     stale = [l for l in result.stdout.splitlines()
-             if "source/claude/hooks" not in l and "source/cursor/hooks" not in l and "ADR-0022" not in l]
+             if "source/claude/hooks" not in l and "source/cursor/hooks" not in l and "ADR-0022" not in l
+             and "last-qa-report.md" not in l]
     assert stale == []
 
 

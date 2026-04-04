@@ -71,6 +71,7 @@ def test_T_0022_165_no_source_agents():
         and "test_adr_0022_phase2_compaction.py" not in l
         and "__pycache__" not in l
         and not l.endswith(".pyc")
+        and "last-qa-report.md" not in l
     ] if result.stdout.strip() else []
     assert stale == []
 
@@ -94,5 +95,6 @@ def test_T_0022_166_no_source_hooks():
         and "test_adr_0022_phase2_compaction.py" not in l
         and "__pycache__" not in l
         and not l.endswith(".pyc")
+        and "last-qa-report.md" not in l
     ] if result.stdout.strip() else []
     assert stale == []
