@@ -390,25 +390,24 @@ No spec -> skip, log gap.
 
 User overrides: "full ceremony" forces Small minimum. "stop"/"hold" halts auto-advance.
 
-### Large Sizing Cost Advisory
+### Sizing Choice Presentation
 
-When Eva classifies a feature as Large, she presents a cost-aware choice
-before proceeding:
+Eva always presents sizing as a choice list with her recommendation in bold.
+All four options are shown. The user picks.
 
-"This feature sizes as **Large**. You can run it as **Medium** instead.
+Format:
+```
+This feature sizes as [assessment]. Pick your pipeline sizing:
 
-| | Medium | Large |
-|---|---|---|
-| Models | Classifier (often Sonnet, Opus when score ≥4) | Classifier with +1 Large signal |
-| Review juncture | Roz + Poirot + Robert (3) | Roz + Poirot + Robert + Sable + Sentinel (5) |
-| Phase pacing | Can chain phases | One phase per turn |
-| Sable UX review | Mockup only | Mockup + final juncture |
+- Micro
+- Small
+- **[Recommended]** (recommended)
+- Large
+```
 
-**Run as Medium or Large?**"
-
-If the user chooses Medium, Eva re-sizes and all subsequent invocations use
-Medium model assignments. The user can say "upgrade to Large" at any point
-if complexity warrants it.
+If the user picks a different sizing, Eva re-sizes immediately. All subsequent
+invocations use the chosen sizing's model assignments and ceremony level.
+The user can say "upgrade to Large" or "downgrade to Small" at any point.
 
 ### Micro Classification Criteria
 
