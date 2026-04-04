@@ -17,7 +17,7 @@ model selection at invocation time.
 
 | Agent | Micro | Small | Medium | Large |
 |-------|-------|-------|--------|-------|
-| **Cal** | _(skipped)_ | _(skipped)_ | Opus | Opus |
+| **Cal** | _(skipped)_ | _(skipped)_ | Opus | Sonnet (classifier) |
 | **Colby** | Haiku | Sonnet | Opus | Sonnet (classifier) |
 | **Agatha** | _(skipped)_ | _(per doc type, Roz doc-impact trigger)_ | _(per doc type)_ | _(per doc type)_ |
 | **Ellis** | Haiku | Haiku | Haiku | Haiku |
@@ -75,7 +75,7 @@ from its base model to Opus. Distillator is always exempt (Haiku regardless).
 | Pipeline sizing is Large | +1 |
 | Brain shows Sonnet failures on similar tasks for this agent | +3 |
 
-**Promotion threshold: Score >= 3 → Opus. Score < 3 → base model.**
+**Promotion threshold: Score >= 4 → Opus. Score < 4 → base model. Score <= -2 → Haiku (mechanical demotion).**
 
 ### Agent-Specific Overrides (applied on top of universal score)
 
@@ -122,10 +122,10 @@ the full roster to surface Sonnet-failure patterns per agent.
    parameter is a violation.
 3. **Ambiguous sizing defaults UP.** If Eva has not yet confirmed the pipeline
    sizing (Small/Medium/Large), she MUST use the higher model tier for all
-   size-dependent agents until sizing is confirmed. Concretely: Colby gets
-   Opus, Cal gets Opus, and all base-model agents run the classifier with
-   the Large +1 signal applied. Once sizing is confirmed, subsequent
-   invocations use the correct tier.
+   size-dependent agents until sizing is confirmed. Concretely: Colby and Cal
+   get Opus (ambiguity = assume complex), and all base-model agents run the
+   classifier with the Large +1 signal applied. Once sizing is confirmed,
+   subsequent invocations use the correct tier.
 4. **Sizing changes propagate immediately.** If Eva re-sizes a pipeline
    mid-flight (e.g., Small escalates to Medium after discovering scope), all
    subsequent invocations use the new sizing's model assignments. Already-

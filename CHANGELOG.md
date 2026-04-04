@@ -5,6 +5,47 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.21.0] - 2026-04-04
+
+### Changed
+- Agent specification reduction: 12 agent personas reduced 58% (2,392→1,003 lines)
+- Invocation templates compressed (806→300 lines)
+- Session boot sequence delegated to shell hook (session-boot.sh)
+- Pipeline-orchestration.md condensed (948→578 lines)
+- Poirot persona restored Sonnet-critical procedural scaffolding (65→73 lines)
+- Ellis persona reduced to fast-path commit mode (64→54 lines)
+- Universal scope classifier enabled on Large pipelines (removed blanket all-Opus rule)
+- Opus promotion threshold raised from ≥3 to ≥4; Haiku demotion at ≤-2
+- Cal and Colby on Large now use per-step classifier
+- Large pipeline sizing advisory: Eva offers Medium as cost-aware alternative
+
+### Added
+- Step-sizing reference file (extracted from Cal persona)
+- Session-boot.sh hook for mechanical boot sequence steps
+- Large Sizing Cost Advisory in pipeline-orchestration.md
+
+## [3.20.0] - 2026-04-03
+
+### Added
+- Three-layer enforcement pyramid: per-agent frontmatter hooks (Layer 2) replacing monolithic enforce-paths.sh
+- 7 per-agent enforcement scripts (enforce-{roz,cal,colby,agatha,product,ux,eva}-paths.sh)
+- Robert-spec and Sable-ux producer personas for spec/UX document authoring
+- Wave-boundary compaction advisory hook (prompt-compact-advisory.sh)
+- Path traversal (..) rejection in all enforcement hooks
+- permissionMode: acceptEdits on all 6 write-capable agents
+- Cursor-specific enforcement-config.json with full schema
+
+### Changed
+- Source directory split: source/shared/, source/claude/, source/cursor/ with overlay assembly pattern
+- enforcement-config.json simplified for Claude Code (architecture_dir, product_specs_dir, ux_docs_dir removed — per-agent hooks hardcode paths)
+- /pm and /ux commands now route to robert-spec and sable-ux subagents
+- Agent count: 14 (11 core + 3 opt-in)
+- Hook count: 20 scripts + 1 config
+
+### Removed
+- enforce-paths.sh monolith (Claude Code only — Cursor retains it)
+- test_enforce_paths.py (replaced by per-agent enforcement tests)
+
 ## [3.19.0] - 2026-04-03
 
 ### Added
