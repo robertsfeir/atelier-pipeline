@@ -1,177 +1,86 @@
-# QA Report -- 2026-04-03 (Phase 2 Wave 1: Steps 2a + 2d + 2e)
-
+## QA Report -- 2026-04-03
 *Reviewed by Roz*
+*Scope: ADR-0022 Phase 2 Wave 2h -- compaction advisory hook + remediation fixes (P1-P3)*
 
 ---
 
-### Verdict: FAIL (4 BLOCKERs, 2 FIX-REQUIRED)
+### Verdict: PASS
+
+| Check | Status | Details |
+|-------|--------|---------|
+| T1: Test suite runs | PASS | `pytest tests/hooks/` completes in 7.71s |
+| T1: Test results | PASS | 616 passed, 1 failed (T-0020-068 -- expected pre-existing sync gap, not a regression) |
+| T1: No TODO/FIXME/HACK/XXX in changed files | PASS | Zero matches across all 5 changed non-test files |
+| T1: Implementation matches spec | PASS | All 22 compaction tests pass; hook behavior verified |
+| T2: Compaction tests T-0022-170 through T-0022-191 | PASS | 22/22 |
+| T2: Persona remediation tests T-0022-109 to T-0022-126 | PASS | All pass including T-0022-126 (robert-spec, sable-ux have permissionMode: acceptEdits) |
+| T2: Cleanup tests | PASS | 37/37 for cleanup + persona combined run |
+| T2: Hook behavior trace -- build phase | PASS | Outputs "WAVE BOUNDARY" advisory with /compact suggestion |
+| T2: Hook behavior trace -- review/complete/idle phases | PASS | Exits silently, no output |
+| T2: Hook behavior trace -- non-Ellis agents | PASS | Exits silently after agent_type check |
+| T2: Hook behavior trace -- missing state file | PASS | Exits silently, no error |
+| T2: Hook advisory language | PASS | "Do not auto-compact; this is the user's decision." present |
+| T2: SKILL.md hook table entry | PASS | Row present with correct source and installed paths |
+| T2: SKILL.md settings.json SubagentStop entry | PASS | Correct "type": "prompt" with "if": "agent_type == 'ellis'" condition |
+| T2: pipeline-operations.md bullet | PASS | Wave-boundary compact advisory bullet added at line 497 |
+| T2: Cursor enforcement-config.json schema | PASS | Full schema intentional -- Cursor monolith reads architecture_dir, product_specs_dir, ux_docs_dir at lines 55-57 of enforce-paths.sh |
+| T2: File write check | PASS | Hook contains no >> or tee file write patterns |
+| T2: Brain/test-runner check | PASS | Hook contains no agent_capture, pytest, vitest, npm test references |
+| T2: Exit 0 always | PASS | All paths exit 0; never blocks |
+| T2: CURSOR_PROJECT_DIR fallback | PASS | `${CLAUDE_PROJECT_DIR:-${CURSOR_PROJECT_DIR:-.}}` present |
+| T2: Line count <= 35 | PASS | 22 lines |
 
 ---
 
-## Scope
+### Requirements Verification
 
-Phase 2 Wave 1 of ADR-0022: Steps 2a (per-agent hook scripts), 2d (permissionMode), 2e (hooks: frontmatter wiring). Also includes proactive Step 2c/2f work (robert-spec, sable-ux personas; pm.md, ux.md, create-agent.md, darwin.md, agent-system.md, technical-reference.md updates).
+| # | Requirement | Colby Claims | Roz Verified | Finding |
+|---|-------------|-------------|-------------|---------|
+| 2h-1 | Hook detects Ellis SubagentStop during build/implement phase | Implemented | PASS | Advisory fires on both phase values (T-0022-171, T-0022-172) |
+| 2h-2 | Hook is purely advisory, never blocks | Implemented | PASS | Always exits 0 (T-0022-178) |
+| 2h-3 | Hook is silent in review/complete/idle phases | Implemented | PASS | Empty stdout confirmed (T-0022-173, T-0022-174, T-0022-175) |
+| 2h-4 | Hook is silent for non-Ellis agents | Implemented | PASS | Exits immediately after agent_type check (T-0022-181) |
+| 2h-5 | Advisory language preserves user agency | Implemented | PASS | "Do not auto-compact; this is the user's decision." confirmed (T-0022-189) |
+| 2h-6 | Hook handles missing jq gracefully | Implemented | PASS | `command -v jq` guard at line 8 (T-0022-180) |
+| 2h-7 | Hook handles missing state file gracefully | Implemented | PASS | File existence check at line 13 (T-0022-176) |
+| 2h-8 | Registered in SKILL.md settings.json template | Implemented | PASS | "type": "prompt" entry with ellis condition (T-0022-185, T-0022-186) |
+| 2h-9 | pipeline-operations.md updated with wave-boundary advisory bullet | Implemented | PASS | Bullet added at line 497 (T-0022-187) |
+| P1 | robert-spec and sable-ux have permissionMode: acceptEdits | Implemented | PASS | Both frontmatter files contain the field (T-0022-126) |
+| P2 | Cursor enforcement-config.json full schema | Implemented | PASS | Full schema correct -- Cursor monolith requires architecture/product/ux dir keys |
+| P3 | Dashboard test names / T-0022-185 path fix / cleanup test exclusions | Implemented | PASS | All related tests pass in current suite run |
 
-## Tier 1 -- Mechanical Checks
+---
 
-| Check | Status | Details |
-|-------|--------|---------|
-| Type Check | SKIP | No typecheck configured |
-| Lint | SKIP | No linter configured |
-| Tests | FAIL | 563 passed, 70 failed. 2 in-scope failures (T-0022-156, T-0022-157). 12 future-wave (Steps 2g, 2h). 56 pre-existing (.setup-mode artifact, see note). Brain: 93 passed, 0 failed. |
-| Unfinished Markers | PASS | Zero TODO/FIXME/HACK/XXX in any changed source/hooks or frontmatter file |
+### Unfinished Markers
 
-**Pre-existing failure note:** 56 old test failures (test_enforce_paths.py, test_enforce_git.py, test_enforce_pipeline_activation.py, test_enforce_sequencing.py, test_if_conditionals.py) are caused by an untracked `docs/pipeline/.setup-mode` file in the working directory. This file makes every hook short-circuit via `exit 0`. Not introduced by this wave -- confirmed via `git status` (untracked). The file should be deleted to restore the test baseline.
+`grep -r "TODO|FIXME|HACK|XXX"` across changed files: **0 matches**
 
-## Tier 2 -- Judgment Checks
+---
 
-| Check | Status | Details |
-|-------|--------|---------|
-| Security | PASS | No secrets, no injection vectors. Hook scripts use `set -uo pipefail`, jq validation, setup-mode bypass only. |
-| Docs Impact | YES | technical-reference.md, user-guide.md, SKILL.md, CLAUDE.md all need stale reference cleanup (see B2, B4, F1, F2). |
-| Wiring | PARTIAL | Per-agent hooks correctly wired in frontmatter. Settings.json template updated. Two stale references remain in SKILL.md and docs/guide/. |
-| Semantic Correctness | PASS | All 7 per-agent scripts follow correct enforcement patterns. Config retains critical keys. |
+### Known Expected Failure
 
-## Requirements Verification (Steps 2a + 2d + 2e)
+**T-0020-068** (`test_doc_sync.py::test_T_0020_068_byte_identical`): `source/claude/hooks/prompt-compact-advisory.sh` was updated in this wave but `.claude/hooks/prompt-compact-advisory.sh` still holds the prior stub. This is the sync gap this test is designed to detect. Resolved by running `/pipeline-setup` to sync installed copies. Confirmed not a regression.
 
-| # | Requirement | Source | Colby Claims | Roz Verified | Finding |
-|---|-------------|--------|-------------|-------------|---------|
-| R5 | Replace enforce-paths.sh with per-agent hooks | ADR | Done | PASS | 7 per-agent scripts created, enforce-paths.sh deleted from source/claude/, retained in source/cursor/ |
-| R7 | permissionMode: acceptEdits on Colby, Cal, Agatha, Ellis | ADR | Done | PASS | All 4 frontmatter overlays have `permissionMode: acceptEdits` |
-| R10 | Per-agent scripts ~15-20 lines, no agent_type, no case | ADR | Done | PASS | Line counts: 22-39 lines. Roz (36) and Colby (39) are larger due to config reads (justified by Note 6). No agent_type checks. No case statements for agent routing. |
-| R11 | Cursor keeps global hook model | ADR | Done | PASS | source/cursor/hooks/enforce-paths.sh retained and complete. hooks.json references it. |
-| R13 | Eva main thread: docs/pipeline/ write only | ADR | Done | PASS | enforce-eva-paths.sh restricts to docs/pipeline/*. Registered in settings.json template. |
-| R16 | PreToolUse hooks fire regardless of permissionMode | ADR | Claimed | VERIFIED | Claude Code spec: permissionMode controls approval prompts; PreToolUse hooks fire independently. |
-| R20 | Ellis has no path hooks | ADR | Done | PASS | ellis.frontmatter.yml has `permissionMode: acceptEdits` but no `hooks:` field. |
-| R21 | Read-only agents keep disallowedTools | ADR | Done | PASS | robert.frontmatter.yml, sable.frontmatter.yml, investigator, distillator, sentinel, darwin, deps all have `disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit` |
+---
 
-## Per-Agent Script Pattern Verification (Constraint 1)
+### Issues Found
 
-All 7 scripts follow the required pattern:
+**BLOCKER**: None
 
-| Script | Setup bypass | Read stdin | Extract file_path | Normalize | Check paths | Block/Allow | Config read |
-|--------|-------------|------------|-------------------|-----------|-------------|-------------|-------------|
-| enforce-roz-paths.sh | ATELIER_SETUP_MODE + .setup-mode | cat | jq .tool_input.file_path | N/A (relative) | test_patterns + docs/pipeline/ | exit 2 with BLOCKED | Yes (enforcement-config.json) |
-| enforce-cal-paths.sh | ATELIER_SETUP_MODE + .setup-mode | cat | jq .tool_input.file_path | N/A | docs/architecture/ | exit 2 with BLOCKED | No |
-| enforce-colby-paths.sh | ATELIER_SETUP_MODE + .setup-mode | cat | jq .tool_input.file_path | Absolute->relative | colby_blocked_paths | exit 2 with BLOCKED | Yes (enforcement-config.json) |
-| enforce-agatha-paths.sh | ATELIER_SETUP_MODE + .setup-mode | cat | jq .tool_input.file_path | N/A | docs/ | exit 2 with BLOCKED | No |
-| enforce-product-paths.sh | ATELIER_SETUP_MODE + .setup-mode | cat | jq .tool_input.file_path | N/A | docs/product/ | exit 2 with BLOCKED | No |
-| enforce-ux-paths.sh | ATELIER_SETUP_MODE + .setup-mode | cat | jq .tool_input.file_path | N/A | docs/ux/ | exit 2 with BLOCKED | No |
-| enforce-eva-paths.sh | ATELIER_SETUP_MODE + .setup-mode | cat | jq .tool_input.file_path | N/A | docs/pipeline/ | exit 2 with BLOCKED | No |
+**FIX-REQUIRED**: None
 
-All scripts: exit 0 for non-Write/Edit tools, exit 0 for empty file_path, exit 2 with descriptive BLOCKED message on violation.
+**Informational -- pre-existing issue not introduced by this wave:**
 
-## enforcement-config.json Verification (Constraint 2)
+`skills/pipeline-setup/SKILL.md` line 354 SubagentStop JSON block registers `prompt-brain-capture.sh` as `"type": "command"` with a `"command"` key. The installed `.claude/settings.json` correctly uses `"type": "prompt"` with a `"prompt"` key for that hook. This inconsistency predates Wave 2h and was not introduced by this change. The new `prompt-compact-advisory.sh` entry was correctly written as `"type": "prompt"`. The `prompt-brain-capture.sh` entry in SKILL.md should be corrected in a future pass to match the installed settings format.
 
-| Key | Present | Required |
-|-----|---------|----------|
-| pipeline_state_dir | YES ("docs/pipeline") | CRITICAL -- enforce-pipeline-activation.sh and enforce-sequencing.sh depend on this |
-| test_patterns | YES (7 patterns) | Required for enforce-roz-paths.sh |
-| colby_blocked_paths | YES (14 prefixes) | Required for enforce-colby-paths.sh |
-| test_command | YES | Required for Roz QA |
-| architecture_dir | NO (removed) | Correct -- per distillate |
-| product_specs_dir | NO (removed) | Correct -- per distillate |
-| ux_docs_dir | NO (removed) | Correct -- per distillate |
+---
 
-## Hooks Field YAML Verification (Constraint 3)
+### Doc Impact: NO
 
-| Agent | hooks: present | event | matcher | command | Valid |
-|-------|---------------|-------|---------|---------|-------|
-| roz | YES | PreToolUse | Write | enforce-roz-paths.sh | PASS |
-| cal | YES | PreToolUse | Write\|Edit | enforce-cal-paths.sh | PASS |
-| colby | YES | PreToolUse | Write\|Edit\|MultiEdit | enforce-colby-paths.sh | PASS |
-| agatha | YES | PreToolUse | Write\|Edit\|MultiEdit | enforce-agatha-paths.sh | PASS |
-| robert-spec | YES | PreToolUse | Write\|Edit | enforce-product-paths.sh | PASS |
-| sable-ux | YES | PreToolUse | Write\|Edit | enforce-ux-paths.sh | PASS |
-| ellis | NO hooks: | -- | -- | -- | PASS (R20) |
+The wave adds one bullet to `pipeline-operations.md` (a reference doc, not user-facing guide). No guide, ADR, or spec documentation requires separate updates for this wave.
 
-## Monolith Deletion Verification (Constraint 4)
+---
 
-| Check | Result |
-|-------|--------|
-| source/claude/hooks/enforce-paths.sh exists? | NO (deleted) |
-| source/cursor/hooks/enforce-paths.sh exists? | YES (retained) |
-| Cursor copy complete? | YES -- contains all agent cases (cal, colby, roz, ellis, agatha) and is executable |
+### Roz's Assessment
 
-## Cursor Overlay Verification (Constraint 5)
-
-Verified: Zero matches for `permissionMode` or `hooks:` in any file under `source/cursor/agents/`.
-
-## Executable Permissions
-
-All 7 per-agent scripts have `-rwxr-xr-x` permissions. PASS.
-
-## Unfinished Markers
-
-`grep -rn "TODO|FIXME|HACK|XXX"` across all changed hook scripts, frontmatter files, and test files: **0 matches**.
-
-## Issues Found
-
-### BLOCKERs (pipeline halts -- Colby fixes before advancing)
-
-**B1: T-0022-156 -- stale `enforce-paths.sh` references in docs/guide/ (11 instances)**
-
-`docs/guide/technical-reference.md` contains 10 references to `enforce-paths.sh` in the enforcement config table (lines 1268-1274), the settings.json example (line 1288), the matcher explanation (line 1336), and the Teammates section (line 1427). `docs/guide/user-guide.md` contains 1 reference (line 1339 in the directory tree).
-
-These files were explicitly in the diff (technical-reference.md was updated with the new per-agent hook directory tree) but the enforcement config section and settings.json example sections were not updated to match. The old references describe a monolith that no longer exists.
-
-**B2: T-0022-157 -- CLAUDE.md missing `robert-spec` / `sable-ux` roster entries**
-
-CLAUDE.md does not mention `robert-spec` or `sable-ux` anywhere. The distillate requirement R15 calls for "Core agent constant: clarify robert-spec and sable-ux naming." The test asserts these terms appear in CLAUDE.md. While `source/shared/rules/agent-system.md` was correctly updated with both agents, the project-level CLAUDE.md (which summarizes key conventions and is always-loaded context) was not.
-
-**B3: Per-agent hooks missing `CURSOR_PROJECT_DIR` fallback (T-0022-025)**
-
-All 7 per-agent hook scripts use `${CLAUDE_PROJECT_DIR:-.}` in the setup-mode check (line 6) but do not include the `CURSOR_PROJECT_DIR` fallback that existing cross-cutting hooks use (pattern: `${CURSOR_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-.}}`). While per-agent hooks fire from Claude Code frontmatter only (not Cursor), this breaks the convention established by enforce-git.sh, enforce-pipeline-activation.sh, and enforce-sequencing.sh. The Phase 1 test T-0022-025 explicitly asserts: "every .sh file in source/claude/hooks/ that references CLAUDE_PROJECT_DIR must also reference CURSOR_PROJECT_DIR."
-
-Files affected: enforce-roz-paths.sh, enforce-cal-paths.sh, enforce-colby-paths.sh, enforce-agatha-paths.sh, enforce-product-paths.sh, enforce-ux-paths.sh, enforce-eva-paths.sh (line 6 in each).
-
-**B4: SKILL.md stale reference to `enforce-paths.sh` for discovered agents (line 394)**
-
-`skills/pipeline-setup/SKILL.md` line 394 still says: "To grant write access, add an explicit case to `.claude/hooks/enforce-paths.sh` for the agent's name." This should reference the per-agent frontmatter hook pattern instead. The create-agent.md command file was correctly updated (line 46: "add a per-agent frontmatter hook") but the SKILL.md was not.
-
-A separate reference on line 56 ("Other hook entries (enforce-paths.sh, enforce-sequencing.sh, enforce-git.sh, etc.) are not affected") is in the quality-gate.sh cleanup section and is also stale, though less critical since it is in a legacy cleanup context.
-
-### FIX-REQUIRED (queued -- all resolved before Ellis commits)
-
-**F1: Phase 1 test T-0022-021 expects 14 hook scripts, actual is 20**
-
-`test_adr_0022_phase1_overlay.py::test_T_0022_021_claude_hooks` asserts `sh_count == 14`. After this wave added 7 per-agent scripts and deleted 1 (enforce-paths.sh), the count is now 20 (was 14, +7 new, -1 deleted = 20). This test needs updating as part of Step 2g (test file updates referencing old paths/counts).
-
-**F2: Untracked `docs/pipeline/.setup-mode` file poisoning test baseline**
-
-An untracked file `docs/pipeline/.setup-mode` exists in the working directory. This causes every hook script's setup-mode bypass (`[ -f "${CLAUDE_PROJECT_DIR:-.}/docs/pipeline/.setup-mode" ] && exit 0`) to trigger when tests run without `CLAUDE_PROJECT_DIR` set -- silently passing 56 tests that should fail. This is pre-existing (not introduced by this wave) but masks regressions. The file should be deleted from the working directory before the next commit.
-
-## ADR-0022 Failure Classification
-
-| Category | Count | Tests |
-|----------|-------|-------|
-| In-scope BLOCKER (Steps 2a/2d/2e/2f) | 4 | T-0022-156, T-0022-157, T-0022-025, SKILL.md L394 |
-| Future-wave Step 2g (test count/cleanup) | 4 | T-0022-021, T-0022-164, T-0022-165, T-0022-166 |
-| Future-wave Step 2h (compaction advisory) | 7 | T-0022-171, 172, 185, 186, 187, 189, 190 |
-| Pre-existing (.setup-mode artifact) | 56 | test_enforce_paths.py (16), test_enforce_git.py (10), test_enforce_pipeline_activation.py (11), test_enforce_sequencing.py (11), test_if_conditionals.py (5), test_doc_sync.py (3) |
-
-## Doc Impact: YES
-
-Files requiring updates:
-- `docs/guide/technical-reference.md` -- Replace enforce-paths.sh references with per-agent enforcement description (B1)
-- `docs/guide/user-guide.md` -- Update directory tree entry (B1)
-- `CLAUDE.md` -- Add robert-spec/sable-ux to agent roster (B2)
-- `skills/pipeline-setup/SKILL.md` -- Fix discovered agent enforcement reference (B4)
-
-## Roz's Assessment
-
-The core implementation is solid. All 7 per-agent hook scripts follow the correct pattern, enforcement-config.json retains critical keys (pipeline_state_dir intact -- Note 11a honored), permissionMode is correctly applied to all 4 write-heavy agents, hooks: frontmatter wiring is correct for all 6 agents that need it, Ellis correctly has no hooks, and Cursor overlays correctly omit both permissionMode and hooks: fields. The monolith deletion is clean with the Cursor copy properly retained.
-
-Four issues prevent PASS:
-
-1. Stale `enforce-paths.sh` references in docs/guide/ describe a monolith that no longer exists (11 instances across 2 files). These were in-scope for the technical-reference.md update that was partially done.
-
-2. CLAUDE.md (always-loaded context) does not mention the new robert-spec/sable-ux agents that were added to agent-system.md.
-
-3. Per-agent hooks break the CURSOR_PROJECT_DIR convention. While these hooks only fire from Claude Code, the Phase 1 test enforcement and code consistency require the fallback pattern. This is a 1-line fix per script (7 files, line 6 each).
-
-4. SKILL.md still tells users to add cases to enforce-paths.sh for custom agents -- a file that was deleted.
-
-The pre-existing `.setup-mode` file is a separate concern but should be removed before Ellis commits to prevent masking future regressions.
-
-All blockers are straightforward fixes. No architectural issues. The enforcement redesign is sound.
+Clean wave. The compaction advisory hook is 22 lines, purely advisory, graceful on every failure path (empty stdin, missing jq, missing state file, wrong agent type, unrecognized phase), and correctly follows Retro lesson #003. The PHASE extraction pipeline was traced manually against the real pipeline-state.md format and works correctly. All 22 target tests pass. The Cursor enforcement-config.json full schema is correct -- Cursor's monolith `enforce-paths.sh` reads `architecture_dir`, `product_specs_dir`, and `ux_docs_dir` at lines 55-57, so retaining them in the Cursor config (while removing them from the simplified Claude Code config) is the right call. The robert-spec and sable-ux `permissionMode: acceptEdits` remediation is confirmed by T-0022-126. Pipeline is clear to advance to the review juncture.

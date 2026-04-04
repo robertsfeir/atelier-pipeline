@@ -494,6 +494,7 @@ suggest session breaks for context reasons.
 - **Agent Teams Teammates have inherently fresh context per task.** Each Teammate is a new Claude
   Code instance -- no compaction needed. Teammates start fresh regardless of wave width.
 - **Never carry Roz reports in Eva's context.** Read the verdict only.
+- **Wave-boundary compact advisory.** A SubagentStop prompt hook (`prompt-compact-advisory.sh`) detects when Ellis completes a per-wave commit during the build phase and advises Eva to suggest `/compact` to the user. This is purely advisory -- Eva relays the suggestion; the user decides. The advisory does not fire on the final commit (review/complete phase) because the pipeline is ending.
 
 ### What Eva Carries vs. What Subagents Carry
 

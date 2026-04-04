@@ -2,3 +2,5 @@ brain/node_modules/
 .claude/brain-config.json
 .claude/telemetry/
 .DS_Store
+__pycache__/
+*.pyc
