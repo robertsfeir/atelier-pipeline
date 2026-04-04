@@ -2,7 +2,6 @@
 name: telemetry-hydrate
 description: Capture per-agent telemetry from Claude Code session files into the brain. Run manually or let the SessionStart hook handle it automatically.
 ---
-
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>

@@ -2,7 +2,6 @@
 paths:
   - "docs/pipeline/**"
 ---
-
 # Branch Lifecycle: Trunk-Based Development
 
 All work happens on main. No branch management overhead.

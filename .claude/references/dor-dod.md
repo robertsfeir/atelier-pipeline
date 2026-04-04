@@ -2,9 +2,9 @@
 
 <!-- CONFIGURE: Update the placeholders below to match your project -->
 <!--
-  echo "no linter configured"      = command to run linter (e.g., npm run lint, ruff check)
-  echo "no typecheck configured" = command to run type checker (e.g., npm run typecheck, mypy .)
-  pytest tests/ && cd brain && node --test ../tests/brain/*.test.mjs      = command to run tests for changed files (e.g., npm test [path], pytest [path])
+  {lint_command}      = command to run linter (e.g., npm run lint, ruff check)
+  {typecheck_command} = command to run type checker (e.g., npm run typecheck, mypy .)
+  {test_command}      = command to run tests for changed files (e.g., npm test [path], pytest [path])
 -->
 
 Shared framework for all agents. Replaces procedural checklists with
@@ -110,7 +110,7 @@ Here is the structural pattern:
 ### Agent-Specific DoD Conditions
 
 **Colby (build):**
-- `echo "no linter configured" && echo "no typecheck configured" && pytest tests/ && cd brain && node --test ../tests/brain/*.test.mjs [changed files]` passes
+- `{lint_command} && {typecheck_command} && {test_command} [changed files]` passes
 - Grep for TODO/FIXME/HACK across changed files -- show results
 - Every ADR step acceptance criterion listed with pass evidence
 
@@ -197,7 +197,7 @@ Roz has a special role -- she verifies other agents' DoD claims:
 ### Eva's Responsibilities
 
 **At invocation:**
-- Include `.claude/references/retro-lessons.md` in READ for every subagent invocation
+- Include `{config_dir}/references/retro-lessons.md` in READ for every subagent invocation
 - Include upstream artifact paths directly relevant to the work unit
 - Pass context-brief excerpts via the CONTEXT field, not READ
 - For Roz: include the requirements list from the spec for independent verification

@@ -2,7 +2,6 @@
 name: ux # prettier-ignore
 description: Invoke Sable (UI/UX Designer) to design user experiences, interaction patterns, and interface flows from a feature spec before architecture begins.
 ---
-
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>
@@ -21,8 +20,8 @@ matches the design by reading the actual components.
 </required-actions>
 
 <required-reading>
-- `.claude/references/dor-dod.md` -- DoR/DoD framework (your output format)
-- `.claude/references/retro-lessons.md` -- lessons from past runs
+- `{config_dir}/references/dor-dod.md` -- DoR/DoD framework (your output format)
+- `{config_dir}/references/retro-lessons.md` -- lessons from past runs
 - Robert's spec (`docs/product/`) -- personas, stories, edge cases, acceptance criteria
 </required-reading>
 
@@ -55,11 +54,16 @@ matches the design by reading the actual components.
   heading structure
 - Visual: 4.5:1 contrast, 24x24px targets, no color-only cues, 200% text resize
 
-## Subagent Mode
+## Dual Mode
 
-Sable also has a subagent mode (`.claude/agents/sable.md`) -- a UX acceptance
-reviewer invoked by Eva at two points. Sable-skill (this file) is the author
-and updater of UX docs. Sable-subagent is the verifier.
+Sable operates in two subagent modes:
+- **sable-ux** (`{config_dir}/agents/sable-ux.md`) -- UX design producer.
+  Writes to docs/ux/. Invoked via /ux for UX design and user flow creation.
+- **sable** (`{config_dir}/agents/sable.md`) -- UX acceptance reviewer.
+  ADR-blind. Read-only. Invoked by Eva at review juncture.
+
+sable-ux (this command's subagent) is the author and updater of UX docs.
+Sable-subagent is the verifier.
 
 UX doc reconciliation: UX docs are living artifacts. Every pipeline ends with
 UX docs current.

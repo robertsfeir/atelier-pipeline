@@ -8,8 +8,8 @@ Eva reads this file at pipeline start for detailed operational procedures.
 
 All subagent invocations use XML tags. Eva constructs prompts with `<task>`,
 `<brain-context>`, `<context>`, `<hypotheses>`, `<read>`, `<warn>`,
-`<constraints>`, and `<output>` tags. See `.claude/references/xml-prompt-schema.md`
-and `.claude/references/invocation-templates.md` for the full tag vocabulary
+`<constraints>`, and `<output>` tags. See `{config_dir}/references/xml-prompt-schema.md`
+and `{config_dir}/references/invocation-templates.md` for the full tag vocabulary
 and per-agent examples.
 
 </section>
@@ -63,7 +63,7 @@ Cal's ADR steps become work units grouped into waves. Roz writes tests per wave,
    PASS. Ellis uses wave commit mode. Per-wave commits auto-advance after Roz
    QA PASS -- no user approval required. The final commit and push requires
    user approval (hard pause).
-6. Eva updates `docs/pipeline/pipeline-state.md` after each wave completes
+6. Eva updates `{pipeline_state_dir}/pipeline-state.md` after each wave completes
 
 **Post-build pipeline tail (after all waves complete -- review juncture):**
 7. Eva invokes the review juncture: Roz final sweep + Poirot + Robert-subagent
@@ -79,7 +79,7 @@ Cal's ADR steps become work units grouped into waves. Roz writes tests per wave,
 9. Eva invokes Robert-subagent in doc review mode to verify Agatha's output
 10. If Robert-subagent or Sable-subagent flagged DRIFT: hard pause. Human
     decides fix code or update spec/UX.
-11. Final delivery (strategy-dependent, see `.claude/rules/branch-lifecycle.md`):
+11. Final delivery (strategy-dependent, see `{config_dir}/rules/branch-lifecycle.md`):
     - **Trunk-based:** Eva invokes Ellis in standard mode. Ellis commits and
       pushes to main. Hard pause before push to remote.
     - **MR-based strategies (GitHub Flow, GitLab Flow, GitFlow):** Eva invokes
@@ -264,7 +264,7 @@ to complete before starting the next. Current behavior -- no change.
 **Agent Teams (when `agent_teams_available: true`, experimental):**
 Eva creates one Teammate (Colby instance in a dedicated worktree) per wave
 unit using `TaskCreate`. Each Teammate receives a structured task description
-(see `invocation-templates.md`, template `agent-teams-task`). Eva then waits
+(see Agent Teams Task Format in this file). Eva then waits
 for TaskCompleted events from all Teammates in the wave.
 
 Teammate task contract format:
@@ -278,7 +278,7 @@ Wave: N of M, Unit: K of L
 maxTurns: 25
 ```
 
-Teammates run Colby's persona (`.claude/agents/colby.md`). They run lint
+Teammates run Colby's persona (`{config_dir}/agents/colby.md`). They run lint
 after implementation. They do NOT run the full test suite and do NOT commit.
 
 After all TaskCompleted events arrive for the wave, Eva merges each worktree
@@ -327,15 +327,50 @@ read-only review in a future version.
 ### Teammate Identity
 
 Teammates are Colby instances. They are NOT a new agent type. Teammates load
-Colby's persona from `.claude/agents/colby.md` and project rules from
-`.claude/rules/`. No new persona file exists for Teammates. Teammates match
-the `colby` case in `enforce-paths.sh` and have full write access to the
+Colby's persona from `{config_dir}/agents/colby.md` and project rules from
+`{config_dir}/rules/`. No new persona file exists for Teammates. Teammates match
+the `enforce-colby-paths.sh` per-agent hook and have full write access to the
 codebase (same as a standard Colby subagent invocation).
+
+### Agent Teams Task Format
+
+Eva writes this to `TaskCreate` for each Teammate. This is NOT an Agent tool
+invocation -- it is the task description format for the Claude Code task system.
+
+```
+ADR: ADR-NNNN Step N -- [step description]
+Wave: N of M, Unit: K of L
+maxTurns: 25
+
+Files to create:
+- [path/to/new-file.ext]
+
+Files to modify:
+- [path/to/existing-file.ext]
+
+Test files:
+- [path/to/test-file.ext]
+
+Acceptance criteria (from ADR step):
+- [criterion 1]
+- [criterion N]
+
+Constraints:
+- Run lint after implementation: {lint_command}
+- Do NOT run the full test suite -- Eva runs it after merge
+- Do NOT commit -- Eva merges and routes to Ellis
+- Do NOT modify files outside your assigned scope above
+- If a dependency is missing, mark task as blocked
+- Make Roz's pre-written tests pass -- do not modify her assertions
+- Zero TODO/FIXME/HACK in delivered code
+```
+
+`maxTurns: 25` is the default (retro #004). Eva processes `TaskCompleted`
+events sequentially (retro #003). Blocked tasks fall back to sequential Colby.
 
 ### Task Lifecycle
 
-1. Eva creates one task per wave unit via `TaskCreate` with a structured
-   task description (see `invocation-templates.md`, template `agent-teams-task`).
+1. Eva creates one task per wave unit via `TaskCreate` with the format above.
 2. Teammate instances pick up tasks and execute the build units.
 3. Each Teammate marks its task complete via `TaskUpdate` when done.
 4. `TaskCompleted` events fire on Eva (Team Lead). Eva processes them
@@ -430,7 +465,7 @@ wait for user input
 - **Multiple failed jobs:** concatenate logs with a job header line (`--- Job: {job_name} ---`) between each; total cap at 400 lines (200 per job, up to 2 jobs; if more than 2 jobs fail, take the first 2 failing jobs' logs).
 - Logs are passed to Roz in the CONTEXT field of the `roz-ci-investigation` template, not written to disk.
 
-### CI Watch State Fields (PIPELINE_STATUS marker in `docs/pipeline/pipeline-state.md`)
+### CI Watch State Fields (PIPELINE_STATUS marker in `{pipeline_state_dir}/pipeline-state.md`)
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -440,7 +475,7 @@ wait for user input
 
 **Watch replacement:** When Ellis pushes again while a watch is active, Eva sets `ci_watch_active: false` on the old watch and starts a new watch for the new commit SHA. Only one watch is active at a time.
 
-### Telemetry Accumulator Fields (PIPELINE_STATUS marker in `docs/pipeline/pipeline-state.md`)
+### Telemetry Accumulator Fields (PIPELINE_STATUS marker in `{pipeline_state_dir}/pipeline-state.md`)
 
 Eva writes telemetry accumulator fields to PIPELINE_STATUS at each phase transition, piggybacking
 on existing pipeline-state.md updates. This enables session recovery: if Eva restarts mid-pipeline,
@@ -494,6 +529,7 @@ suggest session breaks for context reasons.
 - **Agent Teams Teammates have inherently fresh context per task.** Each Teammate is a new Claude
   Code instance -- no compaction needed. Teammates start fresh regardless of wave width.
 - **Never carry Roz reports in Eva's context.** Read the verdict only.
+- **Wave-boundary compact advisory.** A SubagentStop prompt hook (`prompt-compact-advisory.sh`) detects when Ellis completes a per-wave commit during the build phase and advises Eva to suggest `/compact` to the user. This is purely advisory -- Eva relays the suggestion; the user decides. The advisory does not fire on the final commit (review/complete phase) because the pipeline is ending.
 
 ### What Eva Carries vs. What Subagents Carry
 

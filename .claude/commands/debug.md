@@ -2,7 +2,6 @@
 name: debug # prettier-ignore
 description: Debug flow -- Roz investigates and diagnoses, Colby fixes. Use when the user reports a bug, error, stack trace, or unexpected behavior.
 ---
-
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>
@@ -18,7 +17,7 @@ reporting it.
 
 <required-reading>
 - Relevant feature files identified from the bug report
-- `.claude/references/retro-lessons.md` -- lessons from past runs
+- `{config_dir}/references/retro-lessons.md` -- lessons from past runs
 </required-reading>
 
 <behavior>
