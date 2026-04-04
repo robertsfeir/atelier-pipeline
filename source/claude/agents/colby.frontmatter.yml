@@ -8,5 +8,10 @@ effort: high
 color: green
 maxTurns: 100
 tools: Read, Write, Edit, MultiEdit, Glob, Grep, Bash, Agent(roz, cal)
+permissionMode: acceptEdits
+hooks:
+  - event: PreToolUse
+    matcher: Write|Edit|MultiEdit
+    command: .claude/hooks/enforce-colby-paths.sh
 mcpServers:
   - atelier-brain

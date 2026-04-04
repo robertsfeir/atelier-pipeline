@@ -213,8 +213,8 @@ disallowedTools:
 ```
 
 The `disallowedTools` list is the conservative read-only default. Users who
-need write access for a discovered agent must also add a case to
-`{config_dir}/hooks/enforce-paths.sh`.
+need write access for a discovered agent must also add a per-agent
+frontmatter hook (e.g., enforce-{name}-paths.sh) to the agent's overlay.
 
 ### Structural Mapping
 

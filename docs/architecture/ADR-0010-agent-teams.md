@@ -491,12 +491,12 @@ None. Agent Teams reuses existing agent personas and infrastructure.
 
 | File | Reason |
 |------|--------|
-| `source/agents/colby.md` | Colby's persona is unchanged. Teammates load it as-is from `.claude/agents/colby.md`. No teammate-specific behavior needed in the persona -- constraints come from the task description. |
-| `source/agents/*.md` (all other agents) | No agent personas change. Agent Teams affects only Eva's orchestration layer. |
-| `source/hooks/enforce-paths.sh` | Teammates use `colby` as agent_type (line 81-84: full write access). No hook changes needed. |
-| `source/hooks/enforce-sequencing.sh` | Teammates are not invoked via the Agent tool on Eva's thread -- they are Claude Code instances. Sequencing hooks fire on Eva's thread, not on teammate threads. However, `.claude/settings.json` is shared via worktree, so hooks ARE active per-teammate. No changes needed. |
-| `source/hooks/enforce-git.sh` | Teammates should not run git commit (Eva merges). This is enforced by the task description constraint, not by the hook. The git hook blocks main-thread git operations. In a worktree, the teammate IS the main thread of its instance -- this hook would block teammate git operations, which is correct behavior (teammates should not commit). |
-| `source/hooks/enforcement-config.json` | No new config keys needed. |
+| `source/shared/agents/colby.md` | Colby's persona is unchanged. Teammates load it as-is from `.claude/agents/colby.md`. No teammate-specific behavior needed in the persona -- constraints come from the task description. |
+| `source/shared/agents/*.md` (all other agents) | No agent personas change. Agent Teams affects only Eva's orchestration layer. |
+| `source/claude/hooks/enforce-paths.sh` | Teammates use `colby` as agent_type (line 81-84: full write access). No hook changes needed. |
+| `source/claude/hooks/enforce-sequencing.sh` | Teammates are not invoked via the Agent tool on Eva's thread -- they are Claude Code instances. Sequencing hooks fire on Eva's thread, not on teammate threads. However, `.claude/settings.json` is shared via worktree, so hooks ARE active per-teammate. No changes needed. |
+| `source/claude/hooks/enforce-git.sh` | Teammates should not run git commit (Eva merges). This is enforced by the task description constraint, not by the hook. The git hook blocks main-thread git operations. In a worktree, the teammate IS the main thread of its instance -- this hook would block teammate git operations, which is correct behavior (teammates should not commit). |
+| `source/claude/hooks/enforcement-config.json` | No new config keys needed. |
 | `source/commands/*.md` | No new slash command for Agent Teams. |
 | `source/rules/pipeline-models.md` | Teammates are Colby instances -- existing model selection applies. No new model table entries. |
 | `source/references/agent-preamble.md` | Teammates reference preamble via Colby's persona. No changes needed. |

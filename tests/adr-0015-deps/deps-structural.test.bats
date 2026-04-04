@@ -18,20 +18,20 @@ load ../xml-prompt-structure/test_helper
 
 # ── T-0015-001: Persona file exists in source with correct frontmatter ─
 
-@test "T-0015-001: source/agents/deps.md exists with name: deps in YAML frontmatter" {
-  local file="$SOURCE_AGENTS/deps.md"
-  [ -f "$file" ]
-  grep -q "^name: deps" "$file"
+@test "T-0015-001: source deps agent files exist with name: deps in frontmatter" {
+  local shared="$PROJECT_ROOT/source/shared/agents/deps.md"
+  local frontmatter="$PROJECT_ROOT/source/claude/agents/deps.frontmatter.yml"
+  [ -f "$shared" ]
+  [ -f "$frontmatter" ]
+  grep -q "^name: deps" "$frontmatter"
 }
 
-# ── T-0015-002: Installed copy is identical to source ────────────────
+# ── T-0015-002: Installed copy exists with correct frontmatter ───────
 
-@test "T-0015-002: .claude/agents/deps.md exists and is identical to source/agents/deps.md" {
-  local source="$SOURCE_AGENTS/deps.md"
+@test "T-0015-002: .claude/agents/deps.md exists with name: deps in YAML frontmatter" {
   local installed="$INSTALLED_AGENTS/deps.md"
-  [ -f "$source" ]
   [ -f "$installed" ]
-  diff -q "$source" "$installed"
+  grep -q "name: deps" "$installed"
 }
 
 # ── T-0015-003: disallowedTools includes Write, Edit, MultiEdit ─────
@@ -290,37 +290,29 @@ load ../xml-prompt-structure/test_helper
 }
 
 # ═══════════════════════════════════════════════════════════════════════
-# Step 1 Hook Tests (enforce-paths.sh catch-all)
+# Step 1 Hook Tests (Layer 1 disallowedTools enforcement)
 # ═══════════════════════════════════════════════════════════════════════
 
-# ── T-0015-017: enforce-paths.sh blocks deps from Write ──────────────
+# ── T-0015-017: deps has disallowedTools blocking Write ──────────────
 
-@test "T-0015-017: enforce-paths.sh catch-all blocks Write from agent_type deps" {
-  source "$(cd "$(dirname "$BATS_TEST_FILENAME")/../hooks" && pwd)/test_helper.bash"
-  setup
-
-  local input
-  input=$(build_tool_input "Write" "package.json" "deps")
-  run run_hook_with_input "enforce-paths.sh" "$input"
-  [ "$status" -eq 2 ]
-  [[ "$output" == *"BLOCKED"* ]]
-
-  teardown
+@test "T-0015-017: deps frontmatter disallowedTools blocks Write (Layer 1 enforcement)" {
+  local file="$INSTALLED_AGENTS/deps.md"
+  [ -f "$file" ] || skip "deps.md not yet created"
+  local frontmatter
+  frontmatter=$(sed -n '/^---$/,/^---$/p' "$file")
+  echo "$frontmatter" | grep -q "disallowedTools"
+  echo "$frontmatter" | grep -q "Write"
 }
 
-# ── T-0015-018: enforce-paths.sh blocks deps from Edit ──────────────
+# ── T-0015-018: deps has disallowedTools blocking Edit ───────────────
 
-@test "T-0015-018: enforce-paths.sh catch-all blocks Edit from agent_type deps" {
-  source "$(cd "$(dirname "$BATS_TEST_FILENAME")/../hooks" && pwd)/test_helper.bash"
-  setup
-
-  local input
-  input=$(build_tool_input "Edit" "package.json" "deps")
-  run run_hook_with_input "enforce-paths.sh" "$input"
-  [ "$status" -eq 2 ]
-  [[ "$output" == *"BLOCKED"* ]]
-
-  teardown
+@test "T-0015-018: deps frontmatter disallowedTools blocks Edit (Layer 1 enforcement)" {
+  local file="$INSTALLED_AGENTS/deps.md"
+  [ -f "$file" ] || skip "deps.md not yet created"
+  local frontmatter
+  frontmatter=$(sed -n '/^---$/,/^---$/p' "$file")
+  echo "$frontmatter" | grep -q "disallowedTools"
+  echo "$frontmatter" | grep -q "Edit"
 }
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -701,7 +693,7 @@ SKILL_FILE="$PROJECT_ROOT/skills/pipeline-setup/SKILL.md"
 
 # ── T-0015-054: Step 6d copies deps.md agent file ──────────────────
 
-@test "T-0015-054: Step 6d yes-path copies source/agents/deps.md to .claude/agents/deps.md" {
+@test "T-0015-054: Step 6d yes-path assembles deps agent to .claude/agents/deps.md" {
   local step6d
   step6d=$(awk '/[Ss]tep 6d/,/[Ss]tep 6e|[Ss]tep 7|[Bb]rain/' "$SKILL_FILE" | head -40)
   [ -n "$step6d" ] || skip "Step 6d block not found"

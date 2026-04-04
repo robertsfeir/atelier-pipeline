@@ -118,7 +118,7 @@ ln -s /path/to/atelier-pipeline ~/.cursor/plugins/local/atelier-pipeline
 ### In scope
 - .cursor-plugin/plugin.json manifest
 - Cursor-compatible directory structure (rules/, agents/, commands/, skills/)
-- hooks/hooks.json pointing to existing shell scripts in source/hooks/
+- hooks/hooks.json pointing to existing shell scripts in source/claude/hooks/
 - mcp.json for brain MCP server
 - AGENTS.md (Cursor equivalent of CLAUDE.md) or always-apply rules
 - /pipeline-setup skill adapted for Cursor

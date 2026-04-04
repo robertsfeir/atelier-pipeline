@@ -19,7 +19,7 @@ Proposed
 | R9 | Quality is user's responsibility -- no trust scoring | context-brief.md | Anti-goal: automated quality/trust evaluation |
 | R10 | No registry JSON, no manifest, no API, no marketplace | context-brief.md, brain-context (rejected alternatives) | Filesystem IS the registry |
 | R11 | Eva must NOT gain Write/Edit access | constraint, default-persona.md gate `no-code-writing` | Routes to Colby for file creation |
-| R12 | `enforce-paths.sh` catch-all blocks unknown agent_types from writing | source/hooks/enforce-paths.sh:112-118 | Discovered agents are read-only by default unless explicitly configured |
+| R12 | `enforce-paths.sh` catch-all blocks unknown agent_types from writing | source/claude/hooks/enforce-paths.sh:112-118 | Discovered agents are read-only by default unless explicitly configured |
 
 ### Retro Risks
 
@@ -30,7 +30,7 @@ Proposed
 
 ## Context
 
-The pipeline currently supports exactly 9 hardcoded agents defined in `source/agents/`. Users who want custom agents (domain experts, project-specific reviewers, specialized tools) must manually create persona files and manually add routing rules. There is no discovery mechanism -- Eva does not know about agents she was not told about at design time.
+The pipeline currently supports exactly 9 hardcoded agents defined in `source/shared/agents/`. Users who want custom agents (domain experts, project-specific reviewers, specialized tools) must manually create persona files and manually add routing rules. There is no discovery mechanism -- Eva does not know about agents she was not told about at design time.
 
 Issue #15 requests filesystem-based agent discovery: Eva scans the agents directory, identifies non-core files, announces them, detects capability conflicts with core agents, and lets users resolve routing preferences. Additionally, users should be able to paste raw agent markdown into the chat and have it converted to the pipeline's XML format and written as a proper agent file.
 
@@ -414,9 +414,9 @@ No orphan producers. All data flows have consumers.
 
 | File | Reason |
 |------|--------|
-| `source/hooks/enforce-paths.sh` | Catch-all `*)` already blocks unknown agents -- correct default behavior |
-| `source/hooks/enforcement-config.json` | No new config keys needed -- discovery is behavioral |
-| `source/agents/*.md` (all 9) | Core agents unchanged |
+| `source/claude/hooks/enforce-paths.sh` | Catch-all `*)` already blocks unknown agents -- correct default behavior |
+| `source/claude/hooks/enforcement-config.json` | No new config keys needed -- discovery is behavioral |
+| `source/shared/agents/*.md` (all 9) | Core agents unchanged |
 | `source/commands/*.md` (all 7) | No new commands |
 | `source/references/agent-preamble.md` | Unchanged -- discovered agents reference it, preamble does not reference them |
 | `source/references/invocation-templates.md` | No new invocation template needed -- discovered agents use the standard template |

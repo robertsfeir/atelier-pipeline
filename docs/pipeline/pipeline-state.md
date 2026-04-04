@@ -1,10 +1,10 @@
 # Pipeline State
 
 ## Active Pipeline
-**Feature:** v3.17.0 review findings remediation
-**Phase:** review
-<!-- PIPELINE_STATUS: {"phase": "review", "sizing": "micro", "roz_qa": "", "telemetry_captured": true, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": true, "robert_reviewed": false} -->
-**Sizing:** Small
+**Feature:** Wave 3 — Native Enforcement Redesign (ADR-0022)
+**Phase:** build (Phase 2, Wave 1 — Steps 2a+2d+2e+2g: enforcement layer + cleanup)
+<!-- PIPELINE_STATUS: {"phase": "build", "sizing": "medium", "roz_qa": "PASS", "telemetry_captured": true, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": true, "robert_reviewed": false} -->
+**Sizing:** Medium
 **Started:** 2026-04-03
 
 ## Configuration
@@ -52,11 +52,25 @@ Source: `docs/pipeline/last-qa-report.md`. Addresses blockers B1-B4 and fix-requ
 ADR-0021 brain wiring: settings.json hook registrations (prompt-brain-prefetch, prompt-brain-capture, warn-brain-capture), agent persona updates (agatha, cal, ellis), rule/reference updates. These changes predate the remediation work.
 
 ## Queue
-Review findings remediation (M-1 through Cursor P2b) → Wave 3 (#29).
+**→ Ellis per-wave commit (Phase 2 Wave 1)** → Colby Wave 2 (Steps 2c+2f: producer personas + routing) → Roz+Poirot QA → Ellis per-wave commit → Colby Wave 3 (Step 2h: compaction advisory) → Roz+Poirot QA → Ellis per-wave commit → review juncture → Ellis final commit.
 
 ## Changes since last state
-- All remediation items (M-1 through Cursor P2b) complete
-- Cursor P1a-P2b: 12 agents synced, 3 rules regenerated, 5 new .mdc references created, duplicate frontmatter fixed
-- SKILL.md Step 3c added for Cursor reference doc sync
-- Roz QA PASS (274/274 bats, 93/93 brain), Poirot reviewed (0 wave-introduced blockers)
-- Pre-existing tech debt noted: 4 ADR-0019 .mdc files still have hardcoded .claude/ paths
+- Phase 2 Wave 1 built by Colby (Steps 2a+2d+2e+2g):
+  - 7 per-agent enforcement scripts created in source/claude/hooks/
+  - enforce-paths.sh monolith deleted from source/claude/hooks/
+  - enforcement-config.json simplified (removed architecture_dir, product_specs_dir, ux_docs_dir)
+  - permissionMode: acceptEdits added to 4 Claude overlays (colby, cal, agatha, ellis)
+  - hooks: field added to 6 Claude overlays (roz, cal, colby, agatha, robert-spec, sable-ux)
+  - SKILL.md updated (settings.json registration: enforce-paths.sh → enforce-eva-paths.sh)
+  - test_enforce_paths.py deleted (monolith tests replaced by per-agent tests)
+  - test_doc_sync.py updated for platform-specific enforcement architecture
+  - test_if_conditionals.py updated (enforce-paths → enforce-eva-paths)
+  - test_adr_0022_phase1_overlay.py updated (hook count 14 → 20)
+  - docs/guide/technical-reference.md + user-guide.md updated
+  - CLAUDE.md updated with robert-spec/sable-ux
+  - pm.md, ux.md, create-agent.md, darwin.md updated (enforce-paths.sh → per-agent)
+- Roz QA: Initial FAIL (4 BLOCKERs) → fixes applied → PASS
+- Poirot: 3 BLOCKERs, 5 FIX-REQ, 3 NITs — key fixes: path normalization, CURSOR_PROJECT_DIR fallback
+- Tests: 607 pass, 10 fail (all future-wave TDD: 3 cleanup + 7 compaction)
+<!-- COMPACTION: 2026-04-03T20:04:01Z -->
+<!-- COMPACTION: 2026-04-03T20:53:39Z -->

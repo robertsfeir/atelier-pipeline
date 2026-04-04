@@ -23,7 +23,7 @@ Source templates are split into three directories: `source/shared/` (platform-ag
 ```
 source/          # Template files -- copied to target projects by /pipeline-setup
   shared/        # Platform-agnostic content (no YAML frontmatter)
-    agents/      # Agent content bodies (14 agents, no frontmatter)
+    agents/      # Agent content bodies (14 agents incl. robert-spec, sable-ux producers)
     commands/    # Slash command definitions (11 commands)
     references/  # Quality framework, retro lessons, invocation templates, operations, agent preamble, QA checks, branch/MR mode
     pipeline/    # Pipeline state file templates (5 files)

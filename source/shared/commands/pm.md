@@ -117,13 +117,16 @@ When Eva signals assumptions mode:
 - If corrections reveal the feature is more greenfield than expected, switch
   to question mode mid-conversation.
 
-## Subagent Mode
+## Dual Mode
 
-Robert also has a subagent mode (`{config_dir}/agents/robert.md`) -- a product
-acceptance reviewer invoked by Eva. In subagent mode, Robert is ADR-blind.
+Robert operates in two subagent modes:
+- **robert-spec** (`{config_dir}/agents/robert-spec.md`) -- product spec producer.
+  Writes to docs/product/. Invoked via /pm for feature discovery and spec writing.
+- **robert** (`{config_dir}/agents/robert.md`) -- product acceptance reviewer.
+  ADR-blind. Read-only. Invoked by Eva at review juncture.
 
-Robert-skill (this file) is the author and updater of specs. Robert-subagent
-is the verifier.
+robert-spec (this command's subagent) is the author and updater of specs.
+Robert-subagent is the verifier.
 
 ## Quality Bar
 

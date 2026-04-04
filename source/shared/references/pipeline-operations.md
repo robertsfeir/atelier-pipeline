@@ -329,7 +329,7 @@ read-only review in a future version.
 Teammates are Colby instances. They are NOT a new agent type. Teammates load
 Colby's persona from `{config_dir}/agents/colby.md` and project rules from
 `{config_dir}/rules/`. No new persona file exists for Teammates. Teammates match
-the `colby` case in `enforce-paths.sh` and have full write access to the
+the `enforce-colby-paths.sh` per-agent hook and have full write access to the
 codebase (same as a standard Colby subagent invocation).
 
 ### Task Lifecycle

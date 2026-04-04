@@ -2,7 +2,7 @@
 
 ## DoR: Requirements Extracted
 
-**Sources:** User conversation (context brief), .claude/agents/*.md (9 files), .claude/commands/*.md (7 files), .claude/references/invocation-templates.md, .claude/references/retro-lessons.md, source/agents/*.md (9 templates), source/commands/*.md (7 templates), source/references/*.md (4 templates), .claude/rules/agent-system.md, .claude/rules/pipeline-models.md
+**Sources:** User conversation (context brief), .claude/agents/*.md (9 files), .claude/commands/*.md (7 files), .claude/references/invocation-templates.md, .claude/references/retro-lessons.md, source/shared/agents/*.md (9 templates), source/commands/*.md (7 templates), source/references/*.md (4 templates), .claude/rules/agent-system.md, .claude/rules/pipeline-models.md
 
 | # | Requirement | Source |
 |---|-------------|--------|
@@ -13,7 +13,7 @@
 | 5 | Specify model assignment in identity section of each persona file | Context brief -- "model each agent uses should be specified in identity" |
 | 6 | Dial back MUST/CRITICAL/NEVER language to conversational tone in all converted files | Context brief -- Anthropic Claude 4.x recommendation |
 | 7 | Convert all 9 agent persona files (.claude/agents/*.md) | Blast radius analysis |
-| 8 | Convert all 9 source agent templates (source/agents/*.md) with placeholder preservation | Blast radius analysis |
+| 8 | Convert all 9 source agent templates (source/shared/agents/*.md) with placeholder preservation | Blast radius analysis |
 | 9 | Convert all 7 command files (.claude/commands/*.md) to XML structure | Context brief -- "skill command files need same treatment" |
 | 10 | Convert all 7 source command templates (source/commands/*.md) | Blast radius analysis |
 | 11 | Convert invocation-templates.md (installed + source) | Context brief |
@@ -527,7 +527,7 @@ For each agent:
 6. Add model identity to `<identity>` section
 7. Preserve YAML frontmatter and the `<!-- Part of atelier-pipeline -->` comment
 
-- **Files to modify:** All 9 files in `.claude/agents/` and all 9 files in `source/agents/`
+- **Files to modify:** All 9 files in `.claude/agents/` and all 9 files in `source/shared/agents/`
 - **Acceptance criteria:** Every agent file follows the XML structure from Step 0. Brain Access sections are removed. Required-actions section contains all proactive behaviors. Language uses conversational tone. Model identity is present. YAML frontmatter unchanged. Placeholder variables in source/ preserved.
 - **Estimated complexity:** Large (18 files, each requiring careful manual conversion)
 
@@ -551,7 +551,7 @@ Update agent-system.md and default-persona.md to reference the XML format.
 
 Update check-brain-usage.sh to match the new pattern of brain interaction evidence. Since brain reads are now Eva-injected data and brain writes are Eva's post-return responsibility, the hook needs to check for different patterns.
 
-- **Files to modify:** `source/hooks/check-brain-usage.sh`, `.claude/hooks/check-brain-usage.sh`
+- **Files to modify:** `source/claude/hooks/check-brain-usage.sh`, `.claude/hooks/check-brain-usage.sh`
 - **Files NOT modified:** `enforcement-config.json` stays unchanged. The `brain_required_agents` list (cal, colby, roz, agatha, sable, robert) remains as-is. Ellis receives brain context through XML behavioral guidance in his persona file (his `<required-actions>` references brain-context consumption), not through mechanical hook enforcement. This is a deliberate choice: we want to see if XML formatting alone improves compliance before adding Ellis to the enforcement hook. Poirot and Distillator remain excluded (Poirot by design, Distillator because compression is mechanical).
 - **Acceptance criteria:** Hook detects brain context consumption (agent referencing thoughts from `<brain-context>`) rather than agent-initiated brain calls. Hook still warns when an agent ignores injected brain context. enforcement-config.json is not modified.
 - **Estimated complexity:** Small
@@ -566,11 +566,11 @@ Update pipeline-operations.md to reference the XML invocation format and brain r
 
 ### Step 9: Add Examples to Agent Persona Files
 
-Add an `<examples>` tag to each of the 9 agent persona files (both .claude/agents/ and source/agents/). Each agent gets 2-3 short examples (3-5 lines each) tailored to their cognitive directive, demonstrating the directive in action with tool call sequences or decision patterns. Brain-context-capable agents (Cal, Colby, Roz, Agatha, Robert, Sable, Ellis) include at least one example showing brain-context consumption. Skill command files are not modified.
+Add an `<examples>` tag to each of the 9 agent persona files (both .claude/agents/ and source/shared/agents/). Each agent gets 2-3 short examples (3-5 lines each) tailored to their cognitive directive, demonstrating the directive in action with tool call sequences or decision patterns. Brain-context-capable agents (Cal, Colby, Roz, Agatha, Robert, Sable, Ellis) include at least one example showing brain-context consumption. Skill command files are not modified.
 
 This step depends on Step 4 (agent persona conversion) being complete -- the `<examples>` tag is inserted into the XML structure established by Step 4.
 
-- **Files to modify:** All 9 files in `.claude/agents/` and all 9 files in `source/agents/`
+- **Files to modify:** All 9 files in `.claude/agents/` and all 9 files in `source/shared/agents/`
 - **Acceptance criteria:** Every agent persona file contains an `<examples>` tag between `<workflow>` and `<tools>`. Each `<examples>` section has 2-3 examples. Examples use conversational narration. Examples demonstrate the agent's cognitive directive (not generic code samples). Brain-context-capable agents show brain-context consumption in at least one example. No example exceeds 5 lines per scenario. Placeholder variables in source/ are preserved.
 - **Estimated complexity:** Medium (18 files, but each example set is short and formulaic)
 
@@ -642,7 +642,7 @@ This step depends on Step 4 (agent persona conversion) being complete -- the `<e
 | T-0005-047 | Failure | No agent file contains the word "MANDATORY" in all-caps |
 | T-0005-048 | Boundary | YAML frontmatter (name, description, disallowedTools) is unchanged in every agent file |
 | T-0005-049 | Regression | For each agent file, every `<constraints>` bullet in the converted file has a corresponding rule from the original file's "Forbidden Actions" or "Task Constraints" section -- verified by extracting constraint sentences from both versions and diffing. No original constraint is silently dropped. |
-| T-0005-050 | Happy | Source template files in source/agents/ preserve placeholder variables ({test_command}, {lint_command}, etc.) inside XML tags |
+| T-0005-050 | Happy | Source template files in source/shared/agents/ preserve placeholder variables ({test_command}, {lint_command}, etc.) inside XML tags |
 | T-0005-051 | Happy | Colby's `<identity>` states "she/her" pronouns |
 | T-0005-052 | Boundary | Poirot's persona file does not have a `<required-actions>` entry about brain context (Poirot has no brain access) |
 | T-0005-053 | Failure | No agent file uses MUST/CRITICAL/NEVER as intensity markers (grep for `\bMUST\b`, `\bCRITICAL\b`, `\bNEVER\b` in all caps) |
@@ -659,7 +659,7 @@ This step depends on Step 4 (agent persona conversion) being complete -- the `<e
 | T-0005-104 | Failure | Every agent's cognitive directive text matches the exact wording from the ADR's Cognitive Directives table -- no paraphrasing, truncation, or rewording of the directive |
 | T-0005-105 | Failure | The `<!-- Part of atelier-pipeline -->` comment appears between YAML frontmatter and the first `<identity>` tag -- not inside a tag, not below the closing `</output>` tag |
 | T-0005-106 | Failure | investigator.md (Poirot's file) is included in the 9-agent count and follows the same 7-tag XML structure as all other agent files |
-| T-0005-107 | Failure | Source (source/agents/) and installed (.claude/agents/) files use the same XML tag names in the same order, even though content differs due to `{placeholder}` variables |
+| T-0005-107 | Failure | Source (source/shared/agents/) and installed (.claude/agents/) files use the same XML tag names in the same order, even though content differs due to `{placeholder}` variables |
 
 ### Step 5 Tests: Skill Command Files Conversion
 
@@ -724,14 +724,14 @@ This step depends on Step 4 (agent persona conversion) being complete -- the `<e
 | T-0005-133 | Happy | No agent's `<examples>` section contains more than 3 examples |
 | T-0005-134 | Happy | Brain-context-capable agents (cal, colby, roz, agatha, robert, sable, ellis) include at least one example that references brain context, prior decisions, or injected thoughts |
 | T-0005-135 | Happy | Poirot's and Distillator's examples do not reference brain context consumption (they do not receive brain context) |
-| T-0005-136 | Happy | Source template files in source/agents/ contain `<examples>` tags with placeholder variables preserved where applicable |
+| T-0005-136 | Happy | Source template files in source/shared/agents/ contain `<examples>` tags with placeholder variables preserved where applicable |
 | T-0005-137 | Failure | No `<examples>` tag contains intensity markers (MUST, CRITICAL, NEVER in all caps) -- examples use conversational narration |
 | T-0005-138 | Failure | No `<examples>` tag contains imperative instructions ("You must...", "Always...", "Never...") -- examples show behavior happening, not commands to follow |
 | T-0005-139 | Failure | No skill command file (.claude/commands/*.md) contains an `<examples>` tag -- examples are for subagent persona files only |
 | T-0005-140 | Failure | No example scenario exceeds 5 lines of content (excluding the bold header line) -- extract each scenario between bold headers and count lines |
 | T-0005-141 | Failure | Every example in an agent's `<examples>` tag demonstrates a behavior related to that agent's cognitive directive from the Cognitive Directives table -- not a generic coding example. Verify by checking that the example involves the directive's core verb (e.g., Colby: "Read" before implementing; Roz: "Trace"/"Read" before flagging; Cal: "Read"/"Grep" before designing) |
 | T-0005-142 | Failure | No agent's `<examples>` tag is empty (`<examples></examples>` or `<examples>\s*</examples>`) -- every agent has at least 2 examples |
-| T-0005-143 | Failure | Source (source/agents/) and installed (.claude/agents/) files both contain `<examples>` tags in the same position within the tag order |
+| T-0005-143 | Failure | Source (source/shared/agents/) and installed (.claude/agents/) files both contain `<examples>` tags in the same position within the tag order |
 | T-0005-144 | Boundary | Each example shows a concrete tool usage (Read, Grep, Glob, or similar) rather than abstract descriptions of behavior -- grep for at least one tool name (Read, Grep, Glob, Bash, Write, Edit) in each example |
 | T-0005-145 | Regression | The `<examples>` tag does not duplicate content already present in `<workflow>` or `<required-actions>` -- examples show the directive applied to a scenario, they do not restate workflow steps or the directive text verbatim |
 

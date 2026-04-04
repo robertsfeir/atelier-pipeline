@@ -302,7 +302,7 @@ Add three templates:
 Add a gate to the enforce-sequencing hook that allows Ellis to push during CI Watch retry cycles without requiring a fresh Roz QA PASS from the pipeline's main build phase. The CI Watch has its own Roz verification in the fix cycle.
 
 **Files to create/modify:**
-- `source/hooks/enforce-sequencing.sh` -- add CI Watch exemption to Gate 1
+- `source/claude/hooks/enforce-sequencing.sh` -- add CI Watch exemption to Gate 1
 - `.claude/hooks/enforce-sequencing.sh` -- add same exemption (installed copy)
 
 **Changes:**
@@ -516,7 +516,7 @@ No orphan producers. Every data contract has at least one consumer.
 | `.claude/references/pipeline-operations.md` | Modified | CI Watch operations section (Step 4) + feedback loops entry (Step 7) |
 | `source/references/invocation-templates.md` | Modified | 3 CI Watch templates added (Step 5) |
 | `.claude/references/invocation-templates.md` | Modified | 3 CI Watch templates added (Step 5) |
-| `source/hooks/enforce-sequencing.sh` | Modified | CI Watch exemption in Gate 1 (Step 6) |
+| `source/claude/hooks/enforce-sequencing.sh` | Modified | CI Watch exemption in Gate 1 (Step 6) |
 | `.claude/hooks/enforce-sequencing.sh` | Modified | CI Watch exemption in Gate 1 (Step 6) |
 | `docs/architecture/README.md` | Modified | ADR index entry added |
 

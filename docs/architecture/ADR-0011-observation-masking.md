@@ -190,7 +190,7 @@ Simple time-based rule: any tool output older than N turns gets masked, regardle
 |------|--------|-------|
 | `source/references/pipeline-operations.md` | Add `<protocol id="observation-masking">` section with full masking procedure | New section in context hygiene area |
 | `source/rules/pipeline-orchestration.md` | Revise gate 6 wording to scope Distillator to cross-phase artifacts only; add masking reference | Lines 153-161 (gate 6 text) |
-| `source/agents/distillator.md` | Update "How Distillator Fits the Pipeline" section to clarify cross-phase-only scope | Lines 87-98 |
+| `source/shared/agents/distillator.md` | Update "How Distillator Fits the Pipeline" section to clarify cross-phase-only scope | Lines 87-98 |
 | `source/references/invocation-templates.md` | Add masking examples to invocation template notes; no template structure change | Near existing distillator templates (~line 400) |
 
 ### Files NOT Modified (verified no change needed)
@@ -199,7 +199,7 @@ Simple time-based rule: any tool output older than N turns gets masked, regardle
 |------|--------|
 | `source/rules/agent-system.md` | Distillator remains in the agent roster. No architectural change to agent system. |
 | `source/rules/pipeline-models.md` | Distillator stays Haiku. No model changes. |
-| `source/hooks/enforce-paths.sh` | No new agents, no new write paths. Masking is Eva behavior, not a hook. |
+| `source/claude/hooks/enforce-paths.sh` | No new agents, no new write paths. Masking is Eva behavior, not a hook. |
 | `source/rules/default-persona.md` | Eva's tool list unchanged. Masking is a procedure, not a new tool. |
 | `source/references/dor-dod.md` | Distillator DoR/DoD entries unchanged -- Distillator still exists with same interface. |
 | `source/references/agent-preamble.md` | No shared behavior changes. |
@@ -245,7 +245,7 @@ Simple time-based rule: any tool output older than N turns gets masked, regardle
 
 **Files to modify:**
 - `source/rules/pipeline-orchestration.md` -- revise gate 6 text (lines 153-161)
-- `source/agents/distillator.md` -- revise "How Distillator Fits the Pipeline" section (lines 87-98)
+- `source/shared/agents/distillator.md` -- revise "How Distillator Fits the Pipeline" section (lines 87-98)
 - `source/references/invocation-templates.md` -- add a note to Distillator templates clarifying when to invoke Distillator vs. when masking handles it (near line 400)
 
 **What to change in gate 6:**

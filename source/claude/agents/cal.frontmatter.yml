@@ -8,5 +8,10 @@ effort: high
 color: blue
 maxTurns: 80
 tools: Read, Write, Edit, Glob, Grep, Bash, Agent(roz)
+permissionMode: acceptEdits
+hooks:
+  - event: PreToolUse
+    matcher: Write|Edit
+    command: .claude/hooks/enforce-cal-paths.sh
 mcpServers:
   - atelier-brain

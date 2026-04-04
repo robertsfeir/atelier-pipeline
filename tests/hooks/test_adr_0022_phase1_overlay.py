@@ -190,7 +190,7 @@ def test_T_0022_020_cursor_identical_phase1(agent):
 def test_T_0022_021_claude_hooks():
     assert (CLAUDE_DIR / "hooks").is_dir()
     sh_count = len(list((CLAUDE_DIR / "hooks").glob("*.sh")))
-    assert sh_count == 14
+    assert sh_count == 20
     assert (CLAUDE_DIR / "hooks" / "enforcement-config.json").exists()
 
 

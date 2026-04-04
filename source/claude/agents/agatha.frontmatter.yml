@@ -7,5 +7,10 @@ model: sonnet
 effort: medium
 maxTurns: 60
 disallowedTools: Agent, NotebookEdit
+permissionMode: acceptEdits
+hooks:
+  - event: PreToolUse
+    matcher: Write|Edit|MultiEdit
+    command: .claude/hooks/enforce-agatha-paths.sh
 mcpServers:
   - atelier-brain

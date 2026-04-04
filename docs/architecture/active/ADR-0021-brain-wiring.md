@@ -128,8 +128,8 @@ Create two prompt hook scripts and register them in `settings.json`.
 - **Files to create:**
   - `.claude/hooks/prompt-brain-prefetch.sh` -- PreToolUse(Agent) prompt hook. Outputs a reminder to Eva to call `agent_search` before constructing the invocation. Exits 0 always.
   - `.claude/hooks/prompt-brain-capture.sh` -- SubagentStop prompt hook. Outputs a reminder to Eva to call `agent_capture` for the key finding/decision from this agent's output. Exits 0 always.
-  - `source/hooks/prompt-brain-prefetch.sh` -- Template copy (source/ sync)
-  - `source/hooks/prompt-brain-capture.sh` -- Template copy (source/ sync)
+  - `source/claude/hooks/prompt-brain-prefetch.sh` -- Template copy (source/ sync)
+  - `source/claude/hooks/prompt-brain-capture.sh` -- Template copy (source/ sync)
 
 - **Files to modify:**
   - `.claude/settings.json` -- Register both prompt hooks with `"type": "prompt"`. PreToolUse(Agent) gets `prompt-brain-prefetch.sh`. SubagentStop gets `prompt-brain-capture.sh`.
@@ -157,7 +157,7 @@ Add `mcpServers: atelier-brain` to Cal's frontmatter and a Brain Access workflow
 
 - **Files to modify:**
   - `.claude/agents/cal.md` -- Add `mcpServers` to frontmatter. Add `<protocol id="brain-access">` section to workflow defining: capture decisions (`thought_type: 'decision'`) after ADR completion with alternatives chosen/rejected; capture patterns (`thought_type: 'pattern'`) for reusable architectural patterns identified during design. Captures use `source_agent: 'cal'`, `source_phase: 'design'`.
-  - `source/agents/cal.md` -- Mirror changes (source/ sync)
+  - `source/shared/agents/cal.md` -- Mirror changes (source/ sync)
 
 - **Acceptance criteria:**
   - Cal frontmatter includes `mcpServers:\n  - atelier-brain` in both `.claude/` and `source/`
@@ -180,7 +180,7 @@ Add `mcpServers: atelier-brain` to Colby's frontmatter and a Brain Access workfl
 
 - **Files to modify:**
   - `.claude/agents/colby.md` -- Add `mcpServers` to frontmatter. Add `<protocol id="brain-access">` section defining: capture implementation insights (`thought_type: 'insight'`) after each unit (gotchas, contract shapes, workarounds documented in DoD); capture patterns (`thought_type: 'pattern'`) for reusable implementation patterns discovered during build. Captures use `source_agent: 'colby'`, `source_phase: 'build'`.
-  - `source/agents/colby.md` -- Mirror changes (source/ sync)
+  - `source/shared/agents/colby.md` -- Mirror changes (source/ sync)
 
 - **Acceptance criteria:**
   - Colby frontmatter includes `mcpServers:\n  - atelier-brain`
@@ -203,7 +203,7 @@ Add `mcpServers: atelier-brain` to Roz's frontmatter and a Brain Access workflow
 
 - **Files to modify:**
   - `.claude/agents/roz.md` -- Add `mcpServers` to frontmatter. Add `<protocol id="brain-access">` section defining: capture QA findings (`thought_type: 'pattern'`) for recurring failure patterns and module-specific risks after each QA run; capture lessons (`thought_type: 'lesson'`) for investigation findings that go beyond the immediate fix. Captures use `source_agent: 'roz'`, `source_phase: 'qa'`.
-  - `source/agents/roz.md` -- Mirror changes (source/ sync)
+  - `source/shared/agents/roz.md` -- Mirror changes (source/ sync)
 
 - **Acceptance criteria:**
   - Roz frontmatter includes `mcpServers:\n  - atelier-brain`
@@ -226,7 +226,7 @@ Add `mcpServers: atelier-brain` to Agatha's frontmatter and a Brain Access workf
 
 - **Files to modify:**
   - `.claude/agents/agatha.md` -- Add `mcpServers` to frontmatter. Add `<protocol id="brain-access">` section defining: capture decisions (`thought_type: 'decision'`) for doc structure decisions, what was added vs deferred; capture insights (`thought_type: 'insight'`) for divergences found between spec and code. Captures use `source_agent: 'agatha'`, `source_phase: 'docs'`.
-  - `source/agents/agatha.md` -- Mirror changes (source/ sync)
+  - `source/shared/agents/agatha.md` -- Mirror changes (source/ sync)
 
 - **Acceptance criteria:**
   - Agatha frontmatter includes `mcpServers:\n  - atelier-brain`
@@ -249,7 +249,7 @@ Create `warn-brain-capture.sh` as a SubagentStop hook that checks agent output f
 
 - **Files to create:**
   - `.claude/hooks/warn-brain-capture.sh` -- SubagentStop hook. Checks `agent_type` against `cal|colby|roz|agatha`. If output does not contain `agent_capture`, warns on stderr. Exits 0 always.
-  - `source/hooks/warn-brain-capture.sh` -- Template copy (source/ sync)
+  - `source/claude/hooks/warn-brain-capture.sh` -- Template copy (source/ sync)
 
 - **Files to modify:**
   - `.claude/settings.json` -- Add `warn-brain-capture.sh` to SubagentStop hooks with `"if": "agent_type == 'cal' || agent_type == 'colby' || agent_type == 'roz' || agent_type == 'agatha'"`
@@ -279,7 +279,7 @@ Update `agent-preamble.md` to reflect that agents with brain access capture dire
   - `.claude/references/agent-preamble.md` -- Update step 4 to differentiate: agents with brain access (`mcpServers: atelier-brain`) capture directly per their Brain Access protocol; agents without brain access surface knowledge in their output for Eva to capture.
   - `source/references/agent-preamble.md` -- Mirror changes (source/ sync)
   - `.claude/agents/ellis.md` -- Update the "Eva uses these to capture knowledge to the brain" line to be accurate (Ellis does not have brain access; Eva captures on his behalf).
-  - `source/agents/ellis.md` -- Mirror changes
+  - `source/shared/agents/ellis.md` -- Mirror changes
   - `.claude/references/invocation-templates.md` -- Update brain-context tag documentation to note that agents with `mcpServers: atelier-brain` also capture independently (the template brain-context tag is for prefetched read context; agent captures happen within the agent's own workflow).
   - `source/references/invocation-templates.md` -- Mirror changes
 
@@ -384,7 +384,7 @@ Update `post-compact-reinject.sh` to include a brain protocol reminder after com
 
 - **Files to modify:**
   - `.claude/hooks/post-compact-reinject.sh` -- Add a brain protocol reminder section after the context-brief output. The reminder should be a short block (5-6 lines) stating: brain prefetch before Agent invocations, agent captures by cal/colby/roz/agatha, Eva cross-cutting captures (best-effort).
-  - `source/hooks/post-compact-reinject.sh` -- Mirror changes
+  - `source/claude/hooks/post-compact-reinject.sh` -- Mirror changes
 
 - **Acceptance criteria:**
   - PostCompact output includes brain protocol reminder section
@@ -420,21 +420,21 @@ Update `post-compact-reinject.sh` to include a brain protocol reminder after com
 | T-0021-100 | Regression | `.claude/hooks/prompt-brain-prefetch.sh` and `.claude/hooks/prompt-brain-capture.sh` are executable (file mode includes execute bit, verified by `test -x`) |
 | T-0021-105 | Regression | `.claude/settings.json` is valid JSON after all hook registrations from Steps 1 and 3 (parseable by `jq .` without error) |
 | T-0021-109 | Error | `prompt-brain-capture.sh` receives completely empty stdin (zero bytes), exits 0 with no output |
-| T-0021-117 | Regression | `source/hooks/prompt-brain-prefetch.sh` and `source/hooks/prompt-brain-capture.sh` are executable (file mode includes execute bit) |
+| T-0021-117 | Regression | `source/claude/hooks/prompt-brain-prefetch.sh` and `source/claude/hooks/prompt-brain-capture.sh` are executable (file mode includes execute bit) |
 
 ### Step 2a Tests
 
 | ID | Category | Description |
 |----|----------|-------------|
 | T-0021-016 | Happy | `.claude/agents/cal.md` YAML frontmatter contains `mcpServers` key with value including `atelier-brain` |
-| T-0021-017 | Happy | `source/agents/cal.md` YAML frontmatter contains `mcpServers` key with value including `atelier-brain` |
+| T-0021-017 | Happy | `source/shared/agents/cal.md` YAML frontmatter contains `mcpServers` key with value including `atelier-brain` |
 | T-0021-018 | Happy | `.claude/agents/cal.md` contains a `<protocol id="brain-access">` section |
 | T-0021-019 | Happy | Cal's Brain Access section mentions `thought_type: 'decision'` as a capture gate |
 | T-0021-020 | Happy | Cal's Brain Access section mentions `source_agent: 'cal'` |
 | T-0021-021 | Failure | Cal's Brain Access section contains the exact string "When brain is unavailable" followed by a skip/no-op instruction |
 | T-0021-022 | Regression | Cal's `tools` frontmatter field is unchanged (still includes Read, Write, Edit, Glob, Grep, Bash, Agent(roz)) |
 | T-0021-023 | Regression | Cal's existing `<workflow>` tag content (from `## ADR Production` through `## Hard Gates`) is byte-identical to pre-edit content |
-| T-0021-024 | Boundary | `.claude/agents/cal.md` and `source/agents/cal.md` Brain Access sections are identical |
+| T-0021-024 | Boundary | `.claude/agents/cal.md` and `source/shared/agents/cal.md` Brain Access sections are identical |
 | T-0021-101 | Error | `.claude/agents/cal.md` YAML frontmatter (content between `---` delimiters) is valid YAML parseable by `python3 -c "import yaml; yaml.safe_load(open(...))"` or equivalent |
 | T-0021-115 | Boundary | Cal's `<protocol id="brain-access">` section appears after the closing `</workflow>` tag and before the `<examples>` tag |
 
@@ -443,14 +443,14 @@ Update `post-compact-reinject.sh` to include a brain protocol reminder after com
 | ID | Category | Description |
 |----|----------|-------------|
 | T-0021-025 | Happy | `.claude/agents/colby.md` YAML frontmatter contains `mcpServers` key with value including `atelier-brain` |
-| T-0021-026 | Happy | `source/agents/colby.md` YAML frontmatter contains `mcpServers` key with value including `atelier-brain` |
+| T-0021-026 | Happy | `source/shared/agents/colby.md` YAML frontmatter contains `mcpServers` key with value including `atelier-brain` |
 | T-0021-027 | Happy | `.claude/agents/colby.md` contains a `<protocol id="brain-access">` section |
 | T-0021-028 | Happy | Colby's Brain Access section mentions `thought_type: 'insight'` as a capture gate |
 | T-0021-029 | Happy | Colby's Brain Access section mentions `source_agent: 'colby'` |
 | T-0021-030 | Failure | Colby's Brain Access section contains the exact string "When brain is unavailable" followed by a skip/no-op instruction |
 | T-0021-031 | Regression | Colby's `tools` frontmatter field is unchanged |
 | T-0021-032 | Regression | Colby's existing `<workflow>` tag content (from `## Mockup Mode` through `## Branch & MR Mode`) is byte-identical to pre-edit content |
-| T-0021-033 | Boundary | `.claude/agents/colby.md` and `source/agents/colby.md` Brain Access sections are identical |
+| T-0021-033 | Boundary | `.claude/agents/colby.md` and `source/shared/agents/colby.md` Brain Access sections are identical |
 | T-0021-102 | Error | `.claude/agents/colby.md` YAML frontmatter is valid YAML parseable by a standard YAML parser |
 
 ### Step 2c Tests
@@ -458,14 +458,14 @@ Update `post-compact-reinject.sh` to include a brain protocol reminder after com
 | ID | Category | Description |
 |----|----------|-------------|
 | T-0021-034 | Happy | `.claude/agents/roz.md` YAML frontmatter contains `mcpServers` key with value including `atelier-brain` |
-| T-0021-035 | Happy | `source/agents/roz.md` YAML frontmatter contains `mcpServers` key with value including `atelier-brain` |
+| T-0021-035 | Happy | `source/shared/agents/roz.md` YAML frontmatter contains `mcpServers` key with value including `atelier-brain` |
 | T-0021-036 | Happy | `.claude/agents/roz.md` contains a `<protocol id="brain-access">` section |
 | T-0021-037 | Happy | Roz's Brain Access section mentions `thought_type: 'pattern'` for recurring failure patterns |
 | T-0021-038 | Happy | Roz's Brain Access section mentions `source_agent: 'roz'` |
 | T-0021-039 | Failure | Roz's Brain Access section contains the exact string "When brain is unavailable" followed by a skip/no-op instruction |
 | T-0021-040 | Regression | Roz's `disallowedTools` frontmatter field is unchanged (Agent, Edit, MultiEdit, NotebookEdit) |
 | T-0021-041 | Regression | Roz's existing `<workflow>` tag content (from `## Investigation Mode` through `## Code QA Mode`) is byte-identical to pre-edit content |
-| T-0021-042 | Boundary | `.claude/agents/roz.md` and `source/agents/roz.md` Brain Access sections are identical |
+| T-0021-042 | Boundary | `.claude/agents/roz.md` and `source/shared/agents/roz.md` Brain Access sections are identical |
 | T-0021-103 | Error | `.claude/agents/roz.md` YAML frontmatter is valid YAML parseable by a standard YAML parser |
 
 ### Step 2d Tests
@@ -473,14 +473,14 @@ Update `post-compact-reinject.sh` to include a brain protocol reminder after com
 | ID | Category | Description |
 |----|----------|-------------|
 | T-0021-043 | Happy | `.claude/agents/agatha.md` YAML frontmatter contains `mcpServers` key with value including `atelier-brain` |
-| T-0021-044 | Happy | `source/agents/agatha.md` YAML frontmatter contains `mcpServers` key with value including `atelier-brain` |
+| T-0021-044 | Happy | `source/shared/agents/agatha.md` YAML frontmatter contains `mcpServers` key with value including `atelier-brain` |
 | T-0021-045 | Happy | `.claude/agents/agatha.md` contains a `<protocol id="brain-access">` section |
 | T-0021-046 | Happy | Agatha's Brain Access section mentions `thought_type: 'decision'` for doc structure decisions |
 | T-0021-047 | Happy | Agatha's Brain Access section mentions `source_agent: 'agatha'` |
 | T-0021-048 | Failure | Agatha's Brain Access section contains the exact string "When brain is unavailable" followed by a skip/no-op instruction |
 | T-0021-049 | Regression | Agatha's `disallowedTools` frontmatter field is unchanged (Agent, NotebookEdit) |
 | T-0021-050 | Regression | Agatha's existing `<workflow>` tag content (from `## Documentation Process` through `## Audience Types`) is byte-identical to pre-edit content |
-| T-0021-051 | Boundary | `.claude/agents/agatha.md` and `source/agents/agatha.md` Brain Access sections are identical |
+| T-0021-051 | Boundary | `.claude/agents/agatha.md` and `source/shared/agents/agatha.md` Brain Access sections are identical |
 | T-0021-104 | Error | `.claude/agents/agatha.md` YAML frontmatter is valid YAML parseable by a standard YAML parser |
 
 ### Step 3 Tests
@@ -496,11 +496,11 @@ Update `post-compact-reinject.sh` to include a brain protocol reminder after com
 | T-0021-058 | Error | `warn-brain-capture.sh` runs without `jq`, exits 0 with no output |
 | T-0021-059 | Regression | `.claude/settings.json` SubagentStop array contains `warn-brain-capture.sh` with correct `"if"` condition matching cal, colby, roz, agatha |
 | T-0021-060 | Regression | `warn-brain-capture.sh` exits 0 in ALL code paths (never exits 2, never blocks) |
-| T-0021-061 | Regression | `source/hooks/warn-brain-capture.sh` exists and is identical to `.claude/hooks/warn-brain-capture.sh` |
+| T-0021-061 | Regression | `source/claude/hooks/warn-brain-capture.sh` exists and is identical to `.claude/hooks/warn-brain-capture.sh` |
 | T-0021-106 | Failure | `warn-brain-capture.sh` receives JSON with `agent_type: "roz"` and `last_assistant_message` NOT containing "agent_capture", writes warning to stderr mentioning "roz", exits 0 |
 | T-0021-107 | Failure | `warn-brain-capture.sh` receives JSON with `agent_type: "agatha"` and `last_assistant_message` NOT containing "agent_capture", writes warning to stderr mentioning "agatha", exits 0 |
 | T-0021-110 | Error | `warn-brain-capture.sh` receives completely empty stdin (zero bytes), exits 0 with no output |
-| T-0021-116 | Regression | `source/hooks/warn-brain-capture.sh` is executable (file mode includes execute bit, verified by `test -x`) |
+| T-0021-116 | Regression | `source/claude/hooks/warn-brain-capture.sh` is executable (file mode includes execute bit, verified by `test -x`) |
 
 ### Step 4 Tests
 
@@ -562,7 +562,7 @@ Update `post-compact-reinject.sh` to include a brain protocol reminder after com
 | T-0021-095 | Regression | `post-compact-reinject.sh` still outputs pipeline-state.md and context-brief.md content before the brain reminder |
 | T-0021-096 | Regression | `post-compact-reinject.sh` exits 0 in all code paths |
 | T-0021-097 | Error | `post-compact-reinject.sh` handles missing pipeline-state.md gracefully (exits 0, no brain reminder output) |
-| T-0021-098 | Boundary | `source/hooks/post-compact-reinject.sh` matches `.claude/hooks/post-compact-reinject.sh` |
+| T-0021-098 | Boundary | `source/claude/hooks/post-compact-reinject.sh` matches `.claude/hooks/post-compact-reinject.sh` |
 | T-0021-114 | Failure | `post-compact-reinject.sh` does NOT output brain protocol reminder when `pipeline-state.md` does not exist (brain reminder is contextual to active pipeline state; if no state file, no reminder) |
 
 ### Cross-Step Tests
@@ -621,14 +621,14 @@ No orphan producers exist. All producers have consumers in the same or earlier s
 |------|------|
 | `.claude/hooks/prompt-brain-prefetch.sh` | 1 |
 | `.claude/hooks/prompt-brain-capture.sh` | 1 |
-| `source/hooks/prompt-brain-prefetch.sh` | 1 |
-| `source/hooks/prompt-brain-capture.sh` | 1 |
+| `source/claude/hooks/prompt-brain-prefetch.sh` | 1 |
+| `source/claude/hooks/prompt-brain-capture.sh` | 1 |
 
 ### Files Created (2)
 | File | Step |
 |------|------|
 | `.claude/hooks/warn-brain-capture.sh` | 3 |
-| `source/hooks/warn-brain-capture.sh` | 3 |
+| `source/claude/hooks/warn-brain-capture.sh` | 3 |
 
 ### Files Modified
 | File | Steps | What changes |
@@ -647,11 +647,11 @@ No orphan producers exist. All producers have consumers in the same or earlier s
 | `.claude/rules/pipeline-models.md` | 5b | Brain Integration subsection |
 | `.claude/references/pipeline-operations.md` | 5b | Brain prefetch protocol |
 | `.claude/hooks/post-compact-reinject.sh` | 6 | Brain reminder section |
-| `source/agents/cal.md` | 2a | Mirror |
-| `source/agents/colby.md` | 2b | Mirror |
-| `source/agents/roz.md` | 2c | Mirror |
-| `source/agents/agatha.md` | 2d | Mirror |
-| `source/agents/ellis.md` | 4 | Mirror |
+| `source/shared/agents/cal.md` | 2a | Mirror |
+| `source/shared/agents/colby.md` | 2b | Mirror |
+| `source/shared/agents/roz.md` | 2c | Mirror |
+| `source/shared/agents/agatha.md` | 2d | Mirror |
+| `source/shared/agents/ellis.md` | 4 | Mirror |
 | `source/references/agent-preamble.md` | 4 | Mirror |
 | `source/references/invocation-templates.md` | 4 | Mirror |
 | `source/rules/agent-system.md` | 5a | Mirror |
@@ -659,7 +659,7 @@ No orphan producers exist. All producers have consumers in the same or earlier s
 | `source/rules/default-persona.md` | 5b | Mirror |
 | `source/rules/pipeline-models.md` | 5b | Mirror |
 | `source/references/pipeline-operations.md` | 5b | Mirror |
-| `source/hooks/post-compact-reinject.sh` | 6 | Mirror |
+| `source/claude/hooks/post-compact-reinject.sh` | 6 | Mirror |
 
 ### Integration Impact
 - **Claude Code hook runtime:** Two new prompt hooks, one new command hook. No changes to existing hooks.

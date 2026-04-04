@@ -223,13 +223,13 @@ Use PostgreSQL's built-in role system and row-level security for REST API auth i
 ### Files Modified (by batch)
 
 **Batch 1 -- Security & Enforcement:**
-- `source/hooks/quality-gate.sh` -- remove eval (line 52), add jq hard failure
-- `source/hooks/check-complexity.sh` -- remove eval (line 39), add jq hard failure
-- `source/hooks/enforce-paths.sh` -- fix word splitting (lines 59, 79), fix path anchoring (line 49), add jq hard failure
-- `source/hooks/enforce-sequencing.sh` -- add jq hard failure
-- `source/hooks/enforce-git.sh` -- add jq hard failure
-- `source/hooks/check-brain-usage.sh` -- fix word splitting (line 40), add jq hard failure
-- Dual tree: `.claude/hooks/` mirrors `source/hooks/` (installed copies)
+- `source/claude/hooks/quality-gate.sh` -- remove eval (line 52), add jq hard failure
+- `source/claude/hooks/check-complexity.sh` -- remove eval (line 39), add jq hard failure
+- `source/claude/hooks/enforce-paths.sh` -- fix word splitting (lines 59, 79), fix path anchoring (line 49), add jq hard failure
+- `source/claude/hooks/enforce-sequencing.sh` -- add jq hard failure
+- `source/claude/hooks/enforce-git.sh` -- add jq hard failure
+- `source/claude/hooks/check-brain-usage.sh` -- fix word splitting (line 40), add jq hard failure
+- Dual tree: `.claude/hooks/` mirrors `source/claude/hooks/` (installed copies)
 
 **Batch 2 -- Missing Files & Doc Contradictions:**
 - `CLAUDE.md` -- NEW FILE (project root)
@@ -243,7 +243,7 @@ Use PostgreSQL's built-in role system and row-level security for REST API auth i
 - Dual tree: `source/rules/` mirrors `.claude/rules/`
 
 **Batch 3 -- Enforcement Reliability:**
-- `source/hooks/enforce-sequencing.sh` -- replace grep with structured parsing
+- `source/claude/hooks/enforce-sequencing.sh` -- replace grep with structured parsing
 - `brain/server.mjs` (or `brain/lib/rest-api.mjs` if batch 5 lands first) -- add Bearer auth middleware, restrict CORS
 - `brain/docker-compose.yml` -- remove default password fallback
 - Dual tree: `.claude/hooks/enforce-sequencing.sh`
@@ -255,10 +255,10 @@ Use PostgreSQL's built-in role system and row-level security for REST API auth i
 - `.claude/agents/agatha.md` -- add pronouns
 - `.claude/agents/ellis.md` -- add pronouns
 - `.claude/agents/distillator.md` -- add pronouns
-- `source/hooks/enforcement-config.json` -- remove distillator from brain_required_agents
+- `source/claude/hooks/enforcement-config.json` -- remove distillator from brain_required_agents
 - `.claude/hooks/enforcement-config.json` -- same
 - `docs/guide/user-guide.md` -- add troubleshooting section
-- Dual tree: `source/agents/` mirrors `.claude/agents/`
+- Dual tree: `source/shared/agents/` mirrors `.claude/agents/`
 
 **Batch 5 -- server.mjs Modularization:**
 - `brain/server.mjs` -- reduce to ~200 line entry point
@@ -295,10 +295,10 @@ Use PostgreSQL's built-in role system and row-level security for REST API auth i
 ### Step 1: Security and Enforcement Hardening (Batch 1)
 
 **Files to create/modify:**
-- `source/hooks/quality-gate.sh` -- replace `eval "$TEST_COMMAND"` with `bash -c "$TEST_COMMAND"` (or direct command splitting)
-- `source/hooks/check-complexity.sh` -- replace `eval "$CMD"` with `bash -c "$CMD"`
-- `source/hooks/enforce-paths.sh` -- fix `for pattern in $patterns` to `while IFS= read -r pattern`, fix `for blocked in $COLBY_BLOCKED` to `while IFS= read -r blocked`, change `*"$prefix"*` to `"$prefix"*` in path_matches
-- `source/hooks/check-brain-usage.sh` -- fix `for agent in $BRAIN_AGENTS` to `while IFS= read -r agent`
+- `source/claude/hooks/quality-gate.sh` -- replace `eval "$TEST_COMMAND"` with `bash -c "$TEST_COMMAND"` (or direct command splitting)
+- `source/claude/hooks/check-complexity.sh` -- replace `eval "$CMD"` with `bash -c "$CMD"`
+- `source/claude/hooks/enforce-paths.sh` -- fix `for pattern in $patterns` to `while IFS= read -r pattern`, fix `for blocked in $COLBY_BLOCKED` to `while IFS= read -r blocked`, change `*"$prefix"*` to `"$prefix"*` in path_matches
+- `source/claude/hooks/check-brain-usage.sh` -- fix `for agent in $BRAIN_AGENTS` to `while IFS= read -r agent`
 - All 6 hooks: replace `exit 0` after jq check with `echo "ERROR: jq is required..." >&2; exit 2`
 
 **Acceptance criteria:**
@@ -332,7 +332,7 @@ Use PostgreSQL's built-in role system and row-level security for REST API auth i
 ### Step 3: Enforcement Reliability (Batch 3)
 
 **Files to create/modify:**
-- `source/hooks/enforce-sequencing.sh` -- replace `grep -qi "roz.*pass\|qa.*pass\|verdict.*pass"` with structured JSON or marker-based parsing
+- `source/claude/hooks/enforce-sequencing.sh` -- replace `grep -qi "roz.*pass\|qa.*pass\|verdict.*pass"` with structured JSON or marker-based parsing
 - `brain/server.mjs` (or `brain/lib/rest-api.mjs`) -- add Bearer token auth middleware, restrict CORS from `*` to `localhost`
 - `brain/docker-compose.yml` -- change `POSTGRES_PASSWORD: ${ATELIER_BRAIN_DB_PASSWORD:-atelier}` to `POSTGRES_PASSWORD: ${ATELIER_BRAIN_DB_PASSWORD:?Set ATELIER_BRAIN_DB_PASSWORD}` (bash parameter expansion -- error if unset)
 
@@ -368,7 +368,7 @@ The hook parses this with jq instead of grepping free-form text. Eva writes this
 - `.claude/agents/agatha.md` -- add `Pronouns: she/her.` after name/role line
 - `.claude/agents/ellis.md` -- add `Pronouns: he/him.` after name/role line
 - `.claude/agents/distillator.md` -- add `Pronouns: it/its.` after name/role line (compression engine, not a persona)
-- `source/hooks/enforcement-config.json` -- remove `"distillator"` from `brain_required_agents` array
+- `source/claude/hooks/enforcement-config.json` -- remove `"distillator"` from `brain_required_agents` array
 - `.claude/hooks/enforcement-config.json` -- same change
 - `docs/guide/user-guide.md` -- add troubleshooting section covering: jq not installed, brain connection failures, hook blocking unexpectedly, pipeline state recovery
 
@@ -730,7 +730,7 @@ export { handleStaticFile };
 
 9. **REST API auth.** The Settings UI (`brain/ui/settings.js`) makes fetch calls to `/api/*`. Since it is served from the same origin (same HTTP server on the same port), it does not need CORS headers. The CORS restriction to localhost affects only cross-origin requests (e.g., a different app trying to hit the API).
 
-10. **Dual tree awareness.** Files in `source/hooks/` are templates. Files in `.claude/hooks/` are installed copies. Both must be updated. The canonical source is `source/hooks/` -- the installed copies in `.claude/hooks/` are what actually runs. Same for `source/agents/` and `.claude/agents/`, `source/rules/` and `.claude/rules/`.
+10. **Dual tree awareness.** Files in `source/claude/hooks/` are templates. Files in `.claude/hooks/` are installed copies. Both must be updated. The canonical source is `source/claude/hooks/` -- the installed copies in `.claude/hooks/` are what actually runs. Same for `source/shared/agents/` and `.claude/agents/`, `source/rules/` and `.claude/rules/`.
 
 ## DoD: Verification
 

@@ -225,7 +225,7 @@ BRIDGE_SCRIPT="$PROJECT_ROOT/source/dashboard/telemetry-bridge.sh"
   # The Step 0 section must specifically target quality-gate, not all hooks
   echo "$step0_content" | grep -q "quality-gate"
   # Enforce hooks should still be referenced in Step 3a (unchanged)
-  grep -q "enforce-paths.sh" "$SKILL_FILE"
+  grep -q "enforce-eva-paths.sh" "$SKILL_FILE"
   grep -q "enforce-sequencing.sh" "$SKILL_FILE"
   grep -q "enforce-git.sh" "$SKILL_FILE"
 }
@@ -879,26 +879,26 @@ BRIDGE_SCRIPT="$PROJECT_ROOT/source/dashboard/telemetry-bridge.sh"
 # Step 5 Tests: Enforcement Hook Bypass for /pipeline-setup
 # ═══════════════════════════════════════════════════════════════════════
 
-SOURCE_ENFORCE_PATHS="$PROJECT_ROOT/source/hooks/enforce-paths.sh"
-SOURCE_ENFORCE_SEQ="$PROJECT_ROOT/source/hooks/enforce-sequencing.sh"
-SOURCE_ENFORCE_GIT="$PROJECT_ROOT/source/hooks/enforce-git.sh"
-INSTALLED_ENFORCE_PATHS="$PROJECT_ROOT/.claude/hooks/enforce-paths.sh"
+SOURCE_ENFORCE_PATHS="$PROJECT_ROOT/source/claude/hooks/enforce-eva-paths.sh"
+SOURCE_ENFORCE_SEQ="$PROJECT_ROOT/source/claude/hooks/enforce-sequencing.sh"
+SOURCE_ENFORCE_GIT="$PROJECT_ROOT/source/claude/hooks/enforce-git.sh"
+INSTALLED_ENFORCE_PATHS="$PROJECT_ROOT/.claude/hooks/enforce-eva-paths.sh"
 INSTALLED_ENFORCE_SEQ="$PROJECT_ROOT/.claude/hooks/enforce-sequencing.sh"
 INSTALLED_ENFORCE_GIT="$PROJECT_ROOT/.claude/hooks/enforce-git.sh"
-SOURCE_WARN_DOD="$PROJECT_ROOT/source/hooks/warn-dor-dod.sh"
-SOURCE_PRE_COMPACT="$PROJECT_ROOT/source/hooks/pre-compact.sh"
-SOURCE_ENFORCE_ACTIVATION="$PROJECT_ROOT/source/hooks/enforce-pipeline-activation.sh"
+SOURCE_WARN_DOD="$PROJECT_ROOT/source/claude/hooks/warn-dor-dod.sh"
+SOURCE_PRE_COMPACT="$PROJECT_ROOT/source/claude/hooks/pre-compact.sh"
+SOURCE_ENFORCE_ACTIVATION="$PROJECT_ROOT/source/claude/hooks/enforce-pipeline-activation.sh"
 
-# ── T-0018-070: Bypass line in source enforce-paths.sh ──────────────
+# ── T-0018-070: Bypass line in source enforce-eva-paths.sh ──────────
 
-@test "T-0018-070: source/hooks/enforce-paths.sh contains bypass line as first executable line after set -euo pipefail" {
+@test "T-0018-070: source/hooks/enforce-eva-paths.sh contains bypass line as first executable line after set -uo pipefail" {
   [ -f "$SOURCE_ENFORCE_PATHS" ]
   # The bypass line must exist
   grep -q '"\${ATELIER_SETUP_MODE:-}" = "1"' "$SOURCE_ENFORCE_PATHS"
-  # It must be the first executable line after set -euo pipefail
-  # Extract lines between 'set -euo pipefail' and 'INPUT=$(cat)'
+  # It must be the first executable line after set -uo pipefail
+  # Extract lines between 'set -uo pipefail' and 'INPUT=$(cat)'
   local between
-  between=$(sed -n '/^set -euo pipefail$/,/^INPUT=\$(cat)$/p' "$SOURCE_ENFORCE_PATHS" | sed '1d;$d')
+  between=$(sed -n '/^set -uo pipefail$/,/^INPUT=\$(cat)$/p' "$SOURCE_ENFORCE_PATHS" | sed '1d;$d')
   # The first non-blank, non-comment line in that range must be the bypass
   local first_exec
   first_exec=$(echo "$between" | grep -v '^\s*$' | grep -v '^\s*#' | head -1)
@@ -930,9 +930,9 @@ SOURCE_ENFORCE_ACTIVATION="$PROJECT_ROOT/source/hooks/enforce-pipeline-activatio
   echo "$first_exec" | grep -q 'ATELIER_SETUP_MODE'
 }
 
-# ── T-0018-073: Dual tree parity for enforce-paths.sh ──────────────
+# ── T-0018-073: Dual tree parity for enforce-eva-paths.sh ──────────
 
-@test "T-0018-073: .claude/hooks/enforce-paths.sh contains the identical bypass line (dual tree parity with source/)" {
+@test "T-0018-073: .claude/hooks/enforce-eva-paths.sh contains the identical bypass line (dual tree parity with source/)" {
   [ -f "$INSTALLED_ENFORCE_PATHS" ]
   grep -q '"\${ATELIER_SETUP_MODE:-}" = "1"' "$INSTALLED_ENFORCE_PATHS"
   # Verify the bypass line is identical to the source copy
@@ -992,9 +992,9 @@ SOURCE_ENFORCE_ACTIVATION="$PROJECT_ROOT/source/hooks/enforce-pipeline-activatio
   echo "$setup_mode_context" | grep -qi "session.scoped\|session scope\|expires.*natural\|session ends"
 }
 
-# ── T-0018-078: Bypass exits before INPUT=$(cat) in enforce-paths ───
+# ── T-0018-078: Bypass exits before INPUT=$(cat) in enforce-eva-paths
 
-@test "T-0018-078: When ATELIER_SETUP_MODE=1, enforce-paths.sh exits 0 without reading stdin (INPUT=\$(cat) is never reached)" {
+@test "T-0018-078: When ATELIER_SETUP_MODE=1, enforce-eva-paths.sh exits 0 without reading stdin (INPUT=\$(cat) is never reached)" {
   [ -f "$SOURCE_ENFORCE_PATHS" ]
   # Verify bypass line appears BEFORE INPUT=$(cat)
   local line_bypass line_input
@@ -1035,44 +1035,44 @@ SOURCE_ENFORCE_ACTIVATION="$PROJECT_ROOT/source/hooks/enforce-pipeline-activatio
 
 # ── T-0018-081: Unset variable = normal enforcement ─────────────────
 
-@test "T-0018-081: When ATELIER_SETUP_MODE is unset, enforce-paths.sh proceeds to normal enforcement (existing behavior)" {
+@test "T-0018-081: When ATELIER_SETUP_MODE is unset, enforce-eva-paths.sh proceeds to normal enforcement (existing behavior)" {
   [ -f "$SOURCE_ENFORCE_PATHS" ]
   # Run the hook with unset ATELIER_SETUP_MODE and a blocked write
-  # The hook should block (exit 2) for an unknown agent writing to a protected path
+  # The hook should block (exit 2) for writes outside docs/pipeline/
   local result
   unset ATELIER_SETUP_MODE
-  result=$(echo '{"tool_name":"Write","tool_input":{"file_path":"src/main.js"},"agent_type":"robert"}' \
+  result=$(echo '{"tool_name":"Write","tool_input":{"file_path":"src/main.js"}}' \
     | CLAUDE_PROJECT_DIR="$PROJECT_ROOT" bash "$SOURCE_ENFORCE_PATHS" 2>&1; echo "EXIT:$?")
-  # Should be blocked (exit 2) -- robert is a read-only agent
+  # Should be blocked (exit 2) -- Eva can only write to docs/pipeline/
   echo "$result" | grep -q "EXIT:2"
 }
 
 # ── T-0018-082: Empty string = normal enforcement ───────────────────
 
-@test "T-0018-082: When ATELIER_SETUP_MODE is empty string, enforce-paths.sh proceeds to normal enforcement" {
+@test "T-0018-082: When ATELIER_SETUP_MODE is empty string, enforce-eva-paths.sh proceeds to normal enforcement" {
   [ -f "$SOURCE_ENFORCE_PATHS" ]
   local result
-  result=$(echo '{"tool_name":"Write","tool_input":{"file_path":"src/main.js"},"agent_type":"robert"}' \
+  result=$(echo '{"tool_name":"Write","tool_input":{"file_path":"src/main.js"}}' \
     | ATELIER_SETUP_MODE="" CLAUDE_PROJECT_DIR="$PROJECT_ROOT" bash "$SOURCE_ENFORCE_PATHS" 2>&1; echo "EXIT:$?")
   echo "$result" | grep -q "EXIT:2"
 }
 
 # ── T-0018-083: "true" = normal enforcement ─────────────────────────
 
-@test "T-0018-083: When ATELIER_SETUP_MODE=true, enforce-paths.sh proceeds to normal enforcement (truthy is not 1)" {
+@test "T-0018-083: When ATELIER_SETUP_MODE=true, enforce-eva-paths.sh proceeds to normal enforcement (truthy is not 1)" {
   [ -f "$SOURCE_ENFORCE_PATHS" ]
   local result
-  result=$(echo '{"tool_name":"Write","tool_input":{"file_path":"src/main.js"},"agent_type":"robert"}' \
+  result=$(echo '{"tool_name":"Write","tool_input":{"file_path":"src/main.js"}}' \
     | ATELIER_SETUP_MODE="true" CLAUDE_PROJECT_DIR="$PROJECT_ROOT" bash "$SOURCE_ENFORCE_PATHS" 2>&1; echo "EXIT:$?")
   echo "$result" | grep -q "EXIT:2"
 }
 
 # ── T-0018-084: "0" = normal enforcement ────────────────────────────
 
-@test "T-0018-084: When ATELIER_SETUP_MODE=0, enforce-paths.sh proceeds to normal enforcement (0 is not 1)" {
+@test "T-0018-084: When ATELIER_SETUP_MODE=0, enforce-eva-paths.sh proceeds to normal enforcement (0 is not 1)" {
   [ -f "$SOURCE_ENFORCE_PATHS" ]
   local result
-  result=$(echo '{"tool_name":"Write","tool_input":{"file_path":"src/main.js"},"agent_type":"robert"}' \
+  result=$(echo '{"tool_name":"Write","tool_input":{"file_path":"src/main.js"}}' \
     | ATELIER_SETUP_MODE="0" CLAUDE_PROJECT_DIR="$PROJECT_ROOT" bash "$SOURCE_ENFORCE_PATHS" 2>&1; echo "EXIT:$?")
   echo "$result" | grep -q "EXIT:2"
 }
@@ -1201,14 +1201,11 @@ SOURCE_ENFORCE_ACTIVATION="$PROJECT_ROOT/source/hooks/enforce-pipeline-activatio
 
 @test "T-0018-094: All existing enforcement logic in each hook is unchanged after bypass line addition (no removals, no modifications)" {
   # Verify key logic landmarks in each hook still exist
-  # enforce-paths.sh: agent type case statement with cal, colby, roz, ellis, agatha
+  # enforce-eva-paths.sh: Eva main thread path enforcement (docs/pipeline/ only)
   [ -f "$SOURCE_ENFORCE_PATHS" ]
-  grep -q 'case "\$AGENT_TYPE" in' "$SOURCE_ENFORCE_PATHS"
-  grep -q 'cal)' "$SOURCE_ENFORCE_PATHS"
-  grep -q 'colby)' "$SOURCE_ENFORCE_PATHS"
-  grep -q 'roz)' "$SOURCE_ENFORCE_PATHS"
-  grep -q 'ellis)' "$SOURCE_ENFORCE_PATHS"
-  grep -q 'agatha)' "$SOURCE_ENFORCE_PATHS"
+  grep -q 'docs/pipeline/' "$SOURCE_ENFORCE_PATHS"
+  grep -q 'BLOCKED' "$SOURCE_ENFORCE_PATHS"
+  grep -q 'jq' "$SOURCE_ENFORCE_PATHS"
 
   # enforce-sequencing.sh: Ellis gate, Agatha gate, telemetry gate
   [ -f "$SOURCE_ENFORCE_SEQ" ]

@@ -124,8 +124,10 @@ def test_T_0022_041_test_helper_hooks_dir():
 
 
 def test_T_0022_043_no_flat_agents_in_docs():
+    # Use concatenation to avoid self-matching by cleanup tests (T-0022-164/165)
+    flat_agents = "source/" + "agents/"
     result = subprocess.run(
-        ["grep", "-r", "source/agents/",
+        ["grep", "-r", flat_agents,
          str(PROJECT_ROOT / "CLAUDE.md"),
          str(PROJECT_ROOT / "README.md"),
          str(PROJECT_ROOT / "docs")],
@@ -138,8 +140,10 @@ def test_T_0022_043_no_flat_agents_in_docs():
 
 
 def test_T_0022_044_no_flat_hooks_in_docs():
+    # Use concatenation to avoid self-matching by cleanup tests (T-0022-164/166)
+    flat_hooks = "source/" + "hooks/"
     result = subprocess.run(
-        ["grep", "-r", "source/hooks/",
+        ["grep", "-r", flat_hooks,
          str(PROJECT_ROOT / "CLAUDE.md"),
          str(PROJECT_ROOT / "README.md"),
          str(PROJECT_ROOT / "docs"),
@@ -153,8 +157,9 @@ def test_T_0022_044_no_flat_hooks_in_docs():
 
 def test_T_0022_045_readme_no_old_paths():
     readme = (PROJECT_ROOT / "README.md").read_text()
+    flat_pattern = "source/" + r"agents/|source/" + r"hooks/|source/" + r"commands/|source/" + r"references/"
     result = subprocess.run(
-        ["grep", "-E", r"source/agents/|source/hooks/|source/commands/|source/references/"],
+        ["grep", "-E", flat_pattern],
         input=readme, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
     )
     stale = [l for l in result.stdout.splitlines()

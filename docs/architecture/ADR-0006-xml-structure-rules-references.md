@@ -20,7 +20,7 @@
 | 12 | Pipeline sizing: Small | Task context | "Pipeline sizing: Small" |
 
 **Retro risks:**
-- Lesson 003 (Stop Hook Race Condition): Not directly relevant. Hooks do not parse XML tags in rules/reference files -- verified via grep of source/hooks/*.sh.
+- Lesson 003 (Stop Hook Race Condition): Not directly relevant. Hooks do not parse XML tags in rules/reference files -- verified via grep of source/claude/hooks/*.sh.
 - No lesson about structural migration failures exists. Primary risk is introducing malformed XML that confuses the model or breaks cross-file references.
 
 **Spec challenge:** The spec assumes wrapping existing markdown sections in XML tags improves model comprehension of rules and reference files. If this is wrong -- if the model already distinguishes sections well via `##` headers in these shorter, more focused files (96-399 lines each) -- the effort produces no behavioral improvement. However: (a) ADR-0005 already committed to XML tags for agents and commands, creating an inconsistency if rules/references remain plain markdown; (b) Anthropic's guidance applies equally to all long-context instruction files; (c) pipeline-orchestration.md at 399 lines is well within the "long enough to benefit" range. Confidence: high for consistency value, moderate for direct behavioral improvement.

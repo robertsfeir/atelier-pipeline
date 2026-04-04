@@ -2,7 +2,7 @@
 
 ## DoR: Requirements Extracted
 
-**Sources:** Eva invocation prompt (task + constraints + brain-context), context-brief.md (scope decisions), retro-lessons.md (lessons #003, #004), Claude Code hooks documentation (hook events and `if` conditional field), existing hooks (source/hooks/*.sh), pipeline-state.md (Wave 2 units), SKILL.md (installation manifest), .claude/settings.json (hook registration), test_helper.bash (test patterns), hydrate-telemetry.mjs (existing telemetry pipeline)
+**Sources:** Eva invocation prompt (task + constraints + brain-context), context-brief.md (scope decisions), retro-lessons.md (lessons #003, #004), Claude Code hooks documentation (hook events and `if` conditional field), existing hooks (source/claude/hooks/*.sh), pipeline-state.md (Wave 2 units), SKILL.md (installation manifest), .claude/settings.json (hook registration), test_helper.bash (test patterns), hydrate-telemetry.mjs (existing telemetry pipeline)
 
 | # | Requirement | Source | Citation |
 |---|-------------|--------|----------|
@@ -15,7 +15,7 @@
 | R7 | StopFailure hook (log-stop-failure.sh) appends to error-patterns.md when agent turn ends due to API error | Task (2d) | "appends to error-patterns.md when an agent turn ends due to API error" |
 | R8 | All new hooks exit 0 always (non-enforcement hooks) | Retro #003 + constraints | "Exit 0 always for non-enforcement hooks" |
 | R9 | All new hooks are lightweight -- no brain calls, no test suites, no subagent invocations | Retro #003 | "Keep new hooks lightweight, never block on quality checks" |
-| R10 | Hook scripts go in source/hooks/ (templates) and install to .claude/hooks/ | Constraints | "New hook scripts go in source/hooks/ and are installed to .claude/hooks/ by /pipeline-setup" |
+| R10 | Hook scripts go in source/claude/hooks/ (templates) and install to .claude/hooks/ | Constraints | "New hook scripts go in source/claude/hooks/ and are installed to .claude/hooks/ by /pipeline-setup" |
 | R11 | Hook registrations go in settings.json template and installed .claude/settings.json | Constraints | "Hook registrations go in the settings.json template" |
 | R12 | Tests use bats framework following existing test_helper.bash patterns | Constraints + existing tests | "Test specs should cover: hook script behavior (bats tests)" |
 | R13 | `if` field format: JavaScript-like expression evaluated by Claude Code before spawning | Constraints | `"if": "tool_name == 'Write' && file_path.endsWith('.ts')"` |
@@ -196,7 +196,7 @@ Add `if` fields to hook registrations in the settings.json template and installe
 **Files to create:** (none)
 
 **Files to modify:**
-1. `source/hooks/enforce-git.sh` -- add a comment noting the `if` conditional in settings.json (documentation only, no behavioral change)
+1. `source/claude/hooks/enforce-git.sh` -- add a comment noting the `if` conditional in settings.json (documentation only, no behavioral change)
 2. `.claude/settings.json` -- add `if` fields to enforce-git.sh and warn-dor-dod.sh entries
 3. `skills/pipeline-setup/SKILL.md` -- update hook registration template with `if` fields
 4. `tests/hooks/enforce-git.bats` -- add test verifying the hook still works when the `if` filter passes (existing tests already cover this, but add an explicit note)
@@ -217,7 +217,7 @@ Add `if` fields to hook registrations in the settings.json template and installe
 Create the SubagentStart hook that logs agent start events to JSONL.
 
 **Files to create:**
-1. `source/hooks/log-agent-start.sh` -- SubagentStart hook script
+1. `source/claude/hooks/log-agent-start.sh` -- SubagentStart hook script
 2. `tests/hooks/log-agent-start.bats` -- bats tests
 
 **Files to modify:**
@@ -243,7 +243,7 @@ Create the SubagentStart hook that logs agent start events to JSONL.
 Create the SubagentStop hook that logs agent stop events to JSONL. This runs alongside the existing warn-dor-dod.sh on SubagentStop.
 
 **Files to create:**
-1. `source/hooks/log-agent-stop.sh` -- SubagentStop telemetry hook script
+1. `source/claude/hooks/log-agent-stop.sh` -- SubagentStop telemetry hook script
 2. `tests/hooks/log-agent-stop.bats` -- bats tests
 
 **Files to modify:**
@@ -270,7 +270,7 @@ Create the SubagentStop hook that logs agent stop events to JSONL. This runs alo
 Create the PostCompact hook that re-injects pipeline state after compaction.
 
 **Files to create:**
-1. `source/hooks/post-compact-reinject.sh` -- PostCompact hook script
+1. `source/claude/hooks/post-compact-reinject.sh` -- PostCompact hook script
 2. `tests/hooks/post-compact-reinject.bats` -- bats tests
 
 **Files to modify:**
@@ -296,7 +296,7 @@ Create the PostCompact hook that re-injects pipeline state after compaction.
 Create the StopFailure hook that appends error information to error-patterns.md.
 
 **Files to create:**
-1. `source/hooks/log-stop-failure.sh` -- StopFailure hook script
+1. `source/claude/hooks/log-stop-failure.sh` -- StopFailure hook script
 2. `tests/hooks/log-stop-failure.bats` -- bats tests
 
 **Files to modify:**
@@ -326,13 +326,13 @@ Update documentation to reflect the new hooks and `if` conditionals.
 **Files to modify:**
 1. `docs/guide/technical-reference.md` -- add new hooks to hook documentation section
 2. `docs/guide/user-guide.md` -- update hook overview with new events
-3. `.claude/hooks/` -- install all new hooks (copies from source/hooks/) -- Colby copies during build, verified by Roz
+3. `.claude/hooks/` -- install all new hooks (copies from source/claude/hooks/) -- Colby copies during build, verified by Roz
 4. `.cursor-plugin/skills/pipeline-setup/SKILL.md` -- sync with Claude Code SKILL.md
 
 **Acceptance criteria:**
 - AC1: Technical reference documents all 10 hooks (6 existing + 4 new)
 - AC2: User guide mentions new hook events and `if` conditionals
-- AC3: All source/hooks/ scripts have corresponding .claude/hooks/ installed copies
+- AC3: All source/claude/hooks/ scripts have corresponding .claude/hooks/ installed copies
 - AC4: Cursor plugin SKILL.md matches Claude Code SKILL.md for hook registration
 
 **Estimated complexity:** Low (documentation sync)
@@ -463,9 +463,9 @@ Telemetry: New `### StopFailure` entry in error-patterns.md. Trigger: agent turn
 |----|----------|-------------|
 | T-0020-064 | Happy | technical-reference.md documents all 10 hooks with event type, script name, and one-line purpose description |
 | T-0020-065 | Happy | user-guide.md mentions `if` conditionals and lists the 4 new hook events (SubagentStart, SubagentStop telemetry, PostCompact, StopFailure) |
-| T-0020-066 | Failure | A source/hooks/ script file (e.g., log-agent-start.sh) without a corresponding .claude/hooks/ installed copy is detected as a mismatch by comparing file lists (`ls source/hooks/*.sh` vs `ls .claude/hooks/*.sh`) |
+| T-0020-066 | Failure | A source/claude/hooks/ script file (e.g., log-agent-start.sh) without a corresponding .claude/hooks/ installed copy is detected as a mismatch by comparing file lists (`ls source/claude/hooks/*.sh` vs `ls .claude/hooks/*.sh`) |
 | T-0020-067 | Failure | Cursor plugin SKILL.md containing a hook entry that is absent from Claude Code SKILL.md is detected as a divergence by diffing the hook registration sections of both files |
-| T-0020-068 | Regression | All installed .claude/hooks/ files are byte-identical to their source/hooks/ counterparts (verified by `diff` or `cmp`) |
+| T-0020-068 | Regression | All installed .claude/hooks/ files are byte-identical to their source/claude/hooks/ counterparts (verified by `diff` or `cmp`) |
 | T-0020-069 | Regression | Cursor plugin SKILL.md hook registration section matches Claude Code SKILL.md hook registration section |
 
 Step 5 ratio: Happy=2, Failure=2. Met (2 >= 2).
@@ -478,10 +478,10 @@ Purely structural step -- no production telemetry applicable.
 
 | Producer | Shape | Consumer | Step |
 |----------|-------|----------|------|
-| `source/hooks/log-agent-start.sh` (SubagentStart) | `{"event":"start","agent_type":"str","agent_id":"str","session_id":"str","timestamp":"ISO8601"}` | `brain/scripts/hydrate-telemetry.mjs` (reads JSONL post-session) | 2a |
-| `source/hooks/log-agent-stop.sh` (SubagentStop) | `{"event":"stop","agent_type":"str","agent_id":"str","session_id":"str","timestamp":"ISO8601","has_output":bool}` | `brain/scripts/hydrate-telemetry.mjs` (reads JSONL post-session) | 2b |
-| `source/hooks/post-compact-reinject.sh` (PostCompact) | stdout text: pipeline-state.md + context-brief.md content | Claude Code context injection (engine-level consumer) | 3 |
-| `source/hooks/log-stop-failure.sh` (StopFailure) | Markdown append to error-patterns.md | Eva (reads error-patterns.md at pipeline end) | 4 |
+| `source/claude/hooks/log-agent-start.sh` (SubagentStart) | `{"event":"start","agent_type":"str","agent_id":"str","session_id":"str","timestamp":"ISO8601"}` | `brain/scripts/hydrate-telemetry.mjs` (reads JSONL post-session) | 2a |
+| `source/claude/hooks/log-agent-stop.sh` (SubagentStop) | `{"event":"stop","agent_type":"str","agent_id":"str","session_id":"str","timestamp":"ISO8601","has_output":bool}` | `brain/scripts/hydrate-telemetry.mjs` (reads JSONL post-session) | 2b |
+| `source/claude/hooks/post-compact-reinject.sh` (PostCompact) | stdout text: pipeline-state.md + context-brief.md content | Claude Code context injection (engine-level consumer) | 3 |
+| `source/claude/hooks/log-stop-failure.sh` (StopFailure) | Markdown append to error-patterns.md | Eva (reads error-patterns.md at pipeline end) | 4 |
 | `.claude/settings.json` (hook registrations) | JSON with `if` fields | Claude Code hook engine (evaluates `if` before spawning) | 1 |
 
 ### Wiring Coverage
@@ -499,10 +499,10 @@ No orphan producers. Every data output has an identified consumer.
 ## Blast Radius
 
 ### Files Created (4 new scripts + 4 test files)
-- `source/hooks/log-agent-start.sh`
-- `source/hooks/log-agent-stop.sh`
-- `source/hooks/post-compact-reinject.sh`
-- `source/hooks/log-stop-failure.sh`
+- `source/claude/hooks/log-agent-start.sh`
+- `source/claude/hooks/log-agent-stop.sh`
+- `source/claude/hooks/post-compact-reinject.sh`
+- `source/claude/hooks/log-stop-failure.sh`
 - `tests/hooks/log-agent-start.bats`
 - `tests/hooks/log-agent-stop.bats`
 - `tests/hooks/post-compact-reinject.bats`
@@ -516,15 +516,15 @@ No orphan producers. Every data output has an identified consumer.
 - `docs/guide/technical-reference.md` -- hook documentation (Step 5)
 - `docs/guide/user-guide.md` -- hook overview (Step 5)
 - `.gitignore` -- add `.claude/telemetry/` (Step 2a)
-- `source/hooks/enforce-git.sh` -- documentation comment only (Step 1)
+- `source/claude/hooks/enforce-git.sh` -- documentation comment only (Step 1)
 
 ### Files NOT Modified (verified no change needed)
-- `source/hooks/enforce-paths.sh` -- no `if` conditional (matcher sufficient)
-- `source/hooks/enforce-sequencing.sh` -- no `if` conditional (internal filtering)
-- `source/hooks/enforce-pipeline-activation.sh` -- no `if` conditional
-- `source/hooks/pre-compact.sh` -- fires rarely, no optimization needed
-- `source/hooks/warn-dor-dod.sh` -- script unchanged (only settings.json `if` field added)
-- `source/hooks/enforcement-config.json` -- no changes needed
+- `source/claude/hooks/enforce-paths.sh` -- no `if` conditional (matcher sufficient)
+- `source/claude/hooks/enforce-sequencing.sh` -- no `if` conditional (internal filtering)
+- `source/claude/hooks/enforce-pipeline-activation.sh` -- no `if` conditional
+- `source/claude/hooks/pre-compact.sh` -- fires rarely, no optimization needed
+- `source/claude/hooks/warn-dor-dod.sh` -- script unchanged (only settings.json `if` field added)
+- `source/claude/hooks/enforcement-config.json` -- no changes needed
 
 ### CI/CD Impact
 - None. No CI pipeline configured. Tests run via `bats tests/hooks/`.
@@ -556,7 +556,7 @@ Not applicable -- no store methods or data access layers. Hook scripts process t
 
 5. **StopFailure input schema:** The StopFailure hook input schema may include fields like `error_type`, `error_message`, `agent_type`, `agent_id`. Since this is a newer event, parse defensively -- use `jq -r '.field // "unknown"'` pattern for every field.
 
-6. **Template placeholders:** The source/hooks/ scripts should use `{pipeline_state_dir}` for the pipeline state directory path (matching enforce-paths.sh pattern) where applicable. However, most new hooks use `$CLAUDE_PROJECT_DIR` directly for the hooks and telemetry directories, so placeholders may not be needed for all scripts.
+6. **Template placeholders:** The source/claude/hooks/ scripts should use `{pipeline_state_dir}` for the pipeline state directory path (matching enforce-paths.sh pattern) where applicable. However, most new hooks use `$CLAUDE_PROJECT_DIR` directly for the hooks and telemetry directories, so placeholders may not be needed for all scripts.
 
 7. **Step ordering:** Steps 2a and 2b share the JSONL file and telemetry directory. Step 2a creates the directory; Step 2b assumes it exists. Build 2a first.
 
@@ -590,7 +590,7 @@ Not applicable -- no store methods or data access layers. Hook scripts process t
 | R7 | StopFailure appends to error-patterns.md | Covered | Step 4, AC1-AC2 |
 | R8 | All new hooks exit 0 always | Covered | Steps 2a AC4, 2b AC4, 3 AC6, 4 AC5 |
 | R9 | Hooks are lightweight (no brain calls, no tests) | Covered | Decision section + Notes for Colby #10 |
-| R10 | Scripts in source/hooks/, installed to .claude/hooks/ | Covered | Steps 2a-4 (create in source/hooks/), Step 5 (install) |
+| R10 | Scripts in source/claude/hooks/, installed to .claude/hooks/ | Covered | Steps 2a-4 (create in source/claude/hooks/), Step 5 (install) |
 | R11 | Hook registrations in settings.json | Covered | Steps 1-4 all modify settings.json |
 | R12 | Tests use bats framework | Covered | Steps 2a-4 each create .bats test files |
 | R13 | `if` field format matches spec | Covered | Step 1, AC1-AC2 |

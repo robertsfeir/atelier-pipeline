@@ -155,9 +155,9 @@ Negative:
 | `.claude/rules/pipeline-orchestration.md` | MODIFY | Installed copy (dual tree) |
 | `source/references/invocation-templates.md` | MODIFY | Add `dashboard-bridge` invocation template |
 | `.claude/references/invocation-templates.md` | MODIFY | Installed copy (dual tree) |
-| `source/hooks/enforce-paths.sh` | MODIFY | Add `ATELIER_SETUP_MODE` bypass line |
-| `source/hooks/enforce-sequencing.sh` | MODIFY | Add `ATELIER_SETUP_MODE` bypass line |
-| `source/hooks/enforce-git.sh` | MODIFY | Add `ATELIER_SETUP_MODE` bypass line |
+| `source/claude/hooks/enforce-paths.sh` | MODIFY | Add `ATELIER_SETUP_MODE` bypass line |
+| `source/claude/hooks/enforce-sequencing.sh` | MODIFY | Add `ATELIER_SETUP_MODE` bypass line |
+| `source/claude/hooks/enforce-git.sh` | MODIFY | Add `ATELIER_SETUP_MODE` bypass line |
 | `.claude/hooks/enforce-paths.sh` | MODIFY | Installed copy (dual tree) |
 | `.claude/hooks/enforce-sequencing.sh` | MODIFY | Installed copy (dual tree) |
 | `.claude/hooks/enforce-git.sh` | MODIFY | Installed copy (dual tree) |
@@ -419,9 +419,9 @@ Not a subagent invocation -- Eva runs the bridge script directly via Bash.
 **Solution:** An `ATELIER_SETUP_MODE` environment variable that each hook checks at the top. When `ATELIER_SETUP_MODE=1`, the hook exits 0 immediately (allow all). The variable is set by SKILL.md before its first write operation and is session-scoped (expires naturally when the Claude Code session ends -- no explicit unset needed).
 
 **Files to modify:**
-- `source/hooks/enforce-paths.sh` -- add bypass check after `set -euo pipefail` / before `INPUT=$(cat)`
-- `source/hooks/enforce-sequencing.sh` -- add bypass check after `set -euo pipefail` / before `INPUT=$(cat)`
-- `source/hooks/enforce-git.sh` -- add bypass check after `set -euo pipefail` / before `INPUT=$(cat)`
+- `source/claude/hooks/enforce-paths.sh` -- add bypass check after `set -euo pipefail` / before `INPUT=$(cat)`
+- `source/claude/hooks/enforce-sequencing.sh` -- add bypass check after `set -euo pipefail` / before `INPUT=$(cat)`
+- `source/claude/hooks/enforce-git.sh` -- add bypass check after `set -euo pipefail` / before `INPUT=$(cat)`
 - `.claude/hooks/enforce-paths.sh` -- installed copy (dual tree)
 - `.claude/hooks/enforce-sequencing.sh` -- installed copy (dual tree)
 - `.claude/hooks/enforce-git.sh` -- installed copy (dual tree)
@@ -569,9 +569,9 @@ This is placed after Step 2 (Read Templates) and before Step 3 (Install Files) b
 
 | ID | Category | Description |
 |----|----------|-------------|
-| T-0018-070 | Happy | `source/hooks/enforce-paths.sh` contains `[ "${ATELIER_SETUP_MODE:-}" = "1" ] && exit 0` as the first executable line after `set -euo pipefail` |
-| T-0018-071 | Happy | `source/hooks/enforce-sequencing.sh` contains the identical bypass line after `set -euo pipefail` |
-| T-0018-072 | Happy | `source/hooks/enforce-git.sh` contains the identical bypass line after `set -euo pipefail` |
+| T-0018-070 | Happy | `source/claude/hooks/enforce-paths.sh` contains `[ "${ATELIER_SETUP_MODE:-}" = "1" ] && exit 0` as the first executable line after `set -euo pipefail` |
+| T-0018-071 | Happy | `source/claude/hooks/enforce-sequencing.sh` contains the identical bypass line after `set -euo pipefail` |
+| T-0018-072 | Happy | `source/claude/hooks/enforce-git.sh` contains the identical bypass line after `set -euo pipefail` |
 | T-0018-073 | Happy | `.claude/hooks/enforce-paths.sh` contains the identical bypass line (dual tree parity with source/) |
 | T-0018-074 | Happy | `.claude/hooks/enforce-sequencing.sh` contains the identical bypass line (dual tree parity) |
 | T-0018-075 | Happy | `.claude/hooks/enforce-git.sh` contains the identical bypass line (dual tree parity) |
@@ -681,7 +681,7 @@ The brain HTTP API URL (from brain-config.json) is read by the bridge script but
 
 **ATELIER_SETUP_MODE bypass placement:** The bypass line must be the FIRST executable line after `set -euo pipefail` in each hook -- specifically BEFORE `INPUT=$(cat)`. This is critical because `INPUT=$(cat)` reads from stdin, which blocks if stdin is empty. During normal hook execution, Claude Code pipes JSON to stdin. But if the bypass exits before reading stdin, there is no hang risk. The line is identical across all three hooks: `[ "${ATELIER_SETUP_MODE:-}" = "1" ] && exit 0`.
 
-**Dual tree for hooks:** The `.claude/hooks/` copies must be identical to `source/hooks/` copies. After modifying source/, diff to verify parity. The simplest approach: modify source/ first, then copy to .claude/hooks/.
+**Dual tree for hooks:** The `.claude/hooks/` copies must be identical to `source/claude/hooks/` copies. After modifying source/, diff to verify parity. The simplest approach: modify source/ first, then copy to .claude/hooks/.
 
 **SKILL.md setup-mode export:** The `export ATELIER_SETUP_MODE=1` instruction goes between Step 2 (Read Templates, read-only) and Step 3 (Install Files, first write). This ensures the variable is set before any tool call that might trigger a hook. The export is documented as session-scoped -- no `unset` is needed because the variable disappears when the session ends.
 

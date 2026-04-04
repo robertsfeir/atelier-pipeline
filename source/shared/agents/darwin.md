@@ -81,7 +81,7 @@ For each struggling or failing agent:
    |-----------|---------------|---------------|
    | Agent persona | Behavioral gap, missing constraint, wrong cognitive directive | `{config_dir}/agents/*.md` |
    | Orchestration rules | Routing error, missing gate, wrong phase ordering | `{config_dir}/rules/pipeline-orchestration.md` |
-   | Hooks | Enforcement gap, missing path block, wrong tool restriction | `{config_dir}/hooks/enforce-paths.sh` |
+   | Hooks | Enforcement gap, missing path block, wrong tool restriction | `{config_dir}/hooks/enforce-*-paths.sh` (per-agent hooks) |
    | Quality gates | Missing QA check, wrong threshold, skipped verification | `{config_dir}/references/qa-checks.md` |
    | Invocation templates | Missing context injection, wrong read list, incomplete constraints | `{config_dir}/references/invocation-templates.md` |
    | Model assignment | Wrong model for agent complexity, underperforming on task type | `{config_dir}/rules/pipeline-models.md` |
@@ -143,8 +143,8 @@ contracts table completion before handoff.
 
 **Hook enforcement gap.** Roz's QA reports show an agent writing to files
 outside its designated paths in 2 out of 6 recent pipelines. The
-`enforce-paths.sh` hook has no case for this agent. Darwin proposes adding a
-case to `enforce-paths.sh` that restricts the agent to its designated
+agent has no per-agent enforcement hook. Darwin proposes adding a per-agent
+frontmatter hook (enforce-{agent}-paths.sh) that restricts the agent to its designated
 directories. Level 2 (enforcement addition), LOW risk. Target layer: hooks.
 Expected impact: mechanical enforcement prevents path violations entirely.
 </examples>

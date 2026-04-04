@@ -10,7 +10,7 @@ Proposed
 
 | # | Requirement | Source | Notes |
 |---|-------------|--------|-------|
-| R1 | Agent persona at `source/agents/deps.md`, installed to `.claude/agents/deps.md` | context-brief.md | Dual tree: template in source/, installed copy in .claude/ |
+| R1 | Agent persona at `source/shared/agents/deps.md`, installed to `.claude/agents/deps.md` | context-brief.md | Dual tree: template in source/, installed copy in .claude/ |
 | R2 | `deps_agent_enabled` config flag in `pipeline-config.json`, default `false` | context-brief.md | Mirrors `sentinel_enabled` pattern |
 | R3 | Opt-in offered during `/pipeline-setup` as Step 6d (after CI Watch, before Brain) | context-brief.md | Exact Sentinel pattern — no external tool prerequisite |
 | R4 | `/deps` slash command at `source/commands/deps.md`, installed to `.claude/commands/deps.md` | context-brief.md | Follows debug.md / devops.md format |
@@ -40,7 +40,7 @@ Proposed
 
 The pipeline has no proactive dependency management. Users defer upgrades because they cannot predict breakage risk, and CVEs linger undetected until a Dependabot alert fires reactively. Issue #20 requests a dedicated agent that scans dependency manifests, cross-references CVEs via audit tools, predicts breakage by analyzing code usage against changelogs, and surfaces a structured report — all without modifying any files.
 
-Sentinel (ADR-0009) established the opt-in agent pattern: a config flag in `pipeline-config.json`, a setup step in SKILL.md, and a persona in `source/agents/`. Deps follows this pattern exactly. Unlike Sentinel, Deps has no external MCP tool prerequisite — it uses only tools already available to Claude Code subagents (Bash, Read, Grep, Glob, WebSearch, WebFetch).
+Sentinel (ADR-0009) established the opt-in agent pattern: a config flag in `pipeline-config.json`, a setup step in SKILL.md, and a persona in `source/shared/agents/`. Deps follows this pattern exactly. Unlike Sentinel, Deps has no external MCP tool prerequisite — it uses only tools already available to Claude Code subagents (Bash, Read, Grep, Glob, WebSearch, WebFetch).
 
 Deps is a standalone, on-demand agent. Unlike Sentinel (which runs at the review juncture as part of the pipeline flow), Deps is invoked explicitly via `/deps` or auto-routed when the user asks a dependency-related question. It does not intercept or gate pipeline phases.
 
@@ -125,7 +125,7 @@ Negative:
 
 | File | Change | Impact |
 |------|--------|--------|
-| `source/agents/deps.md` | CREATE | New agent persona template |
+| `source/shared/agents/deps.md` | CREATE | New agent persona template |
 | `.claude/agents/deps.md` | CREATE | Installed copy (dual tree) |
 | `source/commands/deps.md` | CREATE | New slash command template |
 | `.claude/commands/deps.md` | CREATE | Installed copy (dual tree) |
@@ -136,11 +136,11 @@ Negative:
 | `.claude/rules/agent-system.md` | MODIFY | Installed copy (dual tree) |
 | `source/references/invocation-templates.md` | MODIFY | Add `deps-scan` template |
 | `.claude/references/invocation-templates.md` | MODIFY | Installed copy (dual tree) |
-| `source/hooks/enforce-paths.sh` | NO CHANGE | Catch-all `*` case already blocks unknown agents |
+| `source/claude/hooks/enforce-paths.sh` | NO CHANGE | Catch-all `*` case already blocks unknown agents |
 | `.claude/hooks/enforce-paths.sh` | NO CHANGE | Same |
 
 Consumer mapping (Wiring Coverage):
-- `source/agents/deps.md` (producer: agent persona) → consumed by Eva via subagent invocation, and by `/deps` slash command dispatch (Step 1 + Step 3)
+- `source/shared/agents/deps.md` (producer: agent persona) → consumed by Eva via subagent invocation, and by `/deps` slash command dispatch (Step 1 + Step 3)
 - `source/commands/deps.md` (producer: slash command) → consumed by user typing `/deps` → Eva reads command file → invokes Deps subagent (Step 2 + Step 3)
 - `deps_agent_enabled` flag (producer: pipeline-config.json) → consumed by SKILL.md Step 6d (install gate) and by Eva auto-routing (Step 4)
 - `deps-scan` invocation template (producer: invocation-templates.md) → consumed by Eva when routing to Deps (Step 5)
@@ -149,10 +149,10 @@ Consumer mapping (Wiring Coverage):
 
 ## Implementation Plan
 
-### Step 1: Agent Persona (`source/agents/deps.md` + `.claude/agents/deps.md`)
+### Step 1: Agent Persona (`source/shared/agents/deps.md` + `.claude/agents/deps.md`)
 
 **Files to create:**
-- `source/agents/deps.md` — template persona (source of truth for pipeline-setup to install from)
+- `source/shared/agents/deps.md` — template persona (source of truth for pipeline-setup to install from)
 - `.claude/agents/deps.md` — installed copy (this project eats its own cooking)
 
 **Persona content (Colby implements this as the file body):**
@@ -181,7 +181,7 @@ The persona XML structure must follow the established pattern (`identity`, `requ
 - `<output>`: Structured report with four sections: CVE Alerts, Needs Review, Safe to Upgrade, No Action Needed. Each dep entry: name, current version, latest version, CVE IDs (if any), breaking changes found in usage (file:line), risk label, recommendation. Plus optional migration ADR brief section if requested.
 
 **Acceptance criteria:**
-- `source/agents/deps.md` exists with correct YAML frontmatter (`name: deps`, `disallowedTools` set).
+- `source/shared/agents/deps.md` exists with correct YAML frontmatter (`name: deps`, `disallowedTools` set).
 - `.claude/agents/deps.md` exists with identical content.
 - Eva's boot-sequence agent discovery scan finds `deps` and announces it as a discovered agent (since `deps` is not in the core agent constant list).
 - `disallowedTools` frontmatter blocks Write/Edit from the frontmatter layer; enforce-paths.sh catch-all blocks it at the mechanical layer.
@@ -362,7 +362,7 @@ After the CI Watch offer (whether user said yes or no), offer the optional Deps 
 **If user says yes:**
 
 1. Set `deps_agent_enabled: true` in `.claude/pipeline-config.json`.
-2. Copy `source/agents/deps.md` to `.claude/agents/deps.md`.
+2. Copy `source/shared/agents/deps.md` to `.claude/agents/deps.md`.
 3. Copy `source/commands/deps.md` to `.claude/commands/deps.md`.
 4. Print: "Deps agent: enabled. Use /deps to scan your dependencies."
 
@@ -377,7 +377,7 @@ Print: "Deps agent: not enabled"
 
 | Template Source | Destination | Install When |
 |----------------|-------------|-------------|
-| `source/agents/deps.md` | `.claude/agents/deps.md` | User enables Deps in Step 6d |
+| `source/shared/agents/deps.md` | `.claude/agents/deps.md` | User enables Deps in Step 6d |
 | `source/commands/deps.md` | `.claude/commands/deps.md` | User enables Deps in Step 6d |
 ```
 
@@ -404,8 +404,8 @@ And update the file count in the summary from "40 mandatory files" to remain acc
 
 | ID | Category | Description |
 |----|----------|-------------|
-| T-0015-001 | Happy | `source/agents/deps.md` exists and contains YAML frontmatter with `name: deps` |
-| T-0015-002 | Happy | `.claude/agents/deps.md` exists and its content is identical to `source/agents/deps.md` |
+| T-0015-001 | Happy | `source/shared/agents/deps.md` exists and contains YAML frontmatter with `name: deps` |
+| T-0015-002 | Happy | `.claude/agents/deps.md` exists and its content is identical to `source/shared/agents/deps.md` |
 | T-0015-003 | Happy | `disallowedTools` frontmatter includes `Write`, `Edit`, `MultiEdit` |
 | T-0015-004 | Happy | Persona contains `<identity>`, `<required-actions>`, `<workflow>`, `<tools>`, `<constraints>`, `<output>` tags |
 | T-0015-005 | Happy | Persona contains an `<examples>` tag with at least two examples (missing tool skip + breakage prediction) |
@@ -482,7 +482,7 @@ And update the file count in the summary from "40 mandatory files" to remain acc
 | T-0015-051 | Happy | Step 6d is positioned after Step 6c and before the Brain setup offer |
 | T-0015-052 | Happy | Step 6d offer text matches the spec: CVE, outdated packages, breakage risk |
 | T-0015-053 | Happy | Step 6d yes-path sets `deps_agent_enabled: true` in config |
-| T-0015-054 | Happy | Step 6d yes-path copies `source/agents/deps.md` to `.claude/agents/deps.md` |
+| T-0015-054 | Happy | Step 6d yes-path copies `source/shared/agents/deps.md` to `.claude/agents/deps.md` |
 | T-0015-055 | Happy | Step 6d yes-path copies `source/commands/deps.md` to `.claude/commands/deps.md` |
 | T-0015-056 | Happy | Step 6d no-path leaves `deps_agent_enabled: false` and prints "Deps agent: not enabled" |
 | T-0015-057 | Happy | Summary printout in Step 6 includes "Deps agent: [enabled | not enabled]" line |
@@ -520,7 +520,7 @@ Telemetry: After `/pipeline-setup` Step 6d acceptance, `jq .deps_agent_enabled .
 
 | Producer | Shape | Consumer | Step |
 |----------|-------|----------|------|
-| `source/agents/deps.md` (agent persona) | Markdown with YAML frontmatter: `name: deps`, `disallowedTools`, XML-tagged behavior | Eva (subagent invocation via Agent tool), `/deps` command dispatch | Step 1 |
+| `source/shared/agents/deps.md` (agent persona) | Markdown with YAML frontmatter: `name: deps`, `disallowedTools`, XML-tagged behavior | Eva (subagent invocation via Agent tool), `/deps` command dispatch | Step 1 |
 | `.claude/agents/deps.md` (installed persona) | Same as above — installed copy | Claude Code at subagent invocation time | Step 1 |
 | `source/commands/deps.md` (slash command) | Markdown behavior descriptor: Flow A + Flow B, `deps_agent_enabled` gate | Eva reads when user types `/deps` | Step 2 |
 | `deps-scan` template (invocation-templates.md) | XML `<template>` with `<task>`, `<constraints>`, `<output>` | Eva constructs Deps subagent invocation prompt | Step 5 |
@@ -533,7 +533,7 @@ Telemetry: After `/pipeline-setup` Step 6d acceptance, `jq .deps_agent_enabled .
 
 | Producer | Shape | Consumer | Step |
 |----------|-------|----------|------|
-| `source/agents/deps.md` | Persona template | `/pipeline-setup` copies to `.claude/agents/deps.md`; Eva invokes as subagent | Step 1, Step 6 |
+| `source/shared/agents/deps.md` | Persona template | `/pipeline-setup` copies to `.claude/agents/deps.md`; Eva invokes as subagent | Step 1, Step 6 |
 | `.claude/agents/deps.md` | Installed persona | Claude Code loads for Deps subagent context window | Step 1 |
 | `source/commands/deps.md` | Command behavior descriptor | `/pipeline-setup` copies to `.claude/commands/deps.md`; Claude Code loads when user types `/deps` | Step 2, Step 6 |
 | `deps_agent_enabled` (pipeline-config.json) | Boolean | Eva auto-routing (Step 4), `/deps` command gate (Step 2), Step 6d install check | Step 3 |
@@ -577,7 +577,7 @@ No data stores involved. Deps reads public package registry metadata and local d
 
 | # | Requirement | ADR Step | Evidence |
 |---|-------------|----------|----------|
-| R1 | Agent persona at `source/agents/deps.md` installed to `.claude/agents/deps.md` | Step 1 | Both files exist, content identical, T-0015-001/002 |
+| R1 | Agent persona at `source/shared/agents/deps.md` installed to `.claude/agents/deps.md` | Step 1 | Both files exist, content identical, T-0015-001/002 |
 | R2 | `deps_agent_enabled` flag default false in both config files | Step 3 | `jq .deps_agent_enabled` on both files, T-0015-027/028 |
 | R3 | Offered as opt-in during /pipeline-setup Step 6d | Step 6 | Step 6d block exists, correct positioning, T-0015-050/051 |
 | R4 | /deps slash command invokes the agent | Step 2 | Command file exists, Flow A described, T-0015-021/023 |

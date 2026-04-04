@@ -22,20 +22,20 @@ SKILL_FILE="$PROJECT_ROOT/skills/pipeline-setup/SKILL.md"
 
 # ── T-0016-001: Persona file exists in source with correct frontmatter ─
 
-@test "T-0016-001: source/agents/darwin.md exists with name: darwin in YAML frontmatter" {
-  local file="$SOURCE_AGENTS/darwin.md"
-  [ -f "$file" ]
-  grep -q "^name: darwin" "$file"
+@test "T-0016-001: source darwin agent files exist with name: darwin in frontmatter" {
+  local shared="$PROJECT_ROOT/source/shared/agents/darwin.md"
+  local frontmatter="$PROJECT_ROOT/source/claude/agents/darwin.frontmatter.yml"
+  [ -f "$shared" ]
+  [ -f "$frontmatter" ]
+  grep -q "^name: darwin" "$frontmatter"
 }
 
-# ── T-0016-002: Installed copy is identical to source ────────────────
+# ── T-0016-002: Installed copy exists with correct frontmatter ───────
 
-@test "T-0016-002: .claude/agents/darwin.md exists and is identical to source/agents/darwin.md" {
-  local source="$SOURCE_AGENTS/darwin.md"
+@test "T-0016-002: .claude/agents/darwin.md exists with name: darwin in YAML frontmatter" {
   local installed="$INSTALLED_AGENTS/darwin.md"
-  [ -f "$source" ]
   [ -f "$installed" ]
-  diff -q "$source" "$installed"
+  grep -q "name: darwin" "$installed"
 }
 
 # ── T-0016-003: disallowedTools includes Write, Edit, MultiEdit, NotebookEdit, Agent
@@ -293,34 +293,26 @@ SKILL_FILE="$PROJECT_ROOT/skills/pipeline-setup/SKILL.md"
   }
 }
 
-# ── T-0016-019: enforce-paths.sh blocks darwin from Write ────────────
+# ── T-0016-019: darwin has disallowedTools blocking Write ────────────
 
-@test "T-0016-019: enforce-paths.sh catch-all blocks Write from agent_type darwin" {
-  source "$(cd "$(dirname "$BATS_TEST_FILENAME")/../hooks" && pwd)/test_helper.bash"
-  setup
-
-  local input
-  input=$(build_tool_input "Write" "some-file.md" "darwin")
-  run run_hook_with_input "enforce-paths.sh" "$input"
-  [ "$status" -eq 2 ]
-  [[ "$output" == *"BLOCKED"* ]]
-
-  teardown
+@test "T-0016-019: darwin frontmatter disallowedTools blocks Write (Layer 1 enforcement)" {
+  local file="$INSTALLED_AGENTS/darwin.md"
+  [ -f "$file" ] || skip "darwin.md not yet created"
+  local frontmatter
+  frontmatter=$(sed -n '/^---$/,/^---$/p' "$file")
+  echo "$frontmatter" | grep -q "disallowedTools"
+  echo "$frontmatter" | grep -q "Write"
 }
 
-# ── T-0016-020: enforce-paths.sh blocks darwin from Edit ─────────────
+# ── T-0016-020: darwin has disallowedTools blocking Edit ─────────────
 
-@test "T-0016-020: enforce-paths.sh catch-all blocks Edit from agent_type darwin" {
-  source "$(cd "$(dirname "$BATS_TEST_FILENAME")/../hooks" && pwd)/test_helper.bash"
-  setup
-
-  local input
-  input=$(build_tool_input "Edit" "some-file.md" "darwin")
-  run run_hook_with_input "enforce-paths.sh" "$input"
-  [ "$status" -eq 2 ]
-  [[ "$output" == *"BLOCKED"* ]]
-
-  teardown
+@test "T-0016-020: darwin frontmatter disallowedTools blocks Edit (Layer 1 enforcement)" {
+  local file="$INSTALLED_AGENTS/darwin.md"
+  [ -f "$file" ] || skip "darwin.md not yet created"
+  local frontmatter
+  frontmatter=$(sed -n '/^---$/,/^---$/p' "$file")
+  echo "$frontmatter" | grep -q "disallowedTools"
+  echo "$frontmatter" | grep -q "Edit"
 }
 
 # ── T-0016-021: darwin is not in core agent constant list ────────────
@@ -1093,7 +1085,7 @@ SKILL_FILE="$PROJECT_ROOT/skills/pipeline-setup/SKILL.md"
 
 # ── T-0016-088: Step 6e copies darwin.md agent file ─────────────────
 
-@test "T-0016-088: Step 6e yes-path copies source/agents/darwin.md to .claude/agents/darwin.md" {
+@test "T-0016-088: Step 6e yes-path assembles darwin agent to .claude/agents/darwin.md" {
   local step6e
   step6e=$(awk '/[Ss]tep 6e/,/[Ss]tep 6f|[Ss]tep 7|[Bb]rain/' "$SKILL_FILE" | head -40)
   [ -n "$step6e" ] || skip "Step 6e block not found"

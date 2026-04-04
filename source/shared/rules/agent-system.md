@@ -43,8 +43,8 @@ Hybrid skill/subagent workflow. Skills run in the main thread (conversational). 
 ### Skills (main thread)
 | Command | Agent | Role |
 |---------|-------|------|
-| `/pm` | **Robert** | CPO -- feature discovery, specs, product strategy |
-| `/ux` | **Sable** | UI/UX Designer -- user experience, interaction design |
+| `/pm` | **robert-spec** | Product spec producer -- feature discovery, specs, acceptance criteria |
+| `/ux` | **sable-ux** | UX design producer -- user flows, interaction design, accessibility |
 | `/docs` | **Agatha** | Documentation planning -- doc impact assessment, doc plan |
 | `/architect` | **Cal** | Architectural clarification -- conversational Q&A before ADR production |
 | `/pipeline` | **Eva** | Pipeline Orchestrator -- full end-to-end |
@@ -59,7 +59,9 @@ Hybrid skill/subagent workflow. Skills run in the main thread (conversational). 
 | **Agatha** | Documentation -- writing docs | Read, Write, Edit, MultiEdit, Grep, Glob, Bash |
 | **Roz** | QA Engineer -- test authoring + validation | Read, Write, Glob, Grep, Bash (Write: test files ONLY) |
 | **Robert** | Product acceptance reviewer | Read, Glob, Grep, Bash (read-only) |
+| **robert-spec** | Product spec producer -- writes to docs/product/ | Read, Write, Edit, Glob, Grep, Bash |
 | **Sable** | UX acceptance reviewer | Read, Glob, Grep, Bash (read-only) |
+| **sable-ux** | UX design producer -- writes to docs/ux/ | Read, Write, Edit, Glob, Grep, Bash |
 | **Poirot** | Blind code investigator -- diff-only review | Read, Glob, Grep, Bash (read-only) |
 | **Distillator** | Lossless document compression engine | Read, Glob, Grep, Bash (read-only) |
 | **Ellis** | Commit & Changelog | Read, Write, Edit, Glob, Grep, Bash |
@@ -124,8 +126,8 @@ When the user sends a message outside an active pipeline, classify intent and ro
 
 | If the user... | Route to | Type |
 |---|---|---|
-| Describes a new idea, feature concept, "what if we..." | **Robert** | skill |
-| Discusses UI, UX, user flows, wireframes, design patterns | **Sable** | skill |
+| Describes a new idea, feature concept, "what if we..." | **robert-spec** | subagent |
+| Discusses UI, UX, user flows, wireframes, design patterns | **sable-ux** | subagent |
 | Says "review this ADR", "plan this", "how should we architect..." | **Cal** | skill |
 | References a feature spec without an ADR | **Cal** | skill |
 | Says "plan the docs", "what docs do we need", "documentation plan" | **Agatha** (doc planning) | skill |
@@ -240,8 +242,8 @@ Do NOT invoke the `Skill` tool for `/pm`, `/ux`, `/docs`, `/architect`, `/debug`
 
 | Command | File | Agent |
 |---------|------|-------|
-| `/pm` | `{config_dir}/commands/pm.md` | Robert (CPO) |
-| `/ux` | `{config_dir}/commands/ux.md` | Sable (UX) |
+| `/pm` | `{config_dir}/commands/pm.md` | robert-spec (product spec producer) |
+| `/ux` | `{config_dir}/commands/ux.md` | sable-ux (UX design producer) |
 | `/docs` | `{config_dir}/commands/docs.md` | Agatha (doc planning) |
 | `/architect` | `{config_dir}/commands/architect.md` | Cal (conversational clarification) |
 | `/debug` | `{config_dir}/commands/debug.md` | Eva routes: Roz -> Colby -> Roz |
@@ -259,7 +261,9 @@ Subagents are invoked via the Agent tool with their persona files in `{config_di
 | Agatha (write) | `{config_dir}/agents/agatha.md` |
 | Roz | `{config_dir}/agents/roz.md` |
 | Robert (acceptance) | `{config_dir}/agents/robert.md` |
+| robert-spec (producer) | `{config_dir}/agents/robert-spec.md` |
 | Sable (acceptance) | `{config_dir}/agents/sable.md` |
+| sable-ux (producer) | `{config_dir}/agents/sable-ux.md` |
 | Poirot | `{config_dir}/agents/investigator.md` |
 | Distillator | `{config_dir}/agents/distillator.md` |
 | Ellis | `{config_dir}/agents/ellis.md` |
@@ -295,12 +299,12 @@ replace core agent routing.
 
 ### Core Agent Constant
 
-The following 9 agents are hardcoded core agents. Any `.md` file in
+The following 11 agents are hardcoded core agents. Any `.md` file in
 `{config_dir}/agents/` whose YAML frontmatter `name` field does not match one of
 these names is a discovered agent:
 
 ```
-cal, colby, roz, ellis, agatha, robert, sable, investigator, distillator
+cal, colby, roz, ellis, agatha, robert, robert-spec, sable, sable-ux, investigator, distillator
 ```
 
 ### Discovery Protocol

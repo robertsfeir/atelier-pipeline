@@ -53,7 +53,7 @@ Before gathering any project information, unconditionally run this cleanup on ev
 - Both found: remove both, print single notice (not two).
 - Neither found: silent no-op.
 
-This cleanup targets only quality-gate.sh entries. Other hook entries (enforce-paths.sh, enforce-sequencing.sh, enforce-git.sh, etc.) are not affected.
+This cleanup targets only quality-gate.sh entries. Other hook entries (enforce-eva-paths.sh, enforce-sequencing.sh, enforce-git.sh, etc.) are not affected.
 
 ### Step 1: Gather Project Information
 
@@ -235,6 +235,8 @@ Files are assembled from `source/shared/` (content) + `source/claude/` (overlays
 | `source/shared/agents/distillator.md` + `source/claude/agents/distillator.frontmatter.yml` | `.claude/agents/distillator.md` | Compression engine subagent persona (overlay assembly) |
 | `source/shared/agents/ellis.md` + `source/claude/agents/ellis.frontmatter.yml` | `.claude/agents/ellis.md` | Commit manager subagent persona (overlay assembly) |
 | `source/shared/agents/agatha.md` + `source/claude/agents/agatha.frontmatter.yml` | `.claude/agents/agatha.md` | Documentation subagent persona (overlay assembly) |
+| `source/shared/agents/robert-spec.md` + `source/claude/agents/robert-spec.frontmatter.yml` | `.claude/agents/robert-spec.md` | Product spec producer subagent persona (overlay assembly) |
+| `source/shared/agents/sable-ux.md` + `source/claude/agents/sable-ux.frontmatter.yml` | `.claude/agents/sable-ux.md` | UX design producer subagent persona (overlay assembly) |
 | `source/shared/commands/pm.md` assembled with overlay | `.claude/commands/pm.md` | /pm slash command |
 | `source/shared/commands/ux.md` assembled with overlay | `.claude/commands/ux.md` | /ux slash command |
 | `source/shared/commands/architect.md` assembled with overlay | `.claude/commands/architect.md` | /architect slash command |
@@ -275,7 +277,13 @@ optional and must be installed for the pipeline to function correctly.
 
 | Template Source | Destination | Purpose |
 |----------------|-------------|---------|
-| `source/claude/hooks/enforce-paths.sh` | `.claude/hooks/enforce-paths.sh` | Blocks Write/Edit outside each agent's allowed file paths |
+| `source/claude/hooks/enforce-eva-paths.sh` | `.claude/hooks/enforce-eva-paths.sh` | Blocks main thread (Eva) Write/Edit outside docs/pipeline/ |
+| `source/claude/hooks/enforce-roz-paths.sh` | `.claude/hooks/enforce-roz-paths.sh` | Per-agent: Roz can only write test files + docs/pipeline/ |
+| `source/claude/hooks/enforce-cal-paths.sh` | `.claude/hooks/enforce-cal-paths.sh` | Per-agent: Cal can only write to docs/architecture/ |
+| `source/claude/hooks/enforce-colby-paths.sh` | `.claude/hooks/enforce-colby-paths.sh` | Per-agent: Colby blocked from colby_blocked_paths |
+| `source/claude/hooks/enforce-agatha-paths.sh` | `.claude/hooks/enforce-agatha-paths.sh` | Per-agent: Agatha can only write to docs/ |
+| `source/claude/hooks/enforce-product-paths.sh` | `.claude/hooks/enforce-product-paths.sh` | Per-agent: Robert-spec can only write to docs/product/ |
+| `source/claude/hooks/enforce-ux-paths.sh` | `.claude/hooks/enforce-ux-paths.sh` | Per-agent: Sable-ux can only write to docs/ux/ |
 | `source/claude/hooks/enforce-sequencing.sh` | `.claude/hooks/enforce-sequencing.sh` | Blocks out-of-order agent invocations (e.g., Ellis without Roz QA) |
 | `source/claude/hooks/enforce-pipeline-activation.sh` | `.claude/hooks/enforce-pipeline-activation.sh` | Blocks Colby/Ellis invocation when no active pipeline exists |
 | `source/claude/hooks/enforce-git.sh` | `.claude/hooks/enforce-git.sh` | Blocks git write operations from main thread (must go through Ellis) |
@@ -285,6 +293,10 @@ optional and must be installed for the pipeline to function correctly.
 | `source/claude/hooks/log-agent-stop.sh` | `.claude/hooks/log-agent-stop.sh` | Logs agent stop events to JSONL telemetry file (SubagentStop) |
 | `source/claude/hooks/post-compact-reinject.sh` | `.claude/hooks/post-compact-reinject.sh` | Re-injects pipeline-state.md and context-brief.md after compaction (PostCompact) |
 | `source/claude/hooks/log-stop-failure.sh` | `.claude/hooks/log-stop-failure.sh` | Appends error entry to error-patterns.md on agent failure (StopFailure) |
+| `source/claude/hooks/prompt-brain-capture.sh` | `.claude/hooks/prompt-brain-capture.sh` | Brain capture prompt injection (SubagentStop) |
+| `source/claude/hooks/prompt-brain-prefetch.sh` | `.claude/hooks/prompt-brain-prefetch.sh` | Brain prefetch prompt injection (Prompt) |
+| `source/claude/hooks/warn-brain-capture.sh` | `.claude/hooks/warn-brain-capture.sh` | Brain capture warning (SubagentStop) |
+| `source/claude/hooks/prompt-compact-advisory.sh` | `.claude/hooks/prompt-compact-advisory.sh` | Wave-boundary compaction advisory (SubagentStop) |
 | `source/claude/hooks/enforcement-config.json` | `.claude/hooks/enforcement-config.json` | Project-specific paths and agent rules |
 
 After copying, make the `.sh` files executable: `chmod +x .claude/hooks/*.sh`
@@ -294,9 +306,6 @@ After copying, make the `.sh` files executable: `chmod +x .claude/hooks/*.sh`
 | Field | Type | Requirement |
 |-------|------|-------------|
 | `pipeline_state_dir` | string | Non-empty |
-| `architecture_dir` | string | Non-empty |
-| `product_specs_dir` | string | Non-empty |
-| `ux_docs_dir` | string | Non-empty |
 | `test_command` | string | Non-empty -- critical: Roz cannot run tests without this |
 | `test_patterns` | array | Non-empty -- at least one pattern required |
 
@@ -311,9 +320,7 @@ Do not block installation on validation failure. The warning is informational --
 
 **Customize enforcement-config.json** with the project-specific values from Step 1:
 - `pipeline_state_dir`: the pipeline state directory (default: `docs/pipeline`)
-- `architecture_dir`: the ADR directory (default: `docs/architecture`)
-- `product_specs_dir`: the specs directory (default: `docs/product`)
-- `ux_docs_dir`: the UX docs directory (default: `docs/ux`)
+- `colby_blocked_paths`: array of path prefixes Colby cannot write to (default includes `docs/`, `.github/`, infrastructure paths)
 - `test_patterns`: array of patterns matching the project's test files (e.g., `[".test.", ".spec.", "/tests/", "conftest"]`)
 - `test_command`: full test suite command from Step 1 -- used by Roz for QA verification (e.g., `npm test`, `pytest`)
 
@@ -326,7 +333,7 @@ file already exists. Add this hooks section:
     "PreToolUse": [
       {
         "matcher": "Write|Edit|MultiEdit",
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-paths.sh"}]
+        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-eva-paths.sh"}]
       },
       {
         "matcher": "Agent",
@@ -344,7 +351,7 @@ file already exists. Add this hooks section:
     ],
     "SubagentStop": [
       {
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/warn-dor-dod.sh", "if": "agent_type == 'colby' || agent_type == 'roz'"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/log-agent-stop.sh"}]
+        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/warn-dor-dod.sh", "if": "agent_type == 'colby' || agent_type == 'roz'"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/log-agent-stop.sh"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-brain-capture.sh"}]
       }
     ],
     "PreCompact": [
@@ -383,8 +390,8 @@ The pipeline supports custom agents beyond the core 9. To add a custom agent:
   offer to convert it to the pipeline's XML format and write it as a proper
   agent file.
 - **Read-only by default:** Discovered agents cannot use Write, Edit, or
-  MultiEdit tools. To grant write access, add an explicit case to
-  `.claude/hooks/enforce-paths.sh` for the agent's name.
+  MultiEdit tools. To grant write access, add a per-agent frontmatter hook
+  (enforce-{name}-paths.sh) to the agent's frontmatter overlay.
 
 See the "Agent Discovery" section in `agent-system.md` for full details.
 

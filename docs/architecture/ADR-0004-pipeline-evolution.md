@@ -276,9 +276,9 @@ If the implementation created a reusable approach:
 
 **Files to create/modify:**
 - Create: `brain/migrations/003-add-pattern-type.sql`
-- Modify: `source/agents/colby.md` (add Brain capture gate at DoD, ~15 lines)
-- Modify: `source/agents/cal.md` (add pattern search to Brain read gate, ~5 lines)
-- Modify: `source/agents/roz.md` (add pattern drift check, ~10 lines)
+- Modify: `source/shared/agents/colby.md` (add Brain capture gate at DoD, ~15 lines)
+- Modify: `source/shared/agents/cal.md` (add pattern search to Brain read gate, ~5 lines)
+- Modify: `source/shared/agents/roz.md` (add pattern drift check, ~10 lines)
 - Modify: `source/rules/default-persona.md` (add pattern staleness check to Eva's pipeline-end duties, ~10 lines)
 
 **Acceptance criteria:**
@@ -450,7 +450,7 @@ PROPOSED: Colby unit 1 → Roz pass → Ellis commit(unit 1) → Colby unit 2 �
 
 **Files to create/modify:**
 - Modify: `source/references/pipeline-operations.md` (update Continuous QA section for per-unit commits, ~20 lines)
-- Modify: `source/agents/ellis.md` (add per-unit commit mode vs. final commit mode, ~15 lines)
+- Modify: `source/shared/agents/ellis.md` (add per-unit commit mode vs. final commit mode, ~15 lines)
 - Modify: `source/rules/default-persona.md` (add Ellis invocation after each Roz pass in build phase, ~10 lines)
 
 **Acceptance criteria:**

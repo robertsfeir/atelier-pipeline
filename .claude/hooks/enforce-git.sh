@@ -16,7 +16,7 @@
 
 set -euo pipefail
 [ "${ATELIER_SETUP_MODE:-}" = "1" ] && exit 0
-[ -f "${CLAUDE_PROJECT_DIR:-.}/docs/pipeline/.setup-mode" ] && exit 0
+[ -f "${CURSOR_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-.}}/docs/pipeline/.setup-mode" ] && exit 0
 
 INPUT=$(cat)
 
@@ -34,7 +34,7 @@ COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 
 # No-op when git is not available
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
+PROJECT_ROOT="${CURSOR_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$(cd "$SCRIPT_DIR/../.." && pwd)}}"
 # Try .cursor/ first (Cursor), fall back to .claude/ (Claude Code)
 if [ -f "${PROJECT_ROOT}/.cursor/pipeline-config.json" ]; then
   CONFIG_FILE="${PROJECT_ROOT}/.cursor/pipeline-config.json"

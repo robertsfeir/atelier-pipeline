@@ -203,10 +203,10 @@ Update the Context Cleanup Advisory section in `pipeline-orchestration.md` to re
 Create a PreCompact hook script that writes a compaction marker to pipeline-state.md before compaction fires.
 
 **Files to create:**
-- `source/hooks/pre-compact.sh`
+- `source/claude/hooks/pre-compact.sh`
 
 **Files to modify:**
-- `source/hooks/enforcement-config.json` -- add PreCompact hook entry (if hook registration is config-driven)
+- `source/claude/hooks/enforcement-config.json` -- add PreCompact hook entry (if hook registration is config-driven)
 
 **Acceptance criteria:**
 - Script is a lightweight shell script (under 20 lines) that:
@@ -216,7 +216,7 @@ Create a PreCompact hook script that writes a compaction marker to pipeline-stat
   - Does NOT invoke brain, run tests, invoke subagents, or do any heavy work
   - Does NOT fail if pipeline-state.md does not exist (no-op for non-pipeline sessions)
 - Hook is a PreCompact hook (fires before context is compacted, not after)
-- Hook follows the existing hook pattern in `source/hooks/` (see `warn-dor-dod.sh` for the warn-only pattern)
+- Hook follows the existing hook pattern in `source/claude/hooks/` (see `warn-dor-dod.sh` for the warn-only pattern)
 - `enforcement-config.json` updated if it tracks hook registration; otherwise hook is registered via the setup skill's settings.json generation
 
 **Estimated complexity:** Low (lightweight shell script following established pattern)
@@ -288,7 +288,7 @@ Update documentation to reflect the Compaction API integration.
 
 | ID | Category | Description |
 |----|----------|-------------|
-| T-0012-018 | Happy | `source/hooks/pre-compact.sh` exists and is executable |
+| T-0012-018 | Happy | `source/claude/hooks/pre-compact.sh` exists and is executable |
 | T-0012-019 | Happy | Script appends a timestamped compaction marker (`<!-- COMPACTION: ... -->`) to pipeline-state.md |
 | T-0012-020 | Happy | Script exits 0 (never blocks compaction) |
 | T-0012-021 | Failure | Script is a no-op (exits 0, no error) when pipeline-state.md does not exist |
@@ -369,16 +369,16 @@ No orphan producers. Every artifact has a consumer.
 
 | File | Purpose |
 |------|---------|
-| `source/hooks/pre-compact.sh` | PreCompact hook for pipeline state preservation |
+| `source/claude/hooks/pre-compact.sh` | PreCompact hook for pipeline state preservation |
 
 ### Files NOT Changed (verified)
 
 - `source/rules/default-persona.md` -- boot sequence reads pipeline-state.md already; no changes needed
 - `source/rules/agent-system.md` -- no compaction-related content
-- `source/hooks/enforce-paths.sh` -- no path enforcement changes
-- `source/hooks/enforce-sequencing.sh` -- no sequencing changes
-- `source/hooks/enforce-git.sh` -- no git enforcement changes
-- `source/hooks/warn-dor-dod.sh` -- no DoR/DoD changes
+- `source/claude/hooks/enforce-paths.sh` -- no path enforcement changes
+- `source/claude/hooks/enforce-sequencing.sh` -- no sequencing changes
+- `source/claude/hooks/enforce-git.sh` -- no git enforcement changes
+- `source/claude/hooks/warn-dor-dod.sh` -- no DoR/DoD changes
 - `.claude/` anything -- changes target `source/` only
 - Brain schema -- no database changes
 
@@ -390,7 +390,7 @@ None. No new dependencies, no new test commands, no build changes.
 
 ### Migration Plan
 
-1. Colby creates `source/hooks/pre-compact.sh`
+1. Colby creates `source/claude/hooks/pre-compact.sh`
 2. Colby updates `source/references/pipeline-operations.md` Compaction Strategy
 3. Colby updates `source/rules/pipeline-orchestration.md` Context Cleanup Advisory
 4. Colby updates `skills/pipeline-setup/SKILL.md` for hook registration

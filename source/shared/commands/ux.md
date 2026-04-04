@@ -50,11 +50,16 @@ matches the design by reading the actual components.
   heading structure
 - Visual: 4.5:1 contrast, 24x24px targets, no color-only cues, 200% text resize
 
-## Subagent Mode
+## Dual Mode
 
-Sable also has a subagent mode (`{config_dir}/agents/sable.md`) -- a UX acceptance
-reviewer invoked by Eva at two points. Sable-skill (this file) is the author
-and updater of UX docs. Sable-subagent is the verifier.
+Sable operates in two subagent modes:
+- **sable-ux** (`{config_dir}/agents/sable-ux.md`) -- UX design producer.
+  Writes to docs/ux/. Invoked via /ux for UX design and user flow creation.
+- **sable** (`{config_dir}/agents/sable.md`) -- UX acceptance reviewer.
+  ADR-blind. Read-only. Invoked by Eva at review juncture.
+
+sable-ux (this command's subagent) is the author and updater of UX docs.
+Sable-subagent is the verifier.
 
 UX doc reconciliation: UX docs are living artifacts. Every pipeline ends with
 UX docs current.

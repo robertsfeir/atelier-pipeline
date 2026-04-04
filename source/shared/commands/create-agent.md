@@ -42,4 +42,5 @@ convert it to a pipeline agent?"
 7. **Post-write discovery:** Eva re-runs the discovery scan to register the
    new agent immediately.
 8. **Enforcement note:** Eva announces: "[agent-name] has read-only access by
-   default. To grant write access, add a case to `{config_dir}/hooks/enforce-paths.sh`."
+   default. To grant write access, add a per-agent frontmatter hook
+   (enforce-{name}-paths.sh) to the agent's frontmatter overlay."

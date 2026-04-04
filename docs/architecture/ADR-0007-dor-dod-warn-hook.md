@@ -2,7 +2,7 @@
 
 ## DoR: Requirements Extracted
 
-**Sources:** Eva invocation prompt (task + constraints), context-brief.md (user decisions), retro-lessons.md (lesson #003), Claude Code hooks documentation (code.claude.com/docs/en/hooks), existing hooks (source/hooks/enforce-*.sh), dor-dod.md (DoR/DoD format spec), SKILL.md (installation manifest), .claude/settings.json (hook registration)
+**Sources:** Eva invocation prompt (task + constraints), context-brief.md (user decisions), retro-lessons.md (lesson #003), Claude Code hooks documentation (code.claude.com/docs/en/hooks), existing hooks (source/claude/hooks/enforce-*.sh), dor-dod.md (DoR/DoD format spec), SKILL.md (installation manifest), .claude/settings.json (hook registration)
 
 | # | Requirement | Source | Citation |
 |---|-------------|--------|----------|
@@ -61,7 +61,7 @@ The SubagentStop hook receives `agent_type` (the subagent's frontmatter name) an
 ### Blast Radius
 
 **Files created:**
-- `source/hooks/warn-dor-dod.sh` -- new hook script
+- `source/claude/hooks/warn-dor-dod.sh` -- new hook script
 
 **Files modified:**
 - `.claude/settings.json` -- add SubagentStop hook registration
@@ -86,7 +86,7 @@ The SubagentStop hook receives `agent_type` (the subagent's frontmatter name) an
 
 ## Decision
 
-Add a SubagentStop command hook (`source/hooks/warn-dor-dod.sh`) that inspects Colby and Roz output for DoR/DoD section headers. The hook warns on stderr when sections are missing. It exits 0 unconditionally -- never blocks, never outputs a decision JSON block.
+Add a SubagentStop command hook (`source/claude/hooks/warn-dor-dod.sh`) that inspects Colby and Roz output for DoR/DoD section headers. The hook warns on stderr when sections are missing. It exits 0 unconditionally -- never blocks, never outputs a decision JSON block.
 
 ### Hook Logic
 
@@ -183,7 +183,7 @@ Eva's DoR/DoD gate in pipeline-orchestration.md already requires spot-checking. 
 ### Step 1: Create warn-dor-dod.sh hook script, register in settings.json, update SKILL.md manifest
 
 **Files to create:**
-- `source/hooks/warn-dor-dod.sh` -- SubagentStop warning hook
+- `source/claude/hooks/warn-dor-dod.sh` -- SubagentStop warning hook
 
 **Files to modify:**
 - `.claude/settings.json` -- add `SubagentStop` hook section
@@ -252,14 +252,14 @@ exit 0
 ```
 
 **SKILL.md changes:**
-- Step 3a table: add row `source/hooks/warn-dor-dod.sh` | `.claude/hooks/warn-dor-dod.sh` | Warns when Colby/Roz output missing DoR/DoD sections
+- Step 3a table: add row `source/claude/hooks/warn-dor-dod.sh` | `.claude/hooks/warn-dor-dod.sh` | Warns when Colby/Roz output missing DoR/DoD sections
 - Step 3a settings.json example: add `SubagentStop` section
 - Step 3a file count: "4 files" -> "5 files" (4 scripts + 1 config)
 - Step 6 summary: update hook count from 4 to 5, total mandatory files from 38 to 39
 - Step 6 hooks directory line: update "4 files" to "5 files" and add description
 
 **Acceptance criteria:**
-1. `source/hooks/warn-dor-dod.sh` exists, is well-formed bash, follows existing hook patterns (set -euo pipefail, jq check, INPUT=$(cat), agent_type extraction)
+1. `source/claude/hooks/warn-dor-dod.sh` exists, is well-formed bash, follows existing hook patterns (set -euo pipefail, jq check, INPUT=$(cat), agent_type extraction)
 2. Script exits 0 in every code path -- no exit 2, no decision JSON output
 3. Script only inspects agent_type "colby" or "roz" -- all others exit 0 immediately
 4. Script greps case-insensitively for `^## DoR` and `^## DoD` in `last_assistant_message`

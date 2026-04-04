@@ -558,7 +558,7 @@ Update agent personas with brain access patterns per the Agent Operating Model.
 - `templates/agents/roz.md`
 - `templates/agents/robert.md`
 - `templates/agents/sable.md`
-- `source/agents/agatha.md`
+- `source/shared/agents/agatha.md`
 - `templates/rules/default-persona.md` (Eva)
 - `templates/references/invocation-templates.md`
 

@@ -1336,7 +1336,7 @@ your-project/
       branch-mr-mode.md             # Colby branch/MR procedures
       telemetry-metrics.md          # Telemetry metric schemas, cost table, alert thresholds
     hooks/                          # Mechanical enforcement + telemetry + compaction
-      enforce-paths.sh              # Blocks Write/Edit outside agent's allowed paths
+      enforce-{agent}-paths.sh      # Per-agent Write/Edit path enforcement (7 scripts)
       enforce-sequencing.sh         # Blocks out-of-order agent invocations
       enforce-git.sh                # Blocks git write ops and test commands from main thread
       enforce-pipeline-activation.sh # Blocks Colby/Ellis without active pipeline

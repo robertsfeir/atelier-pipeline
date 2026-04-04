@@ -78,10 +78,10 @@ Files/modules affected by this change:
 
 | File/Module | Change Type | Impact |
 |-------------|-------------|--------|
-| `source/hooks/enforce-paths.sh` | Modify (1 line) | Add CURSOR_PROJECT_DIR to fallback chain |
-| `source/hooks/enforce-sequencing.sh` | Modify (1 line) | Add CURSOR_PROJECT_DIR to fallback chain |
-| `source/hooks/enforce-pipeline-activation.sh` | Modify (1 line) | Add CURSOR_PROJECT_DIR to fallback chain |
-| `source/hooks/pre-compact.sh` | Modify (1 line) | Add CURSOR_PROJECT_DIR to fallback chain |
+| `source/claude/hooks/enforce-paths.sh` | Modify (1 line) | Add CURSOR_PROJECT_DIR to fallback chain |
+| `source/claude/hooks/enforce-sequencing.sh` | Modify (1 line) | Add CURSOR_PROJECT_DIR to fallback chain |
+| `source/claude/hooks/enforce-pipeline-activation.sh` | Modify (1 line) | Add CURSOR_PROJECT_DIR to fallback chain |
+| `source/claude/hooks/pre-compact.sh` | Modify (1 line) | Add CURSOR_PROJECT_DIR to fallback chain |
 | `.cursor-plugin/plugin.json` | Create | Cursor Marketplace manifest |
 | `.cursor-plugin/marketplace.json` | Create | Multi-plugin marketplace config |
 | `.cursor-plugin/rules/` | Create (6 files) | .mdc wrappers referencing source/ content |
@@ -92,8 +92,8 @@ Files/modules affected by this change:
 | `AGENTS.md` | Create | Cursor project instructions (equivalent of CLAUDE.md) |
 | `skills/pipeline-setup/SKILL.md` | Modify | Add Cursor target detection and .cursor/ installation path; add no-repo detection flow before branching strategy |
 | `source/pipeline/pipeline-config.json` | Modify | Add `git_available: true` field to template |
-| `source/hooks/enforce-git.sh` | Modify (conditional) | No-op when `git_available: false` in pipeline-config.json |
-| `source/hooks/enforce-sequencing.sh` | Modify (conditional) | Skip Ellis gate when `git_available: false` |
+| `source/claude/hooks/enforce-git.sh` | Modify (conditional) | No-op when `git_available: false` in pipeline-config.json |
+| `source/claude/hooks/enforce-sequencing.sh` | Modify (conditional) | Skip Ellis gate when `git_available: false` |
 | `source/rules/default-persona.md` | Noted | Eva boot sequence skips git-related checks when `git_available: false` (behavioral, no file change needed -- Eva reads config) |
 | `scripts/check-updates.sh` | Modify | Support .cursor/.atelier-version alongside .claude/.atelier-version |
 | `.claude-plugin/plugin.json` | **No change** | Verified: additive-only constraint |
@@ -106,16 +106,16 @@ Files/modules affected by this change:
 - Both paths are backwards-compatible because the change uses the existing `:-` fallback pattern
 
 **Grep verification of all CLAUDE_PROJECT_DIR references in hooks:**
-- `source/hooks/enforce-paths.sh:39` -- `PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-...}"`
-- `source/hooks/enforce-sequencing.sh:37` -- `PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-...}"`
-- `source/hooks/enforce-pipeline-activation.sh:43` -- `PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-...}"`
-- `source/hooks/pre-compact.sh:10` -- `STATE_FILE="${CLAUDE_PROJECT_DIR:-$PWD}/..."`
-- `source/hooks/enforce-git.sh` -- Does NOT reference CLAUDE_PROJECT_DIR (no change needed)
-- `source/hooks/warn-dor-dod.sh` -- Does NOT reference CLAUDE_PROJECT_DIR (no change needed)
+- `source/claude/hooks/enforce-paths.sh:39` -- `PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-...}"`
+- `source/claude/hooks/enforce-sequencing.sh:37` -- `PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-...}"`
+- `source/claude/hooks/enforce-pipeline-activation.sh:43` -- `PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-...}"`
+- `source/claude/hooks/pre-compact.sh:10` -- `STATE_FILE="${CLAUDE_PROJECT_DIR:-$PWD}/..."`
+- `source/claude/hooks/enforce-git.sh` -- Does NOT reference CLAUDE_PROJECT_DIR (no change needed)
+- `source/claude/hooks/warn-dor-dod.sh` -- Does NOT reference CLAUDE_PROJECT_DIR (no change needed)
 
 ## Decision
 
-**Create a Cursor plugin alongside the existing Claude Code plugin, sharing the same `source/` templates.** The `.cursor-plugin/` directory contains Cursor-specific packaging (plugin.json, hooks.json, mcp.json) plus thin wrapper files that adapt `source/` content for Cursor's format requirements (`.mdc` frontmatter for rules, agent frontmatter for agents). Hook shell scripts are shared -- both plugins call the same `source/hooks/*.sh` scripts. The 4 hook scripts that reference `CLAUDE_PROJECT_DIR` get a one-line change to also check `CURSOR_PROJECT_DIR`.
+**Create a Cursor plugin alongside the existing Claude Code plugin, sharing the same `source/` templates.** The `.cursor-plugin/` directory contains Cursor-specific packaging (plugin.json, hooks.json, mcp.json) plus thin wrapper files that adapt `source/` content for Cursor's format requirements (`.mdc` frontmatter for rules, agent frontmatter for agents). Hook shell scripts are shared -- both plugins call the same `source/claude/hooks/*.sh` scripts. The 4 hook scripts that reference `CLAUDE_PROJECT_DIR` get a one-line change to also check `CURSOR_PROJECT_DIR`.
 
 ### Architecture
 
@@ -162,11 +162,11 @@ atelier-pipeline/
 
 **D1: Rules as .mdc wrappers, not duplicated content.** Cursor rules require `.mdc` extension with YAML frontmatter (`description`, `alwaysApply`, `globs`). Rather than duplicating the full markdown content, each `.mdc` file contains the frontmatter plus an `@include` or inline copy of the source content. Since Cursor rules auto-discovery reads the file content directly, we include the full content (copied at plugin build/release time or included as the body after frontmatter). This means `.cursor-plugin/rules/*.mdc` files contain frontmatter + the same content as `source/rules/*.md`. Updates to `source/` must be propagated to `.cursor-plugin/rules/` -- a build step or manual sync.
 
-**D2: Agent files need Cursor-specific frontmatter.** Cursor agents use frontmatter fields: `name`, `description`, `model` (optional), `readonly` (optional), `is_background` (optional). Claude Code agents currently have no frontmatter (or have it in the XML prompt structure). The `.cursor-plugin/agents/` files add this frontmatter while preserving the full persona content from `source/agents/`.
+**D2: Agent files need Cursor-specific frontmatter.** Cursor agents use frontmatter fields: `name`, `description`, `model` (optional), `readonly` (optional), `is_background` (optional). Claude Code agents currently have no frontmatter (or have it in the XML prompt structure). The `.cursor-plugin/agents/` files add this frontmatter while preserving the full persona content from `source/shared/agents/`.
 
 **D3: Commands are format-compatible.** Both Claude Code and Cursor use the same markdown format for commands. The `.cursor-plugin/commands/` files can be direct copies or symlinks from `source/commands/`.
 
-**D4: hooks.json references source/hooks/ scripts directly.** The hooks.json file in `.cursor-plugin/hooks/` points to `source/hooks/*.sh` using relative paths from the plugin root. This means the exact same shell scripts run for both platforms.
+**D4: hooks.json references source/claude/hooks/ scripts directly.** The hooks.json file in `.cursor-plugin/hooks/` points to `source/claude/hooks/*.sh` using relative paths from the plugin root. This means the exact same shell scripts run for both platforms.
 
 **D5: AGENTS.md is a thin Cursor-specific project instructions file.** Cursor reads `AGENTS.md` the way Claude Code reads `CLAUDE.md`. It contains the same pipeline section content tailored for Cursor's context. This file is additive -- CLAUDE.md is untouched.
 
@@ -229,10 +229,10 @@ One plugin directory that serves both Claude Code and Cursor, with runtime detec
 **After this step, I can:** verify that enforcement hooks work in Cursor by running them with Cursor's env vars and confirming they parse stdin correctly.
 
 **Files to modify:**
-1. `source/hooks/enforce-paths.sh` -- Add `CURSOR_PROJECT_DIR` to fallback chain
-2. `source/hooks/enforce-sequencing.sh` -- Add `CURSOR_PROJECT_DIR` to fallback chain
-3. `source/hooks/enforce-pipeline-activation.sh` -- Add `CURSOR_PROJECT_DIR` to fallback chain
-4. `source/hooks/pre-compact.sh` -- Add `CURSOR_PROJECT_DIR` to fallback chain
+1. `source/claude/hooks/enforce-paths.sh` -- Add `CURSOR_PROJECT_DIR` to fallback chain
+2. `source/claude/hooks/enforce-sequencing.sh` -- Add `CURSOR_PROJECT_DIR` to fallback chain
+3. `source/claude/hooks/enforce-pipeline-activation.sh` -- Add `CURSOR_PROJECT_DIR` to fallback chain
+4. `source/claude/hooks/pre-compact.sh` -- Add `CURSOR_PROJECT_DIR` to fallback chain
 
 **Change detail:** In each script, change:
 ```bash
@@ -270,8 +270,8 @@ STATE_FILE="${CURSOR_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$PWD}}/docs/pipeline/pip
 **Files to modify:**
 1. `skills/pipeline-setup/SKILL.md` -- Add git availability question to Step 1, before branching strategy
 2. `source/pipeline/pipeline-config.json` -- Add `git_available: true` field to template
-3. `source/hooks/enforce-git.sh` -- Early exit (no-op) when `git_available: false` in pipeline-config.json
-4. `source/hooks/enforce-sequencing.sh` -- Skip Ellis gate when `git_available: false`
+3. `source/claude/hooks/enforce-git.sh` -- Early exit (no-op) when `git_available: false` in pipeline-config.json
+4. `source/claude/hooks/enforce-sequencing.sh` -- Skip Ellis gate when `git_available: false`
 
 **Change detail:**
 
@@ -437,34 +437,34 @@ This blocks Ellis invocation entirely (not silently passes it) when git is unava
     {
       "event": "preToolUse",
       "matcher": "Write|Edit|MultiEdit",
-      "command": "bash \"${CURSOR_PLUGIN_ROOT}/source/hooks/enforce-paths.sh\"",
+      "command": "bash \"${CURSOR_PLUGIN_ROOT}/source/claude/hooks/enforce-paths.sh\"",
       "failClosed": true
     },
     {
       "event": "preToolUse",
       "matcher": "Agent",
-      "command": "bash \"${CURSOR_PLUGIN_ROOT}/source/hooks/enforce-sequencing.sh\"",
+      "command": "bash \"${CURSOR_PLUGIN_ROOT}/source/claude/hooks/enforce-sequencing.sh\"",
       "failClosed": true
     },
     {
       "event": "preToolUse",
       "matcher": "Agent",
-      "command": "bash \"${CURSOR_PLUGIN_ROOT}/source/hooks/enforce-pipeline-activation.sh\"",
+      "command": "bash \"${CURSOR_PLUGIN_ROOT}/source/claude/hooks/enforce-pipeline-activation.sh\"",
       "failClosed": true
     },
     {
       "event": "preToolUse",
       "matcher": "Bash",
-      "command": "bash \"${CURSOR_PLUGIN_ROOT}/source/hooks/enforce-git.sh\"",
+      "command": "bash \"${CURSOR_PLUGIN_ROOT}/source/claude/hooks/enforce-git.sh\"",
       "failClosed": true
     },
     {
       "event": "subagentStop",
-      "command": "bash \"${CURSOR_PLUGIN_ROOT}/source/hooks/warn-dor-dod.sh\""
+      "command": "bash \"${CURSOR_PLUGIN_ROOT}/source/claude/hooks/warn-dor-dod.sh\""
     },
     {
       "event": "preCompact",
-      "command": "bash \"${CURSOR_PLUGIN_ROOT}/source/hooks/pre-compact.sh\""
+      "command": "bash \"${CURSOR_PLUGIN_ROOT}/source/claude/hooks/pre-compact.sh\""
     }
   ]
 }
@@ -476,10 +476,10 @@ This blocks Ellis invocation entirely (not silently passes it) when git is unava
 
 **Acceptance criteria:**
 - AC-1: `.cursor-plugin/hooks/hooks.json` is valid JSON
-- AC-2: All 6 hook scripts from source/hooks/ are registered
+- AC-2: All 6 hook scripts from source/claude/hooks/ are registered
 - AC-3: Enforcement hooks (4) have `failClosed: true`
 - AC-4: Advisory hooks (2) do NOT have `failClosed: true`
-- AC-5: All command paths reference `source/hooks/` via `CURSOR_PLUGIN_ROOT`
+- AC-5: All command paths reference `source/claude/hooks/` via `CURSOR_PLUGIN_ROOT`
 - AC-6: Matchers match the same tool names as `.claude/settings.json`
 
 **Estimated complexity:** Low (1 new file, known format)
@@ -622,7 +622,7 @@ alwaysApply: false
 8. `.cursor-plugin/agents/investigator.md`
 9. `.cursor-plugin/agents/distillator.md` (but listed as 1 file below for count)
 
-**Note:** The existing `source/agents/*.md` files may already have frontmatter suitable for Cursor, or they may use Claude Code's XML structure without YAML frontmatter. Each file needs YAML frontmatter (`name`, `description`) added if not present, with the full persona content preserved.
+**Note:** The existing `source/shared/agents/*.md` files may already have frontmatter suitable for Cursor, or they may use Claude Code's XML structure without YAML frontmatter. Each file needs YAML frontmatter (`name`, `description`) added if not present, with the full persona content preserved.
 
 **Wait -- re-examining the source agents.** Reading the brain research: "Cursor agents use .md with frontmatter (name, description)." The source agents currently use XML `<identity>` tags, not YAML frontmatter. The `.cursor-plugin/agents/` files need YAML frontmatter prepended. The body content (XML prompt structure) should still work -- Cursor reads the full file content as the agent's system prompt.
 
@@ -634,13 +634,13 @@ name: cal
 description: Senior Software Architect -- explores codebases, designs solutions, writes test specs, produces ADR documents
 ---
 
-[Full content from source/agents/cal.md]
+[Full content from source/shared/agents/cal.md]
 ```
 
 **Acceptance criteria:**
 - AC-1: All 9 agent files have valid YAML frontmatter with `name` and `description`
 - AC-2: `name` values match the agent names used in enforcement hooks (cal, colby, roz, ellis, agatha, robert, sable, investigator, distillator)
-- AC-3: Full persona content from `source/agents/*.md` is preserved after frontmatter
+- AC-3: Full persona content from `source/shared/agents/*.md` is preserved after frontmatter
 - AC-4: Cursor discovers all 9 agents
 
 **Note on sizing:** 9 files but same mechanical pattern. Each requires reading the source file to extract the agent description from `<identity>`, then prepending frontmatter. Low cognitive load per file.
@@ -662,7 +662,7 @@ Same pattern as Step 4a -- YAML frontmatter + source content.
 
 **Acceptance criteria:**
 - AC-1: All 3 files have valid YAML frontmatter
-- AC-2: Content matches `source/agents/{sentinel,deps,darwin}.md`
+- AC-2: Content matches `source/shared/agents/{sentinel,deps,darwin}.md`
 - AC-3: These agents are discoverable in Cursor alongside core agents
 
 **Estimated complexity:** Low (3 files, same pattern as 4a)
@@ -879,7 +879,7 @@ Telemetry: Config field `git_available` in pipeline-config.json. Trigger: /pipel
 | T-0019-076 | Failure | .cursor-plugin/plugin.json missing "name" field -- JSON is valid but plugin manifest is incomplete. Verify "name" key exists and is non-empty (F5) |
 | T-0019-077 | Failure | AGENTS.md content completeness -- verify it contains equivalent sections to CLAUDE.md: tech stack, test commands, source structure, key conventions (not just a pipeline section header) (F6) |
 | T-0019-078 | Failure | .cursor-plugin/plugin.json "name" field uses kebab-case (no spaces, no uppercase) -- invalid naming would cause Cursor discovery failure |
-| T-0019-079 | Happy | source/ directory is shared, not duplicated -- verify .cursor-plugin/ does not contain a copy of source/ directory; hooks.json commands reference source/hooks/ paths; mcp.json references brain/ directly (AC-14) |
+| T-0019-079 | Happy | source/ directory is shared, not duplicated -- verify .cursor-plugin/ does not contain a copy of source/ directory; hooks.json commands reference source/claude/hooks/ paths; mcp.json references brain/ directly (AC-14) |
 | T-0019-139 | Failure | .cursor-plugin/marketplace.json plugins array is non-empty and each entry has required fields (name, version, source, description) -- malformed marketplace entries would prevent Cursor from listing the plugin |
 
 ### Step 2a Telemetry
@@ -893,10 +893,10 @@ Telemetry: Structural -- plugin.json presence. Trigger: Cursor plugin load. Abse
 | T-0019-018 | Happy | hooks.json is valid JSON with 6 hook entries |
 | T-0019-019 | Happy | All 4 enforcement hooks have failClosed: true |
 | T-0019-020 | Happy | Advisory hooks (subagentStop, preCompact) do NOT have failClosed: true |
-| T-0019-021 | Happy | All command paths reference source/hooks/ via CURSOR_PLUGIN_ROOT |
+| T-0019-021 | Happy | All command paths reference source/claude/hooks/ via CURSOR_PLUGIN_ROOT |
 | T-0019-022 | Boundary | Matchers match exact tool names: Write\|Edit\|MultiEdit, Agent, Bash |
 | T-0019-023 | Security | No hook has failClosed: false explicitly (absence = fail-open, which is OK for advisory; explicit false would be suspicious) |
-| T-0019-080 | Failure | hooks.json with script path that does not exist (e.g. source/hooks/nonexistent.sh) + failClosed: true -- Cursor blocks ALL tool calls matching that event/matcher. Verify by checking the command path resolves to an actual file for every hook entry (B2, F7) |
+| T-0019-080 | Failure | hooks.json with script path that does not exist (e.g. source/claude/hooks/nonexistent.sh) + failClosed: true -- Cursor blocks ALL tool calls matching that event/matcher. Verify by checking the command path resolves to an actual file for every hook entry (B2, F7) |
 | T-0019-081 | Failure | hooks.json with script that lacks execute permission + failClosed: true -- script fails to run, failClosed causes Cursor to block the tool call. Verify all referenced scripts have +x permission (B2) |
 | T-0019-082 | Failure | Duplicate event+matcher combination in hooks.json -- verify no two hook entries share the same (event, matcher) pair, which could cause undefined execution order (F8) |
 | T-0019-083 | Failure | hooks.json command path with unresolvable CURSOR_PLUGIN_ROOT (env var not set) -- verify the path pattern is correct and would resolve given standard Cursor plugin root |
@@ -1069,7 +1069,7 @@ Telemetry: Update check output on session start. Trigger: SessionStart hook. Abs
 
 | ID | Category | Description |
 |----|----------|-------------|
-| T-0019-136 | E2E-Enforcement | Both .claude/ and .cursor/ coexist in same project -- verify .claude/settings.json hooks and .cursor-plugin/hooks/hooks.json both reference the same source/hooks/ scripts, no path conflicts (spec edge case: both IDEs in same project) |
+| T-0019-136 | E2E-Enforcement | Both .claude/ and .cursor/ coexist in same project -- verify .claude/settings.json hooks and .cursor-plugin/hooks/hooks.json both reference the same source/claude/hooks/ scripts, no path conflicts (spec edge case: both IDEs in same project) |
 | T-0019-137 | Boundary | Cursor agent frontmatter includes optional `model` field -- verify .cursor-plugin/agents/ files either include model frontmatter or omit it consistently, matching Cursor's agent schema expectations (spec edge case: model routing differs) |
 | T-0019-138 | Boundary | Plugin auto-discovery vs manifest: verify .cursor-plugin/plugin.json does NOT contain explicit agents/rules/commands path fields that would override Cursor's auto-discovery of the directories (spec edge case: auto-discovery conflict) |
 
@@ -1080,11 +1080,11 @@ Telemetry: Update check output on session start. Trigger: SessionStart hook. Abs
 | `.cursor-plugin/hooks/hooks.json` | `{hooks: [{event, matcher, command, failClosed}]}` | Cursor IDE hook runtime | 2b |
 | `.cursor-plugin/mcp.json` | `{"atelier-brain": {command, args, env}}` | Cursor IDE MCP runtime | 2c |
 | `.cursor-plugin/plugin.json` | `{name, version, hooks: {SessionStart}}` | Cursor IDE plugin loader | 2a + 7 |
-| `source/hooks/enforce-paths.sh` (stdin) | `{tool_name, tool_input: {file_path}, agent_type}` | Both Claude Code and Cursor hook runtimes | 1 |
-| `source/hooks/enforce-sequencing.sh` (stdin) | `{tool_name, tool_input: {subagent_type}, agent_id}` | Both hook runtimes | 1 |
+| `source/claude/hooks/enforce-paths.sh` (stdin) | `{tool_name, tool_input: {file_path}, agent_type}` | Both Claude Code and Cursor hook runtimes | 1 |
+| `source/claude/hooks/enforce-sequencing.sh` (stdin) | `{tool_name, tool_input: {subagent_type}, agent_id}` | Both hook runtimes | 1 |
 | `source/pipeline/pipeline-config.json` (`git_available`) | `boolean` (default `true`) | enforce-git.sh, enforce-sequencing.sh, Eva boot, Roz QA context | 1b |
-| `source/hooks/enforce-git.sh` (reads `git_available`) | no-op when `false` | Both hook runtimes | 1b |
-| `source/hooks/enforce-sequencing.sh` (reads `git_available`) | BLOCKED for Ellis when `false` | Both hook runtimes | 1b |
+| `source/claude/hooks/enforce-git.sh` (reads `git_available`) | no-op when `false` | Both hook runtimes | 1b |
+| `source/claude/hooks/enforce-sequencing.sh` (reads `git_available`) | BLOCKED for Ellis when `false` | Both hook runtimes | 1b |
 | `skills/pipeline-setup/SKILL.md` (Step 1b flow) | git availability question + config write | User interaction at setup time | 1b |
 | `.cursor-plugin/agents/*.md` (frontmatter) | `{name: string, description: string}` | Cursor IDE agent discovery | 4a, 4b |
 | `.cursor-plugin/rules/*.mdc` (frontmatter) | `{description, alwaysApply, globs?}` | Cursor IDE rules loader | 3a, 3b |
@@ -1096,7 +1096,7 @@ Telemetry: Update check output on session start. Trigger: SessionStart hook. Abs
 |----------|-------|----------|------|
 | `.cursor-plugin/plugin.json` | Plugin manifest | Cursor plugin loader | 2a |
 | `.cursor-plugin/marketplace.json` | Multi-plugin manifest | Cursor Marketplace | 2a |
-| `.cursor-plugin/hooks/hooks.json` | Hook registrations | Cursor hook runtime -> source/hooks/*.sh | 2b |
+| `.cursor-plugin/hooks/hooks.json` | Hook registrations | Cursor hook runtime -> source/claude/hooks/*.sh | 2b |
 | `.cursor-plugin/mcp.json` | MCP server config | Cursor MCP runtime -> brain/server.mjs | 2c |
 | `.cursor-plugin/rules/*.mdc` (10 files) | Always-apply and path-scoped rules | Cursor rules loader -> Eva conversation context | 3a, 3b |
 | `.cursor-plugin/agents/*.md` (12 files) | Agent personas with frontmatter | Cursor agent discovery -> subagent invocation | 4a, 4b |
@@ -1162,7 +1162,7 @@ Then trigger a Bash tool call in Cursor and inspect `/tmp/cursor-hook-stdin.json
 - `tool_input.command` (the command string)
 - `agent_id` (empty for main thread, set for subagents)
 
-If any field name differs, create a normalization shim script (`source/hooks/cursor-shim.sh`) that translates the JSON before piping to the real hook. Update hooks.json to call the shim instead of the scripts directly.
+If any field name differs, create a normalization shim script (`source/claude/hooks/cursor-shim.sh`) that translates the JSON before piping to the real hook. Update hooks.json to call the shim instead of the scripts directly.
 
 ### Mechanical pattern for .mdc files
 
@@ -1181,7 +1181,7 @@ Read the source file with `Read`, prepend the frontmatter, write to `.cursor-plu
 
 ### Agent frontmatter extraction
 
-For each agent in `source/agents/*.md`, the `name` field must match exactly what enforcement hooks check. The mapping is:
+For each agent in `source/shared/agents/*.md`, the `name` field must match exactly what enforcement hooks check. The mapping is:
 - `cal.md` -> `name: cal`
 - `colby.md` -> `name: colby`
 - `roz.md` -> `name: roz`

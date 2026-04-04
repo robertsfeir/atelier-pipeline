@@ -1,8 +1,5 @@
 {
   "pipeline_state_dir": "docs/pipeline",
-  "architecture_dir": "docs/architecture",
-  "product_specs_dir": "docs/product",
-  "ux_docs_dir": "docs/ux",
   "colby_blocked_paths": [
     "docs/",
     ".github/",

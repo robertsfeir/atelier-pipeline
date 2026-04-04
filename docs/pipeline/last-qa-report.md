@@ -1,93 +1,177 @@
-# QA Report -- 2026-04-03
+# QA Report -- 2026-04-03 (Phase 2 Wave 1: Steps 2a + 2d + 2e)
+
 *Reviewed by Roz*
 
-## QA Report: Wave 4 -- Cursor Sync Remediation
+---
 
-### Verdict: PASS (with pre-existing issues noted, not introduced by this wave)
+### Verdict: FAIL (4 BLOCKERs, 2 FIX-REQUIRED)
+
+---
+
+## Scope
+
+Phase 2 Wave 1 of ADR-0022: Steps 2a (per-agent hook scripts), 2d (permissionMode), 2e (hooks: frontmatter wiring). Also includes proactive Step 2c/2f work (robert-spec, sable-ux personas; pm.md, ux.md, create-agent.md, darwin.md, agent-system.md, technical-reference.md updates).
+
+## Tier 1 -- Mechanical Checks
 
 | Check | Status | Details |
 |-------|--------|---------|
-| T1: Type check | SKIP | No typecheck configured |
-| T1: Lint | SKIP | No linter configured |
-| T1: Tests (bats) | PASS | 274/274 passed, 0 failed |
-| T1: Tests (brain) | PASS | 93/93 passed, 0 failed |
-| T1: Coverage | N/A | No coverage threshold configured |
-| T1: Complexity | PASS | No functions; all changed files are Markdown |
-| T1: Unfinished markers | PASS | All TODO/FIXME hits are instructional text within persona/reference content, not actual unfinished markers |
-| V1: 12 agents have single YAML frontmatter | PASS | All 12 agents have exactly 2 `---` delimiters; extra `---` in darwin/deps are horizontal rule separators in body content, confirmed not duplicate frontmatter |
-| V2: All 12 agents have model, effort, maxTurns | PASS | All 12 cursor-plugin agents are byte-identical to source/agents/ -- all fields present |
-| V3: Brain agents have mcpServers + brain-access | PASS | cal, colby, roz, agatha: mcpServers: atelier-brain in frontmatter; `<protocol id="brain-access">` section present with correct content |
-| V4: .cursor-plugin/rules/ has 15 .mdc files | PASS | 15 files confirmed: 10 existing + 5 new (qa-checks, branch-mr-mode, telemetry-metrics, xml-prompt-schema, cloud-architecture) |
-| V5: 5 new .mdc files have alwaysApply: false + correct content | PASS | All 5 have alwaysApply: false; body content byte-identical to source/references/ counterparts |
-| V6: 3 regenerated .mdc rule files match source/rules/ | PASS | agent-system.mdc and default-persona.mdc: byte-identical to source. pipeline-orchestration.mdc: body identical; frontmatter correctly uses Cursor `globs:` format instead of Claude Code `paths:` format |
-| V7: SKILL.md includes 5 new reference docs in Cursor sync step | PASS | Lines 397-401 list all 5 new entries in Step 3c table with correct source/destination/description |
-| V8: No .cursor-plugin/ files reference hardcoded .claude/ paths | FAIL (pre-existing) | 4 files affected; all pre-date this wave (created ADR-0019 commit 554dd9f); 5 new files added in this wave do NOT have this problem |
-| T2: Security | PASS | No secrets, injection risks, or missing auth in sync content |
-| T2: Doc Impact | YES | See doc impact section |
+| Type Check | SKIP | No typecheck configured |
+| Lint | SKIP | No linter configured |
+| Tests | FAIL | 563 passed, 70 failed. 2 in-scope failures (T-0022-156, T-0022-157). 12 future-wave (Steps 2g, 2h). 56 pre-existing (.setup-mode artifact, see note). Brain: 93 passed, 0 failed. |
+| Unfinished Markers | PASS | Zero TODO/FIXME/HACK/XXX in any changed source/hooks or frontmatter file |
 
----
+**Pre-existing failure note:** 56 old test failures (test_enforce_paths.py, test_enforce_git.py, test_enforce_pipeline_activation.py, test_enforce_sequencing.py, test_if_conditionals.py) are caused by an untracked `docs/pipeline/.setup-mode` file in the working directory. This file makes every hook short-circuit via `exit 0`. Not introduced by this wave -- confirmed via `git status` (untracked). The file should be deleted to restore the test baseline.
 
-### Requirements Verification
+## Tier 2 -- Judgment Checks
 
-| # | Requirement | Colby Claims | Roz Verified | Finding |
-|---|-------------|-------------|-------------|---------|
-| P1a | All 12 agent personas synced from source/agents/ | Done | VERIFIED | All 12 cursor-plugin agents byte-identical to source |
-| P1b | 3 .mdc rule files regenerated from source/rules/ | Done | VERIFIED | agent-system, default-persona: identical; pipeline-orchestration: body identical, frontmatter correctly converted to Cursor format |
-| P1c | Agatha brain-access protocol in .cursor-plugin/agents/agatha.md | Done | VERIFIED | `<protocol id="brain-access">` present at line 53; mcpServers at line 11 |
-| P2a | 5 new .mdc reference files in .cursor-plugin/rules/ | Done | VERIFIED | All 5 present with alwaysApply: false and correct content from source |
-| P2b | Duplicate YAML frontmatter in colby.md and robert.md fixed | Done | VERIFIED | Both files have exactly 2 `---` delimiters; frontmatter appears once only |
+| Check | Status | Details |
+|-------|--------|---------|
+| Security | PASS | No secrets, no injection vectors. Hook scripts use `set -uo pipefail`, jq validation, setup-mode bypass only. |
+| Docs Impact | YES | technical-reference.md, user-guide.md, SKILL.md, CLAUDE.md all need stale reference cleanup (see B2, B4, F1, F2). |
+| Wiring | PARTIAL | Per-agent hooks correctly wired in frontmatter. Settings.json template updated. Two stale references remain in SKILL.md and docs/guide/. |
+| Semantic Correctness | PASS | All 7 per-agent scripts follow correct enforcement patterns. Config retains critical keys. |
 
----
+## Requirements Verification (Steps 2a + 2d + 2e)
 
-### Unfinished Markers
+| # | Requirement | Source | Colby Claims | Roz Verified | Finding |
+|---|-------------|--------|-------------|-------------|---------|
+| R5 | Replace enforce-paths.sh with per-agent hooks | ADR | Done | PASS | 7 per-agent scripts created, enforce-paths.sh deleted from source/claude/, retained in source/cursor/ |
+| R7 | permissionMode: acceptEdits on Colby, Cal, Agatha, Ellis | ADR | Done | PASS | All 4 frontmatter overlays have `permissionMode: acceptEdits` |
+| R10 | Per-agent scripts ~15-20 lines, no agent_type, no case | ADR | Done | PASS | Line counts: 22-39 lines. Roz (36) and Colby (39) are larger due to config reads (justified by Note 6). No agent_type checks. No case statements for agent routing. |
+| R11 | Cursor keeps global hook model | ADR | Done | PASS | source/cursor/hooks/enforce-paths.sh retained and complete. hooks.json references it. |
+| R13 | Eva main thread: docs/pipeline/ write only | ADR | Done | PASS | enforce-eva-paths.sh restricts to docs/pipeline/*. Registered in settings.json template. |
+| R16 | PreToolUse hooks fire regardless of permissionMode | ADR | Claimed | VERIFIED | Claude Code spec: permissionMode controls approval prompts; PreToolUse hooks fire independently. |
+| R20 | Ellis has no path hooks | ADR | Done | PASS | ellis.frontmatter.yml has `permissionMode: acceptEdits` but no `hooks:` field. |
+| R21 | Read-only agents keep disallowedTools | ADR | Done | PASS | robert.frontmatter.yml, sable.frontmatter.yml, investigator, distillator, sentinel, darwin, deps all have `disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit` |
 
-`grep -r "TODO|FIXME|HACK|XXX"`: 14 hits across cursor-plugin files. All are instructional references within agent constraints and QA procedure text (Colby's delivery constraint, Roz's grep instruction in qa-checks). Zero actual unfinished work markers.
+## Per-Agent Script Pattern Verification (Constraint 1)
 
----
+All 7 scripts follow the required pattern:
 
-### Issues Found
+| Script | Setup bypass | Read stdin | Extract file_path | Normalize | Check paths | Block/Allow | Config read |
+|--------|-------------|------------|-------------------|-----------|-------------|-------------|-------------|
+| enforce-roz-paths.sh | ATELIER_SETUP_MODE + .setup-mode | cat | jq .tool_input.file_path | N/A (relative) | test_patterns + docs/pipeline/ | exit 2 with BLOCKED | Yes (enforcement-config.json) |
+| enforce-cal-paths.sh | ATELIER_SETUP_MODE + .setup-mode | cat | jq .tool_input.file_path | N/A | docs/architecture/ | exit 2 with BLOCKED | No |
+| enforce-colby-paths.sh | ATELIER_SETUP_MODE + .setup-mode | cat | jq .tool_input.file_path | Absolute->relative | colby_blocked_paths | exit 2 with BLOCKED | Yes (enforcement-config.json) |
+| enforce-agatha-paths.sh | ATELIER_SETUP_MODE + .setup-mode | cat | jq .tool_input.file_path | N/A | docs/ | exit 2 with BLOCKED | No |
+| enforce-product-paths.sh | ATELIER_SETUP_MODE + .setup-mode | cat | jq .tool_input.file_path | N/A | docs/product/ | exit 2 with BLOCKED | No |
+| enforce-ux-paths.sh | ATELIER_SETUP_MODE + .setup-mode | cat | jq .tool_input.file_path | N/A | docs/ux/ | exit 2 with BLOCKED | No |
+| enforce-eva-paths.sh | ATELIER_SETUP_MODE + .setup-mode | cat | jq .tool_input.file_path | N/A | docs/pipeline/ | exit 2 with BLOCKED | No |
 
-**FIX-REQUIRED** (pre-existing -- not introduced by this wave; queued for a separate cursor-sync remediation):
+All scripts: exit 0 for non-Write/Edit tools, exit 0 for empty file_path, exit 2 with descriptive BLOCKED message on violation.
 
-**`.cursor-plugin/rules/agent-preamble.mdc`** (pre-existing from commit 554dd9f, ADR-0019)
-- Lines 15, 22, 31: `.claude/references/` hardcoded. Cursor installs should read `.cursor/references/`.
-- Line 4: CONFIGURE comment incorrectly says "No placeholders to update" -- source template now has `{config_dir}` placeholder.
-- Lines 27-31: Missing brain-access content added to source/references/agent-preamble.md after ADR-0019. Cursor-plugin copy lacks the paragraph about agents with `mcpServers: atelier-brain` capturing directly, and agents without brain access surfacing knowledge in output.
+## enforcement-config.json Verification (Constraint 2)
 
-**`.cursor-plugin/rules/pipeline-operations.mdc`** (pre-existing from ADR-0019)
-- Lines 11-12, 81, 280, 328-329: `.claude/references/`, `.claude/agents/`, `.claude/rules/` hardcoded. Should use `.cursor/` equivalents.
-- Lines 21-31: Brain prefetch protocol section describes old model (Eva-only capture) rather than current hybrid model (agents with mcpServers capture directly). 30+ lines of content drift from source.
+| Key | Present | Required |
+|-----|---------|----------|
+| pipeline_state_dir | YES ("docs/pipeline") | CRITICAL -- enforce-pipeline-activation.sh and enforce-sequencing.sh depend on this |
+| test_patterns | YES (7 patterns) | Required for enforce-roz-paths.sh |
+| colby_blocked_paths | YES (14 prefixes) | Required for enforce-colby-paths.sh |
+| test_command | YES | Required for Roz QA |
+| architecture_dir | NO (removed) | Correct -- per distillate |
+| product_specs_dir | NO (removed) | Correct -- per distillate |
+| ux_docs_dir | NO (removed) | Correct -- per distillate |
 
-**`.cursor-plugin/rules/invocation-templates.mdc`** (pre-existing from ADR-0019)
-- Multiple `<read>` tags throughout: `.claude/references/` hardcoded. Cursor users following these read lists will reference non-existent paths.
-- CONFIGURE comment lists project-specific resolved values rather than generic template placeholders -- this copy was customized for this project rather than keeping the template format.
-- 251 lines of diff from source -- significant content drift from multiple source updates since ADR-0019.
+## Hooks Field YAML Verification (Constraint 3)
 
-**`.cursor-plugin/rules/dor-dod.mdc`** (pre-existing from ADR-0019)
-- Line 204: `.claude/references/retro-lessons.md` hardcoded. Should use `.cursor/references/retro-lessons.md`.
+| Agent | hooks: present | event | matcher | command | Valid |
+|-------|---------------|-------|---------|---------|-------|
+| roz | YES | PreToolUse | Write | enforce-roz-paths.sh | PASS |
+| cal | YES | PreToolUse | Write\|Edit | enforce-cal-paths.sh | PASS |
+| colby | YES | PreToolUse | Write\|Edit\|MultiEdit | enforce-colby-paths.sh | PASS |
+| agatha | YES | PreToolUse | Write\|Edit\|MultiEdit | enforce-agatha-paths.sh | PASS |
+| robert-spec | YES | PreToolUse | Write\|Edit | enforce-product-paths.sh | PASS |
+| sable-ux | YES | PreToolUse | Write\|Edit | enforce-ux-paths.sh | PASS |
+| ellis | NO hooks: | -- | -- | -- | PASS (R20) |
 
-**Scope note:** These 4 files were not touched by this wave. This wave correctly addressed the 5 new .mdc files (which do not have the `.claude/` problem) and the 12 agent syncs. The pre-existing `.claude/` path issue affects Cursor users who follow `<read>` tag guidance -- they will see `.claude/references/` paths that do not exist in a Cursor install (which uses `.cursor/`). The 5 original ADR-0019 .mdc reference files need a re-sync pass comparable to what this wave did for the agents.
+## Monolith Deletion Verification (Constraint 4)
 
----
+| Check | Result |
+|-------|--------|
+| source/claude/hooks/enforce-paths.sh exists? | NO (deleted) |
+| source/cursor/hooks/enforce-paths.sh exists? | YES (retained) |
+| Cursor copy complete? | YES -- contains all agent cases (cal, colby, roz, ellis, agatha) and is executable |
 
-### Doc Impact: YES
+## Cursor Overlay Verification (Constraint 5)
 
-The SKILL.md update (Step 3c expansion to 10 entries) changes the documented installation procedure for the Cursor plugin. Users running `/pipeline-setup` in Cursor now install 5 additional reference .mdc files. If user-guide.md or technical-reference.md describes the .cursor-plugin/ contents by count or by file list, those docs need updating to reflect 15 .mdc files total.
+Verified: Zero matches for `permissionMode` or `hooks:` in any file under `source/cursor/agents/`.
 
----
+## Executable Permissions
 
-### Roz's Assessment
+All 7 per-agent scripts have `-rwxr-xr-x` permissions. PASS.
 
-This wave delivers exactly what it claimed. All 12 agents are synced correctly and are byte-identical to source -- the model, effort, and maxTurns fields are all present, brain agents have mcpServers frontmatter and brain-access sections, and the duplicate frontmatter in colby and robert is fixed. The 5 new .mdc files are present with correct frontmatter and content. The 3 regenerated rule .mdc files are correct, including the intentional `paths:` to `globs:` conversion for pipeline-orchestration.
+## Unfinished Markers
 
-The `.claude/` hardcoded path issue is pre-existing in 4 ADR-0019 files not touched by this wave. It is a functional correctness issue for Cursor users -- every `<read>` tag in invocation-templates.mdc points agents to `.claude/references/` paths that do not exist in a Cursor install. I am marking these FIX-REQUIRED (not BLOCKER) because they predate this wave and represent known drift from a separate remediation track. The 5 new .mdc files added here avoid this problem entirely.
+`grep -rn "TODO|FIXME|HACK|XXX"` across all changed hook scripts, frontmatter files, and test files: **0 matches**.
 
-All 367 tests pass. No regressions introduced.
+## Issues Found
 
----
+### BLOCKERs (pipeline halts -- Colby fixes before advancing)
 
-### Brain Patterns to Capture (Eva to capture on Roz's behalf)
+**B1: T-0022-156 -- stale `enforce-paths.sh` references in docs/guide/ (11 instances)**
 
-**Pattern:** Cursor plugin .mdc files diverge from source when source is updated after initial creation. The 5 original ADR-0019 .mdc files (agent-preamble, dor-dod, invocation-templates, pipeline-operations, retro-lessons) are now behind source by multiple updates. A re-sync pass is needed for those 5 files, analogous to what this wave did for agents and the 5 new reference docs.
+`docs/guide/technical-reference.md` contains 10 references to `enforce-paths.sh` in the enforcement config table (lines 1268-1274), the settings.json example (line 1288), the matcher explanation (line 1336), and the Teammates section (line 1427). `docs/guide/user-guide.md` contains 1 reference (line 1339 in the directory tree).
 
-**Lesson:** When `source/references/*.md` files are updated, the corresponding `.cursor-plugin/rules/*.mdc` wrappers must be re-synced in the same commit. Recommend adding a bats test that diffs each .mdc body against its source counterpart to catch drift automatically.
+These files were explicitly in the diff (technical-reference.md was updated with the new per-agent hook directory tree) but the enforcement config section and settings.json example sections were not updated to match. The old references describe a monolith that no longer exists.
+
+**B2: T-0022-157 -- CLAUDE.md missing `robert-spec` / `sable-ux` roster entries**
+
+CLAUDE.md does not mention `robert-spec` or `sable-ux` anywhere. The distillate requirement R15 calls for "Core agent constant: clarify robert-spec and sable-ux naming." The test asserts these terms appear in CLAUDE.md. While `source/shared/rules/agent-system.md` was correctly updated with both agents, the project-level CLAUDE.md (which summarizes key conventions and is always-loaded context) was not.
+
+**B3: Per-agent hooks missing `CURSOR_PROJECT_DIR` fallback (T-0022-025)**
+
+All 7 per-agent hook scripts use `${CLAUDE_PROJECT_DIR:-.}` in the setup-mode check (line 6) but do not include the `CURSOR_PROJECT_DIR` fallback that existing cross-cutting hooks use (pattern: `${CURSOR_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-.}}`). While per-agent hooks fire from Claude Code frontmatter only (not Cursor), this breaks the convention established by enforce-git.sh, enforce-pipeline-activation.sh, and enforce-sequencing.sh. The Phase 1 test T-0022-025 explicitly asserts: "every .sh file in source/claude/hooks/ that references CLAUDE_PROJECT_DIR must also reference CURSOR_PROJECT_DIR."
+
+Files affected: enforce-roz-paths.sh, enforce-cal-paths.sh, enforce-colby-paths.sh, enforce-agatha-paths.sh, enforce-product-paths.sh, enforce-ux-paths.sh, enforce-eva-paths.sh (line 6 in each).
+
+**B4: SKILL.md stale reference to `enforce-paths.sh` for discovered agents (line 394)**
+
+`skills/pipeline-setup/SKILL.md` line 394 still says: "To grant write access, add an explicit case to `.claude/hooks/enforce-paths.sh` for the agent's name." This should reference the per-agent frontmatter hook pattern instead. The create-agent.md command file was correctly updated (line 46: "add a per-agent frontmatter hook") but the SKILL.md was not.
+
+A separate reference on line 56 ("Other hook entries (enforce-paths.sh, enforce-sequencing.sh, enforce-git.sh, etc.) are not affected") is in the quality-gate.sh cleanup section and is also stale, though less critical since it is in a legacy cleanup context.
+
+### FIX-REQUIRED (queued -- all resolved before Ellis commits)
+
+**F1: Phase 1 test T-0022-021 expects 14 hook scripts, actual is 20**
+
+`test_adr_0022_phase1_overlay.py::test_T_0022_021_claude_hooks` asserts `sh_count == 14`. After this wave added 7 per-agent scripts and deleted 1 (enforce-paths.sh), the count is now 20 (was 14, +7 new, -1 deleted = 20). This test needs updating as part of Step 2g (test file updates referencing old paths/counts).
+
+**F2: Untracked `docs/pipeline/.setup-mode` file poisoning test baseline**
+
+An untracked file `docs/pipeline/.setup-mode` exists in the working directory. This causes every hook script's setup-mode bypass (`[ -f "${CLAUDE_PROJECT_DIR:-.}/docs/pipeline/.setup-mode" ] && exit 0`) to trigger when tests run without `CLAUDE_PROJECT_DIR` set -- silently passing 56 tests that should fail. This is pre-existing (not introduced by this wave) but masks regressions. The file should be deleted from the working directory before the next commit.
+
+## ADR-0022 Failure Classification
+
+| Category | Count | Tests |
+|----------|-------|-------|
+| In-scope BLOCKER (Steps 2a/2d/2e/2f) | 4 | T-0022-156, T-0022-157, T-0022-025, SKILL.md L394 |
+| Future-wave Step 2g (test count/cleanup) | 4 | T-0022-021, T-0022-164, T-0022-165, T-0022-166 |
+| Future-wave Step 2h (compaction advisory) | 7 | T-0022-171, 172, 185, 186, 187, 189, 190 |
+| Pre-existing (.setup-mode artifact) | 56 | test_enforce_paths.py (16), test_enforce_git.py (10), test_enforce_pipeline_activation.py (11), test_enforce_sequencing.py (11), test_if_conditionals.py (5), test_doc_sync.py (3) |
+
+## Doc Impact: YES
+
+Files requiring updates:
+- `docs/guide/technical-reference.md` -- Replace enforce-paths.sh references with per-agent enforcement description (B1)
+- `docs/guide/user-guide.md` -- Update directory tree entry (B1)
+- `CLAUDE.md` -- Add robert-spec/sable-ux to agent roster (B2)
+- `skills/pipeline-setup/SKILL.md` -- Fix discovered agent enforcement reference (B4)
+
+## Roz's Assessment
+
+The core implementation is solid. All 7 per-agent hook scripts follow the correct pattern, enforcement-config.json retains critical keys (pipeline_state_dir intact -- Note 11a honored), permissionMode is correctly applied to all 4 write-heavy agents, hooks: frontmatter wiring is correct for all 6 agents that need it, Ellis correctly has no hooks, and Cursor overlays correctly omit both permissionMode and hooks: fields. The monolith deletion is clean with the Cursor copy properly retained.
+
+Four issues prevent PASS:
+
+1. Stale `enforce-paths.sh` references in docs/guide/ describe a monolith that no longer exists (11 instances across 2 files). These were in-scope for the technical-reference.md update that was partially done.
+
+2. CLAUDE.md (always-loaded context) does not mention the new robert-spec/sable-ux agents that were added to agent-system.md.
+
+3. Per-agent hooks break the CURSOR_PROJECT_DIR convention. While these hooks only fire from Claude Code, the Phase 1 test enforcement and code consistency require the fallback pattern. This is a 1-line fix per script (7 files, line 6 each).
+
+4. SKILL.md still tells users to add cases to enforce-paths.sh for custom agents -- a file that was deleted.
+
+The pre-existing `.setup-mode` file is a separate concern but should be removed before Ellis commits to prevent masking future regressions.
+
+All blockers are straightforward fixes. No architectural issues. The enforcement redesign is sound.

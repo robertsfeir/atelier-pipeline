@@ -3,7 +3,7 @@
 | # | Requirement | Source |
 |---|-------------|--------|
 | 1 | Opt-in via Sentinel-style pattern (Step 6d, config flag, conditional install) | User decision (brain memory) |
-| 2 | Agent persona in source/agents/ | User decision |
+| 2 | Agent persona in source/shared/agents/ | User decision |
 | 3 | Scan for outdated dependencies | Issue #20 |
 | 4 | Cross-reference CVEs and changelogs | Issue #20 |
 | 5 | Predict whether upgrades will break the codebase | Issue #20 |
@@ -117,7 +117,7 @@ The agent does NOT modify any files. It produces a report. If a migration ADR is
 
 | # | Criterion | Measurable |
 |---|-----------|------------|
-| 1 | Agent persona exists at source/agents/deps.md | File inspection |
+| 1 | Agent persona exists at source/shared/agents/deps.md | File inspection |
 | 2 | `deps_agent_enabled` flag in pipeline-config.json, default false | Config inspection |
 | 3 | Offered as opt-in during /pipeline-setup Step 6d | Setup flow observation |
 | 4 | /deps command invokes the agent | Command observation |
@@ -181,7 +181,7 @@ Single slice — Small sizing. Agent persona + setup + command + routing.
 
 | # | Requirement | Status | Evidence |
 |---|-------------|--------|----------|
-| 1 | Agent persona | Done | `source/agents/deps.md` with full workflow, constraints, and output format |
+| 1 | Agent persona | Done | `source/shared/agents/deps.md` with full workflow, constraints, and output format |
 | 2 | Config flag | Done | `deps_agent_enabled` in `pipeline-config.json`, default `false` |
 | 3 | Setup Step 6d | Done | `skills/pipeline-setup/SKILL.md` Step 6d with idempotency |
 | 4 | /deps command | Done | `source/commands/deps.md` with Flow A and Flow B |

@@ -4,7 +4,7 @@
 
 | # | Requirement | Source | Priority |
 |---|-------------|--------|----------|
-| R1 | Darwin agent persona at `source/agents/darwin.md` + `.claude/agents/darwin.md` | Spec AC#1, context | Must |
+| R1 | Darwin agent persona at `source/shared/agents/darwin.md` + `.claude/agents/darwin.md` | Spec AC#1, context | Must |
 | R2 | `darwin_enabled` config flag in `pipeline-config.json`, default `false` | Spec AC#2, context | Must |
 | R3 | Setup Step 6e offers Darwin opt-in (after Deps Step 6d, before Brain) | Spec AC#3, context | Must |
 | R4 | `/darwin` slash command for on-demand invocation, gated on `darwin_enabled` | Spec AC#4, context | Must |
@@ -173,7 +173,7 @@ Architectural decision not in spec: Darwin's auto-trigger check happens after th
 
 | File | Change | Impact |
 |------|--------|--------|
-| `source/agents/darwin.md` | CREATE | New agent persona template |
+| `source/shared/agents/darwin.md` | CREATE | New agent persona template |
 | `.claude/agents/darwin.md` | CREATE | Installed copy (dual tree) |
 | `source/commands/darwin.md` | CREATE | New slash command template |
 | `.claude/commands/darwin.md` | CREATE | Installed copy (dual tree) |
@@ -188,7 +188,7 @@ Architectural decision not in spec: Darwin's auto-trigger check happens after th
 | `.claude/rules/pipeline-orchestration.md` | MODIFY | Installed copy (dual tree) |
 | `source/rules/default-persona.md` | MODIFY | Add Darwin post-edit tracking to boot step 5b |
 | `.claude/rules/default-persona.md` | MODIFY | Installed copy (dual tree) |
-| `source/hooks/enforce-paths.sh` | NO CHANGE | Catch-all `*` case already blocks discovered agents |
+| `source/claude/hooks/enforce-paths.sh` | NO CHANGE | Catch-all `*` case already blocks discovered agents |
 | `.claude/hooks/enforce-paths.sh` | NO CHANGE | Same |
 
 ---
@@ -198,7 +198,7 @@ Architectural decision not in spec: Darwin's auto-trigger check happens after th
 ### Step 1: Agent Persona + Slash Command + Config Flag
 
 **Files to create:**
-- `source/agents/darwin.md` -- template persona
+- `source/shared/agents/darwin.md` -- template persona
 - `.claude/agents/darwin.md` -- installed copy
 - `source/commands/darwin.md` -- slash command template
 - `.claude/commands/darwin.md` -- installed copy
@@ -250,7 +250,7 @@ The command file tells Eva how to handle `/darwin`:
 **Config flag:** Add `"darwin_enabled": false` after `deps_agent_enabled` in both config files.
 
 **Acceptance criteria:**
-- `source/agents/darwin.md` and `.claude/agents/darwin.md` exist with correct YAML frontmatter (`name: darwin`, `disallowedTools` set).
+- `source/shared/agents/darwin.md` and `.claude/agents/darwin.md` exist with correct YAML frontmatter (`name: darwin`, `disallowedTools` set).
 - Persona contains `<identity>`, `<required-actions>`, `<workflow>`, `<examples>`, `<tools>`, `<constraints>`, `<output>` tags.
 - Self-edit protection constraint is explicitly present: "Cannot propose changes to own persona file."
 - `<constraints>` includes the 5-pipeline minimum and brain-required gates.
@@ -503,7 +503,7 @@ After the Deps Agent offer (whether user said yes or no), offer the optional Dar
 **If user says yes:**
 
 1. Set `darwin_enabled: true` in `.claude/pipeline-config.json`.
-2. Copy `source/agents/darwin.md` to `.claude/agents/darwin.md`.
+2. Copy `source/shared/agents/darwin.md` to `.claude/agents/darwin.md`.
 3. Copy `source/commands/darwin.md` to `.claude/commands/darwin.md`.
 4. Print: "Darwin: enabled. Use /darwin to analyze pipeline performance, or Darwin will auto-trigger when degradation is detected."
 
@@ -519,7 +519,7 @@ Print: "Darwin: not enabled"
 
 | Template Source | Destination | Install When |
 |----------------|-------------|-------------|
-| `source/agents/darwin.md` | `.claude/agents/darwin.md` | User enables Darwin in Step 6e |
+| `source/shared/agents/darwin.md` | `.claude/agents/darwin.md` | User enables Darwin in Step 6e |
 | `source/commands/darwin.md` | `.claude/commands/darwin.md` | User enables Darwin in Step 6e |
 ```
 
@@ -545,8 +545,8 @@ Darwin: [enabled | not enabled]
 
 | ID | Category | Description |
 |----|----------|-------------|
-| T-0016-001 | Happy | `source/agents/darwin.md` exists and contains YAML frontmatter with `name: darwin` |
-| T-0016-002 | Happy | `.claude/agents/darwin.md` exists and content is identical to `source/agents/darwin.md` |
+| T-0016-001 | Happy | `source/shared/agents/darwin.md` exists and contains YAML frontmatter with `name: darwin` |
+| T-0016-002 | Happy | `.claude/agents/darwin.md` exists and content is identical to `source/shared/agents/darwin.md` |
 | T-0016-003 | Happy | `disallowedTools` frontmatter includes `Write`, `Edit`, `MultiEdit`, `NotebookEdit`, `Agent` |
 | T-0016-004 | Happy | Persona contains `<identity>`, `<required-actions>`, `<workflow>`, `<examples>`, `<tools>`, `<constraints>`, `<output>` tags |
 | T-0016-005 | Happy | `<constraints>` includes self-edit protection: text matching "cannot propose changes to" and "darwin.md" |
@@ -654,7 +654,7 @@ Darwin: [enabled | not enabled]
 | T-0016-085 | Happy | Step 6e offer text mentions telemetry, underperforming agents, and structural fixes |
 | T-0016-086 | Happy | Step 6e offer text mentions Brain requirement |
 | T-0016-087 | Happy | Step 6e yes-path sets `darwin_enabled: true` in config |
-| T-0016-088 | Happy | Step 6e yes-path copies `source/agents/darwin.md` to `.claude/agents/darwin.md` |
+| T-0016-088 | Happy | Step 6e yes-path copies `source/shared/agents/darwin.md` to `.claude/agents/darwin.md` |
 | T-0016-089 | Happy | Step 6e yes-path copies `source/commands/darwin.md` to `.claude/commands/darwin.md` |
 | T-0016-090 | Happy | Step 6e no-path leaves `darwin_enabled: false` and prints "Darwin: not enabled" |
 | T-0016-091 | Happy | Summary printout in Step 6 includes "Darwin: [enabled | not enabled]" line |
@@ -693,7 +693,7 @@ Telemetry: After `/pipeline-setup` Step 6e acceptance, `jq .darwin_enabled .clau
 
 | Producer | Shape | Consumer | Step |
 |----------|-------|----------|------|
-| `source/agents/darwin.md` (persona) | XML-structured markdown with YAML frontmatter | Eva subagent invocation + `/darwin` command dispatch | Step 1 + Step 2 |
+| `source/shared/agents/darwin.md` (persona) | XML-structured markdown with YAML frontmatter | Eva subagent invocation + `/darwin` command dispatch | Step 1 + Step 2 |
 | `source/commands/darwin.md` (command) | YAML frontmatter + behavior block | Eva reads command file on `/darwin` | Step 1 + Step 2 |
 | `darwin_enabled` flag (pipeline-config.json) | boolean | Eva auto-routing gate, `/darwin` gate, auto-trigger gate, SKILL.md Step 6e | Step 1 + Step 2 + Step 3 + Step 4 |
 | `darwin-analysis` template (invocation-templates.md) | XML template with task/brain-context/read/constraints/output | Eva constructs Darwin invocation prompt | Step 2 + Step 3 |
@@ -707,7 +707,7 @@ Telemetry: After `/pipeline-setup` Step 6e acceptance, `jq .darwin_enabled .clau
 
 | Producer | Shape | Consumer | Step |
 |----------|-------|----------|------|
-| `source/agents/darwin.md` | Agent persona (XML/YAML) | Eva subagent invocation via `darwin-analysis` template | Step 1 -> Step 2 |
+| `source/shared/agents/darwin.md` | Agent persona (XML/YAML) | Eva subagent invocation via `darwin-analysis` template | Step 1 -> Step 2 |
 | `source/commands/darwin.md` | Command definition | Eva reads on `/darwin` -> invokes Darwin subagent | Step 1 -> Step 2 |
 | `darwin_enabled` config flag | boolean in JSON | SKILL.md Step 6e (write), Eva routing (read), auto-trigger (read) | Step 1 -> Step 2, Step 3, Step 4 |
 | `darwin-analysis` invocation template | XML template | Eva invokes Darwin (on-demand + auto-trigger) | Step 2 -> Step 3 |

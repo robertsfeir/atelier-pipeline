@@ -22,7 +22,7 @@ Proposed
 | R12 | Add `sentinel-audit` template to `invocation-templates.md` | constraints | Eva needs a standard invocation template |
 | R13 | Add Sentinel to `agent-system.md` subagent table | constraints | Architecture and `no-skill-tool` tables |
 | R14 | Opt-in flow in SKILL.md: after Step 6 summary, before brain setup offer | constraints | Check pip, install semgrep-mcp, copy persona, register MCP, set config flag |
-| R15 | Agents must NEVER be in plugin's native `agents/` directory; must be installed to project `.claude/agents/` via `/pipeline-setup` | brain-context | Sentinel persona lives in `source/agents/`, installed by setup |
+| R15 | Agents must NEVER be in plugin's native `agents/` directory; must be installed to project `.claude/agents/` via `/pipeline-setup` | brain-context | Sentinel persona lives in `source/shared/agents/`, installed by setup |
 | R16 | Behavioral constraints are consistently ignored; mechanical enforcement via hooks required | brain-context (retro lesson) | Sentinel's read-only access is enforced by `enforce-paths.sh` catch-all, not just by `disallowedTools` frontmatter |
 
 ### Retro Risks
@@ -136,10 +136,10 @@ Sentinel runs `semgrep` as a Bash command instead of using the MCP server. No MC
 
 ### Step 0: Sentinel Agent Persona File
 
-Create `source/agents/sentinel.md` with the standard persona file structure per `xml-prompt-schema.md`.
+Create `source/shared/agents/sentinel.md` with the standard persona file structure per `xml-prompt-schema.md`.
 
 **Files to create:**
-- `source/agents/sentinel.md`
+- `source/shared/agents/sentinel.md`
 
 **Acceptance criteria:**
 - YAML frontmatter: `name: sentinel`, `description: Security audit agent backed by Semgrep MCP static analysis. Runs at review juncture to identify vulnerabilities, injection risks, and security misconfigurations in changed code. Opt-in via pipeline-config.json.`, `disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit`
@@ -248,7 +248,7 @@ Update `skills/pipeline-setup/SKILL.md` to add the Sentinel opt-in step after St
 - If user says yes:
   1. Check `command -v pip3 || command -v pip` -- if missing, tell user to install Python/pip and skip
   2. Run `pip install semgrep-mcp` (or `pip3 install semgrep-mcp`)
-  3. Copy `source/agents/sentinel.md` to `.claude/agents/sentinel.md` (with placeholder customization)
+  3. Copy `source/shared/agents/sentinel.md` to `.claude/agents/sentinel.md` (with placeholder customization)
   4. Register Semgrep MCP in project `.mcp.json` -- add `"semgrep": {"command": "semgrep-mcp"}` entry (flat format per MEMORY.md)
   5. Set `sentinel_enabled: true` in `.claude/pipeline-config.json`
   6. Add Sentinel to the installation summary count
@@ -293,7 +293,7 @@ Update the continuous QA section in `pipeline-operations.md` to include Sentinel
 
 | ID | Category | Description |
 |----|----------|-------------|
-| T-0009-001 | Happy | `source/agents/sentinel.md` exists with valid YAML frontmatter containing `name: sentinel`, `description` (one-line, mentions Semgrep MCP and security), and `disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit` |
+| T-0009-001 | Happy | `source/shared/agents/sentinel.md` exists with valid YAML frontmatter containing `name: sentinel`, `description` (one-line, mentions Semgrep MCP and security), and `disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit` |
 | T-0009-002 | Happy | Persona file contains `<identity>` tag with agent name "Sentinel", role "Security Audit Agent", pronouns, Semgrep MCP backing, and Opus model statement |
 | T-0009-003 | Happy | `<required-actions>` references `.claude/references/agent-preamble.md` and includes Semgrep-specific steps (scan, retrieve findings, cross-reference diff, classify severity) |
 | T-0009-004 | Happy | `<workflow>` defines three phases: scan (Semgrep tools), interpret (diff context), report (structured table) |
@@ -302,7 +302,7 @@ Update the continuous QA section in `pipeline-operations.md` to include Sentinel
 | T-0009-007 | Failure | `<constraints>` specifies: if scan hangs or times out, STOP and report partial results, do not retry (retro lesson #004) |
 | T-0009-008 | Happy | `<output>` specifies structured security report with findings table containing location, severity, category, CWE/OWASP reference, description, and remediation |
 | T-0009-009 | Boundary | Persona file severity classification matches pipeline conventions: BLOCKER, MUST-FIX, NIT |
-| T-0009-010 | Regression | All 9 existing persona files in `source/agents/` are unchanged |
+| T-0009-010 | Regression | All 9 existing persona files in `source/shared/agents/` are unchanged |
 | T-0009-011 | Happy | XML tags follow the 7-tag order defined in `xml-prompt-schema.md`: identity, required-actions, workflow, examples, tools, constraints, output (tags without content may be omitted) |
 
 ### Step 1 Tests: Pipeline Config Template
@@ -428,7 +428,7 @@ Update the continuous QA section in `pipeline-operations.md` to include Sentinel
 
 | File | Impact |
 |------|--------|
-| `source/agents/sentinel.md` | New agent persona file -- installed to `.claude/agents/sentinel.md` by setup |
+| `source/shared/agents/sentinel.md` | New agent persona file -- installed to `.claude/agents/sentinel.md` by setup |
 
 ### Files Modified
 
@@ -446,10 +446,10 @@ Update the continuous QA section in `pipeline-operations.md` to include Sentinel
 
 | File | Reason |
 |------|--------|
-| `source/hooks/enforce-paths.sh` | Catch-all `*)` at line 112 already blocks `sentinel` agent type from writing -- correct default behavior |
-| `source/hooks/enforce-sequencing.sh` | No sequencing gates needed for Sentinel -- it runs in parallel at review juncture, not in a sequencing-sensitive position |
-| `source/hooks/enforcement-config.json` | No new config keys needed -- Sentinel is read-only, gated by `pipeline-config.json` |
-| `source/agents/*.md` (all 9 existing) | Existing agents unchanged |
+| `source/claude/hooks/enforce-paths.sh` | Catch-all `*)` at line 112 already blocks `sentinel` agent type from writing -- correct default behavior |
+| `source/claude/hooks/enforce-sequencing.sh` | No sequencing gates needed for Sentinel -- it runs in parallel at review juncture, not in a sequencing-sensitive position |
+| `source/claude/hooks/enforcement-config.json` | No new config keys needed -- Sentinel is read-only, gated by `pipeline-config.json` |
+| `source/shared/agents/*.md` (all 9 existing) | Existing agents unchanged |
 | `source/commands/*.md` (all 7) | No new slash command for Sentinel -- invoked by Eva at review juncture |
 | `source/rules/default-persona.md` | Eva's boot sequence does not need changes; `sentinel_enabled` is read from `pipeline-config.json` (already read at step 3b) |
 | `source/references/agent-preamble.md` | Sentinel references it, preamble does not reference Sentinel |
@@ -460,7 +460,7 @@ Update the continuous QA section in `pipeline-operations.md` to include Sentinel
 
 | File | Consumers |
 |------|-----------|
-| `source/agents/sentinel.md` | `skills/pipeline-setup/SKILL.md` (copies to `.claude/agents/`), Claude Code subagent system |
+| `source/shared/agents/sentinel.md` | `skills/pipeline-setup/SKILL.md` (copies to `.claude/agents/`), Claude Code subagent system |
 | `source/pipeline/pipeline-config.json` | `skills/pipeline-setup/SKILL.md` (copies to `.claude/`), Eva boot sequence |
 | `source/rules/agent-system.md` | `skills/pipeline-setup/SKILL.md` (copies to `.claude/rules/`), all target projects |
 | `source/references/pipeline-operations.md` | `skills/pipeline-setup/SKILL.md` (copies to `.claude/references/`), Eva at pipeline start |
@@ -477,7 +477,7 @@ Not applicable -- Sentinel does not introduce data access methods, stores, or pe
 
 1. **Step ordering matters.** Step 0 (persona file) should be first because other steps reference it. Step 1 (config) should be second because Steps 2-8 reference `sentinel_enabled`. Steps 2-5, 7-8 can be done in any order after 0 and 1. Step 6 (SKILL.md) should be last because it references the persona file path and config field.
 
-2. **Persona file pattern.** Model the persona file closely on `source/agents/investigator.md` (Poirot). Both are read-only reviewers with information asymmetry. Key differences: Sentinel has Semgrep MCP tools available, Sentinel's workflow centers on SAST results rather than pure diff analysis, Sentinel includes CWE/OWASP references in findings.
+2. **Persona file pattern.** Model the persona file closely on `source/shared/agents/investigator.md` (Poirot). Both are read-only reviewers with information asymmetry. Key differences: Sentinel has Semgrep MCP tools available, Sentinel's workflow centers on SAST results rather than pure diff analysis, Sentinel includes CWE/OWASP references in findings.
 
 3. **Triage matrix expansion.** When adding the Sentinel column, ensure existing rows get `--` (dash-dash) in the new column, meaning "Sentinel's verdict does not change this row's action." Only add new rows for Sentinel-specific scenarios. Do not duplicate existing rows.
 
@@ -511,7 +511,7 @@ Not applicable -- Sentinel does not introduce data access methods, stores, or pe
 | R12: Invocation template added | Step 5 | T-0009-060 through T-0009-066 | Designed |
 | R13: Agent system tables updated | Step 2 | T-0009-030 through T-0009-034 | Designed |
 | R14: Setup flow after Step 6, before brain | Step 6 | T-0009-070, T-0009-078 | Designed |
-| R15: Persona in `source/agents/`, installed to `.claude/agents/` | Step 0, Step 6 | T-0009-001, T-0009-080 | Designed |
+| R15: Persona in `source/shared/agents/`, installed to `.claude/agents/` | Step 0, Step 6 | T-0009-001, T-0009-080 | Designed |
 | R16: Mechanical enforcement via hook catch-all | Blast radius (no changes) | T-0009-001 (disallowedTools), Notes for Colby #6 | Designed (existing behavior preserved) |
 
 ### Architectural Decisions Not in Spec

@@ -8,3 +8,4 @@ effort: medium
 color: cyan
 maxTurns: 40
 disallowedTools: Agent, NotebookEdit
+permissionMode: acceptEdits

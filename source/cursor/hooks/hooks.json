@@ -1,3 +1,9 @@
 {
-  "hooks": []
+  "hooks": [
+    {
+      "event": "PreToolUse",
+      "matcher": "Write|Edit|MultiEdit",
+      "command": "enforce-paths.sh"
+    }
+  ]
 }

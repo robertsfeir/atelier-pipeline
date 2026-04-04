@@ -49,7 +49,7 @@ def test_T_0020_003_regression_enforce_git(hook_env):
 
 
 def test_T_0020_004_regression_enforce_paths(hook_env):
-    r = run_hook("enforce-paths.sh", build_tool_input("Write", "docs/guide/foo.md", "colby"), hook_env)
+    r = run_hook("enforce-eva-paths.sh", build_tool_input("Write", "docs/guide/foo.md", ""), hook_env)
     assert r.returncode == 2
     assert "BLOCKED" in r.stdout
 

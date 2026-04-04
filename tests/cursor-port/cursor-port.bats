@@ -33,7 +33,8 @@ REPO_ROOT="$(cd "$(dirname "${BATS_TEST_FILENAME}")/../.." && pwd)"
 CURSOR_PLUGIN_DIR="$REPO_ROOT/.cursor-plugin"
 CLAUDE_PLUGIN_DIR="$REPO_ROOT/.claude-plugin"
 SOURCE_DIR="$REPO_ROOT/source"
-HOOKS_DIR="$SOURCE_DIR/hooks"
+HOOKS_DIR="$SOURCE_DIR/claude/hooks"
+CURSOR_HOOKS_DIR="$SOURCE_DIR/cursor/hooks"
 SKILLS_DIR="$REPO_ROOT/skills"
 
 # ── Helpers ──────────────────────────────────────────────────────────
@@ -806,14 +807,14 @@ EOF
   [ "$advisory_fail_closed" -eq 0 ]
 }
 
-# ── T-0019-021: Happy -- command paths reference source/hooks/ via CURSOR_PLUGIN_ROOT ──
+# ── T-0019-021: Happy -- command paths reference source/cursor/hooks/ via CURSOR_PLUGIN_ROOT ──
 
-@test "T-0019-021: all hook command paths reference source/hooks/ via CURSOR_PLUGIN_ROOT" {
+@test "T-0019-021: all hook command paths reference source/cursor/hooks/ via CURSOR_PLUGIN_ROOT" {
   [ -f "$CURSOR_PLUGIN_DIR/hooks/hooks.json" ] || skip "hooks.json not yet created"
   local commands
   commands=$(jq -r '.hooks[].command' "$CURSOR_PLUGIN_DIR/hooks/hooks.json")
   while IFS= read -r cmd; do
-    [[ "$cmd" == *"source/hooks/"* ]]
+    [[ "$cmd" == *"source/cursor/hooks/"* ]]
     [[ "$cmd" == *"CURSOR_PLUGIN_ROOT"* ]]
   done <<< "$commands"
 }
@@ -848,7 +849,7 @@ EOF
   while IFS= read -r cmd; do
     # Extract the script path from the command (after "bash" and quotes)
     local script_path
-    script_path=$(echo "$cmd" | grep -oE 'source/hooks/[^ "]+')
+    script_path=$(echo "$cmd" | grep -oE 'source/cursor/hooks/[^ "]+')
     [ -n "$script_path" ]
     [ -f "$REPO_ROOT/$script_path" ]
   done <<< "$commands"
@@ -862,7 +863,7 @@ EOF
   commands=$(jq -r '.hooks[].command' "$CURSOR_PLUGIN_DIR/hooks/hooks.json")
   while IFS= read -r cmd; do
     local script_path
-    script_path=$(echo "$cmd" | grep -oE 'source/hooks/[^ "]+')
+    script_path=$(echo "$cmd" | grep -oE 'source/cursor/hooks/[^ "]+')
     [ -n "$script_path" ]
     [ -x "$REPO_ROOT/$script_path" ]
   done <<< "$commands"
@@ -1808,16 +1809,16 @@ EOF
 # CROSS-STEP: Integration Tests
 # ═════════════════════════════════════════════════════════════════════
 
-# ── T-0019-136: E2E -- .claude/ and .cursor-plugin/ coexist, both reference source/hooks/ ──
+# ── T-0019-136: E2E -- .claude/ and .cursor-plugin/ coexist, both reference source/cursor/hooks/ ──
 
-@test "T-0019-136: both .claude/ and .cursor-plugin/ reference same source/hooks/ scripts" {
+@test "T-0019-136: both .claude/ and .cursor-plugin/ reference source/cursor/hooks/ scripts" {
   [ -f "$CURSOR_PLUGIN_DIR/hooks/hooks.json" ] || skip "hooks.json not yet created"
   [ -f "$REPO_ROOT/.claude/settings.json" ] || skip ".claude/settings.json missing"
-  # Cursor hooks reference source/hooks/
+  # Cursor hooks reference source/cursor/hooks/
   local cursor_scripts
-  cursor_scripts=$(jq -r '.hooks[].command' "$CURSOR_PLUGIN_DIR/hooks/hooks.json" | grep -oE 'source/hooks/[^ "]+' | sort -u)
-  # Claude hooks reference hooks/ scripts too (via .claude/hooks/ which are copies of source/hooks/)
-  # The key assertion: cursor hooks point to source/hooks/ (shared)
+  cursor_scripts=$(jq -r '.hooks[].command' "$CURSOR_PLUGIN_DIR/hooks/hooks.json" | grep -oE 'source/cursor/hooks/[^ "]+' | sort -u)
+  # Claude hooks are installed to .claude/hooks/ (copies of source/claude/hooks/)
+  # The key assertion: cursor hooks point to source/cursor/hooks/ (Cursor-specific)
   [ -n "$cursor_scripts" ]
   while IFS= read -r script; do
     [ -f "$REPO_ROOT/$script" ]

@@ -8,3 +8,7 @@ effort: medium
 color: pink
 maxTurns: 40
 tools: Read, Write, Edit, Glob, Grep, Bash
+hooks:
+  - event: PreToolUse
+    matcher: Write|Edit
+    command: .claude/hooks/enforce-ux-paths.sh

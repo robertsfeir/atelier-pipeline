@@ -108,7 +108,13 @@ atelier-pipeline/                         # Plugin root (CLAUDE_PLUGIN_ROOT)
       branch-lifecycle-gitlab-flow.md     # GitLab Flow
       branch-lifecycle-gitflow.md         # GitFlow
     hooks/                                # Enforcement hook templates
-      enforce-paths.sh                    # File path enforcement per agent
+      enforce-eva-paths.sh                # Main thread (Eva) path enforcement
+      enforce-roz-paths.sh                # Per-agent: Roz path enforcement
+      enforce-cal-paths.sh                # Per-agent: Cal path enforcement
+      enforce-colby-paths.sh              # Per-agent: Colby path enforcement
+      enforce-agatha-paths.sh             # Per-agent: Agatha path enforcement
+      enforce-product-paths.sh            # Per-agent: Robert-spec path enforcement
+      enforce-ux-paths.sh                 # Per-agent: Sable-ux path enforcement
       enforce-sequencing.sh               # Pipeline sequencing gates
       enforce-git.sh                      # Git write operation guard
       enforcement-config.json             # Project-specific paths and rules
@@ -191,7 +197,8 @@ your-project/
       branch-mr-mode.md                   # Colby branch creation and MR procedures
       telemetry-metrics.md                # Telemetry metric schemas, cost table, alert thresholds
     hooks/                                # Mechanical enforcement (PreToolUse + SubagentStop + PreCompact)
-      enforce-paths.sh                    # Blocks Write/Edit outside agent's allowed paths
+      enforce-eva-paths.sh                # Main thread (Eva) path enforcement -- docs/pipeline/ only
+      enforce-{agent}-paths.sh            # Per-agent frontmatter hooks (roz, cal, colby, agatha, product, ux)
       enforce-sequencing.sh               # Blocks out-of-order agent invocations
       enforce-git.sh                      # Blocks git write ops from main thread
       warn-dor-dod.sh                     # Warns when agent output is missing DoR/DoD sections
@@ -1144,7 +1151,8 @@ The PreToolUse scripts require `jq` for JSON parsing. If `jq` is not installed, 
 
 | Script | Hook Type | Trigger | Purpose |
 |--------|-----------|---------|---------|
-| `enforce-paths.sh` | PreToolUse | `Write\|Edit\|MultiEdit` | Blocks file writes outside each agent's allowed directory paths |
+| `enforce-eva-paths.sh` | PreToolUse | `Write\|Edit\|MultiEdit` | Main thread (Eva): blocks writes outside docs/pipeline/ |
+| `enforce-{agent}-paths.sh` | PreToolUse (frontmatter) | `Write\|Edit\|MultiEdit` | Per-agent hooks wired via frontmatter (roz, cal, colby, agatha, product, ux) |
 | `enforce-sequencing.sh` | PreToolUse | `Agent` | Blocks out-of-order agent invocations from the main thread |
 | `enforce-git.sh` | PreToolUse | `Bash` | Blocks git write operations (`add`, `commit`, `push`, `reset`, `checkout --`, `restore`, `clean`) and test commands from the main thread |
 | `enforce-pipeline-activation.sh` | PreToolUse | `Agent` | Blocks Colby and Ellis invocations when no active pipeline exists |
@@ -1162,23 +1170,26 @@ The IDE (Claude Code or Cursor) passes a JSON payload to each hook via stdin. Tw
 - **`agent_type`** -- the subagent's frontmatter name (e.g., `colby`, `roz`, `ellis`, `cal`, `agatha`). Empty string for the main thread.
 - **`agent_id`** -- a unique identifier for the subagent instance. Empty string for the main thread.
 
-The hooks use these fields to apply agent-specific rules. For example, `enforce-paths.sh` checks `agent_type` against a case statement to determine which directories the caller can write to. `enforce-git.sh` and `enforce-sequencing.sh` only enforce from the main thread (where `agent_id` is empty), since subagents are already constrained by their `disallowedTools` frontmatter.
+The hooks use these fields to apply agent-specific rules. Per-agent path enforcement hooks are wired via frontmatter `hooks:` field (Layer 2) and fire only for that specific agent -- no `agent_type` check or case statement needed. Cross-cutting hooks (`enforce-git.sh`, `enforce-sequencing.sh`) enforce from the main thread (where `agent_id` is empty), since subagents are already constrained by their `disallowedTools` frontmatter and per-agent hooks.
 
-### File Path Enforcement (`enforce-paths.sh`)
+### Three-Layer Enforcement Pyramid
 
-This hook intercepts every Write, Edit, and MultiEdit call and checks the target file path against the calling agent's allowed directories.
+Path enforcement uses a three-layer pyramid: Layer 1 (`tools`/`disallowedTools` in frontmatter), Layer 2 (per-agent frontmatter hooks), Layer 3 (global hooks in settings.json).
 
-| Agent | Allowed Write Paths | Blocked From |
-|-------|---------------------|-------------|
-| **Main thread** (Eva, Robert-skill, Sable-skill) | `docs/pipeline/`, `docs/product/`, `docs/ux/` | Source code, architecture docs, test files, config files |
-| **Cal** | `docs/architecture/` (ADR directory) | Source code, pipeline state, other docs |
-| **Colby** | Everything except paths in `colby_blocked_paths` | Docs, CI/CD configs, container files, infra paths (configurable -- see `enforcement-config.json`) |
-| **Roz** | Test files (matched by config patterns) and `docs/pipeline/last-qa-report.md` | Production source code, documentation |
-| **Ellis** | Full write access | Nothing (commit agent needs to stage all files) |
-| **Agatha** (`agatha`) | `docs/` | Source code, config files |
-| **All other agents** (Poirot, Distillator, Robert-subagent, Sable-subagent) | None (read-only) | Everything -- their `disallowedTools` already blocks writes, this is a safety net |
+**Layer 2: Per-agent frontmatter hooks (Claude Code only)**
 
-**The main thread limitation.** Eva, Robert-skill, and Sable-skill share the main IDE thread. The hook cannot distinguish between them because all three have an empty `agent_type`. The solution is to allow all three agents' write directories: `docs/pipeline/` (Eva), `docs/product/` (Robert-skill), and `docs/ux/` (Sable-skill). This is a pragmatic trade-off -- the alternative would be blocking legitimate writes from one of the three.
+Each write-capable agent has a dedicated enforcement hook wired via the `hooks:` field in its frontmatter overlay. These scripts are self-contained (~15-20 lines), have no `agent_type` check or case statement, and enforce that agent's allowed write paths.
+
+| Agent | Script | Allowed Write Paths |
+|-------|--------|---------------------|
+| **Eva** (main thread) | `enforce-eva-paths.sh` | `docs/pipeline/` only |
+| **Cal** | `enforce-cal-paths.sh` | `docs/architecture/` only |
+| **Colby** | `enforce-colby-paths.sh` | Everything except `colby_blocked_paths` from config |
+| **Roz** | `enforce-roz-paths.sh` | Test files (matched by `test_patterns` from config) + `docs/pipeline/` |
+| **Agatha** | `enforce-agatha-paths.sh` | `docs/` only |
+| **Robert-spec** | `enforce-product-paths.sh` | `docs/product/` only |
+| **Sable-ux** | `enforce-ux-paths.sh` | `docs/ux/` only |
+| **Ellis** | *(none)* | Full write access (sequencing at Layer 3) |
 
 Test files are identified by patterns configured in `enforcement-config.json` (e.g., `.test.`, `.spec.`, `/tests/`, `/__tests__/`, `conftest`). These patterns are customized during `/pipeline-setup` to match the project's test file conventions.
 
@@ -1235,9 +1246,6 @@ The configuration file lives at `.claude/hooks/enforcement-config.json` (Claude 
 ```json
 {
   "pipeline_state_dir": "docs/pipeline",
-  "architecture_dir": "docs/architecture",
-  "product_specs_dir": "docs/product",
-  "ux_docs_dir": "docs/ux",
   "colby_blocked_paths": [
     "docs/", ".github/", ".gitlab-ci", ".circleci/",
     "Jenkinsfile", "Dockerfile", "docker-compose",
@@ -1254,13 +1262,10 @@ The configuration file lives at `.claude/hooks/enforcement-config.json` (Claude 
 
 | Field | Used By | Purpose |
 |-------|---------|---------|
-| `pipeline_state_dir` | `enforce-paths.sh`, `enforce-sequencing.sh` | Main thread write boundary and pipeline state location |
-| `architecture_dir` | `enforce-paths.sh` | Cal's write boundary |
-| `product_specs_dir` | `enforce-paths.sh` | Robert-skill's write boundary (main thread) |
-| `ux_docs_dir` | `enforce-paths.sh` | Sable-skill's write boundary (main thread) |
-| `colby_blocked_paths` | `enforce-paths.sh` | Array of path prefixes Colby cannot write to. Default includes `docs/`, CI/CD paths, container files, and infra directories. Customized during `/pipeline-setup`. |
+| `pipeline_state_dir` | `enforce-eva-paths.sh`, `enforce-sequencing.sh` | Eva's write boundary and pipeline state location |
+| `colby_blocked_paths` | `enforce-colby-paths.sh` | Array of path prefixes Colby cannot write to. Default includes `docs/`, CI/CD paths, container files, and infra directories. Customized during `/pipeline-setup`. |
 | `test_command` | Roz (QA verification) | Full test suite command (e.g., `npm test`, `pytest`). Used by Roz for QA verification. |
-| `test_patterns` | `enforce-paths.sh` | Patterns identifying test files for Roz's write boundary |
+| `test_patterns` | `enforce-roz-paths.sh` | Patterns identifying test files for Roz's write boundary |
 
 ### Hook Registration
 
@@ -1274,7 +1279,7 @@ The configuration file lives at `.claude/hooks/enforcement-config.json` (Claude 
     "PreToolUse": [
       {
         "matcher": "Write|Edit|MultiEdit",
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-paths.sh"}]
+        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-eva-paths.sh"}]
       },
       {
         "matcher": "Agent",
@@ -1322,7 +1327,7 @@ The configuration file lives at `.claude/hooks/enforcement-config.json` (Claude 
 
 **Cursor** (`.cursor/settings.json`, uses `$CURSOR_PROJECT_DIR`): Identical structure with `$CURSOR_PROJECT_DIR` and `.cursor/hooks/` paths instead.
 
-Each matcher determines which tool invocations trigger the hook. The pipe-separated `Write|Edit|MultiEdit` matcher fires `enforce-paths.sh` on any file write operation. The `"if"` property is a JavaScript expression evaluated by the IDE before spawning the hook process -- when it evaluates to false, the hook is skipped entirely, reducing overhead on high-frequency tool calls. Existing settings in the file are preserved during the merge.
+Each matcher determines which tool invocations trigger the hook. The pipe-separated `Write|Edit|MultiEdit` matcher on the main thread fires `enforce-eva-paths.sh` on any file write operation. Per-agent enforcement hooks (e.g., `enforce-colby-paths.sh`, `enforce-cal-paths.sh`) are wired through each agent's frontmatter overlay, not through settings.json. The `"if"` property is a JavaScript expression evaluated by the IDE before spawning the hook process -- when it evaluates to false, the hook is skipped entirely, reducing overhead on high-frequency tool calls. Existing settings in the file are preserved during the merge.
 
 ### Blocking vs. Non-Blocking
 
@@ -1331,9 +1336,9 @@ Hooks signal their result via exit code:
 - **Exit 0** -- action allowed (or hook not applicable)
 - **Exit 2** -- action blocked; the reason message on stderr is shown to the agent
 
-The four PreToolUse hooks (`enforce-paths.sh`, `enforce-sequencing.sh`, `enforce-git.sh`, `enforce-pipeline-activation.sh`) exit 2 on violations. The SubagentStop hook (`warn-dor-dod.sh`) exits 0 always -- it is advisory only and never blocks. The telemetry hooks (`log-agent-start.sh`, `log-agent-stop.sh`, `log-stop-failure.sh`) exit 0 always -- they are observability hooks, not gates. The compaction hooks (`pre-compact.sh`, `post-compact-reinject.sh`) exit 0 always -- they are side-effect hooks, not gates.
+The PreToolUse enforcement hooks (per-agent `enforce-{agent}-paths.sh`, `enforce-sequencing.sh`, `enforce-git.sh`, `enforce-pipeline-activation.sh`) exit 2 on violations. The SubagentStop hook (`warn-dor-dod.sh`) exits 0 always -- it is advisory only and never blocks. The telemetry hooks (`log-agent-start.sh`, `log-agent-stop.sh`, `log-stop-failure.sh`) exit 0 always -- they are observability hooks, not gates. The compaction hooks (`pre-compact.sh`, `post-compact-reinject.sh`) exit 0 always -- they are side-effect hooks, not gates.
 
-The four PreToolUse hooks exit 0 immediately when `jq` is not installed, when the config file is missing, or when the tool call is not one they care about. This ensures the hooks never interfere with unrelated tool usage or with projects that have not yet run `/pipeline-setup`. The telemetry and compaction hooks do not require `jq` -- they fall back to `grep`/`sed` parsing when `jq` is unavailable. All hooks work identically on Claude Code and Cursor.
+The PreToolUse enforcement hooks exit 0 immediately when `jq` is not installed, when the config file is missing, or when the tool call is not one they care about. This ensures the hooks never interfere with unrelated tool usage or with projects that have not yet run `/pipeline-setup`. The telemetry and compaction hooks do not require `jq` -- they fall back to `grep`/`sed` parsing when `jq` is unavailable. All hooks work identically on Claude Code and Cursor.
 
 ---
 
@@ -1413,7 +1418,7 @@ Agent Teams applies exclusively to Colby build units within a wave. All other ag
 
 ### Teammate Identity
 
-Teammates are Colby instances. They load Colby's persona from `.claude/agents/colby.md` (Claude Code) and match the `colby` case in `enforce-paths.sh` (full write access). No new persona file exists for Teammates.
+Teammates are Colby instances. They load Colby's persona from `.claude/agents/colby.md` (Claude Code) and are subject to `enforce-colby-paths.sh` via Colby's frontmatter hooks. No new persona file exists for Teammates.
 
 ### Task Lifecycle
 
@@ -1554,7 +1559,7 @@ Design rationale: ADR-0015. The agent is analysis-only -- it never modifies depe
 
 ### Agent Persona
 
-The persona file is `source/agents/deps.md` (installed to `.claude/agents/deps.md` when enabled). Key characteristics:
+The persona file is `source/shared/agents/deps.md` (installed to `.claude/agents/deps.md` when enabled). Key characteristics:
 
 - **disallowedTools:** `Agent, Write, Edit, MultiEdit, NotebookEdit` (read-only by default)
 - **Permitted Bash commands:** Explicit whitelist -- `npm outdated --json`, `npm audit --json`, `pip list --outdated`, `pip-audit`, `cargo outdated`, `cargo audit --json`, `go list -m -u all`, and version checks
@@ -1572,7 +1577,7 @@ The persona file is `source/agents/deps.md` (installed to `.claude/agents/deps.m
 The Deps agent is offered during `/pipeline-setup` after CI Watch (Step 6c). When the user enables it:
 
 1. `deps_agent_enabled` is set to `true` in `.claude/pipeline-config.json`
-2. `source/agents/deps.md` is copied to `.claude/agents/deps.md`
+2. `source/shared/agents/deps.md` is copied to `.claude/agents/deps.md`
 3. `source/commands/deps.md` is copied to `.claude/commands/deps.md`
 
 Idempotency: if `deps_agent_enabled` already exists and is `true`, setup skips mutation. If it exists and is `false`, setup confirms before changing. If absent, it defaults to `false`.
