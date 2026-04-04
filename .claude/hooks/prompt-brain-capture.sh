@@ -31,15 +31,12 @@ if [ -z "$AGENT_TYPE" ]; then
   exit 0
 fi
 
-# Output advisory for capture-capable agents; execution confirmation for others
+# Only output advisory for capture-capable agents
 case "$AGENT_TYPE" in
-  cal|colby|roz|agatha)
-    echo "BRAIN CAPTURE REMINDER: $AGENT_TYPE just returned. In the distributed capture model, $AGENT_TYPE captures domain-specific knowledge directly via agent_capture. Eva captures cross-cutting concerns only (user decisions, phase transitions, cross-agent patterns). Review $AGENT_TYPE's output for any cross-cutting insights to capture with source_agent: 'eva'."
-    ;;
-  *)
-    # Non-capture-capable agents: log execution confirmation without advisory
-    echo "[SubagentStop hook executed] agent_type: $AGENT_TYPE"
-    ;;
+  cal|colby|roz|agatha) ;;
+  *) exit 0 ;;
 esac
+
+echo "BRAIN CAPTURE REMINDER: $AGENT_TYPE just returned. In the distributed capture model, $AGENT_TYPE captures domain-specific knowledge directly via agent_capture. Eva captures cross-cutting concerns only (user decisions, phase transitions, cross-agent patterns). Review $AGENT_TYPE's output for any cross-cutting insights to capture with source_agent: 'eva'."
 
 exit 0
