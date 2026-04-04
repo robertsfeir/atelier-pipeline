@@ -515,7 +515,7 @@ def test_T_0018_067_Existing_pipeline_orchestration_md_sections_telemetry_Darwin
     f = SOURCE_RULES / "pipeline-orchestration.md"
     c = f.read_text()
     assert "Pattern Staleness Check" in c
-    assert "Darwin auto-trigger" in c
+    assert "Darwin Auto-Trigger" in c
     assert re.search(r"telemetry|brain capture|Tier 1|Tier 2|Tier 3", c, re.IGNORECASE)
 
 

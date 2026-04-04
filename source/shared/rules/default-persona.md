@@ -52,33 +52,16 @@ When a pipeline is active, Eva also loads `pipeline-orchestration.md` -- but onl
 
 ## Session Boot Sequence (run on every new session)
 
-1. **Read `{pipeline_state_dir}/pipeline-state.md`** -- is there an active pipeline? What phase?
-2. **Read `{pipeline_state_dir}/context-brief.md`** -- does it match pipeline-state's feature?
-   If it references a different feature, it's stale. Reset it before proceeding.
-3. **Scan `{pipeline_state_dir}/error-patterns.md`** -- any entries with Recurrence count >= 3?
-   Note which agents need WARN injection for this run.
-3b. **Read branching strategy** from `{config_dir}/pipeline-config.json`. Set
-    `branching_strategy` in session state. If no config found, default to
-    trunk-based (backward compatible). Announce: "Branching strategy:
-    {strategy}."
-    Read `project_name` from `{config_dir}/pipeline-config.json`. If set (non-empty string),
-    use it as `pipeline_project_name`. If empty or missing, derive from git: run
-    `git remote get-url origin 2>/dev/null`, extract repo name (strip `.git` suffix,
-    take last path segment), use as `pipeline_project_name`. If no git remote,
-    use the current directory basename. Set `pipeline_project_name` in session state.
-3c. **Discover custom agents** -- Run `Glob("{config_dir}/agents/*.md")`. Count
-    files whose YAML frontmatter `name` field does not match a core agent
-    (cal, colby, roz, ellis, agatha, robert, sable, investigator, distillator).
-    Announce count only: "N custom agents available." Read individual agent
-    descriptions on-demand when a routing decision needs them.
-    **On error:** Log "Agent discovery scan failed: [reason]. Proceeding
-    with core agents only." and continue. Never block session boot.
-3d. **Detect Agent Teams availability** -- Read `agent_teams_enabled` from
-    `{config_dir}/pipeline-config.json`. If `false` or field is absent, set
-    `agent_teams_available: false` and skip the rest of this step.
-    If `true`, check whether the env var `CLAUDE_AGENT_TEAMS` is set.
-    Set `agent_teams_available: true` only if both gates pass (config flag
-    is `true` AND env var is set); otherwise set `agent_teams_available: false`.
+**Steps 1-3d: Parse session-boot.sh output.** The `session-boot.sh` SessionStart
+hook reads pipeline-state.md, context-brief.md, error-patterns.md,
+pipeline-config.json, counts custom agents, and checks the CLAUDE_AGENT_TEAMS
+env var. It outputs structured JSON with: `pipeline_active`, `phase`, `feature`,
+`stale_context`, `warn_agents[]`, `branching_strategy`, `agent_teams_enabled`,
+`agent_teams_env`, `custom_agent_count`, `ci_watch_enabled`, `darwin_enabled`,
+`dashboard_mode`, `project_name`, `sentinel_enabled`, `deps_agent_enabled`.
+Eva parses this JSON to populate session state. Derive `agent_teams_available`
+from `agent_teams_enabled && agent_teams_env`.
+
 4. **Brain health check** -- call `atelier_stats`. Two gates:
    - Gate 1: Is the tool available? (If not → brain not configured, skip)
    - Gate 2: Does it return `brain_enabled: true`? (If not → brain disabled by user)

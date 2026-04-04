@@ -169,6 +169,7 @@ plugins/atelier-pipeline/source/
       agent-preamble.md               # Shared agent required actions (DoR/DoD, retro, brain)
       qa-checks.md                     # Roz QA check procedures
       branch-mr-mode.md               # Colby branch/MR procedures for MR-based strategies
+      step-sizing.md                  # ADR step sizing gate (S1-S5) and split heuristics
     pipeline/
       pipeline-state.md               # Session recovery state template
       context-brief.md                # Context preservation template
@@ -252,6 +253,7 @@ Files are assembled from `source/shared/` (content) + `source/claude/` (overlays
 | `source/shared/references/qa-checks.md` | `.claude/references/qa-checks.md` | Roz QA check procedures |
 | `source/shared/references/branch-mr-mode.md` | `.claude/references/branch-mr-mode.md` | Colby branch/MR procedures |
 | `source/shared/references/telemetry-metrics.md` | `.claude/references/telemetry-metrics.md` | Telemetry metric schemas, cost table, alert thresholds |
+| `source/shared/references/step-sizing.md` | `.claude/references/step-sizing.md` | ADR step sizing gate (S1-S5) and split heuristics |
 | `source/shared/pipeline/pipeline-state.md` | `docs/pipeline/pipeline-state.md` | Session recovery state |
 | `source/shared/pipeline/context-brief.md` | `docs/pipeline/context-brief.md` | Context preservation |
 | `source/shared/pipeline/error-patterns.md` | `docs/pipeline/error-patterns.md` | Error pattern tracking |
@@ -297,6 +299,7 @@ optional and must be installed for the pipeline to function correctly.
 | `source/claude/hooks/prompt-brain-prefetch.sh` | `.claude/hooks/prompt-brain-prefetch.sh` | Brain prefetch prompt injection (Prompt) |
 | `source/claude/hooks/warn-brain-capture.sh` | `.claude/hooks/warn-brain-capture.sh` | Brain capture warning (SubagentStop) |
 | `source/claude/hooks/prompt-compact-advisory.sh` | `.claude/hooks/prompt-compact-advisory.sh` | Wave-boundary compaction advisory (SubagentStop) |
+| `source/shared/hooks/session-boot.sh` | `.claude/hooks/session-boot.sh` | Session boot data collector (SessionStart) -- reads pipeline state and config |
 | `source/claude/hooks/enforcement-config.json` | `.claude/hooks/enforcement-config.json` | Project-specific paths and agent rules |
 
 After copying, make the `.sh` files executable: `chmod +x .claude/hooks/*.sh`
@@ -367,6 +370,11 @@ file already exists. Add this hooks section:
     "StopFailure": [
       {
         "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/log-stop-failure.sh"}]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-boot.sh"}]
       }
     ]
   }
@@ -440,6 +448,7 @@ alwaysApply: false
 | `source/shared/references/telemetry-metrics.md` | `.cursor-plugin/rules/telemetry-metrics.mdc` | Telemetry metrics -- metric schemas, cost table, and alert thresholds |
 | `source/shared/references/xml-prompt-schema.md` | `.cursor-plugin/rules/xml-prompt-schema.mdc` | XML prompt schema -- tag vocabulary for agent persona files |
 | `source/shared/references/cloud-architecture.md` | `.cursor-plugin/rules/cloud-architecture.mdc` | Cloud architecture -- reference for cloud-native deployment patterns |
+| `source/shared/references/step-sizing.md` | `.cursor-plugin/rules/step-sizing.mdc` | ADR step sizing gate (S1-S5) and split heuristics |
 
 **Skip when:** Running in Claude Code (no `CURSOR_PROJECT_DIR` env var). Claude Code reads `.claude/references/*.md` directly without `.mdc` wrappers.
 

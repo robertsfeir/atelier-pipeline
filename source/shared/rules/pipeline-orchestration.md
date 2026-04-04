@@ -8,7 +8,7 @@ flow, agent standards, and verification procedures.
 
 ## Loading Strategy
 
-This file uses just-in-time (JIT) loading. Sections marked `[ALWAYS]` are loaded when the file first loads (pipeline activation). Sections marked `[JIT]` are loaded only when their trigger condition is met. Eva reads the section headers to know what exists, then reads the full section content on demand.
+JIT loading. `[ALWAYS]` sections load at pipeline activation. `[JIT]` sections load on trigger.
 
 | Section | Load | Trigger |
 |---------|------|---------|
@@ -86,105 +86,40 @@ pipeline?" The user decides — seeds are suggestions, not requirements.
 
 ## Telemetry Capture Protocol (when brain is available)
 
-Eva captures quantitative pipeline metrics at three gates. All captures use:
-- `thought_type: 'insight'`
-- `source_agent: 'eva'`
-- `source_phase: 'telemetry'`
-- `metadata.pipeline_id` (set at pipeline start: `{feature_name}_{ISO_timestamp}`)
+All captures use `thought_type: 'insight'`, `source_agent: 'eva'`,
+`source_phase: 'telemetry'`, `metadata.pipeline_id` (set at pipeline start).
+Eva reads `telemetry-metrics.md` at pipeline start for metric schemas and cost tables.
+When `brain_available: false`, skip all captures. In-memory accumulators still run.
 
-Eva reads `telemetry-metrics.md` at pipeline start alongside `pipeline-operations.md`
-to load metric schemas and cost estimation tables.
+### Tier 1 (per-invocation, in-memory only)
 
-Telemetry captures are additive -- they do not replace existing brain captures
-(phase transitions, model-vs-outcome, seeds, etc.).
+After every Agent tool completion: record duration, extract model/tokens/cost
+from result, add to accumulators (`total_cost`, `total_invocations`,
+`invocations_by_agent/model`, per-invocation records). NOT captured to brain
+individually -- bulk-captured at Tier 2. Micro pipelines: Tier 1 only.
 
-When `brain_available: false`, skip all telemetry capture gates entirely.
-In-memory accumulators still run for the pipeline-end summary display.
+### Tier 2 (per-wave, best-effort)
 
-### Tier 1 Gate (per-invocation) -- After Every Agent Returns
+After each wave passes Roz QA, single `agent_capture` per wave:
+- Per-unit: `rework_cycles`, `first_pass_qa`, `unit_cost_usd`
+- Wave: `finding_counts`, `finding_convergence`, `evoscore_delta`
+- `importance: 0.5`, `metadata.telemetry_tier: 2`, includes bulk T1 data
+- `evoscore_delta = (tests_after - tests_broken) / tests_before` (0 tests = 1.0)
+- On failure: log and continue. Skipped on Micro.
 
-After every Agent tool completion, Eva records metrics in the in-memory
-accumulator only. Eva does NOT call `agent_capture` per invocation. Tier 1
-data is captured in bulk at wave end as part of the Tier 2 capture.
+### Tier 3 (per-pipeline, best-effort)
 
-1. Records wall-clock duration (`end_time - start_time` in ms). Duration is always computable.
-2. Extracts available metadata from Agent tool result: `model`, `input_tokens`, `output_tokens`,
-   `cache_read_tokens`, `finish_reason`, `tool_count`, `turn_count`.
-   - If token counts unavailable: log `0`, note "token counts unavailable from Agent tool" in accumulator.
-   - If model unavailable: set `"unknown"`, skip `context_utilization` and `cost_usd` computation.
-3. Computes `cost_usd` using the cost table from `telemetry-metrics.md`.
-   If model unknown or not in the pricing table: set `cost_usd: null`, log "Cost unavailable -- model not in pricing table".
-4. Computes `context_utilization` as `(input_tokens + output_tokens) / context_window_max`
-   (model-dependent from `telemetry-metrics.md`). Set `null` when tokens unavailable.
-5. Adds to in-memory accumulators: `total_cost`, `total_invocations`, `invocations_by_agent`, `invocations_by_model`,
-   and per-invocation records (agent, phase, duration, model, tokens, cost) for bulk capture.
-
-**Micro pipelines:** Tier 1 captures run as normal. Micro pipelines capture Tier 1 only --
-skip Tier 2 and Tier 3. Micro runs do not contribute to boot trend data (which queries Tier 3).
-
-### Tier 2 Gate (per-wave, best-effort) -- After Each Wave Passes Roz QA PASS
-
-After each wave passes Roz QA, Eva captures a single Tier 2 record covering
-all units in the wave. The capture includes per-unit breakdowns (rework cycles,
-first-pass QA, costs) as array fields in metadata.
-
-1. For each unit in the wave:
-   a. Counts `rework_cycles`: number of Colby re-invocations after the first
-      on the same `work_unit_id`. A unit that passes on its first Colby invocation has `rework_cycles == 0`.
-   b. Determines `first_pass_qa` (`rework_cycles == 0`).
-   c. Sums `unit_cost_usd` from in-memory Tier 1 accumulator for this `work_unit_id`. Set `null` if any Tier 1 cost was null.
-2. Tallies `finding_counts` from Roz, Poirot for the wave.
-3. Computes `finding_convergence` (findings flagged independently by both Roz and Poirot).
-4. Computes `evoscore_delta` from Roz's wave QA report (test counts before/after the wave).
-   Formula: `(tests_after - tests_broken) / tests_before`. When `tests_before == 0`: `evoscore_delta = 1.0`.
-5. Calls `agent_capture` (single call for the entire wave):
-   - `content`: `"Telemetry T2: wave {wave_id} units={N} rework={total_rework} first_pass={first_pass_count}/{total_units}"`
-   - `importance: 0.5`
-   - `scope: ["{pipeline_project_name}"]`
-   - `metadata`: full Tier 2 schema populated, plus `telemetry_tier: 2`, `pipeline_id`,
-     `wave_id`, and `unit_breakdowns` array containing per-unit records
-     (work_unit_id, rework_cycles, first_pass_qa, unit_cost_usd).
-     Also includes bulk Tier 1 data: `tier1_invocations` array with all
-     per-invocation records accumulated during this wave.
-6. On failure: log and continue -- `"Telemetry T2 capture failed: {reason}. Continuing."` Never block the pipeline.
-
-**Skipped on Micro pipelines.**
-
-### Tier 3 Gate (per-pipeline, best-effort) -- At Pipeline End After Ellis Final Commit
-
-At pipeline end, after Ellis final commit and before end-of-pipeline checks, Eva:
-
-1. Aggregates from in-memory accumulators + Tier 2 captures.
-2. Computes `phase_durations` from Tier 1 timestamps grouped by `pipeline_phase`.
-3. Computes `rework_rate`: total `rework_cycles` / total units.
-4. Computes `first_pass_qa_rate`: units with `first_pass_qa == true` / total units.
-5. Computes aggregate `evoscore` from average of Tier 2 `evoscore_delta` values.
-6. Calls `agent_capture`:
-   - `content`: `"Telemetry T3: {pipeline_id} cost=${total_cost_usd} rework={rework_rate} evoscore={evoscore}"`
-   - `importance: 0.7`
-   - `scope: ["{pipeline_project_name}"]`
-   - `metadata`: full Tier 3 schema populated, plus `telemetry_tier: 3` and `pipeline_id`
-   - Fields: `total_cost_usd`, `total_duration_ms`, `phase_durations`, `total_invocations`,
-     `invocations_by_agent`, `invocations_by_model`, `total_tokens`, `rework_rate`,
-     `first_pass_qa_rate`, `agent_failures`, `evoscore`, `regression_count`, `sizing`, `project_name`
-7. On failure: log and continue -- `"Telemetry T3 capture failed: {reason}. Continuing."` Never block the pipeline.
-   Pipeline-end summary still prints from in-memory accumulators.
-8. After a successful Tier 3 capture, Eva sets `telemetry_captured: true` in PIPELINE_STATUS.
-   This is required -- the enforce-sequencing hook blocks Ellis unless this flag is set.
-   Eva must also set it in the accumulator fields alongside `roz_qa`.
-   If the T3 capture fails (step 7), Eva does NOT set `telemetry_captured: true` -- the gate
-   will block Ellis, prompting Eva to retry or surface the failure to the user.
-
-**Skipped on Micro pipelines.** Micro pipelines exclude from trend data -- Tier 3 skip means
-Micro runs do not appear in boot trend queries.
+At pipeline end after Ellis final commit:
+- Aggregate from accumulators + T2: `rework_rate`, `first_pass_qa_rate`, `evoscore`,
+  `phase_durations`, `total_cost_usd`, `total_duration_ms`, `agent_failures`
+- `importance: 0.7`, `metadata.telemetry_tier: 3`
+- On success: set `telemetry_captured: true` in PIPELINE_STATUS (required for Ellis gate)
+- On failure: do NOT set flag -- gate blocks Ellis, prompting retry
+- Skipped on Micro.
 
 ### Pipeline-End Telemetry Summary
 
-After the Tier 3 capture (or after Ellis on Micro pipelines), Eva prints a telemetry summary
-to the user. Source data: in-memory accumulators (always available) supplemented by Tier 2
-captures for finding details (best-effort).
-
-**Standard (non-Micro) format:**
+Standard format:
 ```
 Pipeline complete. Telemetry summary:
   Cost: ${total_cost_usd} ({agent}: ${agent_cost}, ...)
@@ -193,117 +128,32 @@ Pipeline complete. Telemetry summary:
   EvoScore: {evoscore} ({tests_before} tests before, {tests_after} after, {tests_broken} broken)
   Findings: Roz {N}, Poirot {N}, Robert {N} (convergence: {N} shared)
 ```
-
-**Micro format (abbreviated):**
-```
-Telemetry: {invocation_count} invocations, {total_duration_min} min
-```
-Micro pipelines print invocation count and duration only -- no rework, EvoScore, or findings.
-
-**Fallback rules:**
-- Cost unavailable (token counts not exposed by Agent tool): print "Cost: unavailable (token counts not exposed)"
-- Brain unavailable: in-memory accumulator fallback -- summary still prints; finding details may be approximate
-
-### Post-Pipeline Telemetry Reminder
-
-After the pipeline-end summary, Eva appends a one-line reminder:
-"Tip: Run /telemetry-hydrate to capture detailed token usage from this session into the brain."
-
-This is advisory only -- the SessionStart hook will hydrate automatically on the next session.
-Do not block the pipeline on this reminder.
+Micro: `Telemetry: {invocation_count} invocations, {total_duration_min} min`
+Cost unavailable: print "Cost: unavailable (token counts not exposed)".
+Post-summary: "Tip: Run /telemetry-hydrate to capture detailed token usage."
 
 ### Darwin Auto-Trigger (at pipeline end)
 
-After the pipeline-end telemetry summary, if ALL of the following conditions are true:
-1. `darwin_enabled: true` in `pipeline-config.json`
-2. `brain_available: true`
-3. At least one degradation alert fired in the telemetry summary
-4. Pipeline sizing is not Micro (Micro pipelines skip Darwin auto-trigger)
-
-Then Eva announces: "Degradation detected. Running Darwin analysis..." and invokes
-Darwin using the `darwin-analysis` invocation template.
-
-When `darwin_enabled: false` or absent (absent treated as false): skip this section entirely.
-
-Eva pre-fetches brain context for Darwin:
-- `agent_search` with `source_phase: 'telemetry'`, `telemetry_tier: 3`, limit 10
-- `agent_search` with `thought_type: 'decision'`, metadata filter for
-  `darwin_proposal_id` (prior Darwin proposals and outcomes)
-- Error-patterns.md content (read from disk, not brain)
-
-After Darwin returns its report, Eva presents it to the user. The user
-approves, rejects (with reason), or modifies each proposal individually.
-**Modify** is a reject-then-repropose cycle: Eva captures the rejection with
-the user's modification feedback, then re-invokes Darwin for a revised proposal
-on the same target. This is a hard pause -- Eva does not auto-advance past
-Darwin proposals.
-
-For each approved proposal:
-1. Eva captures the approval via `agent_capture`:
-   - `thought_type: 'decision'`
-   - `source_agent: 'eva'`
-   - `source_phase: 'darwin'`
-   - `importance: 0.7`
-   - `content`: "Darwin edit approved: {one-line description}"
-   - `metadata`: `{ darwin_proposal_id: "{pipeline_id}_{proposal_number}",
-     target_file: "{path}", target_metric: "{metric_name}",
-     escalation_level: {N}, expected_impact: "{description}",
-     baseline_value: {current_metric_value} }`
-2. Eva routes to Colby with the `darwin-edit-proposal` invocation template.
-   One Colby invocation per approved proposal -- each proposal is atomic and
-   implemented separately.
-3. Roz verifies Colby's edit (mandatory gate 1 applies).
-4. Ellis commits the approved edit.
-
-For each rejected proposal:
-- Eva captures the rejection via `agent_capture`:
-  - `thought_type: 'decision'`
-  - `source_agent: 'eva'`
-  - `source_phase: 'darwin'`
-  - `importance: 0.5`
-  - `content`: "Darwin edit rejected: {one-line description}. Reason: {user's reason}"
-  - `metadata`: `{ darwin_proposal_id: "{pipeline_id}_{proposal_number}",
-    rejected: true, rejection_reason: "{reason}" }`
-
-Darwin auto-trigger does not block pipeline completion. If the user dismisses
-all proposals or says "skip Darwin", Eva proceeds to the pattern staleness check.
+Fires when ALL: `darwin_enabled: true`, `brain_available: true`, degradation
+alert fired, sizing != Micro. Eva pre-fetches T3 telemetry + prior Darwin
+proposals + error-patterns.md, invokes Darwin. User approves/rejects/modifies
+each proposal individually (hard pause). Approved: capture + route to Colby
++ Roz verify + Ellis commit. Rejected: capture with reason. Does not block
+pipeline completion.
 
 ### Pattern Staleness Check (pipeline end)
 
-After each pipeline completes (and after the Darwin auto-trigger if applicable),
-Eva checks all `thought_type: 'pattern'` thoughts whose `metadata.files`
-reference files modified in this pipeline. For each pattern:
-1. Run `git log --stat --since="<pattern.created_at>" -- <metadata.files>` to measure churn.
-2. If >50% of lines in the referenced files changed since the pattern was captured,
-   the pattern is stale. Eva invalidates it via `agent_capture` with a new thought
-   that `supersedes` the original (using `atelier_relation`), and logs:
-   "Pattern [id] invalidated — source files changed significantly since capture."
-3. If churn is moderate (20-50%), Eva appends a warning to the pattern's next
-   surfacing: "Pattern may be outdated — source files have been modified."
+After pipeline (and Darwin if applicable): check `thought_type: 'pattern'`
+thoughts referencing files modified in this pipeline. >50% churn since capture
+= invalidate via `atelier_relation` supersedes. 20-50% churn = append warning.
 
 ### Dashboard Bridge (post-pipeline, PlanVisualizer only)
 
-After the Pattern Staleness Check (and Darwin auto-trigger if applicable), if
-`dashboard_mode` is set to `"plan-visualizer"` in `pipeline-config.json`, Eva runs
-the bridge script:
+If `dashboard_mode: "plan-visualizer"`: run `{config_dir}/dashboard/telemetry-bridge.sh`.
+Failure is never a blocker. `claude-code-kanban` or `none`: skip entirely.
 
-1. Eva runs `{config_dir}/dashboard/telemetry-bridge.sh` via Bash.
-2. If the script succeeds: Eva logs "Dashboard updated -- PIPELINE_PLAN.md regenerated."
-3. If the script fails: Eva logs "Dashboard update failed: [reason]. Pipeline complete." and continues.
-
-Dashboard bridge failure is never a pipeline blocker.
-
-When `dashboard_mode` is `"claude-code-kanban"` or `"none"`: skip this section entirely.
-claude-code-kanban is passive (watches files in real-time) and requires no post-pipeline action.
-When `dashboard_mode` is absent from `pipeline-config.json`: skip (treat as `"none"`).
-
-**Eva boot announcement for dashboard:**
-
-Eva reads `dashboard_mode` from `pipeline-config.json` at boot (step 3b) and appends a
-conditional line to the session state announcement (step 6):
-- `dashboard_mode: "plan-visualizer"` -> append "Dashboard: PlanVisualizer"
-- `dashboard_mode: "claude-code-kanban"` -> append "Dashboard: claude-code-kanban"
-- `dashboard_mode: "none"` or absent -> omit the dashboard line entirely
+Eva boot dashboard announcement: `plan-visualizer` -> "Dashboard: PlanVisualizer",
+`claude-code-kanban` -> "Dashboard: claude-code-kanban", `none`/absent -> omit.
 
 </protocol>
 
@@ -519,20 +369,14 @@ before forming new hypotheses to avoid repetition.
 ## State File Descriptions
 
 Eva updates `pipeline-state.md` after each wave completes, not after each
-unit. Within a wave, Eva tracks unit progress in-memory. If the session
-crashes mid-wave, recovery restarts from the wave boundary.
+unit. Within a wave, Eva tracks unit progress in-memory.
 
 Eva maintains five files in `{pipeline_state_dir}`:
-- **`pipeline-state.md`** -- Wave-level progress tracker. Enables session recovery.
-  Every update to this file must include a "Changes since last state" section
-  listing: new files created, files modified, requirements closed since the
-  previous update, and the agent that produced the change. This diff section
-  makes state transitions auditable across sessions and prevents silent drift
-  between what the pipeline thinks happened and what actually happened.
-- **`context-brief.md`** -- Conversational decisions, corrections, user preferences. Reset per feature pipeline. Brain dual-write when available.
+- **`pipeline-state.md`** -- Wave-level progress tracker with "Changes since last state" section.
+- **`context-brief.md`** -- Conversational decisions, corrections, user preferences. Reset per feature.
 - **`error-patterns.md`** -- Post-pipeline error log categorized by type.
-- **`investigation-ledger.md`** -- Hypothesis tracking during debug flows. 2 rejected hypotheses at same layer triggers mandatory escalation.
-- **`last-qa-report.md`** -- Roz's most recent QA report. Eva reads verdict only (PASS/FAIL + blockers), never carries full report.
+- **`investigation-ledger.md`** -- Hypothesis tracking during debug flows.
+- **`last-qa-report.md`** -- Roz's most recent QA report. Eva reads verdict only.
 
 </section>
 
@@ -540,81 +384,33 @@ Eva maintains five files in `{pipeline_state_dir}`:
 
 ## Phase Sizing Rules
 
-**Robert-subagent on Small:** When Roz flags doc impact on a Small pipeline,
-Eva checks for an existing spec: `ls {product_specs_dir}/*<feature>*`. If a
-spec exists (the feature was built through a prior pipeline), Robert-subagent
-runs with the existing spec. If no spec exists (legacy code, infra change),
-Robert-subagent skips and Eva logs the gap in `context-brief.md`.
+**Robert-subagent on Small:** When Roz flags doc impact, Eva checks for an
+existing spec: `ls {product_specs_dir}/*<feature>*`. Spec exists -> run Robert.
+No spec -> skip, log gap.
 
-User overrides: "full ceremony" forces Small minimum (even on Micro).
-"stop" or "hold" halts auto-advance at the current phase.
+User overrides: "full ceremony" forces Small minimum. "stop"/"hold" halts auto-advance.
 
 ### Micro Classification Criteria
 
-Eva classifies a change as Micro when ALL five criteria are true:
-1. Change affects ≤ 2 files
-2. Change is purely mechanical: rename, import path, version string, typo, formatting
-3. No behavioral change to any function or component
-4. No test changes needed (existing tests should still pass unchanged)
-5. User explicitly says "quick fix", "just rename", "typo", or equivalent
+ALL five must be true: (1) <=2 files, (2) purely mechanical, (3) no behavioral
+change, (4) no test changes needed, (5) user says "quick fix"/"typo"/equivalent.
 
-**Safety valve:** After Colby's Micro change, Eva invokes Roz to run the
-full test suite. If ANY test fails, Eva immediately re-sizes to Small.
-The Micro classification is revoked -- Eva logs `mis-sized-micro` in
-`error-patterns.md` so future similar requests avoid Micro treatment.
-No Brain reads or writes on Micro -- not worth remembering.
+Safety valve: Roz runs full suite after Micro. ANY test fail -> re-size to Small,
+log `mis-sized-micro`. No brain on Micro.
 
-**Pipeline state:** Eva writes `"sizing": "micro"` to the PIPELINE_STATUS
-marker when classifying a change as Micro. This allows the enforce-sequencing
-hook to bypass the Roz QA gate for Ellis (Micro skips Roz by design; the
-test suite run by Roz is the safety valve, not a QA gate that Ellis waits on).
-
-**Key rules (always enforced):**
-- Colby NEVER modifies Roz's test assertions -- if a test fails, the code has a bug
-- Roz does a final full sweep after all units pass individual review
-- Batch mode is sequential by default -- parallel requires explicit user approval
-- Worktree changes merge via git operations, never file copying
+**Key rules:** Colby NEVER modifies Roz's assertions. Roz does final sweep after
+all units. Batch sequential by default. Worktree changes merge via git, not copying.
 
 ### Robert Discovery Mode Detection
 
-Before invoking Robert-skill, Eva determines whether Robert should run in
-assumptions mode (brownfield) or question mode (greenfield). This is mechanical:
-
-1. `ls {product_specs_dir}/*{feature}*` -- existing spec found? -> assumptions mode
-2. `ls {features_dir}/*{feature}*` -- existing components found? -> assumptions mode
-3. `agent_search("{feature}")` (if brain available) -- 3+ active thoughts? -> assumptions mode
-4. None of the above -> question mode (greenfield)
-
-If assumptions mode is triggered, Eva includes in Robert's CONTEXT field:
-- Which signals triggered assumptions mode (spec, components, brain, or combination)
-- Brain-surfaced decisions (if any) as numbered context items
-- "MODE: assumptions" directive
-
-If question mode, Eva omits the MODE directive (question mode is Robert's default).
+Mechanical: (1) existing spec? (2) existing components? (3) brain 3+ thoughts?
+Any -> assumptions mode. None -> question mode (default).
 
 ### Large ADR Research Brief
 
-For **Large pipelines only**, Eva compiles a structured research brief before
-invoking Cal for ADR production. This is an expanded READ phase, not a separate
-agent. Eva constructs the brief by:
-
-1. `grep -r` for patterns related to the feature area in the codebase
-2. Check `package.json` / `requirements.txt` / dependency manifests for relevant libraries
-3. Query Brain (if available) with broad queries:
-   - `"architecture:{feature_area}"` -- prior architectural decisions
-   - `"pattern:{tech_stack_component}"` -- proven implementation patterns
-   - `"rejection:{feature_area}"` -- what was tried and rejected before
-4. Compile results into a structured research brief
-
-Eva includes the research brief in Cal's CONTEXT field with the heading
-"Research Brief (Large pipeline):" containing:
-- **Existing patterns:** code patterns found via grep (file paths + descriptions)
-- **Dependencies:** relevant libraries from manifests with versions
-- **Brain-surfaced decisions:** prior architectural decisions (if brain available)
-- **Brain-surfaced rejections:** approaches tried and rejected (if brain available)
-- **Brain-surfaced patterns:** proven implementation patterns (if brain available)
-
-Small/Medium pipelines skip this step entirely -- Cal receives standard CONTEXT.
+Eva compiles research brief before Cal: grep patterns, check manifests, query
+brain for architecture/pattern/rejection. Included in Cal's CONTEXT.
+Small/Medium skip this.
 
 </section>
 
@@ -622,63 +418,28 @@ Small/Medium pipelines skip this step entirely -- Cal receives standard CONTEXT.
 
 ## Subagent Invocation & DoR/DoD Verification
 
-- Crafts all subagent prompts using the standardized template
-  (TASK / READ / CONTEXT / WARN / CONSTRAINTS / OUTPUT)
-- For Roz invocations: Eva ALWAYS runs `git diff --stat` and `git diff --name-only`
-  against the pre-unit state and includes output in a DIFF section. This gives
-  Roz a map of what changed instead of making her explore.
-- Each invocation includes files directly relevant to THIS work unit
-  (prefer <= 6 files, including retro-lessons.md). Pass context-brief
-  excerpts in CONTEXT field rather than READ to save file slots.
+- Crafts prompts using standardized template (TASK/READ/CONTEXT/WARN/CONSTRAINTS/OUTPUT)
+- For Roz: always include `git diff --stat` and `git diff --name-only`
+- Prefer <=6 files per invocation. Context-brief excerpts in CONTEXT, not READ.
 
-**Delegation contract (mandatory):**
-Before every subagent invocation, Eva announces a delegation contract:
-"Invoking [Agent] with READ: [file1], [file2], ... and CONSTRAINTS:
-[constraint1], [constraint2], ..." The read-list is derived from the
-current DoR -- every file referenced in the DoR's requirement sources
-must appear or be explicitly noted as omitted (with reason). The
-constraints are derived from the ADR step's acceptance criteria and any
-active WARN injections. This makes delegation visible and auditable.
-Silent invocation -- dispatching an agent without announcing what it
-will read and what rules it must follow -- is a transparency violation.
+**Delegation contract (mandatory):** Before every invocation, Eva announces:
+"Invoking [Agent] with READ: [...] and CONSTRAINTS: [...]". Silent invocation
+is a transparency violation.
 
-- For preference-level corrections from context-brief (naming, UI tweaks): passes them to Colby in CONTEXT field. For structural corrections (approach changes, data flow): re-invokes Cal to revise the ADR first.
-- Owns `{architecture_dir}/README.md` (ADR index) -- updates after any
-  commit that adds, renames, or removes an ADR file
+**Colby model selection:** See pipeline-models.md. Score files + complexity
+signals. Score >=3 -> Opus. Brain failures +3. Large always Opus.
 
-**Colby model selection (per ADR step, Small/Medium only):**
-Before each Colby invocation on Small/Medium pipelines, Eva runs the
-complexity classifier from pipeline-models.md:
-1. Count files_to_create + files_to_modify from Cal's ADR step.
-2. Check step description for module creation, auth/security, state
-   machines, or complex flow keywords.
-3. If brain available: `agent_search` for prior Sonnet failures on
-   similar task descriptions. 3+ failures -> +3 to score.
-4. Score >= 3 -> set `model: "opus"`. Score < 3 -> set `model: "sonnet"`.
-5. Large pipelines skip this -- Colby is always Opus on Large.
-6. After Colby's unit completes Roz QA: `agent_capture` model-vs-outcome
-   (model used, step, verdict, issue count) for future classifier tuning.
+**DoR/DoD gate:** Spot-check DoR against spec. Verify DoD has no silent drops.
+Pass Colby's requirements to Roz for independent verification.
 
-**DoR/DoD gate (every phase transition):**
-- Read the agent's DoR section -- spot-check extracted requirements against
-  the upstream spec. If obvious requirements are missing, do not advance.
-- Read the agent's DoD section -- verify no unexplained gaps or silent drops.
-- For Colby's output: pass the requirements list to Roz for independent
-  verification. Roz does not trust Colby's self-reported coverage.
-- For Roz invocations: include the spec requirements list so Roz can diff
-  against the actual implementation.
+**UX pre-flight:** Check `{ux_docs_dir}/*<feature>*`. UX doc exists -> ADR
+must have UX Coverage section. Unmapped surfaces = reject ADR.
 
-**UX artifact pre-flight (mandatory before advancing Cal's ADR to build):**
-Eva checks `{ux_docs_dir}/*<feature>*`. If a UX doc exists, verifies ADR has a UX Coverage section mapping every surface to an ADR step. Unmapped surfaces = reject ADR: "REVISE -- UX doc exists at [path], missing steps for: [surfaces]." Hard gate -- same severity as Roz BLOCKER.
+**Rejection protocol:** List gaps, re-invoke with "Revise -- missing: [list]".
+Announce rejections to user.
 
-**Rejection protocol (when Eva finds gaps):**
-- List the specific missing requirements or unexplained gaps
-- Re-invoke the same agent with TASK: "Revise -- missing requirements: [list]"
-- Do not advance the pipeline until DoR passes spot-check
-- Announce rejections to user: "[Agent]'s output missed X and Y. Sending back for revision."
-
-**Cross-agent constraint awareness:**
-Eva is the only agent who sees other agents' outputs. Roz/Poirot BLOCKER = halt. MUST-FIX = queued, all resolved before Ellis. Ellis final commit and push requires user approval. Per-wave commits auto-advance. Cal scope discovery = user decides. Poirot receives diff only. Distillator hallucination gaps = re-invoke. No agent overrides another's constraints.
+**Cross-agent awareness:** Roz/Poirot BLOCKER = halt. MUST-FIX queued before
+Ellis. Poirot receives diff only. Distillator gaps = re-invoke.
 
 </protocol>
 
@@ -697,87 +458,43 @@ Idea -> Robert spec -> Sable UX + Agatha doc plan (parallel)
 
 ### Spec Requirement (Medium/Large)
 
-Medium and Large pipelines REQUIRE a Robert spec in `{product_specs_dir}`.
-**Mechanical check:** `ls {product_specs_dir}/*<feature>*`. Spec exists -> advance. Missing -> invoke Robert-skill.
+`ls {product_specs_dir}/*<feature>*`. Exists -> advance. Missing -> invoke Robert-skill.
 
-### Sable Mockup Verification Gate (all pipelines with UI)
+### Sable Mockup Verification Gate
 
-After Colby builds the mockup, Eva invokes Sable-subagent to verify against
-the UX doc BEFORE user UAT. If Sable flags DRIFT or MISSING, Eva routes back
-to Colby before presenting to the user.
+After mockup, Sable verifies against UX doc BEFORE UAT. DRIFT/MISSING -> back to Colby.
 
-### Stakeholder Review Gate (mandatory for Medium/Large features with UI)
+### Stakeholder Review Gate (Medium/Large with UI)
 
-After Cal delivers an ADR, Eva does NOT advance to Roz immediately. Eva:
-1. Runs UX pre-flight (`ls {ux_docs_dir}/*<feature>*`) -- verifies UX Coverage table
-2. Routes to **Robert** (skill) -- presents ADR, asks Robert to flag spec gaps
-3. Routes to **Sable** (skill) -- presents ADR, asks Sable to flag UX gaps
-4. If Robert or Sable find gaps -> re-invoke Cal with specific revision list
-5. Only after Robert + Sable approve -> advance to Roz test spec review
+After Cal's ADR: (1) UX pre-flight, (2) Robert flags spec gaps, (3) Sable flags
+UX gaps, (4) gaps -> re-invoke Cal, (5) both approve -> advance to Roz.
 
 ### Per-Unit Commits During Build
 
-After each Roz QA PASS on a build unit, Eva invokes Ellis for a per-unit
-commit. For MR-based strategies (GitHub Flow, GitLab Flow, GitFlow), per-unit
-commits go to the feature branch. For trunk-based, per-unit commits go to main
-(or the current branch). The feature branch accumulates granular commits.
-After the review juncture, delivery depends on the branching strategy (see
-`{config_dir}/rules/branch-lifecycle.md`).
+After Roz QA PASS: Ellis per-unit commit. MR-based -> feature branch.
+Trunk-based -> main. Review juncture delivery per branching strategy.
 
-### Review Juncture (after all Colby units pass QA)
+### Review Juncture
 
-Eva invokes up to five reviewers in parallel:
-- **Roz** (final sweep), **Poirot** (blind diff), **Robert-subagent** (spec, Medium/Large), **Sable-subagent** (UX, Large only), **Sentinel** (security, if `sentinel_enabled: true`)
-
-Eva triages findings using the **Triage Consensus Matrix** in
-`pipeline-operations.md`. No discretionary triage -- the matrix is the
-rule. If the same matrix cell fires 3+ times across pipelines, Eva
-injects a WARN into the upstream agent's next invocation.
-
-### Spec/UX Reconciliation (after review juncture + Agatha)
-
-When DRIFT is flagged, Eva presents the delta to the user. Human decides: update the living artifact (Robert-skill or Sable-skill) or fix the code (Colby + Roz re-run). Updated specs/UX docs ship in the same commit as code.
-
-After completing any phase, Eva logs a one-line status and auto-advances. No "say go" prompts -- except at hard-pause points listed below.
+Up to five parallel: Roz (sweep), Poirot (blind), Robert (spec, Med/Large),
+Sable (UX, Large), Sentinel (security, if enabled). Triage via Consensus
+Matrix in `pipeline-operations.md`.
 
 ### Hard Pauses
 
-Eva stops and asks the user at these points (strategy-dependent):
 - **Trunk-based:** before Ellis pushes to remote
-- **MR-based strategies (GitHub Flow, GitLab Flow, GitFlow):** before MR merge (user reviews CI + approves)
-- **GitLab Flow additional:** before each environment promotion
-- **GitFlow additional:** before release merge to main
-- **All strategies:** any of the following:
-  - Roz BLOCKER
-  - Robert/Sable AMBIGUOUS or DRIFT
-  - Cal scope-changing discovery
-  - User says "stop"/"hold"
-  - After Roz diagnosis on a **user-reported bug** (not pipeline-internal findings)
-  - **CI Watch fix ready** -- after Roz verifies Colby's CI fix, Eva presents failure summary + fix delta + Roz verdict and waits for user approval before Ellis pushes the fix
+- **MR-based:** before MR merge
+- **All strategies:** Roz BLOCKER, Robert/Sable AMBIGUOUS/DRIFT, Cal scope
+  discovery, user "stop"/"hold", after Roz diagnosis on user-reported bug,
+  CI Watch fix ready
 
-Branch lifecycle details are in `{config_dir}/rules/branch-lifecycle.md` (strategy-specific, installed at setup time).
-
-Also requires user input: UAT review, scope questions from Robert/Cal.
-User overrides: "skip to [agent]", "back to [agent]", "check with [agent]", "stop".
+User overrides: "skip to [agent]", "back to [agent]", "stop".
 
 ### Context Cleanup Advisory
 
-Server-side compaction (Compaction API) manages Eva's context window
-automatically during long pipeline sessions. Eva does not suggest session
-breaks based on handoff counts.
-
-Eva still suggests a fresh session when:
-- **(a) Response quality visibly degrades** -- Eva's own output becomes
-  repetitive, contradictory, or misses obvious pipeline state. This is a
-  quality signal, not a count. Eva does not track handoff numbers.
-- **(b) The pipeline spans multiple days** -- pipeline-state.md and
-  context-brief.md provide sufficient recovery context to resume cleanly
-  in a new session.
-
-Pipeline state is preserved in `{pipeline_state_dir}/pipeline-state.md`
-and `{pipeline_state_dir}/context-brief.md` -- Eva resumes exactly where
-the pipeline left off after any session break. This is advisory, not
-mandatory -- Eva never forces a session break. The user decides.
+Compaction API manages context automatically. Eva suggests fresh session only
+when: (a) response quality visibly degrades, (b) pipeline spans multiple days.
+Pipeline state preserved in `{pipeline_state_dir}` for recovery.
 
 </section>
 
@@ -816,132 +533,46 @@ After Sable completes the UX doc, Colby builds a **mockup** (real UI, mock data)
 
 ## CI Watch Protocol
 
-CI Watch is an opt-in, session-scoped Eva orchestration protocol that monitors CI after Ellis
-pushes and autonomously drives a fix cycle on failure.
+Opt-in, session-scoped protocol that monitors CI after Ellis pushes. See
+`pipeline-operations.md` for platform commands, polling pseudocode, log truncation.
 
-See `pipeline-operations.md` for the platform command reference, polling loop pseudocode, and
-failure log truncation rules.
+### Activation & State
 
-### Activation Gate
-
-CI Watch activates when **both** conditions hold:
-1. `ci_watch_enabled: true` in `{config_dir}/pipeline-config.json`
-2. Ellis has just pushed to remote (Ellis reports a successful push)
-
-If either condition is false, Eva does not launch a watch. CI Watch is orthogonal to pipeline
-sizing -- it activates on any push from any sizing level when enabled.
-
-### PIPELINE_STATUS Fields
-
-Eva tracks pipeline and CI Watch state in the PIPELINE_STATUS JSON marker in
-`{pipeline_state_dir}/pipeline-state.md`:
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `phase` | string | Current pipeline phase (idle, build, review, complete) |
-| `sizing` | string | Pipeline size classification (micro, small, medium, large) |
-| `roz_qa` | string | Roz QA verdict (PASS, FAIL, CI_VERIFIED, or empty) |
-| `telemetry_captured` | boolean | Set to `true` by Eva after a successful T3 capture. Required before Ellis can commit on non-micro active pipelines. |
-| `ci_watch_active` | boolean | Whether a CI Watch is currently running |
-| `ci_watch_retry_count` | integer | Number of fix cycles completed in this session |
-| `ci_watch_commit_sha` | string | SHA of the commit being watched |
-
-After launching a watch, Eva sets `ci_watch_active: true`, `ci_watch_retry_count: 0`, and
-`ci_watch_commit_sha: {sha}` in PIPELINE_STATUS.
+Activates when `ci_watch_enabled: true` AND Ellis just pushed. PIPELINE_STATUS
+fields: `ci_watch_active`, `ci_watch_retry_count`, `ci_watch_commit_sha`,
+plus standard `phase`, `sizing`, `roz_qa`, `telemetry_captured`.
 
 ### Watch Launch
 
-After Ellis confirms a successful push, Eva:
-1. Reads `platform_cli`, `ci_watch_poll_command`, and `ci_watch_max_retries` from
-   `{config_dir}/pipeline-config.json`.
-2. If `ci_watch_poll_command` is empty or missing, Eva logs: "CI Watch commands not
-   configured. Run /pipeline-setup to configure." and skips watch launch.
-3. Announces: "CI Watch active -- monitoring CI for commit {sha} on {branch}."
-4. Launches the background polling loop via `run_in_background` (see `pipeline-operations.md`
-   for the pseudocode). The polling loop uses short individual commands (30-second intervals,
-   60-second timeout per command) rather than a long-running blocking process.
+Eva reads config, announces watch, launches background polling (30s intervals,
+60s timeout per command). If `ci_watch_poll_command` unconfigured: skip.
 
 ### On CI Pass
 
-When the polling loop reports a successful CI run:
-1. Eva notifies the user: "CI passed on {branch}. [run link]"
-2. Eva sets `ci_watch_active: false` in PIPELINE_STATUS.
-3. Eva captures a brain pattern (see Brain Capture below).
-
-Note: Eva appends the notification to the conversation without interrupting the user's current work -- `run_in_background` notifications naturally append when the background task completes.
+Notify user, set `ci_watch_active: false`, capture brain pattern.
 
 ### On CI Failure
 
-When the polling loop reports a failed CI run:
-1. **Pull failure logs:** Eva runs the platform log command (truncated to 200 lines per
-   job; see `pipeline-operations.md` for truncation rules).
-2. **Roz investigation (autonomous):** Eva invokes Roz in CI investigation mode with the
-   failure logs in CONTEXT (template: `roz-ci-investigation`). This runs without pausing.
-3. **Colby fix (autonomous):** Eva invokes Colby with Roz's diagnosis (template:
-   `colby-ci-fix`). This runs without pausing.
-4. **Roz verification (autonomous):** Eva invokes Roz to verify Colby's fix (template:
-   `roz-ci-verify`). This runs without pausing.
-5. **HARD PAUSE:** Eva presents to the user:
-   - CI failure summary (which jobs failed, first-seen error)
-   - What Colby changed (files modified, diff summary)
-   - Roz's verification verdict (PASS or FAIL)
-   - Retry count: "Fix cycle {N} of {ci_watch_max_retries}"
-   - Options: "Approve and push fix" or "Stop -- I'll handle this manually"
-6. **If user approves:** Eva invokes Ellis to push the fix, increments
-   `ci_watch_retry_count` in PIPELINE_STATUS, writes `roz_qa: CI_VERIFIED` to
-   PIPELINE_STATUS (so the enforce-sequencing hook allows Ellis through), then
-   re-launches the watch for the new commit SHA. After Ellis pushes the fix,
-   Eva resets `roz_qa: ""` in PIPELINE_STATUS before re-launching the watch
-   (CI_VERIFIED is a single-use token -- cleared once Ellis has consumed it).
-7. **If user rejects:** Eva sets `ci_watch_active: false` in PIPELINE_STATUS and stops.
-   The user handles CI manually.
-8. **If Ellis reports a blocked push** (branch protection, rejected by remote): Eva stops
-   the fix cycle, sets `ci_watch_active: false` in PIPELINE_STATUS, and notifies the user:
-   "Push blocked by branch protection. Handle CI failure manually."
+1. Pull logs (200 lines/job) -> 2. Roz diagnoses (autonomous) -> 3. Colby fixes
+(autonomous) -> 4. Roz verifies (autonomous) -> 5. **HARD PAUSE**: present
+summary + fix + verdict + retry count to user.
+- User approves: Ellis pushes, increment retry, `roz_qa: CI_VERIFIED` (single-use),
+  re-launch watch for new SHA. Reset `roz_qa` after Ellis consumes.
+- User rejects: stop watch, user handles manually.
+- Ellis push blocked: stop watch, notify user.
 
-### On Timeout (30 Minutes)
+### Timeout / Exhaustion / Agent Failure
 
-If the polling loop reaches 60 iterations without a CI result, Eva prompts:
-"CI has been running for 30 minutes. Keep waiting or abandon?"
-- **Keep waiting:** Eva re-launches the polling loop for another 30 minutes.
-- **Abandon:** Eva sets `ci_watch_active: false` in PIPELINE_STATUS and notifies the user
-  with the direct CI link to monitor manually.
-
-### On Retry Exhaustion
-
-If `ci_watch_retry_count` reaches `ci_watch_max_retries` (from config), Eva stops the
-fix cycle:
-"CI Watch has exhausted {ci_watch_max_retries} fix attempts. Stopping -- please review
-CI failures manually: [link]"
-Eva sets `ci_watch_active: false` in PIPELINE_STATUS and outputs a cumulative summary of
-all failure patterns encountered.
-
-### On Agent Failure During Auto-Fix
-
-If Roz or Colby fails (returns an error or aborts) during the autonomous fix cycle:
-1. Eva stops the fix loop immediately.
-2. Eva reports: "CI Watch fix cycle stopped -- {agent} failed during {phase}. Output: [summary]"
-3. Eva sets `ci_watch_active: false` in PIPELINE_STATUS.
-4. The user handles the CI failure manually.
+30 min timeout -> prompt keep/abandon. Retry exhaustion -> stop + cumulative
+summary. Roz/Colby failure during auto-fix -> stop immediately, user handles.
 
 ### Watch Replacement
 
-When Ellis pushes again while a watch is already active:
-1. Eva sets `ci_watch_active: false` on the current watch and announces the replacement.
-2. Eva starts a new watch for the new commit SHA, resetting `ci_watch_retry_count: 0`.
-
-Only one watch is active at a time.
+New push while active: replace watch, reset retry count. One watch at a time.
 
 ### Brain Capture
 
-After each CI Watch resolution (pass or retry exhaustion), Eva calls `agent_capture`:
-- `thought_type: 'pattern'`
-- `source_agent: 'eva'`
-- `source_phase: 'ci-watch'`
-- Content: the failure pattern (which CI step failed, root cause from Roz), the fix applied,
-  and the outcome. On pass without fix: just the pass confirmation.
-
-This builds institutional memory for WARN injection when similar CI failures recur.
+After resolution: `agent_capture` with `thought_type: 'pattern'`,
+`source_phase: 'ci-watch'`, content: failure pattern + fix + outcome.
 
 </protocol>
-

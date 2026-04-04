@@ -264,7 +264,7 @@ to complete before starting the next. Current behavior -- no change.
 **Agent Teams (when `agent_teams_available: true`, experimental):**
 Eva creates one Teammate (Colby instance in a dedicated worktree) per wave
 unit using `TaskCreate`. Each Teammate receives a structured task description
-(see `invocation-templates.md`, template `agent-teams-task`). Eva then waits
+(see Agent Teams Task Format in this file). Eva then waits
 for TaskCompleted events from all Teammates in the wave.
 
 Teammate task contract format:
@@ -332,10 +332,45 @@ Colby's persona from `{config_dir}/agents/colby.md` and project rules from
 the `enforce-colby-paths.sh` per-agent hook and have full write access to the
 codebase (same as a standard Colby subagent invocation).
 
+### Agent Teams Task Format
+
+Eva writes this to `TaskCreate` for each Teammate. This is NOT an Agent tool
+invocation -- it is the task description format for the Claude Code task system.
+
+```
+ADR: ADR-NNNN Step N -- [step description]
+Wave: N of M, Unit: K of L
+maxTurns: 25
+
+Files to create:
+- [path/to/new-file.ext]
+
+Files to modify:
+- [path/to/existing-file.ext]
+
+Test files:
+- [path/to/test-file.ext]
+
+Acceptance criteria (from ADR step):
+- [criterion 1]
+- [criterion N]
+
+Constraints:
+- Run lint after implementation: {lint_command}
+- Do NOT run the full test suite -- Eva runs it after merge
+- Do NOT commit -- Eva merges and routes to Ellis
+- Do NOT modify files outside your assigned scope above
+- If a dependency is missing, mark task as blocked
+- Make Roz's pre-written tests pass -- do not modify her assertions
+- Zero TODO/FIXME/HACK in delivered code
+```
+
+`maxTurns: 25` is the default (retro #004). Eva processes `TaskCompleted`
+events sequentially (retro #003). Blocked tasks fall back to sequential Colby.
+
 ### Task Lifecycle
 
-1. Eva creates one task per wave unit via `TaskCreate` with a structured
-   task description (see `invocation-templates.md`, template `agent-teams-task`).
+1. Eva creates one task per wave unit via `TaskCreate` with the format above.
 2. Teammate instances pick up tasks and execute the build units.
 3. Each Teammate marks its task complete via `TaskUpdate` when done.
 4. `TaskCompleted` events fire on Eva (Team Lead). Eva processes them
