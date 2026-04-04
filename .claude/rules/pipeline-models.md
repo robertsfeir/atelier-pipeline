@@ -5,7 +5,7 @@ paths:
 
 # Pipeline Model Selection (Mechanical -- Eva Does Not Choose)
 
-Loads automatically when Eva reads `docs/pipeline/` files. Model
+Loads automatically when Eva reads `{pipeline_state_dir}/` files. Model
 assignment is determined by the agent, the pipeline sizing, and the universal
 scope classifier. Eva sets the model parameter in every Agent tool invocation
 by looking up the tables below. There is no discretion, no judgment call, no
@@ -22,8 +22,8 @@ model selection at invocation time.
 
 | Agent | Micro | Small | Medium | Large |
 |-------|-------|-------|--------|-------|
-| **Cal** | _(skipped)_ | _(skipped)_ | Opus | Opus |
-| **Colby** | Haiku | Sonnet | Opus | Opus |
+| **Cal** | _(skipped)_ | _(skipped)_ | Opus | Sonnet (classifier) |
+| **Colby** | Haiku | Sonnet | Opus | Sonnet (classifier) |
 | **Agatha** | _(skipped)_ | _(per doc type, Roz doc-impact trigger)_ | _(per doc type)_ | _(per doc type)_ |
 | **Ellis** | Haiku | Haiku | Haiku | Haiku |
 
@@ -62,10 +62,9 @@ scope classifier may promote any of these to Opus.
 
 ## Universal Scope Classifier
 
-Eva scores EVERY agent invocation (not just Colby) on Small and Medium
+Eva scores EVERY agent invocation (not just Colby) on Small, Medium, and Large
 pipelines before invoking. The score determines whether the agent gets promoted
-from its base model to Opus. Large pipelines skip the classifier — all agents
-run at Opus. Distillator is always exempt (Haiku regardless).
+from its base model to Opus. Distillator is always exempt (Haiku regardless).
 
 ### Scoring Signals (apply to all agents)
 
@@ -78,9 +77,10 @@ run at Opus. Distillator is always exempt (Haiku regardless).
 | Task involves state machine or complex flow | +2 |
 | Task involves new module/service creation | +2 |
 | Task is mechanical (rename, format, config) | -2 |
+| Pipeline sizing is Large | +1 |
 | Brain shows Sonnet failures on similar tasks for this agent | +3 |
 
-**Promotion threshold: Score >= 3 → Opus. Score < 3 → base model.**
+**Promotion threshold: Score >= 4 → Opus. Score < 4 → base model. Score <= -2 → Haiku (mechanical demotion).**
 
 ### Agent-Specific Overrides (applied on top of universal score)
 
@@ -120,17 +120,17 @@ the full roster to surface Sonnet-failure patterns per agent.
    invoke an agent at a model that does not match the classifier result, that
    is a configuration error — same severity class as invoking Poirot with spec
    context. The universal scope classifier (above) may promote any agent to
-   Opus on Small/Medium pipelines. This is still mechanical — the classifier
+   Opus on any pipeline. This is still mechanical — the classifier
    score determines the model, not Eva's judgment.
 2. **Explicit in every invocation.** The model parameter MUST be set explicitly
    in every Agent tool invocation. No relying on defaults. Omitting the model
    parameter is a violation.
 3. **Ambiguous sizing defaults UP.** If Eva has not yet confirmed the pipeline
    sizing (Small/Medium/Large), she MUST use the higher model tier for all
-   size-dependent agents until sizing is confirmed. Concretely: Colby gets
-   Opus, Cal gets Opus, and all base-model agents are treated as Large (Opus,
-   classifier skipped). Once sizing is confirmed, subsequent invocations use
-   the correct tier.
+   size-dependent agents until sizing is confirmed. Concretely: Colby and Cal
+   get Opus (ambiguity = assume complex), and all base-model agents run the
+   classifier with the Large +1 signal applied. Once sizing is confirmed,
+   subsequent invocations use the correct tier.
 4. **Sizing changes propagate immediately.** If Eva re-sizes a pipeline
    mid-flight (e.g., Small escalates to Medium after discovering scope), all
    subsequent invocations use the new sizing's model assignments. Already-
