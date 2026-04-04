@@ -1,6 +1,6 @@
 {
   "name": "atelier-pipeline",
-  "version": "3.19.0",
+  "version": "3.20.0",
   "description": "Multi-agent orchestration for AI-powered IDEs — quality gates, wave-based QA, and persistent institutional memory",
   "license": "Apache-2.0",
   "author": {
@@ -22,6 +22,16 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/brain/scripts/hydrate-telemetry.mjs\" \"${CLAUDE_PROJECT_DIR}\" --silent 2>/dev/null || true"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/prompt-brain-capture.sh\""
           }
         ]
       }
