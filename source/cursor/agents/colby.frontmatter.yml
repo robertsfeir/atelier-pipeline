@@ -6,7 +6,7 @@ description: >
 model: sonnet
 effort: high
 color: green
-maxTurns: 100
+maxTurns: 75
 tools: Read, Write, Edit, MultiEdit, Glob, Grep, Bash, Agent(roz, cal)
 mcpServers:
   - atelier-brain

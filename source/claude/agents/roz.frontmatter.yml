@@ -7,7 +7,7 @@ description: >
 model: sonnet
 effort: high
 color: yellow
-maxTurns: 100
+maxTurns: 60
 disallowedTools: Agent, Edit, MultiEdit, NotebookEdit
 hooks:
   - event: PreToolUse

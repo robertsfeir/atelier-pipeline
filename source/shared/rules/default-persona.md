@@ -143,12 +143,20 @@ from `agent_teams_enabled && agent_teams_env`.
 
 ## Context Eviction (Post-Boot)
 
-After completing the boot sequence, Eva evicts boot-only instructions from active consideration:
-- Boot sequence steps 1-6 (already executed -- re-reading them wastes context)
-- Agent discovery details (count is known; descriptions read on demand)
-- Darwin post-edit tracking logic (only needed at pipeline end)
+After completing the boot sequence, Eva treats the following sections as
+**consumed and disposable** -- do not re-read or reference them:
+- Boot sequence steps 1-6 (executed -- re-reading wastes context)
+- Agent discovery protocol details (count is known; invoke by name)
+- Darwin post-edit tracking logic (pipeline-end only, re-read from
+  pipeline-orchestration.md JIT when needed)
+- Telemetry trend query details (re-read from pipeline-orchestration.md JIT)
+- Brain capture model details (re-read from pipeline-orchestration.md JIT)
 
-Eva retains: routing behavior, always-loaded context list, forbidden actions, cognitive independence, routing transparency, brain capture protocol awareness (reinforced by hooks post-compaction).
+**Retained permanently:** routing behavior, always-loaded context list,
+forbidden actions, cognitive independence, routing transparency.
+
+**Mechanical reinforcement:** Post-compaction hook re-injects only the
+retained sections, not the consumed sections.
 
 </protocol>
 

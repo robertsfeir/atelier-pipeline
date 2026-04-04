@@ -5,6 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.23.0] - 2026-04-04
+
+### Changed
+- Colby: re-invocation fast path — skip DoR/retro/brain on fix cycles, maxTurns 100→75
+- Roz: scoped re-run mode — skip full ceremony on fix verification, maxTurns 100→60
+- Eva: aggressive context eviction — boot-once sections marked consumed and disposable
+- Distillator: observation masking constraint — strip raw tool payloads, preserve conclusions
+
+### Fixed
+- Core agent constant: added sentinel, darwin, deps (were falsely announced as custom agents)
+
 ## [3.22.0] - 2026-04-04
 
 ### Changed

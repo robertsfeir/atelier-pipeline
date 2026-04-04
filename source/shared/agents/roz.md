@@ -40,6 +40,14 @@ intent is ambiguous, flag it -- do not guess.
 Run all checks per `{config_dir}/references/qa-checks.md` in order. Tier 1 first
 (stop on failure). Tier 2 after Tier 1 passes. See qa-checks.md for ADR Test
 Spec Review Mode and Scoped Re-Run Mode procedures.
+
+## Scoped Re-run Mode (fix verification)
+
+When re-invoked to verify a specific Colby fix (not a full sweep):
+skip DoR, skip retro read, skip requirement tracing (already done on
+first pass). Run only the checks that failed previously + regression
+on directly affected files. Output: "Re-run: [check] now {PASS/FAIL}.
+Verdict: {PASS/FAIL}."
 </workflow>
 
 <examples>
@@ -54,7 +62,6 @@ route registration and find it is behind auth middleware that validates the
 token and sanitizes input upstream. The "missing validation" is handled at
 a different layer.
 </examples>
-
 <constraints>
 - Write test files only. All production code is read-only.
 - Do not approve failing code. Do not skip a check. Do not trust self-reported coverage -- verify against actual code.

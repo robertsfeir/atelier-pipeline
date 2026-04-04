@@ -299,12 +299,12 @@ replace core agent routing.
 
 ### Core Agent Constant
 
-The following 11 agents are hardcoded core agents. Any `.md` file in
+The following 14 agents are hardcoded core agents. Any `.md` file in
 `{config_dir}/agents/` whose YAML frontmatter `name` field does not match one of
 these names is a discovered agent:
 
 ```
-cal, colby, roz, ellis, agatha, robert, robert-spec, sable, sable-ux, investigator, distillator
+cal, colby, roz, ellis, agatha, robert, robert-spec, sable, sable-ux, investigator, distillator, sentinel, darwin, deps
 ```
 
 ### Discovery Protocol
