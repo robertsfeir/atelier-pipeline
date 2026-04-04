@@ -36,38 +36,6 @@ documentation quality feedback.
 - New team: onboarding flow, glossary
 </workflow>
 
-<protocol id="brain-access">
-
-## Brain Access -- Agatha Capture Gates
-
-When brain is available (`mcpServers: atelier-brain` connected), Agatha captures
-domain-specific documentation knowledge directly. All captures use
-`source_agent: 'agatha'`, `source_phase: 'docs'`.
-
-### Capture Gate 1: Documentation Structure Decisions
-
-After completing documentation, call `agent_capture` with:
-- `thought_type: 'decision'`
-- Content: doc structure decisions made, what was added vs deferred, and
-  rationale for the documentation approach
-- `importance: 0.5`
-
-### Capture Gate 2: Spec-Code Divergences
-
-When finding divergences between spec and code during documentation, call
-`agent_capture` with:
-- `thought_type: 'insight'`
-- Content: the divergence found, which spec section vs which code behavior,
-  and which audience is affected
-- `importance: 0.6`
-
-### When brain is unavailable
-
-Skip all captures silently. Do not block or error. Surface key decisions and
-divergences in the DoD output section so Eva can capture on your behalf.
-
-</protocol>
-
 <examples>
 These show what your cognitive directive looks like in practice.
 
@@ -109,6 +77,10 @@ correct value.
 
 In your DoD, note any doc update reasoning, documentation gaps discovered
 during writing, and which audience is affected. Capture these directly to the
-brain via `agent_capture` per the Brain Access protocol above. When brain is
-unavailable, Eva captures on your behalf.
+brain via `agent_capture` per the brain capture protocol in `{config_dir}/references/agent-preamble.md`. When brain is unavailable, Eva captures on your behalf.
 </output>
+
+## Brain Access
+See `{config_dir}/references/agent-preamble.md`. Agatha-specific captures:
+thought_type 'decision' (importance: 0.5), thought_type 'insight' (importance: 0.6).
+source_agent: 'agatha', source_phase: 'docs'.

@@ -120,38 +120,6 @@ See `{config_dir}/references/qa-checks.md` for ADR Test Spec Review Mode and
 Scoped Re-Run Mode procedures.
 </workflow>
 
-<protocol id="brain-access">
-
-## Brain Access -- Roz Capture Gates
-
-When brain is available (`mcpServers: atelier-brain` connected), Roz captures
-domain-specific QA knowledge directly. All captures use
-`source_agent: 'roz'`, `source_phase: 'qa'`.
-
-### Capture Gate 1: Recurring Failure Patterns
-
-After each QA run, when identifying a recurring failure pattern or module-
-specific risk, call `agent_capture` with:
-- `thought_type: 'pattern'`
-- Content: the failure pattern, which modules/files are affected, and what
-  to watch for in future changes
-- `importance: 0.6`
-
-### Capture Gate 2: Investigation Lessons
-
-When investigation findings go beyond the immediate fix (root cause analysis
-that reveals systemic issues), call `agent_capture` with:
-- `thought_type: 'lesson'`
-- Content: the investigation finding, root cause, and broader implications
-- `importance: 0.5`
-
-### When brain is unavailable
-
-Skip all captures silently. Do not block or error. Surface key patterns and
-lessons in the DoD output section so Eva can capture on your behalf.
-
-</protocol>
-
 <examples>
 These show what your cognitive directive looks like in practice.
 
@@ -221,6 +189,10 @@ Report persistence: after generating the QA report, write it to
 
 In your DoD, note any recurring QA patterns, investigation findings that go
 beyond the immediate fix, and doc impact assessments. Capture these directly
-to the brain via `agent_capture` per the Brain Access protocol above. When
-brain is unavailable, Eva captures on your behalf.
+to the brain via `agent_capture` per the brain capture protocol in `{config_dir}/references/agent-preamble.md`. When brain is unavailable, Eva captures on your behalf.
 </output>
+
+## Brain Access
+See `{config_dir}/references/agent-preamble.md`. Roz-specific captures:
+thought_type 'pattern' (importance: 0.6), thought_type 'lesson' (importance: 0.5).
+source_agent: 'roz', source_phase: 'qa'.

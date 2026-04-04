@@ -34,7 +34,7 @@ def test_T_0022_001_shared_commands():
 
 def test_T_0022_002_shared_references():
     count = len(list((SHARED_DIR / "references").glob("*.md")))
-    assert count == 10
+    assert count == 11
 
 
 def test_T_0022_003_shared_pipeline():

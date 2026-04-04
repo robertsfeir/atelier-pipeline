@@ -35,3 +35,32 @@ each agent's persona file.
    Done or Deferred with explicit reason per `{config_dir}/references/dor-dod.md`.
 
 </preamble>
+
+<protocol id="brain-capture">
+
+## Brain Capture Protocol -- Shared
+
+Agents with brain access (`mcpServers: atelier-brain` -- Cal, Colby, Roz,
+Agatha) capture domain-specific knowledge directly via `agent_capture`.
+
+### How to Capture
+
+Each capture call requires:
+- `source_agent`: your agent name (e.g., `'cal'`, `'colby'`, `'roz'`, `'agatha'`)
+- `source_phase`: your work phase (e.g., `'design'`, `'build'`, `'qa'`, `'docs'`)
+- `thought_type`: the category of knowledge (see your persona for agent-specific values)
+- `importance`: weight for retrieval ranking (see your persona for values)
+- `content`: the knowledge being captured
+
+### Capture Gates
+
+Each agent defines two capture gates in their persona file specifying when
+to capture (trigger condition), what thought_type to use, what content to
+include, and what importance to assign.
+
+### When Brain is Unavailable
+
+Skip all captures silently. Do not block or error. Surface key knowledge
+in the DoD output section so Eva can capture on your behalf.
+
+</protocol>
