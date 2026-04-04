@@ -149,17 +149,19 @@ if [ "$SUBAGENT_TYPE" = "agatha" ]; then
   fi
 fi
 
-# ── Gate 3: Ellis requires telemetry capture during active pipelines ───
+# ── Gate 3: Ellis requires telemetry capture at pipeline end ───────────
 # Eva must capture T3 telemetry (set telemetry_captured: true in PIPELINE_STATUS)
-# before Ellis can commit. This ensures quality metrics (rework, first-pass QA,
-# EvoScore) are never lost.
+# before the final Ellis commit. T3 is a pipeline-level aggregate (rework rate,
+# EvoScore, phase durations) that requires the full pipeline to compute.
+# Per-wave commits during the build phase are exempt -- T3 doesn't exist yet.
 if [ "$SUBAGENT_TYPE" = "ellis" ]; then
   if [ -f "$STATE_FILE" ]; then
     PHASE=$(parse_pipeline_status "phase") || true
     PHASE=$(echo "$PHASE" | tr '[:upper:]' '[:lower:]')
 
-    # Only enforce on active non-micro pipelines (same conditions as Gate 1)
-    if [ -n "$PHASE" ] && [ "$PHASE" != "idle" ] && [ "$PHASE" != "complete" ]; then
+    # Only enforce after the build phase (review, reconciliation, docs).
+    # During build, per-wave commits are gated by roz_qa + poirot_reviewed only.
+    if [ -n "$PHASE" ] && [ "$PHASE" != "idle" ] && [ "$PHASE" != "complete" ] && [ "$PHASE" != "build" ] && [ "$PHASE" != "test-authoring" ] && [ "$PHASE" != "design" ]; then
       SIZING=$(parse_pipeline_status "sizing") || true
       SIZING=$(echo "$SIZING" | tr '[:upper:]' '[:lower:]')
       # Only enforce when sizing is explicitly set to a non-micro value.
@@ -170,7 +172,7 @@ if [ "$SUBAGENT_TYPE" = "ellis" ]; then
         if [ "$CI_WATCH" != "true" ]; then
           TELEMETRY=$(parse_pipeline_status "telemetry_captured") || true
           if [ "$TELEMETRY" != "true" ]; then
-            echo "BLOCKED: Cannot invoke Ellis — pipeline is active (phase: $PHASE) but telemetry has not been captured. Eva must capture T3 telemetry before committing." >&2
+            echo "BLOCKED: Cannot invoke Ellis — pipeline is at phase '$PHASE' but telemetry has not been captured. Eva must capture T3 telemetry before the final commit." >&2
             exit 2
           fi
         fi

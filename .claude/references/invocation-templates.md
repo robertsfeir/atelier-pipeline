@@ -8,7 +8,7 @@
   source/        = feature directory pattern (e.g., src/features/, app/domains/)
   tests/            = test directory pattern (e.g., tests/, __tests__/, spec/)
   echo "no single test configured"   = command for rapid inner-loop tests (e.g., npm run test:fast)
-  bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs        = command to run full test suite (e.g., npx vitest run, npm test)
+  pytest tests/ && cd brain && node --test ../tests/brain/*.test.mjs        = command to run full test suite (e.g., npx vitest run, npm test)
 -->
 
 <!-- Telemetry timing protocol: Eva records wall-clock start_time before every
@@ -288,7 +288,7 @@ step's Contracts Produced table here so Colby has the exact response shapes.]</c
 - Verify Colby's DoD coverage claims against actual code
 - Grep for TODO/FIXME/HACK/XXX in all changed files -- non-test code match = BLOCKER
 - Review ALL units in this wave. Report findings per unit.
-- Run full test suite: bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs
+- Run full test suite: pytest tests/ && cd brain && node --test ../tests/brain/*.test.mjs
 </constraints>
 
 <output>QA Report with verdict, check table, requirements verification per unit, issues found</output>

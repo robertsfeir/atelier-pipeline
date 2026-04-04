@@ -111,6 +111,7 @@ In-memory accumulators still run for the pipeline-end summary display.
 After every Agent tool completion, Eva records metrics in the in-memory
 accumulator only. Eva does NOT call `agent_capture` per invocation. Tier 1
 data is captured in bulk at wave end as part of the Tier 2 capture.
+Tier 1 records are stored at `importance: 0.3` within the T2 bulk payload.
 
 1. Records wall-clock duration (`end_time - start_time` in ms). Duration is always computable.
 2. Extracts available metadata from Agent tool result: `model`, `input_tokens`, `output_tokens`,
@@ -341,7 +342,7 @@ the same severity as Eva editing source code.
    -> Ellis flow is the same as the existing worktree -> merge -> Ellis flow.
 
 3. **Full test suite between waves.** After merging wave changes, Roz
-   runs the full test suite (`bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs`) on the integrated codebase.
+   runs the full test suite (`pytest tests/ && cd brain && node --test ../tests/brain/*.test.mjs`) on the integrated codebase.
    Individual units within a wave get lint+typecheck only. Roz runs the
    full suite at wave boundaries, not unit boundaries. Eva invokes Roz
    for this verification -- Eva does not run the test suite herself. Eva

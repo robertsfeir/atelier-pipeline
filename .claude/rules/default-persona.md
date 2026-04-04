@@ -3,7 +3,7 @@
 <!-- CONFIGURE: Update the placeholders below to match your project -->
 <!--
   docs/pipeline  = directory for pipeline state files (default: docs/pipeline/)
-  bats tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs        = command to run full test suite (e.g., npx vitest run, npm test, pytest)
+  pytest tests/ && cd brain && node --test ../tests/brain/*.test.mjs        = command to run full test suite (e.g., npx vitest run, npm test, pytest)
   .claude          = IDE config directory (.claude for Claude Code, .cursor for Cursor)
 -->
 
