@@ -171,7 +171,7 @@ def test_T_0022_184_no_brain_tests_subagents():
 def test_T_0022_185_skill_md_has_hook():
     skill = (PROJECT_ROOT / "skills" / "pipeline-setup" / "SKILL.md").read_text()
     assert "prompt-compact-advisory.sh" in skill
-    assert "source/hooks/prompt-compact-advisory.sh" in skill
+    assert "source/claude/hooks/prompt-compact-advisory.sh" in skill
     assert ".claude/hooks/prompt-compact-advisory.sh" in skill
 
 

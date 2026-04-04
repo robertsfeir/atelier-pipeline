@@ -891,7 +891,7 @@ SOURCE_ENFORCE_ACTIVATION="$PROJECT_ROOT/source/claude/hooks/enforce-pipeline-ac
 
 # ── T-0018-070: Bypass line in source enforce-eva-paths.sh ──────────
 
-@test "T-0018-070: source/hooks/enforce-eva-paths.sh contains bypass line as first executable line after set -uo pipefail" {
+@test "T-0018-070: source/claude/hooks/enforce-eva-paths.sh contains bypass line as first executable line after set -uo pipefail" {
   [ -f "$SOURCE_ENFORCE_PATHS" ]
   # The bypass line must exist
   grep -q '"\${ATELIER_SETUP_MODE:-}" = "1"' "$SOURCE_ENFORCE_PATHS"
@@ -907,7 +907,7 @@ SOURCE_ENFORCE_ACTIVATION="$PROJECT_ROOT/source/claude/hooks/enforce-pipeline-ac
 
 # ── T-0018-071: Bypass line in source enforce-sequencing.sh ─────────
 
-@test "T-0018-071: source/hooks/enforce-sequencing.sh contains the identical bypass line after set -euo pipefail" {
+@test "T-0018-071: source/claude/hooks/enforce-sequencing.sh contains the identical bypass line after set -euo pipefail" {
   [ -f "$SOURCE_ENFORCE_SEQ" ]
   grep -q '"\${ATELIER_SETUP_MODE:-}" = "1"' "$SOURCE_ENFORCE_SEQ"
   # Verify positioning: between set -euo pipefail and INPUT=$(cat)
@@ -920,7 +920,7 @@ SOURCE_ENFORCE_ACTIVATION="$PROJECT_ROOT/source/claude/hooks/enforce-pipeline-ac
 
 # ── T-0018-072: Bypass line in source enforce-git.sh ────────────────
 
-@test "T-0018-072: source/hooks/enforce-git.sh contains the identical bypass line after set -euo pipefail" {
+@test "T-0018-072: source/claude/hooks/enforce-git.sh contains the identical bypass line after set -euo pipefail" {
   [ -f "$SOURCE_ENFORCE_GIT" ]
   grep -q '"\${ATELIER_SETUP_MODE:-}" = "1"' "$SOURCE_ENFORCE_GIT"
   local between

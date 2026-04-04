@@ -8,6 +8,7 @@ effort: medium
 color: pink
 maxTurns: 40
 tools: Read, Write, Edit, Glob, Grep, Bash
+permissionMode: acceptEdits
 hooks:
   - event: PreToolUse
     matcher: Write|Edit

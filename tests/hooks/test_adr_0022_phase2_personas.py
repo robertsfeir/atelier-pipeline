@@ -159,7 +159,7 @@ def test_T_0022_125_no_read_only_permission_mode(agent):
 
 
 @pytest.mark.parametrize("agent", ["robert-spec", "sable-ux"])
-def test_T_0022_126_producers_no_permission_mode(agent):
+def test_T_0022_126_producers_have_permission_mode(agent):
     fm_file = CLAUDE_DIR / "agents" / f"{agent}.frontmatter.yml"
     if fm_file.exists():
-        assert "permissionMode" not in fm_file.read_text()
+        assert "permissionMode: acceptEdits" in fm_file.read_text()

@@ -43,6 +43,10 @@ def test_T_0022_164_no_flat_source_hooks():
     stale = [
         l for l in result.stdout.strip().splitlines()
         if "source/claude/hooks" not in l and "source/cursor/hooks" not in l
+        and "test_adr_0022_phase2_cleanup.py" not in l
+        and "test_adr_0022_phase2_compaction.py" not in l
+        and "__pycache__" not in l
+        and not l.endswith(".pyc")
     ] if result.stdout.strip() else []
     assert stale == []
 
@@ -63,6 +67,10 @@ def test_T_0022_165_no_source_agents():
         if "ADR-0022" not in l and ".git" not in l
         and "source/shared/agents" not in l and "source/claude/agents" not in l
         and "source/cursor/agents" not in l and "adr-0022-distillate" not in l
+        and "test_adr_0022_phase2_cleanup.py" not in l
+        and "test_adr_0022_phase2_compaction.py" not in l
+        and "__pycache__" not in l
+        and not l.endswith(".pyc")
     ] if result.stdout.strip() else []
     assert stale == []
 
@@ -82,5 +90,9 @@ def test_T_0022_166_no_source_hooks():
         l for l in result.stdout.strip().splitlines()
         if "ADR-0022" not in l and ".git" not in l
         and "source/cursor/hooks" not in l and "adr-0022-distillate" not in l
+        and "test_adr_0022_phase2_cleanup.py" not in l
+        and "test_adr_0022_phase2_compaction.py" not in l
+        and "__pycache__" not in l
+        and not l.endswith(".pyc")
     ] if result.stdout.strip() else []
     assert stale == []
