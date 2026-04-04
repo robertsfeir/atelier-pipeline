@@ -6,6 +6,6 @@ description: >
 model: haiku
 effort: medium
 color: cyan
-maxTurns: 40
+maxTurns: 12
 disallowedTools: Agent, NotebookEdit
 permissionMode: acceptEdits

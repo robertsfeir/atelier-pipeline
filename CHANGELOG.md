@@ -5,6 +5,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.22.0] - 2026-04-04
+
+### Changed
+- Ellis agent rewritten to fast-path commit mode — exempt from DoR/DoD preamble
+- Ellis maxTurns reduced from 40 to 12 (expected ~5-6 per commit)
+- Agent preamble now includes explicit Ellis exemption clause
+- Claude marketplace.json version synced (was stuck at 3.17.0)
+
 ## [3.21.0] - 2026-04-04
 
 ### Changed

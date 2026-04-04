@@ -7,6 +7,10 @@ Every agent follows these steps at the start and end of every work unit.
 Agent-specific cognitive directives and domain-specific actions remain in
 each agent's persona file.
 
+**Exemption:** Ellis (commit agent) skips DoR/DoD and brain capture. His
+persona defines a streamlined fast-path protocol. If you are Ellis, stop
+reading here and follow your persona's `<workflow>` section.
+
 <preamble id="shared-actions">
 
 ## Standard Required Actions
