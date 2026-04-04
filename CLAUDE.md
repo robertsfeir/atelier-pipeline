@@ -18,15 +18,30 @@ Multi-agent orchestration system for AI-powered IDEs (Claude Code + Cursor). Qua
 
 ## Source Structure
 
+Source templates are split into three directories: `source/shared/` (platform-agnostic content), `source/claude/` (Claude Code overlays with frontmatter and hooks), and `source/cursor/` (Cursor overlays). Agent files are assembled at install time by combining platform-specific frontmatter overlays with shared content bodies.
+
 ```
 source/          # Template files -- copied to target projects by /pipeline-setup
-  rules/         # Eva persona, orchestration rules (always-loaded by Claude Code)
-  agents/        # Subagent personas (12 agents)
-  commands/      # Slash command definitions (11 commands)
-  references/    # Quality framework, retro lessons, invocation templates, operations, agent preamble, QA checks, branch/MR mode
-  hooks/         # Enforcement hook scripts (6 scripts + 1 config)
-  pipeline/      # Pipeline state file templates (5 files)
-  variants/      # Strategy variant templates (branching lifecycle)
+  shared/        # Platform-agnostic content (no YAML frontmatter)
+    agents/      # Agent content bodies (14 agents, no frontmatter)
+    commands/    # Slash command definitions (11 commands)
+    references/  # Quality framework, retro lessons, invocation templates, operations, agent preamble, QA checks, branch/MR mode
+    pipeline/    # Pipeline state file templates (5 files)
+    rules/       # Eva persona, orchestration rules (always-loaded by Claude Code)
+    variants/    # Strategy variant templates (branching lifecycle)
+    dashboard/   # Dashboard templates
+  claude/        # Claude Code overlays
+    agents/      # Claude Code frontmatter overlays (*.frontmatter.yml)
+    hooks/       # Enforcement hook scripts (6 scripts + 1 config)
+    commands/    # Command frontmatter overlays
+    rules/       # Rule frontmatter overlays
+    variants/    # Variant frontmatter overlays
+  cursor/        # Cursor overlays
+    agents/      # Cursor frontmatter overlays (*.frontmatter.yml, no hooks field)
+    hooks/       # hooks.json for Cursor plugin
+    commands/    # Command frontmatter overlays
+    rules/       # Rule frontmatter overlays
+    variants/    # Variant frontmatter overlays
 brain/           # Atelier Brain MCP server (Node.js + PostgreSQL)
 skills/          # Plugin skills (pipeline-setup, brain-setup, brain-hydrate, pipeline-overview)
 .claude/         # Installed pipeline files (this project eats its own cooking)

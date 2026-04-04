@@ -119,55 +119,79 @@ Before asking about branching strategy, determine git availability.
 - **GitLab Flow additional:** Ask "What are your environment branch names?" Default: staging, production.
 - **GitFlow:** Platform detection only, no additional questions (conventions are standardized). Integration branch is `develop`.
 
-**Store selection:** Write `.cursor/pipeline-config.json` with the appropriate values from `source/pipeline/pipeline-config.json` as the template, filled with the user's selections.
+**Store selection:** Write `.cursor/pipeline-config.json` with the appropriate values from `source/shared/pipeline/pipeline-config.json` as the template, filled with the user's selections.
 
 ### Step 2: Read Templates
 
-Read the template files from the plugin's templates directory. These serve as the base for each installed file:
+Read the template files from the plugin's templates directory. These serve as the base for each installed file. Source files are split into three directories: `source/shared/` (platform-agnostic content), `source/claude/` (Claude Code overlays), and `source/cursor/` (Cursor overlays).
+
+**Platform detection:** If the environment variable `CURSOR_PROJECT_DIR` is set, use Cursor overlays from `source/cursor/`. Otherwise, use Claude Code overlays from `source/claude/`. `CURSOR_PROJECT_DIR` takes precedence over `CLAUDE_PROJECT_DIR` -- when both are set, the Cursor overlay is used.
+
+**Overlay assembly procedure (agents):** Agent persona files are assembled at install time by combining a platform-specific frontmatter overlay with shared content:
+
+1. Read `source/{claude|cursor}/agents/{name}.frontmatter.yml` (YAML frontmatter only, no `---` delimiters)
+2. Read `source/shared/agents/{name}.md` (content body, no frontmatter)
+3. Concatenate: `---\n` + frontmatter content + `---\n` + body content
+4. Write the assembled file to the target project (e.g., `.cursor/agents/{name}.md`)
+
+**Overlay assembly procedure (commands, rules, variants):** Same pattern -- platform-specific frontmatter overlay + shared content body, concatenated with `---` delimiters.
 
 ```
 plugins/atelier-pipeline/source/
-  rules/
-    default-persona.md            # Eva orchestrator persona
-    agent-system.md               # Full orchestration rules, routing, gates
-  agents/
-    cal.md                        # Architect subagent
-    colby.md                      # Engineer subagent
-    roz.md                        # QA subagent
-    robert.md                     # Product reviewer subagent
-    sable.md                      # UX reviewer subagent
-    investigator.md               # Poirot (blind investigator) subagent
-    distillator.md                # Compression engine subagent
-    ellis.md                      # Commit manager subagent
-    agatha.md                     # Documentation subagent
-  commands/
-    pm.md                         # /pm -- Robert (product)
-    ux.md                         # /ux -- Sable (UX design)
-    architect.md                  # /architect -- Cal (architecture)
-    debug.md                      # /debug -- Roz -> Colby -> Roz
-    pipeline.md                   # /pipeline -- Eva (orchestration)
-    devops.md                     # /devops -- Eva (infrastructure)
-    docs.md                       # /docs -- Agatha (documentation)
-  references/
-    dor-dod.md                    # Definition of Ready / Definition of Done framework
-    retro-lessons.md              # Retro lessons template (starts empty)
-    invocation-templates.md       # Subagent invocation examples
-    pipeline-operations.md        # Operational procedures (model selection, QA flow, feedback loops)
-    agent-preamble.md             # Shared agent required actions (DoR/DoD, retro, brain)
-    qa-checks.md                  # Roz QA check procedures (Tier 1, Tier 2, test spec review, scoped re-run)
-    branch-mr-mode.md             # Colby branch/MR procedures for MR-based strategies
-  pipeline/
-    pipeline-state.md             # Session recovery state template
-    context-brief.md              # Context preservation template
-    error-patterns.md             # Error pattern log template
-    investigation-ledger.md       # Debug hypothesis tracking template
-    last-qa-report.md             # QA report template
-    pipeline-config.json          # Branching strategy configuration
-  variants/
-    branch-lifecycle-trunk-based.md   # Trunk-based branch lifecycle
-    branch-lifecycle-github-flow.md   # GitHub Flow branch lifecycle
-    branch-lifecycle-gitlab-flow.md   # GitLab Flow branch lifecycle
-    branch-lifecycle-gitflow.md       # GitFlow branch lifecycle
+  shared/                              # Platform-agnostic content (no YAML frontmatter)
+    agents/
+      cal.md                           # Architect subagent content body
+      colby.md                         # Engineer subagent content body
+      roz.md                           # QA subagent content body
+      robert.md                        # Product reviewer subagent content body
+      sable.md                         # UX reviewer subagent content body
+      investigator.md                  # Poirot (blind investigator) content body
+      distillator.md                   # Compression engine content body
+      ellis.md                         # Commit manager content body
+      agatha.md                        # Documentation subagent content body
+    commands/
+      pm.md                            # /pm -- Robert (product)
+      ux.md                            # /ux -- Sable (UX design)
+      architect.md                     # /architect -- Cal (architecture)
+      debug.md                         # /debug -- Roz -> Colby -> Roz
+      pipeline.md                      # /pipeline -- Eva (orchestration)
+      devops.md                        # /devops -- Eva (infrastructure)
+      docs.md                          # /docs -- Agatha (documentation)
+    references/
+      dor-dod.md                       # Definition of Ready / Definition of Done framework
+      retro-lessons.md                 # Retro lessons template (starts empty)
+      invocation-templates.md          # Subagent invocation examples
+      pipeline-operations.md           # Operational procedures (model selection, QA flow, feedback loops)
+      agent-preamble.md               # Shared agent required actions (DoR/DoD, retro, brain)
+      qa-checks.md                     # Roz QA check procedures
+      branch-mr-mode.md               # Colby branch/MR procedures for MR-based strategies
+    pipeline/
+      pipeline-state.md               # Session recovery state template
+      context-brief.md                # Context preservation template
+      error-patterns.md               # Error pattern log template
+      investigation-ledger.md         # Debug hypothesis tracking template
+      last-qa-report.md               # QA report template
+      pipeline-config.json            # Branching strategy configuration
+    rules/
+      default-persona.md              # Eva orchestrator persona
+      agent-system.md                 # Full orchestration rules, routing, gates
+    variants/
+      branch-lifecycle-trunk-based.md  # Trunk-based branch lifecycle
+      branch-lifecycle-github-flow.md  # GitHub Flow branch lifecycle
+      branch-lifecycle-gitlab-flow.md  # GitLab Flow branch lifecycle
+      branch-lifecycle-gitflow.md      # GitFlow branch lifecycle
+  claude/                              # Claude Code overlays
+    agents/*.frontmatter.yml           # Claude Code frontmatter for each agent
+    hooks/                             # Enforcement hook scripts
+    commands/*.frontmatter.yml         # Command frontmatter overlays
+    rules/*.frontmatter.yml            # Rule frontmatter overlays
+    variants/*.frontmatter.yml         # Variant frontmatter overlays
+  cursor/                              # Cursor overlays
+    agents/*.frontmatter.yml           # Cursor frontmatter for each agent (no hooks field)
+    hooks/hooks.json                   # Cursor hook configuration
+    commands/*.frontmatter.yml         # Command frontmatter overlays
+    rules/*.frontmatter.yml            # Rule frontmatter overlays
+    variants/*.frontmatter.yml         # Variant frontmatter overlays
 ```
 
 > **Enforcement hook bypass:** Before the first write operation below, create
@@ -190,65 +214,67 @@ Copy each template to its destination in the user's project, customizing placeho
 
 **Installation manifest:**
 
+Files are assembled from `source/shared/` (content) + `source/cursor/` (overlays) for Cursor, or `source/shared/` + `source/claude/` for Claude Code. Agent files use overlay assembly (frontmatter + content concatenation). Other files copy from `source/shared/` directly.
+
 | Template Source | Destination | Purpose |
 |----------------|-------------|---------|
-| `source/rules/default-persona.md` | `.cursor/rules/default-persona.md` | Eva persona -- always loaded by Claude Code |
-| `source/rules/agent-system.md` | `.cursor/rules/agent-system.md` | Orchestration rules, routing table, quality gates |
-| `source/rules/pipeline-orchestration.md` | `.cursor/rules/pipeline-orchestration.md` | Pipeline operations (path-scoped) |
-| `source/rules/pipeline-models.md` | `.cursor/rules/pipeline-models.md` | Model selection (path-scoped) |
-| `source/agents/cal.md` | `.cursor/agents/cal.md` | Architect subagent persona |
-| `source/agents/colby.md` | `.cursor/agents/colby.md` | Engineer subagent persona |
-| `source/agents/roz.md` | `.cursor/agents/roz.md` | QA subagent persona |
-| `source/agents/robert.md` | `.cursor/agents/robert.md` | Product reviewer subagent persona |
-| `source/agents/sable.md` | `.cursor/agents/sable.md` | UX reviewer subagent persona |
-| `source/agents/investigator.md` | `.cursor/agents/investigator.md` | Blind investigator subagent persona |
-| `source/agents/distillator.md` | `.cursor/agents/distillator.md` | Compression engine subagent persona |
-| `source/agents/ellis.md` | `.cursor/agents/ellis.md` | Commit manager subagent persona |
-| `source/agents/agatha.md` | `.cursor/agents/agatha.md` | Documentation subagent persona |
-| `source/commands/pm.md` | `.cursor/commands/pm.md` | /pm slash command |
-| `source/commands/ux.md` | `.cursor/commands/ux.md` | /ux slash command |
-| `source/commands/architect.md` | `.cursor/commands/architect.md` | /architect slash command |
-| `source/commands/debug.md` | `.cursor/commands/debug.md` | /debug slash command |
-| `source/commands/pipeline.md` | `.cursor/commands/pipeline.md` | /pipeline slash command |
-| `source/commands/devops.md` | `.cursor/commands/devops.md` | /devops slash command |
-| `source/commands/docs.md` | `.cursor/commands/docs.md` | /docs slash command |
-| `source/references/dor-dod.md` | `.cursor/references/dor-dod.md` | Quality framework |
-| `source/references/retro-lessons.md` | `.cursor/references/retro-lessons.md` | Shared lessons (empty template) |
-| `source/references/invocation-templates.md` | `.cursor/references/invocation-templates.md` | Subagent invocation examples |
-| `source/references/pipeline-operations.md` | `.cursor/references/pipeline-operations.md` | Operational procedures (model selection, QA, feedback, batch, worktree, context) |
-| `source/references/agent-preamble.md` | `.cursor/references/agent-preamble.md` | Shared agent required actions |
-| `source/references/qa-checks.md` | `.cursor/references/qa-checks.md` | Roz QA check procedures |
-| `source/references/branch-mr-mode.md` | `.cursor/references/branch-mr-mode.md` | Colby branch/MR procedures |
-| `source/references/telemetry-metrics.md` | `.cursor/references/telemetry-metrics.md` | Telemetry metric schemas, cost table, alert thresholds |
-| `source/pipeline/pipeline-state.md` | `docs/pipeline/pipeline-state.md` | Session recovery state |
-| `source/pipeline/context-brief.md` | `docs/pipeline/context-brief.md` | Context preservation |
-| `source/pipeline/error-patterns.md` | `docs/pipeline/error-patterns.md` | Error pattern tracking |
-| `source/pipeline/investigation-ledger.md` | `docs/pipeline/investigation-ledger.md` | Debug hypothesis tracking |
-| `source/pipeline/last-qa-report.md` | `docs/pipeline/last-qa-report.md` | QA report persistence |
-| `source/pipeline/pipeline-config.json` | `.cursor/pipeline-config.json` | Branching strategy configuration |
-| `source/variants/branch-lifecycle-{strategy}.md` | `.cursor/rules/branch-lifecycle.md` | Branch lifecycle rules (selected variant only) |
+| `source/shared/rules/default-persona.md` assembled with `source/cursor/rules/` overlay | `.cursor/rules/default-persona.md` | Eva persona -- always loaded |
+| `source/shared/rules/agent-system.md` assembled with overlay | `.cursor/rules/agent-system.md` | Orchestration rules, routing table, quality gates |
+| `source/shared/rules/pipeline-orchestration.md` assembled with overlay | `.cursor/rules/pipeline-orchestration.md` | Pipeline operations (path-scoped) |
+| `source/shared/rules/pipeline-models.md` assembled with overlay | `.cursor/rules/pipeline-models.md` | Model selection (path-scoped) |
+| `source/shared/agents/cal.md` + `source/cursor/agents/cal.frontmatter.yml` | `.cursor/agents/cal.md` | Architect subagent persona (overlay assembly) |
+| `source/shared/agents/colby.md` + `source/cursor/agents/colby.frontmatter.yml` | `.cursor/agents/colby.md` | Engineer subagent persona (overlay assembly) |
+| `source/shared/agents/roz.md` + `source/cursor/agents/roz.frontmatter.yml` | `.cursor/agents/roz.md` | QA subagent persona (overlay assembly) |
+| `source/shared/agents/robert.md` + `source/cursor/agents/robert.frontmatter.yml` | `.cursor/agents/robert.md` | Product reviewer subagent persona (overlay assembly) |
+| `source/shared/agents/sable.md` + `source/cursor/agents/sable.frontmatter.yml` | `.cursor/agents/sable.md` | UX reviewer subagent persona (overlay assembly) |
+| `source/shared/agents/investigator.md` + `source/cursor/agents/investigator.frontmatter.yml` | `.cursor/agents/investigator.md` | Blind investigator subagent persona (overlay assembly) |
+| `source/shared/agents/distillator.md` + `source/cursor/agents/distillator.frontmatter.yml` | `.cursor/agents/distillator.md` | Compression engine subagent persona (overlay assembly) |
+| `source/shared/agents/ellis.md` + `source/cursor/agents/ellis.frontmatter.yml` | `.cursor/agents/ellis.md` | Commit manager subagent persona (overlay assembly) |
+| `source/shared/agents/agatha.md` + `source/cursor/agents/agatha.frontmatter.yml` | `.cursor/agents/agatha.md` | Documentation subagent persona (overlay assembly) |
+| `source/shared/commands/pm.md` assembled with overlay | `.cursor/commands/pm.md` | /pm slash command |
+| `source/shared/commands/ux.md` assembled with overlay | `.cursor/commands/ux.md` | /ux slash command |
+| `source/shared/commands/architect.md` assembled with overlay | `.cursor/commands/architect.md` | /architect slash command |
+| `source/shared/commands/debug.md` assembled with overlay | `.cursor/commands/debug.md` | /debug slash command |
+| `source/shared/commands/pipeline.md` assembled with overlay | `.cursor/commands/pipeline.md` | /pipeline slash command |
+| `source/shared/commands/devops.md` assembled with overlay | `.cursor/commands/devops.md` | /devops slash command |
+| `source/shared/commands/docs.md` assembled with overlay | `.cursor/commands/docs.md` | /docs slash command |
+| `source/shared/references/dor-dod.md` | `.cursor/references/dor-dod.md` | Quality framework |
+| `source/shared/references/retro-lessons.md` | `.cursor/references/retro-lessons.md` | Shared lessons (empty template) |
+| `source/shared/references/invocation-templates.md` | `.cursor/references/invocation-templates.md` | Subagent invocation examples |
+| `source/shared/references/pipeline-operations.md` | `.cursor/references/pipeline-operations.md` | Operational procedures (model selection, QA, feedback, batch, worktree, context) |
+| `source/shared/references/agent-preamble.md` | `.cursor/references/agent-preamble.md` | Shared agent required actions |
+| `source/shared/references/qa-checks.md` | `.cursor/references/qa-checks.md` | Roz QA check procedures |
+| `source/shared/references/branch-mr-mode.md` | `.cursor/references/branch-mr-mode.md` | Colby branch/MR procedures |
+| `source/shared/references/telemetry-metrics.md` | `.cursor/references/telemetry-metrics.md` | Telemetry metric schemas, cost table, alert thresholds |
+| `source/shared/pipeline/pipeline-state.md` | `docs/pipeline/pipeline-state.md` | Session recovery state |
+| `source/shared/pipeline/context-brief.md` | `docs/pipeline/context-brief.md` | Context preservation |
+| `source/shared/pipeline/error-patterns.md` | `docs/pipeline/error-patterns.md` | Error pattern tracking |
+| `source/shared/pipeline/investigation-ledger.md` | `docs/pipeline/investigation-ledger.md` | Debug hypothesis tracking |
+| `source/shared/pipeline/last-qa-report.md` | `docs/pipeline/last-qa-report.md` | QA report persistence |
+| `source/shared/pipeline/pipeline-config.json` | `.cursor/pipeline-config.json` | Branching strategy configuration |
+| `source/shared/variants/branch-lifecycle-{strategy}.md` assembled with overlay | `.cursor/rules/branch-lifecycle.md` | Branch lifecycle rules (selected variant only) |
 
 **Total: 34 mandatory files across 5 directories (before hooks and config).**
 
 ### Step 3a: Install Enforcement Hooks
 
-Copy the hook scripts from the plugin's `source/hooks/` directory to `.cursor/hooks/`
+Copy the hook scripts from the plugin's `source/cursor/hooks/` directory to `.cursor/hooks/`
 in the project. These hooks mechanically enforce agent boundaries — they are not
 optional and must be installed for the pipeline to function correctly.
 
 | Template Source | Destination | Purpose |
 |----------------|-------------|---------|
-| `source/hooks/enforce-paths.sh` | `.cursor/hooks/enforce-paths.sh` | Blocks Write/Edit outside each agent's allowed file paths |
-| `source/hooks/enforce-sequencing.sh` | `.cursor/hooks/enforce-sequencing.sh` | Blocks out-of-order agent invocations (e.g., Ellis without Roz QA) |
-| `source/hooks/enforce-pipeline-activation.sh` | `.cursor/hooks/enforce-pipeline-activation.sh` | Blocks Colby/Ellis invocation when no active pipeline exists |
-| `source/hooks/enforce-git.sh` | `.cursor/hooks/enforce-git.sh` | Blocks git write operations from main thread (must go through Ellis) |
-| `source/hooks/warn-dor-dod.sh` | `.cursor/hooks/warn-dor-dod.sh` | Warns when Colby/Roz output missing DoR/DoD sections (SubagentStop) |
-| `source/hooks/log-agent-start.sh` | `.cursor/hooks/log-agent-start.sh` | Logs agent start events to JSONL telemetry file (SubagentStart) |
-| `source/hooks/log-agent-stop.sh` | `.cursor/hooks/log-agent-stop.sh` | Logs agent stop events to JSONL telemetry file (SubagentStop) |
-| `source/hooks/pre-compact.sh` | `.cursor/hooks/pre-compact.sh` | Writes compaction marker to pipeline-state.md before context is compacted (PreCompact) |
-| `source/hooks/post-compact-reinject.sh` | `.cursor/hooks/post-compact-reinject.sh` | Re-injects pipeline-state.md and context-brief.md after compaction (PostCompact) |
-| `source/hooks/log-stop-failure.sh` | `.cursor/hooks/log-stop-failure.sh` | Appends error entry to error-patterns.md on agent failure (StopFailure) |
-| `source/hooks/enforcement-config.json` | `.cursor/hooks/enforcement-config.json` | Project-specific paths and agent rules |
+| `source/cursor/hooks/enforce-paths.sh` | `.cursor/hooks/enforce-paths.sh` | Blocks Write/Edit outside each agent's allowed file paths |
+| `source/cursor/hooks/enforce-sequencing.sh` | `.cursor/hooks/enforce-sequencing.sh` | Blocks out-of-order agent invocations (e.g., Ellis without Roz QA) |
+| `source/cursor/hooks/enforce-pipeline-activation.sh` | `.cursor/hooks/enforce-pipeline-activation.sh` | Blocks Colby/Ellis invocation when no active pipeline exists |
+| `source/cursor/hooks/enforce-git.sh` | `.cursor/hooks/enforce-git.sh` | Blocks git write operations from main thread (must go through Ellis) |
+| `source/cursor/hooks/warn-dor-dod.sh` | `.cursor/hooks/warn-dor-dod.sh` | Warns when Colby/Roz output missing DoR/DoD sections (SubagentStop) |
+| `source/cursor/hooks/log-agent-start.sh` | `.cursor/hooks/log-agent-start.sh` | Logs agent start events to JSONL telemetry file (SubagentStart) |
+| `source/cursor/hooks/log-agent-stop.sh` | `.cursor/hooks/log-agent-stop.sh` | Logs agent stop events to JSONL telemetry file (SubagentStop) |
+| `source/cursor/hooks/pre-compact.sh` | `.cursor/hooks/pre-compact.sh` | Writes compaction marker to pipeline-state.md before context is compacted (PreCompact) |
+| `source/cursor/hooks/post-compact-reinject.sh` | `.cursor/hooks/post-compact-reinject.sh` | Re-injects pipeline-state.md and context-brief.md after compaction (PostCompact) |
+| `source/cursor/hooks/log-stop-failure.sh` | `.cursor/hooks/log-stop-failure.sh` | Appends error entry to error-patterns.md on agent failure (StopFailure) |
+| `source/cursor/hooks/enforcement-config.json` | `.cursor/hooks/enforcement-config.json` | Project-specific paths and agent rules |
 
 After copying, make the `.sh` files executable: `chmod +x .cursor/hooks/*.sh`
 
@@ -479,7 +505,7 @@ After printing the summary, offer the optional Sentinel security agent:
    - If not available, tell user: "Sentinel requires the Semgrep MCP server. Set it up with: `claude mcp add semgrep semgrep mcp` — then re-run `/pipeline-setup` to enable Sentinel." Skip Sentinel setup.
    - If semgrep is installed but not authenticated: tell user to run `semgrep login` first (opens browser, free account at https://semgrep.dev/login). Skip Sentinel setup.
 
-3. Copy `source/agents/sentinel.md` to `.cursor/agents/sentinel.md` (with placeholder customization, same as other agent personas).
+3. Assemble `source/shared/agents/sentinel.md` + `source/cursor/agents/sentinel.frontmatter.yml` to `.cursor/agents/sentinel.md` (overlay assembly).
 
 4. Set `sentinel_enabled: true` in `.cursor/pipeline-config.json`.
 
@@ -491,7 +517,7 @@ After printing the summary, offer the optional Sentinel security agent:
 
 | Template Source | Destination | Install When |
 |----------------|-------------|-------------|
-| `source/agents/sentinel.md` | `.cursor/agents/sentinel.md` | User enables Sentinel in Step 6a |
+| `source/shared/agents/sentinel.md` + `source/cursor/agents/sentinel.frontmatter.yml` | `.cursor/agents/sentinel.md` | User enables Sentinel in Step 6a (overlay assembly) |
 
 ### Step 6b: Agent Teams Opt-In (Experimental)
 
@@ -567,8 +593,8 @@ After the CI Watch offer (whether user said yes or no), offer the optional Deps 
 **If user says yes:**
 
 1. Set `deps_agent_enabled: true` in `.cursor/pipeline-config.json`.
-2. Copy `source/agents/deps.md` to `.cursor/agents/deps.md`.
-3. Copy `source/commands/deps.md` to `.cursor/commands/deps.md`.
+2. Assemble `source/shared/agents/deps.md` + `source/cursor/agents/deps.frontmatter.yml` to `.cursor/agents/deps.md`.
+3. Assemble `source/shared/commands/deps.md` + overlay to `.cursor/commands/deps.md`.
 4. Print: "Deps agent: enabled. Use /deps to scan your dependencies."
 
 **Idempotency:** If `deps_agent_enabled` already exists in `pipeline-config.json`
@@ -583,8 +609,8 @@ Print: "Deps agent: not enabled"
 
 | Template Source | Destination | Install When |
 |----------------|-------------|-------------|
-| `source/agents/deps.md` | `.cursor/agents/deps.md` | User enables Deps in Step 6d |
-| `source/commands/deps.md` | `.cursor/commands/deps.md` | User enables Deps in Step 6d |
+| `source/shared/agents/deps.md` + `source/cursor/agents/deps.frontmatter.yml` | `.cursor/agents/deps.md` | User enables Deps in Step 6d (overlay assembly) |
+| `source/shared/commands/deps.md` + overlay | `.cursor/commands/deps.md` | User enables Deps in Step 6d (overlay assembly) |
 
 ### Step 6e: Darwin Self-Evolving Pipeline (Opt-In)
 
@@ -599,8 +625,8 @@ After the Deps Agent offer (whether user said yes or no), offer the optional Dar
 **If user says yes:**
 
 1. Set `darwin_enabled: true` in `.cursor/pipeline-config.json`.
-2. Copy `source/agents/darwin.md` to `.cursor/agents/darwin.md`.
-3. Copy `source/commands/darwin.md` to `.cursor/commands/darwin.md`.
+2. Assemble `source/shared/agents/darwin.md` + `source/cursor/agents/darwin.frontmatter.yml` to `.cursor/agents/darwin.md`.
+3. Assemble `source/shared/commands/darwin.md` + overlay to `.cursor/commands/darwin.md`.
 4. Print: "Darwin: enabled. Use /darwin to analyze pipeline performance, or Darwin will auto-trigger when degradation is detected."
 
 **Idempotency:** If `darwin_enabled` already exists in `pipeline-config.json`
@@ -620,8 +646,8 @@ setup."
 
 | Template Source | Destination | Install When |
 |----------------|-------------|-------------|
-| `source/agents/darwin.md` | `.cursor/agents/darwin.md` | User enables Darwin in Step 6e |
-| `source/commands/darwin.md` | `.cursor/commands/darwin.md` | User enables Darwin in Step 6e |
+| `source/shared/agents/darwin.md` + `source/cursor/agents/darwin.frontmatter.yml` | `.cursor/agents/darwin.md` | User enables Darwin in Step 6e (overlay assembly) |
+| `source/shared/commands/darwin.md` + overlay | `.cursor/commands/darwin.md` | User enables Darwin in Step 6e (overlay assembly) |
 
 ### Step 6f: Dashboard Integration (Opt-In)
 

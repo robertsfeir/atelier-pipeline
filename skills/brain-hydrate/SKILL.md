@@ -44,7 +44,7 @@ Scan the project for extractable sources. Use Glob and Bash to inventory:
 | Feature specs | `ls docs/product/*.md` | Number of spec files |
 | UX docs | `ls docs/ux/*.md` | Number of UX files |
 | Error patterns | `cat docs/pipeline/error-patterns.md` | Number of entries |
-| Retro lessons | `cat .claude/references/retro-lessons.md` or `cat source/references/retro-lessons.md` | Number of lessons |
+| Retro lessons | `cat .claude/references/retro-lessons.md` or `cat source/shared/references/retro-lessons.md` | Number of lessons |
 | Context briefs | `cat docs/pipeline/context-brief.md` | Exists or not |
 | Git history | `git log --oneline --since="6 months ago"` (or full history if <500 commits) | Number of significant commits |
 
@@ -165,7 +165,7 @@ Read `docs/pipeline/error-patterns.md`. Extract each entry:
 
 #### Retro Lessons → lessons, corrections
 
-Read `.claude/references/retro-lessons.md` (or `source/references/retro-lessons.md`). Extract each lesson:
+Read `.claude/references/retro-lessons.md` (or `source/shared/references/retro-lessons.md`). Extract each lesson:
 
 1. **Each lesson** → `agent_capture` with:
    - `thought_type: "lesson"` (general lessons) or `"correction"` (if the lesson corrects a prior approach)

@@ -1,0 +1,10 @@
+name: robert-spec
+description: >
+  Product spec producer. Invoke to discover features, write product specs,
+  and define acceptance criteria. Writes to docs/product/. Dual mode with
+  robert (reviewer).
+model: sonnet
+effort: medium
+color: orange
+maxTurns: 40
+tools: Read, Write, Edit, Glob, Grep, Bash

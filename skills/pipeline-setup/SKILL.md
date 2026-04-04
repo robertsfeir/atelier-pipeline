@@ -123,55 +123,79 @@ Before asking about branching strategy, determine git availability.
 - **GitLab Flow additional:** Ask "What are your environment branch names?" Default: staging, production.
 - **GitFlow:** Platform detection only, no additional questions (conventions are standardized). Integration branch is `develop`.
 
-**Store selection:** Write `.claude/pipeline-config.json` with the appropriate values from `source/pipeline/pipeline-config.json` as the template, filled with the user's selections.
+**Store selection:** Write `.claude/pipeline-config.json` with the appropriate values from `source/shared/pipeline/pipeline-config.json` as the template, filled with the user's selections.
 
 ### Step 2: Read Templates
 
-Read the template files from the plugin's templates directory. These serve as the base for each installed file:
+Read the template files from the plugin's templates directory. These serve as the base for each installed file. Source files are split into three directories: `source/shared/` (platform-agnostic content), `source/claude/` (Claude Code overlays), and `source/cursor/` (Cursor overlays).
+
+**Platform detection:** If the environment variable `CURSOR_PROJECT_DIR` is set, use Cursor overlays from `source/cursor/`. Otherwise, use Claude Code overlays from `source/claude/`. `CURSOR_PROJECT_DIR` takes precedence over `CLAUDE_PROJECT_DIR` -- when both are set, the Cursor overlay is used.
+
+**Overlay assembly procedure (agents):** Agent persona files are assembled at install time by combining a platform-specific frontmatter overlay with shared content:
+
+1. Read `source/{claude|cursor}/agents/{name}.frontmatter.yml` (YAML frontmatter only, no `---` delimiters)
+2. Read `source/shared/agents/{name}.md` (content body, no frontmatter)
+3. Concatenate: `---\n` + frontmatter content + `---\n` + body content
+4. Write the assembled file to the target project (e.g., `.claude/agents/{name}.md`)
+
+**Overlay assembly procedure (commands, rules, variants):** Same pattern -- platform-specific frontmatter overlay + shared content body, concatenated with `---` delimiters.
 
 ```
 plugins/atelier-pipeline/source/
-  rules/
-    default-persona.md            # Eva orchestrator persona
-    agent-system.md               # Full orchestration rules, routing, gates
-  agents/
-    cal.md                        # Architect subagent
-    colby.md                      # Engineer subagent
-    roz.md                        # QA subagent
-    robert.md                     # Product reviewer subagent
-    sable.md                      # UX reviewer subagent
-    investigator.md               # Poirot (blind investigator) subagent
-    distillator.md                # Compression engine subagent
-    ellis.md                      # Commit manager subagent
-    agatha.md                     # Documentation subagent
-  commands/
-    pm.md                         # /pm -- Robert (product)
-    ux.md                         # /ux -- Sable (UX design)
-    architect.md                  # /architect -- Cal (architecture)
-    debug.md                      # /debug -- Roz -> Colby -> Roz
-    pipeline.md                   # /pipeline -- Eva (orchestration)
-    devops.md                     # /devops -- Eva (infrastructure)
-    docs.md                       # /docs -- Agatha (documentation)
-  references/
-    dor-dod.md                    # Definition of Ready / Definition of Done framework
-    retro-lessons.md              # Retro lessons template (starts empty)
-    invocation-templates.md       # Subagent invocation examples
-    pipeline-operations.md        # Operational procedures (model selection, QA flow, feedback loops)
-    agent-preamble.md             # Shared agent required actions (DoR/DoD, retro, brain)
-    qa-checks.md                  # Roz QA check procedures (Tier 1, Tier 2, test spec review, scoped re-run)
-    branch-mr-mode.md             # Colby branch/MR procedures for MR-based strategies
-  pipeline/
-    pipeline-state.md             # Session recovery state template
-    context-brief.md              # Context preservation template
-    error-patterns.md             # Error pattern log template
-    investigation-ledger.md       # Debug hypothesis tracking template
-    last-qa-report.md             # QA report template
-    pipeline-config.json          # Branching strategy configuration
-  variants/
-    branch-lifecycle-trunk-based.md   # Trunk-based branch lifecycle
-    branch-lifecycle-github-flow.md   # GitHub Flow branch lifecycle
-    branch-lifecycle-gitlab-flow.md   # GitLab Flow branch lifecycle
-    branch-lifecycle-gitflow.md       # GitFlow branch lifecycle
+  shared/                              # Platform-agnostic content (no YAML frontmatter)
+    agents/
+      cal.md                           # Architect subagent content body
+      colby.md                         # Engineer subagent content body
+      roz.md                           # QA subagent content body
+      robert.md                        # Product reviewer subagent content body
+      sable.md                         # UX reviewer subagent content body
+      investigator.md                  # Poirot (blind investigator) content body
+      distillator.md                   # Compression engine content body
+      ellis.md                         # Commit manager content body
+      agatha.md                        # Documentation subagent content body
+    commands/
+      pm.md                            # /pm -- Robert (product)
+      ux.md                            # /ux -- Sable (UX design)
+      architect.md                     # /architect -- Cal (architecture)
+      debug.md                         # /debug -- Roz -> Colby -> Roz
+      pipeline.md                      # /pipeline -- Eva (orchestration)
+      devops.md                        # /devops -- Eva (infrastructure)
+      docs.md                          # /docs -- Agatha (documentation)
+    references/
+      dor-dod.md                       # Definition of Ready / Definition of Done framework
+      retro-lessons.md                 # Retro lessons template (starts empty)
+      invocation-templates.md          # Subagent invocation examples
+      pipeline-operations.md           # Operational procedures (model selection, QA flow, feedback loops)
+      agent-preamble.md               # Shared agent required actions (DoR/DoD, retro, brain)
+      qa-checks.md                     # Roz QA check procedures
+      branch-mr-mode.md               # Colby branch/MR procedures for MR-based strategies
+    pipeline/
+      pipeline-state.md               # Session recovery state template
+      context-brief.md                # Context preservation template
+      error-patterns.md               # Error pattern log template
+      investigation-ledger.md         # Debug hypothesis tracking template
+      last-qa-report.md               # QA report template
+      pipeline-config.json            # Branching strategy configuration
+    rules/
+      default-persona.md              # Eva orchestrator persona
+      agent-system.md                 # Full orchestration rules, routing, gates
+    variants/
+      branch-lifecycle-trunk-based.md  # Trunk-based branch lifecycle
+      branch-lifecycle-github-flow.md  # GitHub Flow branch lifecycle
+      branch-lifecycle-gitlab-flow.md  # GitLab Flow branch lifecycle
+      branch-lifecycle-gitflow.md      # GitFlow branch lifecycle
+  claude/                              # Claude Code overlays
+    agents/*.frontmatter.yml           # Claude Code frontmatter for each agent
+    hooks/                             # Enforcement hook scripts
+    commands/*.frontmatter.yml         # Command frontmatter overlays
+    rules/*.frontmatter.yml            # Rule frontmatter overlays
+    variants/*.frontmatter.yml         # Variant frontmatter overlays
+  cursor/                              # Cursor overlays
+    agents/*.frontmatter.yml           # Cursor frontmatter for each agent (no hooks field)
+    hooks/hooks.json                   # Cursor hook configuration
+    commands/*.frontmatter.yml         # Command frontmatter overlays
+    rules/*.frontmatter.yml            # Rule frontmatter overlays
+    variants/*.frontmatter.yml         # Variant frontmatter overlays
 ```
 
 > **Enforcement hook bypass:** Before the first write operation below, create
@@ -194,43 +218,45 @@ Copy each template to its destination in the user's project, customizing placeho
 
 **Installation manifest:**
 
+Files are assembled from `source/shared/` (content) + `source/claude/` (overlays) for Claude Code, or `source/shared/` + `source/cursor/` for Cursor. Agent files use overlay assembly (frontmatter + content concatenation). Other files copy from `source/shared/` directly.
+
 | Template Source | Destination | Purpose |
 |----------------|-------------|---------|
-| `source/rules/default-persona.md` | `.claude/rules/default-persona.md` | Eva persona -- always loaded by Claude Code |
-| `source/rules/agent-system.md` | `.claude/rules/agent-system.md` | Orchestration rules, routing table, quality gates |
-| `source/rules/pipeline-orchestration.md` | `.claude/rules/pipeline-orchestration.md` | Pipeline operations (path-scoped) |
-| `source/rules/pipeline-models.md` | `.claude/rules/pipeline-models.md` | Model selection (path-scoped) |
-| `source/agents/cal.md` | `.claude/agents/cal.md` | Architect subagent persona |
-| `source/agents/colby.md` | `.claude/agents/colby.md` | Engineer subagent persona |
-| `source/agents/roz.md` | `.claude/agents/roz.md` | QA subagent persona |
-| `source/agents/robert.md` | `.claude/agents/robert.md` | Product reviewer subagent persona |
-| `source/agents/sable.md` | `.claude/agents/sable.md` | UX reviewer subagent persona |
-| `source/agents/investigator.md` | `.claude/agents/investigator.md` | Blind investigator subagent persona |
-| `source/agents/distillator.md` | `.claude/agents/distillator.md` | Compression engine subagent persona |
-| `source/agents/ellis.md` | `.claude/agents/ellis.md` | Commit manager subagent persona |
-| `source/agents/agatha.md` | `.claude/agents/agatha.md` | Documentation subagent persona |
-| `source/commands/pm.md` | `.claude/commands/pm.md` | /pm slash command |
-| `source/commands/ux.md` | `.claude/commands/ux.md` | /ux slash command |
-| `source/commands/architect.md` | `.claude/commands/architect.md` | /architect slash command |
-| `source/commands/debug.md` | `.claude/commands/debug.md` | /debug slash command |
-| `source/commands/pipeline.md` | `.claude/commands/pipeline.md` | /pipeline slash command |
-| `source/commands/devops.md` | `.claude/commands/devops.md` | /devops slash command |
-| `source/commands/docs.md` | `.claude/commands/docs.md` | /docs slash command |
-| `source/references/dor-dod.md` | `.claude/references/dor-dod.md` | Quality framework |
-| `source/references/retro-lessons.md` | `.claude/references/retro-lessons.md` | Shared lessons (empty template) |
-| `source/references/invocation-templates.md` | `.claude/references/invocation-templates.md` | Subagent invocation examples |
-| `source/references/pipeline-operations.md` | `.claude/references/pipeline-operations.md` | Operational procedures (model selection, QA, feedback, batch, worktree, context) |
-| `source/references/agent-preamble.md` | `.claude/references/agent-preamble.md` | Shared agent required actions |
-| `source/references/qa-checks.md` | `.claude/references/qa-checks.md` | Roz QA check procedures |
-| `source/references/branch-mr-mode.md` | `.claude/references/branch-mr-mode.md` | Colby branch/MR procedures |
-| `source/references/telemetry-metrics.md` | `.claude/references/telemetry-metrics.md` | Telemetry metric schemas, cost table, alert thresholds |
-| `source/pipeline/pipeline-state.md` | `docs/pipeline/pipeline-state.md` | Session recovery state |
-| `source/pipeline/context-brief.md` | `docs/pipeline/context-brief.md` | Context preservation |
-| `source/pipeline/error-patterns.md` | `docs/pipeline/error-patterns.md` | Error pattern tracking |
-| `source/pipeline/investigation-ledger.md` | `docs/pipeline/investigation-ledger.md` | Debug hypothesis tracking |
-| `source/pipeline/last-qa-report.md` | `docs/pipeline/last-qa-report.md` | QA report persistence |
-| `source/pipeline/pipeline-config.json` | `.claude/pipeline-config.json` | Branching strategy configuration |
-| `source/variants/branch-lifecycle-{strategy}.md` | `.claude/rules/branch-lifecycle.md` | Branch lifecycle rules (selected variant only) |
+| `source/shared/rules/default-persona.md` assembled with `source/claude/rules/` overlay | `.claude/rules/default-persona.md` | Eva persona -- always loaded by Claude Code |
+| `source/shared/rules/agent-system.md` assembled with overlay | `.claude/rules/agent-system.md` | Orchestration rules, routing table, quality gates |
+| `source/shared/rules/pipeline-orchestration.md` assembled with overlay | `.claude/rules/pipeline-orchestration.md` | Pipeline operations (path-scoped) |
+| `source/shared/rules/pipeline-models.md` assembled with overlay | `.claude/rules/pipeline-models.md` | Model selection (path-scoped) |
+| `source/shared/agents/cal.md` + `source/claude/agents/cal.frontmatter.yml` | `.claude/agents/cal.md` | Architect subagent persona (overlay assembly) |
+| `source/shared/agents/colby.md` + `source/claude/agents/colby.frontmatter.yml` | `.claude/agents/colby.md` | Engineer subagent persona (overlay assembly) |
+| `source/shared/agents/roz.md` + `source/claude/agents/roz.frontmatter.yml` | `.claude/agents/roz.md` | QA subagent persona (overlay assembly) |
+| `source/shared/agents/robert.md` + `source/claude/agents/robert.frontmatter.yml` | `.claude/agents/robert.md` | Product reviewer subagent persona (overlay assembly) |
+| `source/shared/agents/sable.md` + `source/claude/agents/sable.frontmatter.yml` | `.claude/agents/sable.md` | UX reviewer subagent persona (overlay assembly) |
+| `source/shared/agents/investigator.md` + `source/claude/agents/investigator.frontmatter.yml` | `.claude/agents/investigator.md` | Blind investigator subagent persona (overlay assembly) |
+| `source/shared/agents/distillator.md` + `source/claude/agents/distillator.frontmatter.yml` | `.claude/agents/distillator.md` | Compression engine subagent persona (overlay assembly) |
+| `source/shared/agents/ellis.md` + `source/claude/agents/ellis.frontmatter.yml` | `.claude/agents/ellis.md` | Commit manager subagent persona (overlay assembly) |
+| `source/shared/agents/agatha.md` + `source/claude/agents/agatha.frontmatter.yml` | `.claude/agents/agatha.md` | Documentation subagent persona (overlay assembly) |
+| `source/shared/commands/pm.md` assembled with overlay | `.claude/commands/pm.md` | /pm slash command |
+| `source/shared/commands/ux.md` assembled with overlay | `.claude/commands/ux.md` | /ux slash command |
+| `source/shared/commands/architect.md` assembled with overlay | `.claude/commands/architect.md` | /architect slash command |
+| `source/shared/commands/debug.md` assembled with overlay | `.claude/commands/debug.md` | /debug slash command |
+| `source/shared/commands/pipeline.md` assembled with overlay | `.claude/commands/pipeline.md` | /pipeline slash command |
+| `source/shared/commands/devops.md` assembled with overlay | `.claude/commands/devops.md` | /devops slash command |
+| `source/shared/commands/docs.md` assembled with overlay | `.claude/commands/docs.md` | /docs slash command |
+| `source/shared/references/dor-dod.md` | `.claude/references/dor-dod.md` | Quality framework |
+| `source/shared/references/retro-lessons.md` | `.claude/references/retro-lessons.md` | Shared lessons (empty template) |
+| `source/shared/references/invocation-templates.md` | `.claude/references/invocation-templates.md` | Subagent invocation examples |
+| `source/shared/references/pipeline-operations.md` | `.claude/references/pipeline-operations.md` | Operational procedures (model selection, QA, feedback, batch, worktree, context) |
+| `source/shared/references/agent-preamble.md` | `.claude/references/agent-preamble.md` | Shared agent required actions |
+| `source/shared/references/qa-checks.md` | `.claude/references/qa-checks.md` | Roz QA check procedures |
+| `source/shared/references/branch-mr-mode.md` | `.claude/references/branch-mr-mode.md` | Colby branch/MR procedures |
+| `source/shared/references/telemetry-metrics.md` | `.claude/references/telemetry-metrics.md` | Telemetry metric schemas, cost table, alert thresholds |
+| `source/shared/pipeline/pipeline-state.md` | `docs/pipeline/pipeline-state.md` | Session recovery state |
+| `source/shared/pipeline/context-brief.md` | `docs/pipeline/context-brief.md` | Context preservation |
+| `source/shared/pipeline/error-patterns.md` | `docs/pipeline/error-patterns.md` | Error pattern tracking |
+| `source/shared/pipeline/investigation-ledger.md` | `docs/pipeline/investigation-ledger.md` | Debug hypothesis tracking |
+| `source/shared/pipeline/last-qa-report.md` | `docs/pipeline/last-qa-report.md` | QA report persistence |
+| `source/shared/pipeline/pipeline-config.json` | `.claude/pipeline-config.json` | Branching strategy configuration |
+| `source/shared/variants/branch-lifecycle-{strategy}.md` assembled with overlay | `.claude/rules/branch-lifecycle.md` | Branch lifecycle rules (selected variant only) |
 
 **Total: 34 mandatory files across 5 directories (before hooks and config).**
 
@@ -243,23 +269,23 @@ This guard does NOT apply to rules, agents, commands, references, or hooks — t
 
 ### Step 3a: Install Enforcement Hooks
 
-Copy the hook scripts from the plugin's `source/hooks/` directory to `.claude/hooks/`
+Copy the hook scripts from the plugin's `source/claude/hooks/` directory to `.claude/hooks/`
 in the project. These hooks mechanically enforce agent boundaries — they are not
 optional and must be installed for the pipeline to function correctly.
 
 | Template Source | Destination | Purpose |
 |----------------|-------------|---------|
-| `source/hooks/enforce-paths.sh` | `.claude/hooks/enforce-paths.sh` | Blocks Write/Edit outside each agent's allowed file paths |
-| `source/hooks/enforce-sequencing.sh` | `.claude/hooks/enforce-sequencing.sh` | Blocks out-of-order agent invocations (e.g., Ellis without Roz QA) |
-| `source/hooks/enforce-pipeline-activation.sh` | `.claude/hooks/enforce-pipeline-activation.sh` | Blocks Colby/Ellis invocation when no active pipeline exists |
-| `source/hooks/enforce-git.sh` | `.claude/hooks/enforce-git.sh` | Blocks git write operations from main thread (must go through Ellis) |
-| `source/hooks/warn-dor-dod.sh` | `.claude/hooks/warn-dor-dod.sh` | Warns when Colby/Roz output missing DoR/DoD sections (SubagentStop) |
-| `source/hooks/pre-compact.sh` | `.claude/hooks/pre-compact.sh` | Writes compaction marker to pipeline-state.md before context is compacted (PreCompact) |
-| `source/hooks/log-agent-start.sh` | `.claude/hooks/log-agent-start.sh` | Logs agent start events to JSONL telemetry file (SubagentStart) |
-| `source/hooks/log-agent-stop.sh` | `.claude/hooks/log-agent-stop.sh` | Logs agent stop events to JSONL telemetry file (SubagentStop) |
-| `source/hooks/post-compact-reinject.sh` | `.claude/hooks/post-compact-reinject.sh` | Re-injects pipeline-state.md and context-brief.md after compaction (PostCompact) |
-| `source/hooks/log-stop-failure.sh` | `.claude/hooks/log-stop-failure.sh` | Appends error entry to error-patterns.md on agent failure (StopFailure) |
-| `source/hooks/enforcement-config.json` | `.claude/hooks/enforcement-config.json` | Project-specific paths and agent rules |
+| `source/claude/hooks/enforce-paths.sh` | `.claude/hooks/enforce-paths.sh` | Blocks Write/Edit outside each agent's allowed file paths |
+| `source/claude/hooks/enforce-sequencing.sh` | `.claude/hooks/enforce-sequencing.sh` | Blocks out-of-order agent invocations (e.g., Ellis without Roz QA) |
+| `source/claude/hooks/enforce-pipeline-activation.sh` | `.claude/hooks/enforce-pipeline-activation.sh` | Blocks Colby/Ellis invocation when no active pipeline exists |
+| `source/claude/hooks/enforce-git.sh` | `.claude/hooks/enforce-git.sh` | Blocks git write operations from main thread (must go through Ellis) |
+| `source/claude/hooks/warn-dor-dod.sh` | `.claude/hooks/warn-dor-dod.sh` | Warns when Colby/Roz output missing DoR/DoD sections (SubagentStop) |
+| `source/claude/hooks/pre-compact.sh` | `.claude/hooks/pre-compact.sh` | Writes compaction marker to pipeline-state.md before context is compacted (PreCompact) |
+| `source/claude/hooks/log-agent-start.sh` | `.claude/hooks/log-agent-start.sh` | Logs agent start events to JSONL telemetry file (SubagentStart) |
+| `source/claude/hooks/log-agent-stop.sh` | `.claude/hooks/log-agent-stop.sh` | Logs agent stop events to JSONL telemetry file (SubagentStop) |
+| `source/claude/hooks/post-compact-reinject.sh` | `.claude/hooks/post-compact-reinject.sh` | Re-injects pipeline-state.md and context-brief.md after compaction (PostCompact) |
+| `source/claude/hooks/log-stop-failure.sh` | `.claude/hooks/log-stop-failure.sh` | Appends error entry to error-patterns.md on agent failure (StopFailure) |
+| `source/claude/hooks/enforcement-config.json` | `.claude/hooks/enforcement-config.json` | Project-specific paths and agent rules |
 
 After copying, make the `.sh` files executable: `chmod +x .claude/hooks/*.sh`
 
@@ -390,23 +416,23 @@ description: [short description of the document]
 alwaysApply: false
 ---
 
-[Full content from source/references/<file>.md]
+[Full content from source/shared/references/<file>.md]
 ```
 
 **Reference docs to sync (alwaysApply: false):**
 
 | Source | Destination | Description |
 |--------|-------------|-------------|
-| `source/references/dor-dod.md` | `.cursor-plugin/rules/dor-dod.mdc` | Definition of Ready / Definition of Done framework |
-| `source/references/retro-lessons.md` | `.cursor-plugin/rules/retro-lessons.mdc` | Retro lessons -- shared reference for past pipeline learnings |
-| `source/references/invocation-templates.md` | `.cursor-plugin/rules/invocation-templates.mdc` | Invocation templates -- standardized XML tag patterns for subagent invocation |
-| `source/references/pipeline-operations.md` | `.cursor-plugin/rules/pipeline-operations.mdc` | Pipeline operations -- continuous QA, feedback loops, batch mode, and worktree rules |
-| `source/references/agent-preamble.md` | `.cursor-plugin/rules/agent-preamble.mdc` | Agent preamble -- shared actions and protocols for all pipeline agents |
-| `source/references/qa-checks.md` | `.cursor-plugin/rules/qa-checks.mdc` | QA checks -- Roz Tier 1/Tier 2 procedures, test spec review, and scoped re-run |
-| `source/references/branch-mr-mode.md` | `.cursor-plugin/rules/branch-mr-mode.mdc` | Branch and MR mode -- Colby branch creation and MR procedures for MR-based strategies |
-| `source/references/telemetry-metrics.md` | `.cursor-plugin/rules/telemetry-metrics.mdc` | Telemetry metrics -- metric schemas, cost table, and alert thresholds |
-| `source/references/xml-prompt-schema.md` | `.cursor-plugin/rules/xml-prompt-schema.mdc` | XML prompt schema -- tag vocabulary for agent persona files |
-| `source/references/cloud-architecture.md` | `.cursor-plugin/rules/cloud-architecture.mdc` | Cloud architecture -- reference for cloud-native deployment patterns |
+| `source/shared/references/dor-dod.md` | `.cursor-plugin/rules/dor-dod.mdc` | Definition of Ready / Definition of Done framework |
+| `source/shared/references/retro-lessons.md` | `.cursor-plugin/rules/retro-lessons.mdc` | Retro lessons -- shared reference for past pipeline learnings |
+| `source/shared/references/invocation-templates.md` | `.cursor-plugin/rules/invocation-templates.mdc` | Invocation templates -- standardized XML tag patterns for subagent invocation |
+| `source/shared/references/pipeline-operations.md` | `.cursor-plugin/rules/pipeline-operations.mdc` | Pipeline operations -- continuous QA, feedback loops, batch mode, and worktree rules |
+| `source/shared/references/agent-preamble.md` | `.cursor-plugin/rules/agent-preamble.mdc` | Agent preamble -- shared actions and protocols for all pipeline agents |
+| `source/shared/references/qa-checks.md` | `.cursor-plugin/rules/qa-checks.mdc` | QA checks -- Roz Tier 1/Tier 2 procedures, test spec review, and scoped re-run |
+| `source/shared/references/branch-mr-mode.md` | `.cursor-plugin/rules/branch-mr-mode.mdc` | Branch and MR mode -- Colby branch creation and MR procedures for MR-based strategies |
+| `source/shared/references/telemetry-metrics.md` | `.cursor-plugin/rules/telemetry-metrics.mdc` | Telemetry metrics -- metric schemas, cost table, and alert thresholds |
+| `source/shared/references/xml-prompt-schema.md` | `.cursor-plugin/rules/xml-prompt-schema.mdc` | XML prompt schema -- tag vocabulary for agent persona files |
+| `source/shared/references/cloud-architecture.md` | `.cursor-plugin/rules/cloud-architecture.mdc` | Cloud architecture -- reference for cloud-native deployment patterns |
 
 **Skip when:** Running in Claude Code (no `CURSOR_PROJECT_DIR` env var). Claude Code reads `.claude/references/*.md` directly without `.mdc` wrappers.
 
@@ -528,7 +554,7 @@ After printing the summary, offer the optional Sentinel security agent:
    - If not available, tell user: "Sentinel requires the Semgrep MCP server. Set it up with: `claude mcp add semgrep semgrep mcp` — then re-run `/pipeline-setup` to enable Sentinel." Skip Sentinel setup.
    - If semgrep is installed but not authenticated: tell user to run `semgrep login` first (opens browser, free account at https://semgrep.dev/login). Skip Sentinel setup.
 
-3. Copy `source/agents/sentinel.md` to `.claude/agents/sentinel.md` (with placeholder customization, same as other agent personas).
+3. Assemble `source/shared/agents/sentinel.md` + `source/claude/agents/sentinel.frontmatter.yml` to `.claude/agents/sentinel.md` (with placeholder customization, same as other agent personas).
 
 4. Set `sentinel_enabled: true` in `.claude/pipeline-config.json`.
 
@@ -540,7 +566,7 @@ After printing the summary, offer the optional Sentinel security agent:
 
 | Template Source | Destination | Install When |
 |----------------|-------------|-------------|
-| `source/agents/sentinel.md` | `.claude/agents/sentinel.md` | User enables Sentinel in Step 6a |
+| `source/shared/agents/sentinel.md` + `source/claude/agents/sentinel.frontmatter.yml` | `.claude/agents/sentinel.md` | User enables Sentinel in Step 6a (overlay assembly) |
 
 ### Step 6b: Agent Teams Opt-In (Experimental)
 
@@ -616,8 +642,8 @@ After the CI Watch offer (whether user said yes or no), offer the optional Deps 
 **If user says yes:**
 
 1. Set `deps_agent_enabled: true` in `.claude/pipeline-config.json`.
-2. Copy `source/agents/deps.md` to `.claude/agents/deps.md`.
-3. Copy `source/commands/deps.md` to `.claude/commands/deps.md`.
+2. Assemble `source/shared/agents/deps.md` + `source/claude/agents/deps.frontmatter.yml` to `.claude/agents/deps.md`.
+3. Assemble `source/shared/commands/deps.md` + overlay to `.claude/commands/deps.md`.
 4. Print: "Deps agent: enabled. Use /deps to scan your dependencies."
 
 **Idempotency:** If `deps_agent_enabled` already exists in `pipeline-config.json`
@@ -632,8 +658,8 @@ Print: "Deps agent: not enabled"
 
 | Template Source | Destination | Install When |
 |----------------|-------------|-------------|
-| `source/agents/deps.md` | `.claude/agents/deps.md` | User enables Deps in Step 6d |
-| `source/commands/deps.md` | `.claude/commands/deps.md` | User enables Deps in Step 6d |
+| `source/shared/agents/deps.md` + `source/claude/agents/deps.frontmatter.yml` | `.claude/agents/deps.md` | User enables Deps in Step 6d (overlay assembly) |
+| `source/shared/commands/deps.md` + overlay | `.claude/commands/deps.md` | User enables Deps in Step 6d (overlay assembly) |
 
 ### Step 6e: Darwin Self-Evolving Pipeline (Opt-In)
 
@@ -648,8 +674,8 @@ After the Deps Agent offer (whether user said yes or no), offer the optional Dar
 **If user says yes:**
 
 1. Set `darwin_enabled: true` in `.claude/pipeline-config.json`.
-2. Copy `source/agents/darwin.md` to `.claude/agents/darwin.md`.
-3. Copy `source/commands/darwin.md` to `.claude/commands/darwin.md`.
+2. Assemble `source/shared/agents/darwin.md` + `source/claude/agents/darwin.frontmatter.yml` to `.claude/agents/darwin.md`.
+3. Assemble `source/shared/commands/darwin.md` + overlay to `.claude/commands/darwin.md`.
 4. Print: "Darwin: enabled. Use /darwin to analyze pipeline performance, or Darwin will auto-trigger when degradation is detected."
 
 **Idempotency:** If `darwin_enabled` already exists in `pipeline-config.json`
@@ -669,8 +695,8 @@ setup."
 
 | Template Source | Destination | Install When |
 |----------------|-------------|-------------|
-| `source/agents/darwin.md` | `.claude/agents/darwin.md` | User enables Darwin in Step 6e |
-| `source/commands/darwin.md` | `.claude/commands/darwin.md` | User enables Darwin in Step 6e |
+| `source/shared/agents/darwin.md` + `source/claude/agents/darwin.frontmatter.yml` | `.claude/agents/darwin.md` | User enables Darwin in Step 6e (overlay assembly) |
+| `source/shared/commands/darwin.md` + overlay | `.claude/commands/darwin.md` | User enables Darwin in Step 6e (overlay assembly) |
 
 ### Step 6f: Dashboard Integration (Opt-In)
 
