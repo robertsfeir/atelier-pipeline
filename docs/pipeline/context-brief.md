@@ -4,18 +4,19 @@ Captures conversational decisions, user corrections, and rejected alternatives.
 Reset at the start of each new feature pipeline.
 
 ## Scope
-Waves 2-3 of agent frontmatter enrichment initiative. Wave 2: hook modernization (#28) — `if` conditionals, lifecycle telemetry hooks, PostCompact context preservation, StopFailure error tracking. Wave 3: advanced features (#29) — `defer` permission, per-agent `memory`, `permissionMode`, agent-scoped `hooks`.
+ADR-0023: Agent Specification Reduction — Constraints Over Procedures. ~57% reduction of agent persona specification by removing generic procedures (Opus baseline competencies) and redundant behavioral restrictions (now enforced by ADR-0022's three-layer pyramid). Two phases: structural reduction (12 steps) then validation (3 pipelines with telemetry comparison).
 
 ## Key Constraints
-- Wave 1 (frontmatter fields) already shipped as v3.16.0 — do not re-touch those fields
-- `source/` templates and `.claude/` installed copies must stay in sync
-- Brain and agent `memory` are complementary, not competing (Brain = institutional, agent memory = working knowledge)
-- `defer` is soft guidance; hard `deny` stays for security boundaries (Eva write outside docs/pipeline/)
-- Read-only agents (Robert, Sable, Investigator, Distillator, Darwin, Deps, Sentinel) get `permissionMode: plan`
+- ADR-0022 is prerequisite (complete, unpushed) — Layer 2 frontmatter hooks must be operational before removing behavioral text
+- Distillator is the exception: >=130 lines, NOT reduced (Haiku needs procedural density per R14)
+- TDD instructions preserved for Colby and Roz regardless of model tier (R15)
+- Line count targets are +-10%
+- Examples must demonstrate judgment calls the model would get wrong without them (R4)
+- session-boot.sh follows retro lesson #003: lightweight, exit 0 always, no blocking
 
 ## User Decisions
-- Two-tier memory architecture (brain + agent memory) — flagged during Wave 1, deferred to Wave 3
-- Colors only on Cal/Colby/Roz/Ellis/Robert/Sable (6 of 12) — Wave 1 decision, still applies
+- 2026-04-04: Zero bats anywhere in project. All tests must be pytest. Mechanically enforced via test_no_bats.py. Test command updated from `bats tests/hooks/` to `pytest tests/` across all config files.
+- 2026-04-04: User authorized autonomous execution through all remaining waves to final commit. Stop before push.
 
 ## Rejected Alternatives
 (none yet)

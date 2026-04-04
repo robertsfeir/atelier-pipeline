@@ -457,6 +457,8 @@ Wait for Darwin to develop telemetry-based methodology for identifying over-spec
 | T-0023-004 | Happy | Roz persona Brain Access section is <=6 lines and references agent-preamble.md |
 | T-0023-005 | Happy | Agatha persona Brain Access section is <=6 lines and references agent-preamble.md |
 | T-0023-006 | Boundary | Cal persona retains `thought_type: 'decision'` and `thought_type: 'pattern'` with correct importance values |
+| T-0023-006a | Boundary | Roz persona retains `thought_type: 'pattern'` and `thought_type: 'lesson'` with correct importance values |
+| T-0023-006b | Boundary | Agatha persona retains `thought_type: 'decision'` and `thought_type: 'insight'` with correct importance values |
 | T-0023-007 | Boundary | Colby persona retains `thought_type: 'insight'` and `thought_type: 'pattern'` with correct importance values |
 | T-0023-008 | Regression | agent-preamble.md step 4 brain context review still references `mcpServers: atelier-brain` agents list |
 
@@ -509,6 +511,7 @@ Wait for Darwin to develop telemetry-based methodology for identifying over-spec
 | T-0023-043 | Happy | Roz persona references qa-checks.md |
 | T-0023-044 | Regression | Roz persona does NOT contain numbered trace steps (1. Entry point, 2. API call, etc.) |
 | T-0023-045 | Regression | Roz persona does NOT contain Layer Awareness table |
+| T-0023-045a | Boundary | Roz persona contains explicit TDD constraint language (e.g., "tests define correct behavior" or "BEFORE Colby builds" or "test-first") per R15 |
 
 #### Step 1f Tests (remaining agents -- sampled)
 
@@ -518,11 +521,13 @@ Wait for Darwin to develop telemetry-based methodology for identifying over-spec
 | T-0023-051 | Happy | Robert persona contains "information asymmetry" constraint |
 | T-0023-052 | Happy | Robert persona contains PASS/DRIFT/MISSING/AMBIGUOUS vocabulary |
 | T-0023-053 | Happy | Sable persona <=60 lines |
+| T-0023-053a | Happy | Sable persona contains "information asymmetry" constraint |
 | T-0023-054 | Happy | Sable persona contains five-state audit requirement |
 | T-0023-055 | Happy | Poirot persona <=65 lines |
 | T-0023-056 | Happy | Poirot persona contains "minimum 5 findings" constraint |
 | T-0023-057 | Happy | Poirot persona contains cross-layer wiring check constraint |
 | T-0023-058 | Happy | Ellis persona <=65 lines |
+| T-0023-058a | Happy | Ellis persona contains per-unit vs final commit distinction |
 | T-0023-059 | Happy | Sentinel persona <=65 lines |
 | T-0023-060 | Happy | Sentinel persona contains CWE/OWASP requirement |
 | T-0023-061 | Happy | Darwin persona <=100 lines |
@@ -531,10 +536,13 @@ Wait for Darwin to develop telemetry-based methodology for identifying over-spec
 | T-0023-064 | Happy | Deps persona <=90 lines |
 | T-0023-065 | Happy | Deps persona contains conservative risk labeling constraint |
 | T-0023-066 | Happy | Distillator persona >=130 lines (NOT reduced below Haiku threshold per R14) |
+| T-0023-066a | Boundary | Distillator persona <=140 lines (ceiling from Step 1f table) |
 | T-0023-067 | Happy | Distillator persona contains 2 examples (Haiku compliance grounding) |
 | T-0023-068 | Boundary | Every agent persona has >=1 `<examples>` section with >=1 example |
 | T-0023-069 | Regression | No agent persona contains "How [Agent] Fits the Pipeline" section |
 | T-0023-070 | Regression | No Opus/Sonnet agent persona contains generic review category checklists (logic, security, error handling, naming, dead code, resource management, concurrency, type safety as enumerated list) |
+| T-0023-071 | Regression | Every reduced agent persona retains its original YAML frontmatter unchanged (model, tools, disallowedTools, effort, maxTurns, mcpServers). Verify by diffing frontmatter blocks before/after reduction. |
+| T-0023-072 | Regression | Every reduced agent persona contains all required XML tags: `<identity>`, `<required-actions>`, `<workflow>`, `<examples>`, `<constraints>`, `<output>` (per Colby Note #11 / xml-prompt-schema.md) |
 
 #### Step 1g Tests (invocation-templates.md reduction)
 
@@ -562,6 +570,8 @@ Wait for Darwin to develop telemetry-based methodology for identifying over-spec
 | T-0023-102 | Happy | JSON contains phase string field |
 | T-0023-103 | Happy | JSON contains branching_strategy string field |
 | T-0023-104 | Happy | JSON contains custom_agent_count integer field |
+| T-0023-104a | Happy | JSON contains `feature` string field |
+| T-0023-104b | Happy | JSON contains `stale_context` boolean field |
 | T-0023-105 | Happy | JSON contains agent_teams_enabled and agent_teams_env boolean fields |
 | T-0023-106 | Happy | JSON contains warn_agents array field |
 | T-0023-107 | Failure | Missing pipeline-state.md -> outputs defaults (pipeline_active: false, phase: "idle") and exits 0 |
@@ -589,6 +599,7 @@ Wait for Darwin to develop telemetry-based methodology for identifying over-spec
 | T-0023-132 | Regression | All observation masking receipt formats preserved (grep for receipt table) |
 | T-0023-133 | Regression | Brain capture model section preserved |
 | T-0023-134 | Regression | Investigation discipline section preserved |
+| T-0023-134a | Regression | Pipeline flow diagram preserved (grep for "Idea -> Robert" or equivalent flow marker) |
 
 #### Step 1j Tests (SKILL.md and /pipeline-setup)
 
@@ -614,18 +625,18 @@ Wait for Darwin to develop telemetry-based methodology for identifying over-spec
 
 | Step | Count | IDs | Categories |
 |------|-------|-----|------------|
-| 1a | 8 | T-0023-001--008 | Happy (5), Boundary (2), Regression (1) |
+| 1a | 10 | T-0023-001--008 | Happy (5), Boundary (4), Regression (1) |
 | 1b | 6 | T-0023-010--015 | Happy (5), Regression (1) |
 | 1c | 10 | T-0023-020--029 | Happy (6), Regression (3), Boundary (1) |
 | 1d | 8 | T-0023-030--037 | Happy (5), Regression (1), Boundary (2) |
-| 1e | 6 | T-0023-040--045 | Happy (3), Regression (2), Boundary (1) |
-| 1f | 21 | T-0023-050--070 | Happy (16), Boundary (1), Regression (4) |
+| 1e | 7 | T-0023-040--045a | Happy (3), Regression (2), Boundary (2) |
+| 1f | 26 | T-0023-050--072 | Happy (18), Boundary (2), Regression (6) |
 | 1g | 12 | T-0023-080--091 | Happy (7), Regression (5) |
-| 1h | 22 | T-0023-100--121 | Happy (11), Failure (4), Boundary (5), Regression (2) |
-| 1i | 5 | T-0023-130--134 | Happy (1), Regression (4) |
+| 1h | 24 | T-0023-100--121 | Happy (13), Failure (4), Boundary (5), Regression (2) |
+| 1i | 6 | T-0023-130--134a | Happy (1), Regression (5) |
 | 1j | 4 | T-0023-140--143 | Happy (4) |
 | 1l | 6 | T-0023-150--155 | Happy (6) |
-| **Total** | **108** | | |
+| **Total** | **119** | | |
 
 ---
 
@@ -685,6 +696,7 @@ Wait for Darwin to develop telemetry-based methodology for identifying over-spec
 | Revision | Date | Summary | Test Delta |
 |----------|------|---------|-----------|
 | 0 (initial) | 2026-04-03 | 108-test specification, 12 Phase 1 steps + 3 Phase 2 steps | -- |
+| 1 | 2026-04-03 | Added 11 tests from Roz test spec review (3 blocking, 8 non-blocking) | +11 (108 -> 119) |
 
 ---
 
@@ -693,7 +705,7 @@ Wait for Darwin to develop telemetry-based methodology for identifying over-spec
 | Category | Count | Preserved |
 |----------|-------|-----------|
 | Requirements (R1-R15) | 15 | All 15 |
-| Test Specs (T-0023-001 through T-0023-155) | 108 | All 108; gaps at step boundaries |
+| Test Specs (T-0023-001 through T-0023-155) | 119 | All 119; gaps at step boundaries |
 | Phase 1 Steps (1a-1l) | 12 | All 12 with acceptance criteria |
 | Phase 2 Steps (2a-2c) | 3 | All 3 with acceptance criteria and regression thresholds |
 | Notes for Colby | 11 | All 11 |

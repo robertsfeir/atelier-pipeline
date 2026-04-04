@@ -50,3 +50,23 @@ get WARN injection into the relevant agent's invocation prompt.
 
 - Error: unknown
 - Message: unknown
+
+### StopFailure: ellis at 2026-04-04T06:00:56Z
+
+- Error: unknown
+- Message: unknown
+
+### StopFailure: unknown at 2026-04-04T06:00:57Z
+
+- Error: unknown
+- Message: unknown
+
+### StopFailure: colby at 2026-04-04T11:49:58Z
+
+- Error: unknown
+- Message: unknown
+
+### StopFailure: unknown at 2026-04-04T11:49:58Z
+
+- Error: unknown
+- Message: unknown
