@@ -16,6 +16,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - pipeline-orchestration.md: Medium ADR research extended to use scout-driven briefing (was Eva-only)
 - invocation-templates.md: Added scout-research-brief template; cal-adr and cal-adr-large updated
 
+### Credits
+- Context reduction and haiku fan-out approaches inspired by [Andrey Popov's](https://github.com/vospr) reverse analysis of Atelier Pipeline against the Context Engineering template
+
 ## [3.23.1] - 2026-04-05
 
 ### Fixed
