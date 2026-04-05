@@ -354,7 +354,7 @@ file already exists. Add this hooks section:
     ],
     "SubagentStop": [
       {
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/warn-dor-dod.sh", "if": "agent_type == 'colby' || agent_type == 'roz'"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/log-agent-stop.sh"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-brain-capture.sh"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/warn-brain-capture.sh", "if": "agent_type == 'cal' || agent_type == 'colby' || agent_type == 'roz' || agent_type == 'agatha'"}, {"type": "prompt", "prompt": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-compact-advisory.sh", "if": "agent_type == 'ellis'"}]
+        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/warn-dor-dod.sh", "if": "agent_type == 'colby' || agent_type == 'roz'"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/log-agent-stop.sh"}, {"type": "prompt", "prompt": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-brain-capture.sh", "if": "agent_type == 'cal' || agent_type == 'colby' || agent_type == 'roz'"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/warn-brain-capture.sh", "if": "agent_type == 'cal' || agent_type == 'colby' || agent_type == 'roz' || agent_type == 'agatha'"}, {"type": "prompt", "prompt": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-compact-advisory.sh", "if": "agent_type == 'ellis'"}]
       }
     ],
     "PreCompact": [

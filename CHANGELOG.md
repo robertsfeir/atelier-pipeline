@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.23.1] - 2026-04-05
+
+### Fixed
+- prompt-brain-capture hook: added `"if"` guard to prevent feedback loops on scout agents (cal/colby/roz only)
+- pipeline-setup SKILL.md: corrected hook type from "command" to "prompt" for brain-capture hook in template
+
 ## [3.23.0] - 2026-04-04
 
 ### Changed

@@ -67,7 +67,8 @@
           },
           {
             "type": "prompt",
-            "prompt": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-brain-capture.sh"
+            "prompt": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-brain-capture.sh",
+            "if": "agent_type == 'cal' || agent_type == 'colby' || agent_type == 'roz'"
           },
           {
             "type": "command",
