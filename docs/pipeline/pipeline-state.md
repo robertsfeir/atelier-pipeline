@@ -27,3 +27,4 @@
 - Ready for Colby build phase (12 steps, Large pipeline — all Opus)
 <!-- COMPACTION: 2026-04-03T20:04:01Z -->
 <!-- COMPACTION: 2026-04-03T20:53:39Z -->
+<!-- COMPACTION: 2026-04-05T15:58:57Z -->

@@ -2,6 +2,7 @@
 name: pm # prettier-ignore
 description: Invoke Robert (CPO) to run feature discovery, produce specs, and make product decisions.
 ---
+
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>

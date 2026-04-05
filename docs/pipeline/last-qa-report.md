@@ -1,156 +1,107 @@
 # QA Report -- 2026-04-04
 *Reviewed by Roz*
 
-## Verdict: PASS
+## Verdict: FAIL
 
 ### Scope
-ADR-0023 Wave 5, Step 1k -- Test fixes for migrated bats stubs and broken patterns.
+Scoped QA -- 5 changes across 9 source files.
 
 **Files changed:**
-- `tests/adr-0023-reduction/test_reduction_structural.py` (42 test fixes across 6 categories)
-- `tests/dashboard/test_dashboard_integration.py` (1 line -- case-insensitive assertion for T-0018-067)
+- `source/shared/rules/agent-system.md` (core agent constant 11->14)
+- `source/shared/agents/colby.md` (Re-invocation Mode section added)
+- `source/shared/agents/roz.md` (Scoped Re-run Mode section added)
+- `source/shared/rules/default-persona.md` (context eviction protocol replaced)
+- `source/shared/agents/distillator.md` (observation masking constraint added)
+- `source/claude/agents/colby.frontmatter.yml` (maxTurns 100->75)
+- `source/cursor/agents/colby.frontmatter.yml` (maxTurns 100->75)
+- `source/claude/agents/roz.frontmatter.yml` (maxTurns 100->60)
+- `source/cursor/agents/roz.frontmatter.yml` (maxTurns 100->60)
 
 ---
 
-### Tier 1 -- Mechanical Checks
+### Checks
 
 | # | Check | Status | Details |
 |---|-------|--------|---------|
-| 1 | Type Check | PASS | No typecheck configured (project convention) |
-| 2 | Lint | PASS | No linter configured (project convention) |
-| 3 | Tests (scoped) | PASS | 171 passed, 1 known-fail (T-0023-150), 2 skipped in `test_reduction_structural.py`. T-0018-067 passed. |
-| 4 | Tests (full suite) | PASS | 13 failures total, all pre-existing. Colby's changes fixed 10 pre-existing failures (23 before, 13 after). Zero new failures introduced. |
-| 5 | Coverage | N/A | No coverage threshold configured |
-| 6 | Complexity | PASS | No new functions introduced; `_run_session_boot` helper is 15 lines, clean abstraction |
-| 7 | Unfinished markers | PASS | Zero TODO/FIXME/HACK/XXX in either changed file |
-
-### Tier 2 -- Judgment Checks
-
-| # | Check | Status | Details |
-|---|-------|--------|---------|
-| 8 | Security | PASS | Test-only changes. `_run_session_boot` uses `tempfile.TemporaryDirectory` for isolation; strips env var `CLAUDE_AGENT_TEAMS` by default. No secrets in test data. |
-| 9 | CI/CD Compat | N/A | No CI/CD config touched |
-| 10 | Doc Impact | NO | Test-only changes, no user-facing behavior changed |
-| 11 | Dependencies | PASS | No new dependencies. `time` is stdlib. |
-| 12 | UX Flow | N/A | No UX doc exists for this feature |
-| 13 | Semantic Correctness | PASS | Every assertion verified against docstring intent (see detailed verification below) |
-| 14 | Contract Coverage | N/A | No cross-module contracts touched |
-| 15 | Wiring | N/A | No FE/BE wiring |
+| 1 | XML well-formedness (colby.md) | PASS | `<workflow>` tag opens line 20, closes line 45. Re-invocation Mode section is inside `<workflow>`. No orphaned tags. |
+| 2 | XML well-formedness (roz.md) | PASS | `<workflow>` tag opens line 19, closes line 51. Scoped Re-run Mode section is inside `<workflow>`. No orphaned tags. |
+| 3 | XML well-formedness (default-persona.md) | PASS | `<protocol id="context-eviction">` opens and closes correctly. Content replaced cleanly. |
+| 4 | XML well-formedness (distillator.md) | PASS | New constraint bullet added inside `<constraints>` block. No structural issues. |
+| 5 | Core constant count | PASS | Header says 14. List contains: cal, colby, roz, ellis, agatha, robert, robert-spec, sable, sable-ux, investigator, distillator, sentinel, darwin, deps. Count: 14. Matches. |
+| 6 | Colby TDD constraint preserved (R15) | PASS | constraint at line 58: "Make Roz's pre-written tests pass. Do not modify or delete her assertions." Intact. Build Mode at line 29 reads "run Roz's tests first (confirm they fail for the right reason)." Intact. |
+| 7 | Roz test-first instructions preserved | PASS | Test Authoring Mode (lines 29-36) fully intact: "Tests define the target BEFORE Colby builds." constraint line 72: "Test-first: test assertions define correct behavior BEFORE Colby builds." Both intact. |
+| 8 | New sections inside `<workflow>` | PASS | Colby's Re-invocation Mode is at lines 39-44, inside `<workflow>` (lines 20-45). Roz's Scoped Re-run Mode is at lines 44-50, inside `<workflow>` (lines 19-51). Both correctly scoped. |
+| 9 | Claude/Cursor frontmatter maxTurns in sync | PASS | Colby: both claude and cursor frontmatter show maxTurns: 75. Roz: both claude and cursor frontmatter show maxTurns: 60. Synchronized. |
+| 10 | Preamble exemption clause -- Ellis-only | PASS | `source/shared/references/agent-preamble.md` line 10: "Exemption: Ellis (commit agent) skips DoR/DoD and brain capture." The new Re-invocation Mode and Scoped Re-run Mode are fast-path protocols within each agent's `<workflow>` section, not preamble exemptions. No cross-reference breakage. The preamble correctly exempts only Ellis. |
+| 11 | TODO/FIXME/HACK/XXX markers | PASS | Zero matches in all 9 changed source files. Matches in roz.md and colby.md are instruction text (telling agents to check for markers), not actual markers. |
+| 12 | Tests (scoped -- line count regression) | FAIL | T-0023-030: colby.md is 97 lines, exceeds <=95 limit. T-0023-040: roz.md is 101 lines, exceeds <=100 limit. Both pass on baseline (git HEAD). New failures introduced by this changeset. |
+| 13 | Tests (full suite) | FAIL | 2 new test failures introduced. 48 other failures are pre-existing (verified by baseline run). See details below. |
+| 14 | Unfinished markers | PASS | Zero unfinished markers in changed files. |
 
 ---
 
 ### Requirements Verification
 
-**ADR Step 1k acceptance criteria:**
-
 | # | Requirement | Colby Claims | Roz Verified | Finding |
 |---|-------------|-------------|-------------|---------|
-| 1 | session-boot.sh has >=25 tests covering: valid JSON output, missing pipeline-state.md, missing config, missing agents dir, correct custom agent count, env var detection | Yes | YES | 22 session-boot-specific tests (T-100 through T-119 including T-104a, T-104b). Additional tests in T-120/T-121 for default-persona.md integration, plus T-130 through T-143 for SKILL.md and pipeline-orchestration.md. Total session-boot-related coverage exceeds 25 threshold. |
-| 2 | All existing tests pass | Yes (known T-150 exception) | YES | 171/172 pass in ADR-0023 suite. T-150 correctly fails (994 > 935 lines -- code bug for Step 1l, not test bug). 13 full-suite failures are all pre-existing (verified by running pre-change baseline: 23 failures before, 13 after). |
-| 3 | Hook exits 0 in every test case | Yes | YES | Every session-boot test asserts `rc == 0`. T-107 through T-110 specifically test degraded scenarios (missing files, malformed input) and confirm exit 0. |
-
-**Session-boot.sh test coverage map:**
-
-| Category | Tests | Verified |
-|----------|-------|----------|
-| Valid JSON output | T-100 | YES -- parses stdout as JSON |
-| Field presence + types | T-101 through T-106, T-104a, T-104b, T-116, T-117 | YES -- checks field name and Python type |
-| Missing pipeline-state.md | T-107 | YES -- empty tmpdir, verifies defaults |
-| Missing config | T-108 | YES -- empty tmpdir, verifies trunk-based default |
-| Missing agents dir | T-109 | YES -- empty tmpdir, verifies count=0 |
-| Malformed input | T-110 | YES -- creates pipeline-state.md without PIPELINE_STATUS marker |
-| Custom agent count | T-109 (zero case) | YES |
-| Env var detection | T-111 (set), T-112 (unset) | YES -- controls CLAUDE_AGENT_TEAMS explicitly |
-| Executable bit | T-113 | YES -- os.access(f, os.X_OK) |
-| Retro lesson compliance | T-114 | YES -- set -uo pipefail, not set -e |
-| Warn agents parsing | T-115 | YES -- creates error-patterns.md with Recurrence: 3, verifies "colby" in array |
-| Project name fallback | T-118 | YES -- no git, no config, falls back to basename |
-| Performance | T-119 | YES -- asserts <500ms |
-
----
-
-### Detailed Assertion-Docstring Verification
-
-**Category 1: Broken regex fixes (T-006, 006a, 006b, 007, 008)**
-
-Each test's docstring claims to verify that agent personas retain specific `thought_type` values with importance values. The old code used literal string matching with bats-style `\|` (e.g., `assert "thought_type.*decision\|thought_type: 'decision'" in c`), which checked for the literal backslash-pipe string in the file content. The fix correctly uses `re.search()` with proper `|` alternation. Verified against `source/shared/agents/cal.md`, `roz.md`, `agatha.md`, `colby.md`, and `source/shared/references/agent-preamble.md` -- all contain the expected patterns.
-
-**Category 2: Invocation-template stubs (T-081 through T-091)**
-
-All 11 stubs now have real assertions matching their docstrings. Verified each assertion against the actual content of `source/shared/references/invocation-templates.md`:
-- T-081: Finds "brain-context injection" in the Shared Protocols header. Confirmed present at line 8.
-- T-082: Finds "retro-lessons.md" and "agent-preamble.md" in header. Confirmed at line 13.
-- T-083: Finds "Persona constraints" in header. Confirmed at line 17.
-- T-084: Counts template index rows <=20. Confirmed 20 rows in template index.
-- T-085: Verifies no `<brain-context>` inside individual templates. Confirmed absent.
-- T-086: Verifies no retro-lessons.md/agent-preamble.md in individual `<read>` tags. Confirmed absent.
-- T-087/088/089: Verifies "CI Watch variant" in roz-investigation, colby-build, roz-scoped-rerun. Confirmed in actual template content.
-- T-090: Verifies no `<template id="agent-teams-task">` but cross-reference to pipeline-operations.md exists. Confirmed at line 48.
-- T-091: Verifies dashboard-bridge completely removed. Confirmed absent from file.
-
-**Category 3: Session-boot tests (T-100 through T-119)**
-
-All 20 tests execute `session-boot.sh` via subprocess (not just file-existence checks). The `_run_session_boot` helper at line 772 uses `subprocess.run(["bash", script_path], ...)` with proper temp directory isolation, env control, and 10-second timeout. Each test creates appropriate fixtures (empty tmpdir, populated dirs, error-patterns.md) and verifies both exit code and JSON field values/types.
-
-**Category 4: Aggregate line count fix (T-150)**
-
-Previously referenced literal `$agent_file` (bats variable). Now correctly iterates `ALL_AGENTS_12` list from conftest. The test correctly fails because agent personas total 994 lines vs. the 935 target -- this is a known code reduction gap for Step 1l.
-
-**Category 5: Pass stubs (T-001, T-151, T-152)**
-
-- T-001: Previously `pass` stub, now asserts `<protocol id=` exists in agent-preamble.md. Verified present.
-- T-151/T-152: Marked `pytest.skip` with explanatory messages about bats removal. Appropriate -- these test categories (bats hooks, brain node tests) are run via separate commands, not pytest.
-
-**Category 6: Cross-ADR fix (T-0018-067)**
-
-Changed from `assert "Darwin Auto-Trigger" in c` to `assert re.search(r"Darwin Auto-Trigger", c, re.IGNORECASE)`. Verified that `pipeline-orchestration.md` contains this text.
-
----
-
-### Pre-Existing Failure Analysis
-
-13 failures remain in the full suite, all pre-existing (verified by running the baseline without Colby's changes -- 23 failures before, 13 after):
-
-| Test | Pre-existing? | Cause |
-|------|--------------|-------|
-| T-0023-150 (line count 994 > 935) | YES | Code needs further reduction in Step 1l |
-| T-0022-092 (colby blocked) | YES | Hook test from ADR-0022 |
-| T-0021-098 (unset project dir) | YES | Brain wiring test |
-| T-0005-006 (persona tag used) | YES | ADR-0005 test predates ADR-0023 persona changes |
-| T-0005-053, 055, 056, 058, 102, 103, 104, 106 | YES | ADR-0005 tests expect pre-reduction persona format |
-| T-0005-131 (examples tag order) | YES | ADR-0005 test predates ADR-0023 |
+| 1 | Core constant 11->14, add sentinel/darwin/deps | Yes | YES | Line 302: "14 agents." Line 307 list contains all 14. Count confirmed. |
+| 2 | Colby Re-invocation Mode added inside `<workflow>` | Yes | YES | Lines 39-44 inside `<workflow>` block. Well-formed. |
+| 3 | Roz Scoped Re-run Mode added inside `<workflow>` | Yes | YES | Lines 44-50 inside `<workflow>` block. Well-formed. |
+| 4 | maxTurns: Colby 100->75 (claude+cursor) | Yes | YES | Both frontmatter files show maxTurns: 75. |
+| 5 | maxTurns: Roz 100->60 (claude+cursor) | Yes | YES | Both frontmatter files show maxTurns: 60. |
+| 6 | Eva context eviction replaced with aggressive mechanical eviction | Yes | YES | Protocol at lines 142-161 of default-persona.md. New content adds: Telemetry trend query and Brain capture model to disposable list, plus Retained/Mechanical reinforcement clauses. Well-formed. |
+| 7 | Distillator observation masking constraint added | Yes | YES | New bullet at line 90 of distillator.md. Inside `<constraints>` block. Content is correct: strips raw observation payloads, preserves derived facts. |
+| 8 | Colby TDD (R15) not removed | Yes | YES | Confirmed intact at colby.md lines 29 and 58. |
+| 9 | Roz test-first instructions not removed | Yes | YES | Confirmed intact at roz.md lines 29-36 and line 72. |
+| 10 | Line count limits (ADR-0023: colby <=95, roz <=100) | Not mentioned | FAIL | colby.md: 97 lines (2 over). roz.md: 101 lines (1 over). Both tests pass on baseline. These are regressions introduced by the new workflow sections. |
 
 ---
 
 ### Unfinished Markers
 
-`grep -r "TODO|FIXME|HACK|XXX"` in changed files: **0 matches**
+`grep -r "TODO|FIXME|HACK|XXX"` in changed source files: **0 actual markers**
+
+(Matches in roz.md and colby.md are instruction prose, not actual markers.)
 
 ---
 
-### Warnings
+### Issues Found
 
-1. **SyntaxWarning** at line 55: `"\."` is an invalid escape sequence in the docstring of `test_T_0023_001`. Python 3.14 is stricter about escape sequences in non-raw strings. Non-blocking cosmetic issue.
+**BLOCKER** -- `source/shared/agents/colby.md`, line count: colby.md is 97 lines, exceeds the ADR-0023 limit of <=95 lines. Test T-0023-030 fails. The Re-invocation Mode section (lines 39-44, 6 lines including blank) pushed the file over the limit. The limit was established by ADR-0023 (reduction sprint). Adding content without trimming equivalent content elsewhere violates the constraint. Colby must trim 2 lines from colby.md while preserving all behavioral content.
+
+**BLOCKER** -- `source/shared/agents/roz.md`, line count: roz.md is 101 lines, exceeds the ADR-0023 limit of <=100 lines. Test T-0023-040 fails. The Scoped Re-run Mode section (lines 44-50, 7 lines including blank) pushed the file over the limit. Colby must trim 1 line from roz.md while preserving all behavioral content.
+
+---
+
+### Pre-Existing Failures (not caused by this changeset)
+
+Verified by running full suite on git HEAD (stash baseline). The following 48 failures existed before this changeset and are not attributable to these 5 changes:
+
+- tests/adr-0014-telemetry (3 failures)
+- tests/adr-0015-deps (1 pre-existing + 6 new due to `.claude/` sync already in working tree -- not caused by the 5 source changes)
+- tests/adr-0016-darwin (14 pre-existing + several new due to `.claude/` sync already in working tree -- not caused by the 5 source changes)
+- tests/adr-0023-reduction (1 pre-existing: ellis.md `<required-actions>` tag)
+- tests/dashboard (1 pre-existing)
+- tests/hooks/test_adr_0022_phase2_hooks (1 pre-existing -- passes in isolation, collection-order artifact)
+- tests/hooks/test_brain_wiring (9 pre-existing)
+- tests/xml-prompt-structure (11 pre-existing)
+
+Note: The additional deps/darwin/`test_T_0005_100` failures appearing in the post-change run are attributable to the `.claude/` sync changes already staged in the working tree (git status shows these as modified from HEAD), not to the 5 source changes under review. They are present whether or not the 5 source changes are applied.
+
+**Net new regressions introduced by this changeset: 2** (T-0023-030, T-0023-040).
 
 ---
 
 ### Doc Impact: NO
 
-Test-only changes. No user-facing behavior, endpoints, env vars, configuration, or error messages changed.
+Source template changes. User-facing behavior is updated (smaller maxTurns, new fast-path modes, extended eviction list), but no documentation files need updating beyond these source templates.
 
 ---
 
 ### Roz's Assessment
 
-Clean, thorough work. Colby fixed all 6 categories of broken tests with correct patterns:
+The 5 changes are structurally correct and behaviorally sound. XML tags are well-formed throughout. All new sections land inside their correct parent tags. TDD constraints (R15 -- Colby never modifies Roz's assertions; Roz test-first principle) are fully intact. The core constant count and list are consistent. Claude/Cursor frontmatter files are in sync. The preamble exemption clause correctly exempts only Ellis and does not require updating for the new fast-path modes (those are `<workflow>`-level protocols, not preamble-level exemptions). The distillator observation masking constraint is well-placed and precise.
 
-1. **Regex fixes** properly convert bats literal `\|` to Python `re.search()` with `|` alternation -- this is the correct translation.
-2. **Invocation-template tests** go beyond existence checks to verify actual content (brain-context protocol, standard READ items, CI Watch variants, cross-references). Each assertion matches its docstring.
-3. **Session-boot tests** are the strongest part of this change -- real subprocess execution, temp directory isolation, env var control, JSON parsing, type checking, and degraded-scenario coverage. The `_run_session_boot` helper is well-designed with proper defaults (strips CLAUDE_AGENT_TEAMS, uses tmpdir, 10s timeout).
-4. **Parametrized tests** (T-068 through T-072) correctly replace the broken `$agent_file` literal with `@pytest.mark.parametrize("agent_file", ALL_AGENTS_12)`, giving 12x test coverage per test function.
-5. **The T-150 failure is correctly preserved** as a known code bug for Step 1l, not masked.
-6. **T-151/T-152 skips** are appropriate -- bats and brain tests have separate runners.
+However, two ADR-0023 line-count constraints are violated. These constraints exist because ADR-0023 established explicit persona size budgets -- colby.md at 95 lines and roz.md at 100 lines. Both files were exactly at their limits before this changeset. Adding workflow sections without trimming equivalent content elsewhere is a constraint violation, not a judgment call. Colby needs to trim 2 lines from colby.md and 1 line from roz.md. Options include condensing the new section prose (both sections have some redundancy with the existing `<workflow>` modes) or trimming from existing content that is less load-bearing than the new fast-path behavior.
 
-The `import time` addition is justified (used by T-119 performance test). No dead imports. No new dependencies.
-
-All acceptance criteria met. Zero new failures introduced. 10 pre-existing failures fixed. Net improvement.
+Pipeline is halted pending the line-count fix.

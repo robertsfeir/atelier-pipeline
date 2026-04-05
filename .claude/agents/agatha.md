@@ -16,6 +16,7 @@ hooks:
 mcpServers:
   - atelier-brain
 ---
+
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>

@@ -1,10 +1,6 @@
----
-paths:
-  - "docs/pipeline/**"
----
 # Pipeline Orchestration -- Operational Procedures
 
-Loads automatically when Eva reads `{pipeline_state_dir}/` files. Contains
+Loads automatically when Eva reads `docs/pipeline/` files. Contains
 mandatory gates, brain capture model, investigation discipline, pipeline
 flow, agent standards, and verification procedures.
 
@@ -153,7 +149,7 @@ thoughts referencing files modified in this pipeline. >50% churn since capture
 
 ### Dashboard Bridge (post-pipeline, PlanVisualizer only)
 
-If `dashboard_mode: "plan-visualizer"`: run `{config_dir}/dashboard/telemetry-bridge.sh`.
+If `dashboard_mode: "plan-visualizer"`: run `.claude/dashboard/telemetry-bridge.sh`.
 Failure is never a blocker. `claude-code-kanban` or `none`: skip entirely.
 
 Eva boot dashboard announcement: `plan-visualizer` -> "Dashboard: PlanVisualizer",
@@ -190,7 +186,7 @@ the same severity as Eva editing source code.
    -> Ellis flow is the same as the existing worktree -> merge -> Ellis flow.
 
 3. **Full test suite between waves.** After merging wave changes, Roz
-   runs the full test suite (`{test_command}`) on the integrated codebase.
+   runs the full test suite (`pytest tests/ && cd brain && node --test ../tests/brain/*.test.mjs`) on the integrated codebase.
    Individual units within a wave get lint+typecheck only. Roz runs the
    full suite at wave boundaries, not unit boundaries. Eva invokes Roz
    for this verification -- Eva does not run the test suite herself. Eva
@@ -304,7 +300,7 @@ the same severity as Eva editing source code.
 
 ## Agent Output Masking
 
-After processing each agent's return, Eva replaces the full output in her working context with a structured receipt. The full output remains on disk (in files the agent wrote, in `{pipeline_state_dir}/last-qa-report.md`, or in brain captures). Eva re-reads from disk only when she needs detail for a downstream invocation.
+After processing each agent's return, Eva replaces the full output in her working context with a structured receipt. The full output remains on disk (in files the agent wrote, in `docs/pipeline/last-qa-report.md`, or in brain captures). Eva re-reads from disk only when she needs detail for a downstream invocation.
 
 ### Receipt Format Per Agent
 
@@ -344,7 +340,7 @@ After processing each agent's return, Eva replaces the full output in her workin
 ## Investigation Discipline
 
 When Eva enters a debug flow, she creates (or resets)
-`{pipeline_state_dir}/investigation-ledger.md` with the symptom and an empty
+`docs/pipeline/investigation-ledger.md` with the symptom and an empty
 hypothesis table. Eva updates it after each investigation step.
 
 ### Layer Escalation Protocol
@@ -375,7 +371,7 @@ before forming new hypotheses to avoid repetition.
 Eva updates `pipeline-state.md` after each wave completes, not after each
 unit. Within a wave, Eva tracks unit progress in-memory.
 
-Eva maintains five files in `{pipeline_state_dir}`:
+Eva maintains five files in `docs/pipeline`:
 - **`pipeline-state.md`** -- Wave-level progress tracker with "Changes since last state" section.
 - **`context-brief.md`** -- Conversational decisions, corrections, user preferences. Reset per feature.
 - **`error-patterns.md`** -- Post-pipeline error log categorized by type.
@@ -389,30 +385,29 @@ Eva maintains five files in `{pipeline_state_dir}`:
 ## Phase Sizing Rules
 
 **Robert-subagent on Small:** When Roz flags doc impact, Eva checks for an
-existing spec: `ls {product_specs_dir}/*<feature>*`. Spec exists -> run Robert.
+existing spec: `ls docs/product/*<feature>*`. Spec exists -> run Robert.
 No spec -> skip, log gap.
 
 User overrides: "full ceremony" forces Small minimum. "stop"/"hold" halts auto-advance.
 
-### Large Sizing Cost Advisory
+### Sizing Choice Presentation
 
-When Eva classifies a feature as Large, she presents a cost-aware choice
-before proceeding:
+Eva always presents sizing as a choice list with her recommendation in bold.
+All four options are shown. The user picks.
 
-"This feature sizes as **Large**. You can run it as **Medium** instead.
+Format:
+```
+This feature sizes as [assessment]. Pick your pipeline sizing:
 
-| | Medium | Large |
-|---|---|---|
-| Models | Classifier (often Sonnet, Opus when score ≥4) | Classifier with +1 Large signal |
-| Review juncture | Roz + Poirot + Robert (3) | Roz + Poirot + Robert + Sable + Sentinel (5) |
-| Phase pacing | Can chain phases | One phase per turn |
-| Sable UX review | Mockup only | Mockup + final juncture |
+- Micro
+- Small
+- **[Recommended]** (recommended)
+- Large
+```
 
-**Run as Medium or Large?**"
-
-If the user chooses Medium, Eva re-sizes and all subsequent invocations use
-Medium model assignments. The user can say "upgrade to Large" at any point
-if complexity warrants it.
+If the user picks a different sizing, Eva re-sizes immediately. All subsequent
+invocations use the chosen sizing's model assignments and ceremony level.
+The user can say "upgrade to Large" or "downgrade to Small" at any point.
 
 ### Micro Classification Criteria
 
@@ -430,11 +425,18 @@ all units. Batch sequential by default. Worktree changes merge via git, not copy
 Mechanical: (1) existing spec? (2) existing components? (3) brain 3+ thoughts?
 Any -> assumptions mode. None -> question mode (default).
 
-### Large ADR Research Brief
+### ADR Research Brief (Medium + Large)
 
-Eva compiles research brief before Cal: grep patterns, check manifests, query
-brain for architecture/pattern/rejection. Included in Cal's CONTEXT.
-Small/Medium skip this.
+Before invoking Cal on Medium or Large pipelines, Eva fans out up to 3 Explore+haiku agents in parallel to compile a research brief. Small pipelines skip this.
+
+Eva launches these scouts simultaneously:
+- **Patterns scout:** Grep for existing patterns related to the feature area (file:line results)
+- **Manifest scout:** Check dependency manifests for relevant packages and versions
+- **Blast-radius scout:** Identify files likely in scope -- source files matching the feature name, adjacent modules, integration points (return <=15 file paths)
+
+Eva collects all three results, then queries brain for architecture/pattern/rejection thoughts (`agent_search`). The combined output populates Cal's `<context>` Research Brief block.
+
+**Scout invocation:** `Agent(subagent_type: "Explore", model: "haiku")`. Each scout receives a focused single-task prompt. Results are facts only -- no design opinions. Dedup rule: if 2+ scouts need the same file, only one reads it.
 
 </section>
 
@@ -456,7 +458,7 @@ signals. Score >=3 -> Opus. Brain failures +3. Large always Opus.
 **DoR/DoD gate:** Spot-check DoR against spec. Verify DoD has no silent drops.
 Pass Colby's requirements to Roz for independent verification.
 
-**UX pre-flight:** Check `{ux_docs_dir}/*<feature>*`. UX doc exists -> ADR
+**UX pre-flight:** Check `docs/ux/*<feature>*`. UX doc exists -> ADR
 must have UX Coverage section. Unmapped surfaces = reject ADR.
 
 **Rejection protocol:** List gaps, re-invoke with "Revise -- missing: [list]".
@@ -482,7 +484,7 @@ Idea -> Robert spec -> Sable UX + Agatha doc plan (parallel)
 
 ### Spec Requirement (Medium/Large)
 
-`ls {product_specs_dir}/*<feature>*`. Exists -> advance. Missing -> invoke Robert-skill.
+`ls docs/product/*<feature>*`. Exists -> advance. Missing -> invoke Robert-skill.
 
 ### Sable Mockup Verification Gate
 
@@ -518,7 +520,7 @@ User overrides: "skip to [agent]", "back to [agent]", "stop".
 
 Compaction API manages context automatically. Eva suggests fresh session only
 when: (a) response quality visibly degrades, (b) pipeline spans multiple days.
-Pipeline state preserved in `{pipeline_state_dir}` for recovery.
+Pipeline state preserved in `docs/pipeline` for recovery.
 
 </section>
 
@@ -532,7 +534,7 @@ After Sable completes the UX doc, Colby builds a **mockup** (real UI, mock data)
 
 ## What Lives on Disk
 
-**On disk:** `{product_specs_dir}` (specs, living), `{ux_docs_dir}` (UX docs, living), `{architecture_dir}` (ADRs, immutable), `{conventions_file}`, `{pipeline_state_dir}`, `{changelog_file}`, code, tests, Agatha's docs. **NOT on disk:** QA reports, acceptance reports, agent state. See `pipeline-operations.md` for context hygiene.
+**On disk:** `docs/product` (specs, living), `docs/ux` (UX docs, living), `docs/architecture` (ADRs, immutable), `docs/CONVENTIONS.md`, `docs/pipeline`, `CHANGELOG.md`, code, tests, Agatha's docs. **NOT on disk:** QA reports, acceptance reports, agent state. See `pipeline-operations.md` for context hygiene.
 
 <gate id="agent-standards">
 
@@ -542,12 +544,12 @@ After Sable completes the UX doc, Colby builds a **mockup** (real UI, mock data)
 - DRIFT/AMBIGUOUS from Robert/Sable = hard pause. See Triage Consensus Matrix in pipeline-operations.md.
 - Spec reconciliation is continuous. Updated living artifacts ship in same commit as code.
 - ADRs are immutable. Cal writes a new ADR to supersede; original marked "Superseded by ADR-NNN."
-- All commits follow Conventional Commits with narrative body. {changelog_file} in Keep a Changelog format.
+- All commits follow Conventional Commits with narrative body. CHANGELOG.md in Keep a Changelog format.
 - **No mock data in production code paths.** Mock data only on mockup routes for UAT. Cal flags wiring in ADR. Colby never promotes without real APIs. Roz greps for `MOCK_`, `INITIAL_`, hardcoded arrays -- BLOCKER if found.
 - **Agatha's divergence report ships in the pipeline report.** When Agatha
   produces a Divergence Report (documenting gaps between code and docs),
   Eva summarizes the divergence findings in the final pipeline report
-  written to `{pipeline_state_dir}/pipeline-state.md`. Divergence findings
+  written to `docs/pipeline/pipeline-state.md`. Divergence findings
   that are silently dropped -- not summarized, not acted on -- are the same
   class of violation as skipping spec reconciliation.
 

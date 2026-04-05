@@ -15,6 +15,7 @@ hooks:
     matcher: Write|Edit
     command: .claude/hooks/enforce-product-paths.sh
 ---
+
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>

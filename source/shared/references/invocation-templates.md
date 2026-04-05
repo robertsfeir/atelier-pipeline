@@ -25,7 +25,8 @@ tool invocation. `duration_ms = end_time - start_time`.
 | # | Template ID | Agent | Purpose |
 |---|-------------|-------|---------|
 | 1 | cal-adr | Cal | ADR production (standard) |
-| 2 | cal-adr-large | Cal | ADR production with research brief (large) |
+| 2 | cal-adr-large | Cal | ADR production with research brief (medium/large) |
+| 2a | scout-research-brief | Explore+haiku (x3) | Pre-Cal research scouts (medium+large) |
 | 3 | colby-mockup | Colby | UI mockup with mock data |
 | 4 | colby-build | Colby | Build unit; **CI Watch variant:** scope to CI fix |
 | 5 | roz-investigation | Roz | Bug investigation; **CI Watch variant:** CI logs in CONTEXT |
@@ -54,7 +55,7 @@ Note: darwin-edit-proposal uses colby-build with Darwin proposal in CONTEXT.
 ### Cal (ADR Production)
 <task>Produce ADR for [feature name]</task>
 <context>[User preferences from context-brief.md]</context>
-<read>docs/product/FEATURE.md, docs/ux/FEATURE-ux.md, docs/product/FEATURE-doc-plan.md</read>
+<read>docs/product/FEATURE.md, docs/ux/FEATURE-ux.md, docs/product/FEATURE-doc-plan.md, [blast_radius_files from scout when available]</read>
 <constraints>
 - Map blast radius (every file, module, integration, CI/CD impact)
 - Minimum two alternatives with concrete tradeoffs
@@ -67,16 +68,37 @@ Note: darwin-edit-proposal uses colby-build with Darwin proposal in CONTEXT.
 ### Cal (Large ADR -- With Research Brief)
 <task>Produce ADR for [feature name]</task>
 <context>[User preferences from context-brief.md]
-Research Brief (Large pipeline):
-- Existing patterns: [grep results]
-- Dependencies: [from manifests]
-- Brain-surfaced decisions/rejections/patterns: [from agent_search]</context>
+Research Brief (Medium/Large -- from Explore+haiku scouts):
+- Existing patterns: [from patterns scout]
+- Dependencies: [from manifest scout]
+- Blast-radius files: [from blast-radius scout]
+- Brain context: [from agent_search]</context>
 <read>docs/product/FEATURE.md, docs/ux/FEATURE-ux.md, docs/product/FEATURE-doc-plan.md</read>
 <constraints>
 - Map blast radius. Two alternatives with tradeoffs.
 - Test spec: failure >= happy. Reference research brief in Alternatives.
 </constraints>
 <output>ADR at docs/architecture/ADR-NNNN-feature-name.md with DoR/DoD</output>
+</template>
+
+<template id="scout-research-brief">
+### Scout Research Brief (Explore+haiku, pre-Cal, Medium+Large)
+Three scouts launched in parallel by Eva. Each receives one focused prompt.
+
+**Patterns scout:**
+<task>Find existing code patterns relevant to [feature area]. Grep for similar feature directories, hooks, naming conventions, shared utilities.</task>
+<constraints>- Return file:line results only. No opinions. Max 20 results.</constraints>
+<output>patterns: [{file, line, pattern_description}]</output>
+
+**Manifest scout:**
+<task>Check dependency manifests (package.json, requirements.txt, go.mod, etc.) for packages relevant to [feature area].</task>
+<constraints>- Return package names and versions only. Flag anything outdated or potentially conflicting.</constraints>
+<output>deps: [{name, version, relevance}]</output>
+
+**Blast-radius scout:**
+<task>Identify source files likely in scope for [feature area]: files matching the feature name, adjacent modules, integration points, test files.</task>
+<constraints>- Return file paths only. Max 15 files. Prefer specific over broad.</constraints>
+<output>blast_radius_files: [path, ...]</output>
 </template>
 
 <template id="colby-mockup">

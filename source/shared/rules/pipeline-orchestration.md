@@ -425,11 +425,18 @@ all units. Batch sequential by default. Worktree changes merge via git, not copy
 Mechanical: (1) existing spec? (2) existing components? (3) brain 3+ thoughts?
 Any -> assumptions mode. None -> question mode (default).
 
-### Large ADR Research Brief
+### ADR Research Brief (Medium + Large)
 
-Eva compiles research brief before Cal: grep patterns, check manifests, query
-brain for architecture/pattern/rejection. Included in Cal's CONTEXT.
-Small/Medium skip this.
+Before invoking Cal on Medium or Large pipelines, Eva fans out up to 3 Explore+haiku agents in parallel to compile a research brief. Small pipelines skip this.
+
+Eva launches these scouts simultaneously:
+- **Patterns scout:** Grep for existing patterns related to the feature area (file:line results)
+- **Manifest scout:** Check dependency manifests for relevant packages and versions
+- **Blast-radius scout:** Identify files likely in scope -- source files matching the feature name, adjacent modules, integration points (return <=15 file paths)
+
+Eva collects all three results, then queries brain for architecture/pattern/rejection thoughts (`agent_search`). The combined output populates Cal's `<context>` Research Brief block.
+
+**Scout invocation:** `Agent(subagent_type: "Explore", model: "haiku")`. Each scout receives a focused single-task prompt. Results are facts only -- no design opinions. Dedup rule: if 2+ scouts need the same file, only one reads it.
 
 </section>
 

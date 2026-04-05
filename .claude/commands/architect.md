@@ -2,6 +2,7 @@
 name: architect # prettier-ignore
 description: Invoke Cal for architectural clarification -- conversational Q&A to gather context before ADR production.
 ---
+
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>

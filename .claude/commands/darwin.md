@@ -20,7 +20,7 @@ the config, treat it as false (absent = false).
 
 ### Gate 1: Config Flag
 
-Read `darwin_enabled` from `.claude/pipeline-config.json`.
+Read `darwin_enabled` from `{config_dir}/pipeline-config.json`.
 
 If `darwin_enabled: false` or not present (absent treated as false):
 - Respond: "Darwin is not enabled. Run `/pipeline-setup` and enable it in

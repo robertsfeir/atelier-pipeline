@@ -2,6 +2,7 @@
 name: docs # prettier-ignore
 description: Invoke Agatha (Documentation Specialist) to plan documentation for a feature -- what docs need writing, updating, or restructuring -- before architecture begins.
 ---
+
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>

@@ -59,7 +59,3 @@ scripts/         # Plugin lifecycle scripts (update checks)
 - **Living artifacts:** Specs and UX docs are updated at pipeline end. Pipeline state files track session recovery.
 - **Shared preamble:** Agent personas reference `agent-preamble.md` for shared DoR/DoD, retro, and brain protocols. Domain-specific behavior stays in persona files.
 - **Cross-layer wiring:** Cal designs vertical slices (producer + consumer per step). Colby documents contract shapes. Roz and Poirot verify wiring. Orphan endpoints are blockers.
-
-## Eva Rules Split
-
-Eva's rules are split into identity (always-loaded: `default-persona.md` + `agent-system.md`) and operations (path-scoped: `pipeline-orchestration.md` + `pipeline-models.md`). The operations files load automatically when accessing `docs/pipeline/` and survive `/compact`. See ADR-0004 Step 0.

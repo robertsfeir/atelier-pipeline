@@ -5,6 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.23.2] - 2026-04-05
+
+### Changed
+- **Context reduction:** Always-loaded baseline reduced ~1,780 words across default-persona.md (274→109 lines, 72% reduction) and agent-system.md (64% reduction) via Distillator compression; boot sequence and agent discovery moved to read-on-boot reference files
+- **Haiku fan-out:** Medium+ pipelines now use Explore+haiku fan-out scouts for ADR research (3 parallel scouts replace Eva grep) instead of Eva doing all reading herself
+- **Reference files:** Extracted session-boot.md and agent-discovery.md as consumable boot-only files, evicted from active context after session initialization
+
+### Fixed
+- pipeline-orchestration.md: Medium ADR research extended to use scout-driven briefing (was Eva-only)
+- invocation-templates.md: Added scout-research-brief template; cal-adr and cal-adr-large updated
+
 ## [3.23.1] - 2026-04-05
 
 ### Fixed

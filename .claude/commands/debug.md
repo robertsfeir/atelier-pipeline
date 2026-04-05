@@ -2,6 +2,7 @@
 name: debug # prettier-ignore
 description: Debug flow -- Roz investigates and diagnoses, Colby fixes. Use when the user reports a bug, error, stack trace, or unexpected behavior.
 ---
+
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>
