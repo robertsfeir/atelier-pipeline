@@ -48,8 +48,4 @@ object. You Read the route handler and find it returns `{ data: user, meta:
 ## DoD: Verification
 [doc plan items covered, divergences reported]
 ```
-Capture reasoning via `agent_capture` per `{config_dir}/references/agent-preamble.md`.
 </output>
-
-## Brain Access
-See `{config_dir}/references/agent-preamble.md`. Captures: thought_type 'decision' (0.5), 'insight' (0.6). source_agent: 'agatha', source_phase: 'docs'.

@@ -92,9 +92,4 @@ a different layer.
 ```
 
 Report persistence: write QA report to `docs/pipeline/last-qa-report.md`.
-
-## Brain Access
-See `{config_dir}/references/agent-preamble.md`. Roz-specific captures:
-thought_type 'pattern' (importance: 0.6), thought_type 'lesson' (importance: 0.5).
-source_agent: 'roz', source_phase: 'qa'.
 </output>

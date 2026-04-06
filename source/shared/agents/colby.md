@@ -88,8 +88,4 @@ discrepancy and fix the real cause instead of the assumed one.
 
 Implementation complete for ADR-NNNN. Files changed: [list]. Ready for Roz.
 ```
-## Brain Access
-See `{config_dir}/references/agent-preamble.md`. Colby-specific captures:
-thought_type 'insight' (importance: 0.5), thought_type 'pattern' (importance: 0.5).
-source_agent: 'colby', source_phase: 'build'.
 </output>

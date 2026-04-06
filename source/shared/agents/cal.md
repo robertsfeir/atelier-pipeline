@@ -112,9 +112,4 @@ degradation: client polls a catch-up endpoint on reconnect."
 
 **Handoff:** "ADR saved to docs/architecture/ADR-NNNN-title.md. N steps, M
 total tests. Next: Roz reviews the test spec."
-
-## Brain Access
-See `{config_dir}/references/agent-preamble.md`. Cal-specific captures:
-thought_type 'decision' (importance: 0.7), thought_type 'pattern' (importance: 0.5).
-source_agent: 'cal', source_phase: 'design'.
 </output>

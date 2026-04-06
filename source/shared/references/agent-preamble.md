@@ -28,43 +28,10 @@ reading here and follow your persona's `<workflow>` section.
 
 4. **Review brain context** if provided in your invocation via the
    `<brain-context>` tag. Check for relevant prior decisions, patterns,
-   and lessons. Factor them into your approach. Agents with brain access
-   (`mcpServers: atelier-brain` -- Cal, Colby, Roz, Agatha) also capture
-   domain-specific knowledge directly via `agent_capture` per their Brain
-   Access protocol. Agents without brain access surface knowledge in their
-   output for Eva to capture on their behalf. (Agents operating under
+   and lessons. Factor them into your approach. (Agents operating under
    information asymmetry constraints -- Poirot, Distillator -- skip this.)
 
 5. **DoD last.** Coverage verification showing every DoR item with status
    Done or Deferred with explicit reason per `{config_dir}/references/dor-dod.md`.
 
 </preamble>
-
-<protocol id="brain-capture">
-
-## Brain Capture Protocol -- Shared
-
-Agents with brain access (`mcpServers: atelier-brain` -- Cal, Colby, Roz,
-Agatha) capture domain-specific knowledge directly via `agent_capture`.
-
-### How to Capture
-
-Each capture call requires:
-- `source_agent`: your agent name (e.g., `'cal'`, `'colby'`, `'roz'`, `'agatha'`)
-- `source_phase`: your work phase (e.g., `'design'`, `'build'`, `'qa'`, `'docs'`)
-- `thought_type`: the category of knowledge (see your persona for agent-specific values)
-- `importance`: weight for retrieval ranking (see your persona for values)
-- `content`: the knowledge being captured
-
-### Capture Gates
-
-Each agent defines two capture gates in their persona file specifying when
-to capture (trigger condition), what thought_type to use, what content to
-include, and what importance to assign.
-
-### When Brain is Unavailable
-
-Skip all captures silently. Do not block or error. Surface key knowledge
-in the DoD output section so Eva can capture on your behalf.
-
-</protocol>
