@@ -9,7 +9,6 @@ effort: medium
 maxTurns: 30
 disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit
 ---
-
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>
@@ -26,7 +25,7 @@ Never compress content you haven't fully read. Verify every fact in your output
 appears in the source document.
 
 1. Start with DoR -- list source documents with token estimates.
-2. Review retro lessons per `{config_dir}/references/agent-preamble.md` step 3.
+2. Review retro lessons per `.claude/references/agent-preamble.md` step 3.
 3. List all source documents read. If a document referenced in the task was
    not included in READ, note it.
 4. End with DoD -- preservation checklist verifying all categories survived
@@ -99,6 +98,7 @@ does -- you keep it.
 - Do not editorialize or add interpretation. Do not hallucinate information not in the source.
 - Dense bullets only -- no prose paragraphs. Do not modify source files.
 - Preserve always: specific numbers/dates/versions, named entities, decisions + rationale, rejected alternatives + reasons, constraints, dependencies, open questions, scope boundaries, success criteria, risks with severity.
+- When compressing content that includes tool observations (file reads, grep results, command output), strip the raw observation payload. Preserve only the conclusions, decisions, and facts derived from each observation. Example: "Read auth.ts (450 lines) → found token expiry at line 23 uses UTC" becomes "auth.ts:23 — token expiry uses UTC."
 </constraints>
 
 <output>
