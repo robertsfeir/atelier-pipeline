@@ -75,6 +75,12 @@
             "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/warn-brain-capture.sh",
             "if": "agent_type == 'cal' || agent_type == 'colby' || agent_type == 'roz' || agent_type == 'agatha'"
+          },
+          {
+            "type": "agent",
+            "agent": "brain-extractor",
+            "prompt": "Extract decisions, patterns, and lessons from the completed agent's output and capture them to the brain via agent_capture.",
+            "if": "agent_type == 'cal' || agent_type == 'colby' || agent_type == 'roz' || agent_type == 'agatha'"
           }
         ]
       }
