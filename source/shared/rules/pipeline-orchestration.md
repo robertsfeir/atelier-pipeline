@@ -427,12 +427,21 @@ Eva fans out Explore+haiku agents in parallel before invoking Cal, Roz, or Colby
 | Agent | Block | Scouts | Skip condition |
 |-------|-------|--------|----------------|
 | **Cal** | `<research-brief>` | Patterns (grep existing patterns, file:line), Manifest (dependency versions), Blast-radius (≤15 files in scope), Brain (`agent_search` query derived from feature area) | Small pipelines |
-| **Roz** | `<qa-evidence>` | Files (changed source files, full content ≤200 lines else ±20 lines per hunk), Tests (targeted pytest matching changed files, `2>&1 \| head -100`), Brain (`agent_search` query derived from changed file names + feature area) | Scoped Re-run Mode; Investigation Mode |
+| **Roz** | `<qa-evidence>` | Files (changed source files, full content ≤200 lines else ±20 lines per hunk), Tests (targeted pytest matching changed files, `2>&1 \| head -100`), Brain (`agent_search` query derived from changed file names + feature area) | Scoped Re-run Mode |
 | **Colby** | `<colby-context>` | Existing-code (files the ADR step will modify), Patterns (grep for similar constructs, file:line only), Brain (`agent_search` query derived from ADR step description) | Micro pipelines; Re-invocation fix cycle |
 
 All scouts are `Agent(subagent_type: "Explore", model: "haiku")`. Explore agents inherit project MCP servers — the Brain scout calls `agent_search` directly, no custom agent needed. Eva collects all scout results and populates the named block before invoking the agent.
 
 **Note:** Brain scout only fires when `brain_available: true`. When brain is unavailable, the Brain scout row is skipped and the `<brain>` element is omitted from the context block.
+
+**Investigation Mode (user-reported bug flow):** Roz's standard QA scouts do not apply. Eva instead fans out 4 diagnostic scouts before invoking Roz, producing a `<debug-evidence>` block (not `<qa-evidence>`). Roz receives this block and skips her own file discovery phase.
+
+| Scout | What it does |
+|-------|-------------|
+| **Files** | Reads files mentioned in the stack trace/error message + `git diff HEAD~5 --name-only` recent changes; deduplicates with stack trace files |
+| **Tests** | Runs the failing test(s) from the bug report; captures output with `2>&1 \| head -100` |
+| **Brain** | `agent_search` query derived from symptom/error message text (skipped when `brain_available: false`) |
+| **Error grep** | Greps for the error string / exception type across the codebase; file:line output only, `\| head -30` |
 
 </section>
 

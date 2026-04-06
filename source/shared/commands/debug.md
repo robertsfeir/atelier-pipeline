@@ -25,9 +25,22 @@ step. If Roz's first investigation does not find the root cause, Eva re-reads
 the ledger -- if 2 hypotheses at the same layer have been rejected, Eva directs
 the next investigation to a different layer.
 
+## Pre-Investigation: Scout Swarm
+
+Before invoking Roz, Eva fans out 4 haiku scouts in parallel to collect raw diagnostic evidence cheaply. Roz receives the results in a `<debug-evidence>` block and skips her own file discovery phase.
+
+| Scout | What it collects |
+|-------|-----------------|
+| **Files** | Reads files mentioned in the stack trace/error message + `git diff HEAD~5 --name-only` recent changes; deduplicates with stack trace files |
+| **Tests** | Runs the failing test(s) from the bug report; captures output with `2>&1 \| head -100` |
+| **Brain** | `agent_search` query derived from symptom/error message text (skipped when brain unavailable) |
+| **Error grep** | Greps for the error string / exception type across the codebase; file:line output only, `\| head -30` |
+
+Eva collects all scout results, assembles the `<debug-evidence>` block, then proceeds to Phase 1.
+
 ## Phase 1: Roz Investigates (subagent)
 
-Eva invokes Roz with the user's symptom. Roz:
+Eva invokes Roz with the user's symptom and the `<debug-evidence>` block from the scout swarm; Roz skips her own file discovery phase. Roz:
 
 1. Reproduces -- runs the failing path, checks logs, hits the endpoint
 2. Traces -- follows the execution path from input to error through code

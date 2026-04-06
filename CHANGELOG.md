@@ -3,6 +3,11 @@
 All notable changes to Atelier Pipeline are documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
+## [3.25.1] - 2026-04-06
+
+### Added
+- **Diagnostic scout swarm for Investigation Mode:** Roz now receives a `<debug-evidence>` block pre-populated by four haiku scouts (Files — stack trace + recent git diff; Tests — failing test output; Brain — symptom-derived agent_search; Error grep — error string grep) before investigating a user-reported bug. Previously scouts were skipped for Investigation Mode entirely, requiring Roz to do all file discovery herself. (`pipeline-orchestration.md`, `debug.md`)
+
 ## [3.25.0] - 2026-04-06
 
 ### Added
