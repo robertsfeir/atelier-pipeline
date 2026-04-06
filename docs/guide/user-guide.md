@@ -909,15 +909,18 @@ Safe to re-run. Duplicate detection prevents re-importing the same knowledge.
 
 ### What the brain captures
 
-Agents automatically capture and search during pipeline runs. You do not need to manage brain contents.
+Knowledge is captured automatically after each agent completes. You do not need to manage brain contents.
 
-| What gets captured | When | Why it matters |
-|-------------------|------|---------------|
-| Architectural decisions | Cal produces an ADR | Future Cal knows why you chose REST over GraphQL |
-| Rejected alternatives | Cal evaluates options | Prevents re-evaluating the same rejected approaches |
-| User corrections | You correct an agent mid-pipeline | Future agents apply your preferences without re-asking |
-| QA lessons | Roz finds recurring patterns | Future Colby gets warnings before making the same mistake |
-| Scope decisions | Robert defines boundaries | Future Robert knows what was explicitly deferred and why |
+A lightweight Haiku extractor fires on every Cal, Colby, Roz, or Agatha completion via a `SubagentStop` hook. It reads the agent's output, identifies what is worth preserving, and writes it to the brain -- no agent instruction required. Eva separately captures cross-cutting concerns (your decisions, phase transitions, cross-agent findings).
+
+| What gets captured | Captured by | Why it matters |
+|-------------------|-------------|---------------|
+| Architectural decisions | brain-extractor (from Cal) | Future Cal knows why you chose REST over GraphQL |
+| Rejected alternatives | brain-extractor (from Cal) | Prevents re-evaluating the same rejected approaches |
+| Implementation patterns | brain-extractor (from Colby) | Future Colby reuses working patterns without re-discovering them |
+| QA lessons | brain-extractor (from Roz) | Future Colby gets warnings before making the same mistake |
+| User corrections | Eva (during conversation) | Future agents apply your preferences without re-asking |
+| Scope decisions | Eva (at phase transitions) | Future Robert knows what was explicitly deferred and why |
 
 ### Human attribution
 

@@ -316,12 +316,13 @@ Most agent persona files use `disallowedTools` (denylist) in their frontmatter. 
 | **Sable** (skill) | UX Designer -- doc authoring | Main thread (`/ux`) | Full conversational | UX docs | Reads: prior UX decisions, a11y. Writes: UX rationale, corrections. | N/A (skill) |
 | **Sable** (subagent) | UX acceptance reviewer | Subagent | Read, Glob, Grep, Bash | **None** (read-only) | Reads: UX doc evolution. Writes: drift/missing verdicts, five-state audit. | Sonnet base; Opus on Large (classifier +2) |
 | **Cal** (skill) | Architect -- conversational | Main thread (`/architect`) | Full conversational | None during conversation | Reads: prior decisions, constraints. | N/A (skill) |
-| **Cal** (subagent) | Architect -- ADR production | Subagent | Read, Write, Edit, Glob, Grep, Bash, Agent(roz) | ADR files | Reads: prior decisions, rejected approaches. Writes: decisions, rejections, insights. | Opus (Medium/Large) |
-| **Colby** | Senior Software Engineer | Subagent | Read, Write, Edit, MultiEdit, Glob, Grep, Bash, Agent(roz, cal) | Source files, test files | Reads: implementation patterns, gotchas. Writes: implementation insights, workarounds. | Haiku (Micro), Sonnet (Small/Medium), Opus (Large) |
-| **Roz** | QA Engineer | Subagent | Read, Write, Glob, Grep, Bash | **Test files ONLY** | Reads: QA patterns, fragile areas. Writes: recurring patterns, investigation findings, doc impact. | Sonnet base; classifier promotes to Opus (+2 full sweep, -1 scoped rerun) |
+| **Cal** (subagent) | Architect -- ADR production | Subagent | Read, Write, Edit, Glob, Grep, Bash, Agent(roz) | ADR files | Reads: prior decisions, rejected approaches. Writes: mechanical via brain-extractor (decisions, rejections, insights). | Opus (Medium/Large) |
+| **Colby** | Senior Software Engineer | Subagent | Read, Write, Edit, MultiEdit, Glob, Grep, Bash, Agent(roz, cal) | Source files, test files | Reads: implementation patterns, gotchas. Writes: mechanical via brain-extractor (implementation insights, workarounds). | Haiku (Micro), Sonnet (Small/Medium), Opus (Large) |
+| **Roz** | QA Engineer | Subagent | Read, Write, Glob, Grep, Bash | **Test files ONLY** | Reads: QA patterns, fragile areas. Writes: mechanical via brain-extractor (recurring patterns, investigation findings, doc impact). | Sonnet base; classifier promotes to Opus (+2 full sweep, -1 scoped rerun) |
 | **Poirot** | Blind Code Investigator | Subagent | Read, Glob, Grep, Bash | **None** (read-only) | **None** -- Poirot never touches brain. Eva captures his findings. | Sonnet base; Opus at final review juncture (classifier +2) |
 | **Agatha** (skill) | Documentation -- planning | Main thread (`/docs`) | Full conversational | None during planning | N/A | N/A (skill) |
-| **Agatha** (subagent) | Documentation -- writing | Subagent | Read, Write, Edit, MultiEdit, Grep, Glob, Bash | Documentation files | Reads: prior doc reasoning, drift patterns. Writes: doc update reasoning, gap findings. | Haiku (reference docs), Sonnet (conceptual docs) |
+| **Agatha** (subagent) | Documentation -- writing | Subagent | Read, Write, Edit, MultiEdit, Grep, Glob, Bash | Documentation files | Reads: prior doc reasoning, drift patterns. Writes: mechanical via brain-extractor (doc update reasoning, gap findings). | Haiku (reference docs), Sonnet (conceptual docs) |
+| **brain-extractor** | Mechanical brain capture extractor | SubagentStop hook (Haiku) | `agent_capture` (brain MCP only) | **None** | **Writes only** -- extracts decisions, patterns, lessons, seeds from Cal/Colby/Roz/Agatha completions. Never reads files. | Haiku (fixed) |
 | **Ellis** | Commit and Changelog Manager | Subagent | Read, Write, Edit, Glob, Grep, Bash | Git operations, changelog | N/A | Haiku (fixed) |
 | **Distillator** | Lossless Compression Engine | Subagent | Read, Glob, Grep, Bash | **None** (read-only, output returned to Eva) | **None** | Haiku (fixed; classifier exempt) |
 | **Sentinel** | Security Audit (opt-in) | Subagent | Read, Glob, Grep, Bash + Semgrep MCP (`semgrep_scan`, `semgrep_findings`) | **None** (read-only) | **None** -- Eva captures findings post-review. | Sonnet base; Opus when auth/security files change (classifier +2) |
@@ -819,20 +820,35 @@ The config file also supports an optional `brain_name` field -- a display name f
 
 ### Hybrid Capture Model
 
-Agents write their own domain-specific captures directly using their own `source_agent` name. Eva does NOT duplicate agent captures. Eva captures only cross-cutting concerns:
+Brain writes from Cal, Colby, Roz, and Agatha are **mechanical**: when any of these four agents completes, a `SubagentStop` `"type": "agent"` hook launches a lightweight Haiku extractor (`brain-extractor`). The extractor reads the parent agent's `last_assistant_message`, identifies decisions, patterns, lessons, and seeds worth preserving, and calls `agent_capture` using the correct `source_agent`, `thought_type`, `source_phase`, and `importance` values. No agent instruction is required -- the pipeline captures knowledge automatically on every completion.
 
-- User decisions and preferences (things no single agent owns)
+**Agent-to-metadata mapping (extractor-assigned):**
+
+| Agent | `source_agent` | `source_phase` |
+|-------|----------------|----------------|
+| Cal   | `cal`          | `design`       |
+| Colby | `colby`        | `build`        |
+| Roz   | `roz`          | `qa`           |
+| Agatha | `agatha`      | `docs`         |
+
+**Extractor behavior:**
+- Captures only what the parent agent explicitly stated -- never fabricates
+- Produces zero captures if no extractable content is present -- a valid outcome
+- Exits cleanly when brain is unavailable -- never blocks the pipeline
+- The extractor's own `SubagentStop` does not trigger another extractor (loop prevention via `if:` condition scope)
+
+Eva captures **cross-cutting concerns only** -- things no single agent owns:
+
+- User decisions and preferences
 - Phase transitions with outcome summaries
 - Cross-agent pattern convergence (e.g., Roz and Robert both flag the same drift)
 - Deploy/infra outcomes
-
-**Brain operations are batched per wave.** Eva calls `agent_search` once at the start of each wave (not per agent invocation) and injects the results into all invocations within that wave. Tier 1 telemetry is accumulated in-memory only during a wave (no per-invocation brain capture). Tier 2 is captured once per wave after Roz QA PASS. State writes to `pipeline-state.md` happen at wave boundaries, not unit boundaries.
 - Poirot's findings (Poirot himself never touches brain)
 - Context brief entries (preferences, corrections, rejected alternatives)
 - Handoff briefs at pipeline end or on explicit handoff trigger
 - Pipeline-end session summaries
 
-Eva spot-checks that agents performed their brain captures but does not re-capture on their behalf.
+**Brain operations are batched per wave.** Eva calls `agent_search` once at the start of each wave (not per agent invocation) and injects the results into all invocations within that wave. Tier 1 telemetry is accumulated in-memory only during a wave (no per-invocation brain capture). Tier 2 is captured once per wave after Roz QA PASS. State writes to `pipeline-state.md` happen at wave boundaries, not unit boundaries.
 
 ---
 

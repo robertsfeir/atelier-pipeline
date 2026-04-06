@@ -5,6 +5,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.24.0] - 2026-04-05
+
+### Added
+- **brain-extractor agent:** New Haiku subagent (`source/shared/agents/brain-extractor.md`) invoked via `SubagentStop` `"type": "agent"` hook after every Cal, Colby, Roz, and Agatha completion. Extracts decisions, patterns, lessons, and seeds from the parent agent's output and calls `agent_capture` -- no agent instruction required (ADR-0024)
+
+### Removed
+- **`warn-brain-capture.sh`:** Deleted. Replaced by mechanical brain-extractor hook
+- **`prompt-brain-capture.sh`:** Deleted. Advisory prompt hook superseded by mechanical extraction
+- **Brain Access persona sections:** Removed from Cal, Colby, Roz, and Agatha in `source/shared/agents/` -- behavioral brain capture instruction replaced by hook
+- **Brain Capture Protocol section:** Removed from `source/shared/references/agent-preamble.md` -- shared instruction block superseded by hook mechanism
+
+### Changed
+- **Agent persona files:** ~44 lines of brain capture behavioral instructions removed across four agent personas (Cal, Colby, Roz, Agatha) -- personas now contain only functional instructions
+- **settings.json SubagentStop block:** Replaced `warn-brain-capture` and `prompt-brain-capture` hook entries with a single `"type": "agent"` entry scoped to `cal || colby || roz || agatha` (loop prevention: extractor `agent_type` excluded from condition)
+- **Orchestration docs:** References to agent-level behavioral capture gates updated to reflect mechanical model; Eva cross-cutting captures unchanged
+- **Technical reference:** Hybrid Capture Model section updated; Agent Reference Table updated with brain-extractor row and mechanical capture annotation for Cal/Colby/Roz/Agatha brain access column
+
 ## [3.23.3] - 2026-04-05
 
 ### Fixed
