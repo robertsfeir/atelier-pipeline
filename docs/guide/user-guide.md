@@ -741,13 +741,31 @@ Telemetry hydration reads IDE session JSONL files and captures per-agent token u
 
 ### Automatic hydration
 
-Hydration runs automatically at the start of every session via the plugin's SessionStart hook on both Claude Code and Cursor. It runs silently in the background (`--silent` mode) and never blocks session startup. If the brain is not configured or the hydration script encounters an error, it fails silently.
+Hydration runs automatically at the start of every session via `session-hydrate.sh`, registered as a `SessionStart` hook on both Claude Code and Cursor. It runs silently in the background and never blocks session startup. If the brain is not configured or the hydration script encounters an error, it fails silently.
 
-The SessionStart hook uses the platform-appropriate environment variable (`$CLAUDE_PROJECT_DIR` on Claude Code, `$CURSOR_PROJECT_DIR` on Cursor) to locate session files.
+Each session start triggers two hydration steps:
+
+1. **JSONL telemetry hydration** -- reads token usage, cost, and duration from session JSONL files into the brain (Tier 1 and Tier 3)
+2. **State-file parsing** -- reads `docs/pipeline/pipeline-state.md` and `docs/pipeline/context-brief.md` from your project directory. Completed pipeline phases and user decisions from the previous session are captured as brain thoughts attributed to Eva. This is how pipeline history and your session decisions become searchable across sessions and by teammates.
+
+The hook uses the platform-appropriate environment variable (`$CLAUDE_PROJECT_DIR` on Claude Code, `$CURSOR_PROJECT_DIR` on Cursor) to locate both session files and the state directory.
+
+### State-file hydration: what it captures
+
+At the start of each session, the hydrator parses the state files Eva wrote during the previous session:
+
+| Source file | What is extracted | Brain thought type |
+|-------------|------------------|--------------------|
+| `pipeline-state.md` | Each completed phase item (`- [x]` lines), plus the feature name and sizing | `decision` (`source_agent: 'eva'`, `source_phase: 'pipeline'`) |
+| `context-brief.md` | Bullet items under `## User Decisions` | `decision` (`source_agent: 'eva'`, `source_phase: 'pipeline'`) |
+
+This is the mechanism that captures "Eva's pipeline decisions" mentioned in the brain capture overview. Eva writes to these files reliably because they drive session recovery -- the hydrator converts those writes into brain captures without requiring any additional agent behavior.
+
+State-file captures are idempotent. The hydrator uses a content hash per item to skip already-captured entries. You can restart sessions, run multiple sessions, or re-run hydration without duplicating entries.
 
 ### Manual hydration
 
-Run `/telemetry-hydrate` to trigger hydration manually with verbose output. This is useful after initial brain setup when you want to backfill telemetry from past sessions.
+Run `/telemetry-hydrate` to trigger JSONL telemetry hydration manually with verbose output. This is useful after initial brain setup when you want to backfill telemetry from past sessions.
 
 The command:
 1. Checks brain availability (stops if brain is not configured)
@@ -762,7 +780,9 @@ Skipped 8 already-hydrated agents.
 
 If everything is already captured: "Telemetry is up to date -- no new data to hydrate."
 
-### What gets captured
+Note: `/telemetry-hydrate` handles JSONL hydration only. State-file parsing happens automatically at SessionStart via `session-hydrate.sh`.
+
+### What gets captured from JSONL files
 
 The hydration script processes two types of JSONL files:
 
@@ -919,8 +939,9 @@ A lightweight Haiku extractor fires on every Cal, Colby, Roz, or Agatha completi
 | Rejected alternatives | brain-extractor (from Cal) | Prevents re-evaluating the same rejected approaches |
 | Implementation patterns | brain-extractor (from Colby) | Future Colby reuses working patterns without re-discovering them |
 | QA lessons | brain-extractor (from Roz) | Future Colby gets warnings before making the same mistake |
-| User corrections | Eva (during conversation) | Future agents apply your preferences without re-asking |
-| Scope decisions | Eva (at phase transitions) | Future Robert knows what was explicitly deferred and why |
+| Structured quality signals | brain-extractor (second pass) | Per-invocation metrics -- Roz verdicts, finding counts, test counts, Colby file counts, Cal step counts, Agatha divergence counts -- stored in `metadata.quality_signals` for Darwin analysis |
+| Pipeline phase completions | hydrate-telemetry (state-file parse) | Completed pipeline phases from `pipeline-state.md` captured as Eva decisions at session start; Darwin and brain search can see your pipeline history across sessions |
+| Your decisions during conversation | hydrate-telemetry (state-file parse) | Items under `## User Decisions` in `context-brief.md` captured at next session start; teammates find your directives via brain search without re-asking |
 
 ### Human attribution
 
@@ -955,11 +976,11 @@ When multiple people work on the same feature across sessions, the brain bridges
 
 During a pipeline run, Eva records your preferences, corrections, and rejected alternatives in `context-brief.md`. This file is reset at the start of each new feature pipeline, so those decisions would normally be lost.
 
-With the brain enabled, Eva dual-writes each context brief entry to the brain as it happens. When a teammate starts a new session on the same feature, their agents find your preferences and corrections via `agent_search` alongside architectural decisions and QA findings.
+With the brain enabled, the hydrator captures context brief entries automatically at the start of each session. When `session-hydrate.sh` runs at SessionStart, it parses the `## User Decisions` section of `context-brief.md` and writes each item to the brain as a decision thought attributed to Eva. When a teammate starts a new session on the same feature, their agents find your preferences and corrections via `agent_search` alongside architectural decisions and QA findings.
 
-For example, if you say "no modals, keep it simple" during your session, Eva writes that to the context brief and also captures it as a `preference` thought in the brain. When your teammate's session begins, their agents search for context on the feature and see your directive. They do not need to re-discover your preferences.
+For example, if you say "no modals, keep it simple" during your session, Eva writes that to the context brief. At the start of the next session (yours or a teammate's), the hydrator captures it to the brain. When your teammate's agents search for context on the feature, they see your directive. They do not need to re-discover your preferences.
 
-The same applies to mid-course corrections ("actually make that a dropdown") and rejected alternatives ("considered caching but rejected -- keep it simple for v1"). Each is captured with the appropriate type so the brain ranks them correctly.
+The same applies to mid-course corrections ("actually make that a dropdown") and rejected alternatives ("considered caching but rejected -- keep it simple for v1"). Each item under `## User Decisions` in `context-brief.md` is captured at session start.
 
 If the brain is unavailable, nothing changes. Eva writes to `context-brief.md` exactly as before. The brain capture is additive -- it adds cross-session discovery without affecting in-session behavior.
 

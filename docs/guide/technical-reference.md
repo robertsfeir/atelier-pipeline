@@ -322,7 +322,7 @@ Most agent persona files use `disallowedTools` (denylist) in their frontmatter. 
 | **Poirot** | Blind Code Investigator | Subagent | Read, Glob, Grep, Bash | **None** (read-only) | **None** -- Poirot never touches brain. Eva captures his findings. | Sonnet base; Opus at final review juncture (classifier +2) |
 | **Agatha** (skill) | Documentation -- planning | Main thread (`/docs`) | Full conversational | None during planning | N/A | N/A (skill) |
 | **Agatha** (subagent) | Documentation -- writing | Subagent | Read, Write, Edit, MultiEdit, Grep, Glob, Bash | Documentation files | Reads: prior doc reasoning, drift patterns. Writes: mechanical via brain-extractor (doc update reasoning, gap findings). | Haiku (reference docs), Sonnet (conceptual docs) |
-| **brain-extractor** | Mechanical brain capture extractor | SubagentStop hook (Haiku) | `agent_capture` (brain MCP only) | **None** | **Writes only** -- extracts decisions, patterns, lessons, seeds from Cal/Colby/Roz/Agatha completions. Never reads files. | Haiku (fixed) |
+| **brain-extractor** | Mechanical brain capture extractor | SubagentStop hook (Haiku) | `agent_capture` (brain MCP only) | **None** | **Writes only** -- two-pass extraction per completion: (1) decisions/patterns/lessons/seeds; (2) structured quality signals per agent type (`metadata.quality_signals`). Never reads files. | Haiku (fixed) |
 | **Ellis** | Commit and Changelog Manager | Subagent | Read, Write, Edit, Glob, Grep, Bash | Git operations, changelog | N/A | Haiku (fixed) |
 | **Distillator** | Lossless Compression Engine | Subagent | Read, Glob, Grep, Bash | **None** (read-only, output returned to Eva) | **None** | Haiku (fixed; classifier exempt) |
 | **Sentinel** | Security Audit (opt-in) | Subagent | Read, Glob, Grep, Bash + Semgrep MCP (`semgrep_scan`, `semgrep_findings`) | **None** (read-only) | **None** -- Eva captures findings post-review. | Sonnet base; Opus when auth/security files change (classifier +2) |
@@ -837,16 +837,31 @@ Brain writes from Cal, Colby, Roz, and Agatha are **mechanical**: when any of th
 - Exits cleanly when brain is unavailable -- never blocks the pipeline
 - The extractor's own `SubagentStop` does not trigger another extractor (loop prevention via `if:` condition scope)
 
-Eva captures **cross-cutting concerns only** -- things no single agent owns:
+### Structured Quality Signal Extraction
 
-- User decisions and preferences
-- Phase transitions with outcome summaries
+After extracting decisions/patterns/lessons/seeds, the extractor performs a second best-effort pass to capture structured quality signals from the same `last_assistant_message`. Both passes run independently -- the second does not gate or replace the first.
+
+Quality signal captures use `thought_type: 'insight'`, `source_phase: 'telemetry'`, `importance: 0.5`, and store parsed fields under `metadata.quality_signals`. The `metadata.quality_signals` key distinguishes these captures from Tier 1/Tier 3 telemetry (which use `metadata.telemetry_tier`). Darwin's telemetry queries filter by `metadata.telemetry_tier` and do not include quality signal captures.
+
+**Per-agent parsing schema:**
+
+| Agent | Fields extracted |
+|-------|----------------|
+| **Roz** | `verdict` (`PASS`/`FAIL` from verdict line near end of output); `blocker_count`, `must_fix_count`, `nit_count`, `suggestion_count` (from severity count patterns like "2 BLOCKERs", "MUST-FIX: 1"); `tests_before`, `tests_after`, `tests_broken` (from suite summary labels or pytest format: "X passed" → `tests_after`, "Y failed" → `tests_broken`) |
+| **Colby** | `dod_present` (true when `## DoD` section header is present); `files_changed` (integer from "Files Changed" row in DoD table or summary line); `rework` (true when DoR or message contains phrases indicating this invocation is fixing a prior Roz FAIL: "fixing Roz", "addressing Roz", "FAIL verdict", "prior QA FAIL") |
+| **Cal** | `step_count` (highest step number from "N steps" or "Step N" patterns); `test_spec_count` (count of distinct T-NNNN pattern references); `adr_revision` (integer from "Revision N" in DoR); `dor_present` (true when `## DoR` header present); `dod_present` (true when `## DoD` header present) |
+| **Agatha** | `docs_written` (count of paths after "Written" in receipt format `Agatha: Written {paths}, updated {paths}`); `docs_updated` (count of paths after "updated"); `divergence_count` (count of data rows in `## Divergence Report` table, when the section is present) |
+
+**Omission rule:** If a marker is absent from the output, the corresponding field is omitted from `quality_signals` entirely -- never set to null, never fabricated. If zero fields are parseable, no quality signal capture is emitted. Zero captures is a valid outcome.
+
+Eva captures **cross-cutting concerns only** -- things no single agent owns. As of ADR-0025, user decisions, phase transitions, and context brief entries are captured mechanically by the hydrator (state-file parsing) rather than by Eva calling `agent_capture` directly. Eva still captures:
+
 - Cross-agent pattern convergence (e.g., Roz and Robert both flag the same drift)
-- Deploy/infra outcomes
+- Deploy/infra outcomes (in `/devops` mode)
 - Poirot's findings (Poirot himself never touches brain)
-- Context brief entries (preferences, corrections, rejected alternatives)
 - Handoff briefs at pipeline end or on explicit handoff trigger
-- Pipeline-end session summaries
+
+Phase transitions and user decisions are captured by `hydrate-telemetry.mjs` at `SessionStart` via state-file parsing -- see [State-File Hydration](#state-file-hydration-evas-pipeline-decisions).
 
 **Brain operations are batched per wave.** Eva calls `agent_search` once at the start of each wave (not per agent invocation) and injects the results into all invocations within that wave. Tier 1 telemetry is accumulated in-memory only during a wave (no per-invocation brain capture). Tier 2 is captured once per wave after Roz QA PASS. State writes to `pipeline-state.md` happen at wave boundaries, not unit boundaries.
 
@@ -878,22 +893,22 @@ Migration 001 is triggered when the `captured_by` column does not exist on the `
 
 For fresh installs, `brain/schema.sql` is the canonical schema and already includes all columns, enum values, and config rows. Migrations exist solely for upgrading existing databases.
 
-### Context Brief Dual-Write
+### State-File Hydration (Eva's Pipeline Decisions)
 
-Eva dual-writes context brief entries to the brain using the same pattern as retro lessons: always write to the file, also capture to brain if available.
+Eva writes `pipeline-state.md` and `context-brief.md` reliably because those files drive pipeline recovery. ADR-0025 converts those reliable file writes into brain captures without requiring any behavioral change from Eva: `hydrate-telemetry.mjs` parses these files at `SessionStart` and emits brain captures for every completed phase transition and user decision it finds.
 
-When Eva appends an entry to `docs/pipeline/context-brief.md`, she also calls `agent_capture` with the entry classified by type:
+**What is parsed:**
 
-| Context brief entry type | `thought_type` |
-|--------------------------|---------------|
-| User preference or constraint | `preference` |
-| Mid-course correction | `correction` |
-| Rejected alternative with reasoning | `rejection` |
-| Cross-agent resolution | `preference` |
+| File | Extracted items | Capture metadata |
+|------|----------------|-----------------|
+| `pipeline-state.md` | Each completed progress item (`- [x]` lines); feature name and sizing from `**Feature:**` and `**Sizing:**` fields | `thought_type: 'decision'`, `source_agent: 'eva'`, `source_phase: 'pipeline'`, `importance: 0.6`; metadata includes `feature`, `sizing`, `phase_item` |
+| `context-brief.md` | Bullet items under the `## User Decisions` section | `thought_type: 'decision'`, `source_agent: 'eva'`, `source_phase: 'pipeline'`, `importance: 0.6`; metadata includes `section: 'user_decisions'` |
 
-All captures use `source_agent: 'eva'`, the current pipeline phase as `source_phase`, and metadata tags including the feature name and `context-brief`. The importance value follows the `thought_type_config` defaults (preference: 1.0, correction: 0.7, rejection: 0.5).
+Duplicate detection uses a content hash keyed on `(feature + phase_item)` for pipeline-state items and on the decision text for context-brief items. State-file captures are idempotent -- re-running hydration never inserts duplicates.
 
-If the `agent_capture` call fails (brain went down mid-pipeline), Eva continues without error. The file remains the source of truth for the current session. Brain capture is additive for cross-session and cross-teammate discovery.
+This hydration runs at `SessionStart` via `session-hydrate.sh` with the `--state-dir` flag pointing to `docs/pipeline/`. It captures decisions from the previous session when a new session begins. All errors are caught and logged; the function never throws and always exits 0 (Retro #003).
+
+The files remain the source of truth for in-session recovery. Brain capture is additive for cross-session and cross-teammate discovery.
 
 ### Handoff Brief Generation
 
@@ -1945,22 +1960,35 @@ The dashboard auto-refreshes every 10 minutes. A green dot in the header indicat
 
 ### Overview
 
-Telemetry hydration (`brain/scripts/hydrate-telemetry.mjs`) reads Claude Code session JSONL files and inserts per-agent token usage, cost, and duration into the brain database as Tier 1 telemetry thoughts. It then generates Tier 3 session summaries from the Tier 1 data.
+Telemetry hydration (`brain/scripts/hydrate-telemetry.mjs`) performs two tasks on each run:
+
+1. **JSONL hydration** -- reads Claude Code session JSONL files and inserts per-agent token usage, cost, and duration into the brain as Tier 1 telemetry thoughts, then generates Tier 3 session summaries.
+2. **State-file parsing** (when `--state-dir` is provided) -- parses `pipeline-state.md` and `context-brief.md` from the project's `docs/pipeline/` directory and emits `source_agent: 'eva'` brain captures for completed pipeline phases and user decisions. See [State-File Hydration](#state-file-hydration-evas-pipeline-decisions) under Brain Architecture for the full parsing schema.
+
+### CLI Flags
+
+| Flag | Description |
+|------|-------------|
+| `<project-sessions-path>` | Required positional: path to the Claude Code project sessions directory (e.g., `~/.claude/projects/-Users-you-yourproject`) |
+| `--silent` | Suppresses all stdout output; errors still go to stderr |
+| `--state-dir <path>` | Absolute path to `docs/pipeline/`. When provided, parses `pipeline-state.md` and `context-brief.md` after JSONL hydration. When absent, state-file parsing is skipped entirely. |
 
 ### Invocation Methods
 
 | Method | When | Mode |
 |--------|------|------|
-| **SessionStart hook** | Every Claude Code session start | Silent (`--silent`), errors suppressed, non-blocking |
+| **SessionStart hook** (`session-hydrate.sh`) | Every session start (Claude Code and Cursor) | Silent (`--silent`), with `--state-dir docs/pipeline`, errors suppressed, non-blocking |
 | **`/telemetry-hydrate` command** | Manual, on-demand | Verbose, reports summary to user |
 
-The SessionStart hook is registered in `plugin.json` and runs after dependency install and update check:
+The `session-hydrate.sh` SessionStart hook (registered in `.claude/settings.json`) is the primary invocation path. It passes both `--silent` and `--state-dir`:
 
-```
-node "${CLAUDE_PLUGIN_ROOT}/brain/scripts/hydrate-telemetry.mjs" "${CLAUDE_PROJECT_DIR}" --silent 2>/dev/null || true
+```bash
+node "$PLUGIN_BRAIN" "$SESSION_PATH" --silent --state-dir "$STATE_DIR" >/dev/null 2>&1 || true
 ```
 
-The `/telemetry-hydrate` command constructs the project sessions path from `CLAUDE_PROJECT_DIR` (replacing `/` with `-`, stripping the leading `-`, prepending `~/.claude/projects/-`) and runs the hydration script without `--silent`.
+Where `SESSION_PATH` is derived from `$CLAUDE_PROJECT_DIR` by replacing `/` with `-` and prepending `~/.claude/projects/-`, and `STATE_DIR` is `$CLAUDE_PROJECT_DIR/docs/pipeline`.
+
+The `/telemetry-hydrate` command constructs the project sessions path from `CLAUDE_PROJECT_DIR` and runs the script without `--silent` (omitting `--state-dir` for the manual JSONL-only path).
 
 ### JSONL File Discovery
 
@@ -1995,11 +2023,19 @@ After all Tier 1 insertions, the script calls `generateTier3Summaries()`. For ea
 
 ### Storage Format
 
-All telemetry thoughts use:
+**JSONL telemetry thoughts (Tier 1 and Tier 3):**
 - `thought_type: 'insight'`, `source_agent: 'eva'`, `source_phase: 'telemetry'`
 - `importance: 0.3` (Tier 1) or `0.7` (Tier 3)
 - `metadata.hydrated: true` (distinguishes hydrated data from live capture)
 - `metadata.telemetry_tier: '1'` or `'3'`
+
+**State-file thoughts (pipeline phases and user decisions):**
+- `thought_type: 'decision'`, `source_agent: 'eva'`, `source_phase: 'pipeline'`
+- `importance: 0.6`
+- `metadata.hydrated: true`
+- `metadata.state_capture_key` -- content-hash-based deduplication key (format: `state_phase_{hash16}` or `state_decision_{hash16}`)
+- Pipeline-state items also include `metadata.feature`, `metadata.sizing`, `metadata.phase_item`
+- Context-brief items also include `metadata.section: 'user_decisions'`
 
 Embeddings are generated via OpenRouter when an API key is configured; otherwise a zero vector fallback is used. Zero-vector entries are still queryable via metadata filters.
 
