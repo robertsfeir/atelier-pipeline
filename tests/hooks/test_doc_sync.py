@@ -112,7 +112,7 @@ def test_T_0020_069_cursor_skill_matches():
         "log-stop-failure.sh",
         "post-compact-reinject.sh",
         "pre-compact.sh",
-        "warn-dor-dod.sh",
+        "session-hydrate.sh",
     }
     missing_from_cc = shared_hooks - cc_hooks
     missing_from_cursor = shared_hooks - cursor_hooks

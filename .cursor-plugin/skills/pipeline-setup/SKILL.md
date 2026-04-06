@@ -268,7 +268,7 @@ optional and must be installed for the pipeline to function correctly.
 | `source/cursor/hooks/enforce-sequencing.sh` | `.cursor/hooks/enforce-sequencing.sh` | Blocks out-of-order agent invocations (e.g., Ellis without Roz QA) |
 | `source/cursor/hooks/enforce-pipeline-activation.sh` | `.cursor/hooks/enforce-pipeline-activation.sh` | Blocks Colby/Ellis invocation when no active pipeline exists |
 | `source/cursor/hooks/enforce-git.sh` | `.cursor/hooks/enforce-git.sh` | Blocks git write operations from main thread (must go through Ellis) |
-| `source/cursor/hooks/warn-dor-dod.sh` | `.cursor/hooks/warn-dor-dod.sh` | Warns when Colby/Roz output missing DoR/DoD sections (SubagentStop) |
+| `source/cursor/hooks/session-hydrate.sh` | `.cursor/hooks/session-hydrate.sh` | Runs telemetry hydration at SessionStart (JSONL + state-file parsing) |
 | `source/cursor/hooks/log-agent-start.sh` | `.cursor/hooks/log-agent-start.sh` | Logs agent start events to JSONL telemetry file (SubagentStart) |
 | `source/cursor/hooks/log-agent-stop.sh` | `.cursor/hooks/log-agent-stop.sh` | Logs agent stop events to JSONL telemetry file (SubagentStop) |
 | `source/cursor/hooks/pre-compact.sh` | `.cursor/hooks/pre-compact.sh` | Writes compaction marker to pipeline-state.md before context is compacted (PreCompact) |
@@ -333,7 +333,7 @@ file already exists. Add this hooks section:
     ],
     "SubagentStop": [
       {
-        "hooks": [{"type": "command", "command": "\"$CURSOR_PROJECT_DIR\"/.cursor/hooks/warn-dor-dod.sh", "if": "agent_type == 'colby' || agent_type == 'roz'"}, {"type": "command", "command": "\"$CURSOR_PROJECT_DIR\"/.cursor/hooks/log-agent-stop.sh"}]
+        "hooks": [{"type": "command", "command": "\"$CURSOR_PROJECT_DIR\"/.cursor/hooks/log-agent-stop.sh"}]
       }
     ],
     "PreCompact": [
@@ -344,6 +344,11 @@ file already exists. Add this hooks section:
     "PostCompact": [
       {
         "hooks": [{"type": "command", "command": "\"$CURSOR_PROJECT_DIR\"/.cursor/hooks/post-compact-reinject.sh"}]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [{"type": "command", "command": "\"$CURSOR_PROJECT_DIR\"/.cursor/hooks/session-hydrate.sh"}]
       }
     ],
     "StopFailure": [

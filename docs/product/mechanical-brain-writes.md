@@ -73,7 +73,7 @@ No user-visible flow change. The feature is entirely infrastructure:
 - Patterns (recurring implementation structures, QA findings worth generalizing)
 - Lessons (things that went wrong and why, test failure root causes)
 
-Content that does not fit these categories is not captured. The extractor uses the completion agent's `agent_type` as `source_agent` and maps it to the correct `source_phase` (cal → `design`, colby → `build`, roz → `qa`, agatha → `docs`).
+Content that does not fit these categories is not captured. The extractor uses the completion agent's `agent_type` as `source_agent` and maps it to the correct `source_phase` (cal → `design`, colby → `build`, roz → `qa`, agatha → `handoff`).
 
 **Brain unavailability.** When brain is unavailable (`brain_available: false` in pipeline state), the hook must skip gracefully. The extractor agent checks availability before calling `agent_capture` and exits cleanly with no captures when unavailable.
 

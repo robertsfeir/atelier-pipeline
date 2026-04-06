@@ -103,15 +103,7 @@ def test_T_0020_007_skill_md_if_values():
     assert git_if
     assert git_if in skill_text
 
-    # Extract if value for warn-dor-dod.sh
-    stop_matchers = settings["hooks"].get("SubagentStop", [])
-    dod_hooks = [
-        h for m in stop_matchers for h in m.get("hooks", [])
-        if h.get("command") and "warn-dor-dod.sh" in h["command"]
-    ]
-    dod_if = dod_hooks[0].get("if", "")
-    assert dod_if
-    assert dod_if in skill_text
+    # warn-dor-dod.sh removed in ADR-0025; session-hydrate.sh (SessionStart) has no if condition
 
 
 def test_T_0020_008_enforce_git_direct_call(hook_env):

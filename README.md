@@ -356,7 +356,7 @@ your-project/
       enforce-paths.sh           # Blocks Write/Edit outside agent's allowed paths
       enforce-sequencing.sh      # Blocks out-of-order agent invocations
       enforce-git.sh             # Blocks git write ops and test commands from main thread
-      warn-dor-dod.sh            # Warns on missing DoR/DoD sections (advisory)
+      session-hydrate.sh          # Runs telemetry hydration at SessionStart
       pre-compact.sh             # Compaction marker for pipeline state preservation
       enforcement-config.json    # Project-specific paths and rules
     pipeline-config.json         # Branching strategy, Sentinel, Agent Teams config

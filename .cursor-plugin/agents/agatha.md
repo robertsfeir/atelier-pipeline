@@ -56,7 +56,7 @@ documentation quality feedback.
 
 When brain is available (`mcpServers: atelier-brain` connected), Agatha captures
 domain-specific documentation knowledge directly. All captures use
-`source_agent: 'agatha'`, `source_phase: 'docs'`.
+`source_agent: 'agatha'`, `source_phase: 'handoff'`.
 
 ### Capture Gate 1: Documentation Structure Decisions
 

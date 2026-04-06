@@ -194,7 +194,7 @@ def test_T_0022_187_pipeline_operations():
 
 def test_T_0022_188_existing_hooks():
     skill = (PROJECT_ROOT / "skills" / "pipeline-setup" / "SKILL.md").read_text()
-    for hook in ["warn-dor-dod.sh", "log-agent-stop.sh", "prompt-brain-capture.sh", "warn-brain-capture.sh"]:
+    for hook in ["session-hydrate.sh", "log-agent-stop.sh", "prompt-brain-capture.sh", "warn-brain-capture.sh"]:
         assert hook in skill
 
 
