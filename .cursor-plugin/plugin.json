@@ -1,6 +1,6 @@
 {
   "name": "atelier-pipeline",
-  "version": "3.24.0",
+  "version": "3.25.0",
   "description": "Multi-agent orchestration for AI-powered IDEs — quality gates, wave-based QA, and persistent institutional memory",
   "license": "Apache-2.0",
   "author": {
@@ -21,7 +21,7 @@
           },
           {
             "type": "command",
-            "command": "node \"${CURSOR_PLUGIN_ROOT}/brain/scripts/hydrate-telemetry.mjs\" \"${CURSOR_PROJECT_DIR}\" --silent 2>/dev/null || true"
+            "command": "node \"${CURSOR_PLUGIN_ROOT}/brain/scripts/hydrate-telemetry.mjs\" \"${CURSOR_PROJECT_DIR}\" --silent --state-dir \"${CURSOR_PROJECT_DIR}/docs/pipeline\" 2>/dev/null || true"
           }
         ]
       }

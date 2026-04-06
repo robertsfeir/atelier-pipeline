@@ -3,13 +3,20 @@
 All notable changes to Atelier Pipeline are documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
-## [Unreleased]
+## [3.25.0] - 2026-04-06
 
 ### Added
 - **brain-extractor structured quality signals:** Extended brain-extractor to emit per-invocation `thought_type: 'insight'` captures with `metadata.quality_signals` containing structured fields from Roz (verdict, test counts, finding counts), Colby (rework flag, files changed, DoD completeness), Cal (step count, test spec count, ADR revision), and Agatha (docs written, divergence findings) — with graceful degradation for absent markers (ADR-0025 Wave 1)
+- **State-file hydration:** `hydrate-telemetry.mjs` now accepts `--state-dir` to parse `pipeline-state.md` (completed progress items) and `context-brief.md` (user decisions) into the brain with `thought_type: 'decision'`, `source_agent: 'eva'`, `source_phase: 'pipeline'` — deduplication via sha256 content hashing (ADR-0025 Wave 2)
+- **SessionStart hook (`session-hydrate.sh`):** New hook runs telemetry hydration and state-file parsing automatically at each session start; non-blocking (`exit 0` always) (ADR-0025 Wave 2)
+- **`pipeline` source_phase:** New enum value added to `source_phase` via migration 006 for state-file decision captures
+
+### Removed
+- **`warn-dor-dod.sh`:** Deleted. DoR/DoD compliance checking superseded by mechanical quality signal extraction in brain-extractor; `session-hydrate.sh` occupies the SessionStart slot (ADR-0025 Wave 2)
+- **Eva behavioral brain writes:** Removed "Writes (cross-cutting only)" section from `pipeline-orchestration.md` — Eva's pipeline decisions now captured mechanically via state-file parsing at SessionStart (ADR-0025 Wave 2)
 
 ### Fixed
-- **Agatha source_phase:** Changed from invalid 'docs' to 'handoff' to align with SOURCE_PHASES enum validation
+- **Agatha source_phase:** Changed from invalid `'docs'` to `'handoff'` to align with SOURCE_PHASES enum validation (brain captures were silently dropped)
 
 ## [3.24.0] - 2026-04-05
 
