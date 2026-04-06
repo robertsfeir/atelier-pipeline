@@ -329,12 +329,12 @@ def test_T_0024_010_extractor_brain_unavailability_instruction():
 # ═══════════════════════════════════════════════════════════════════════
 
 
-@pytest.mark.parametrize("thought_type", ["decision", "pattern", "lesson"])
+@pytest.mark.parametrize("thought_type", ["decision", "pattern", "lesson", "seed"])
 def test_T_0024_011_extractor_extraction_categories(thought_type):
-    """brain-extractor persona must mention all three extraction thought_type categories.
+    """brain-extractor persona must mention all four extraction thought_type categories.
 
-    The extractor must know to extract decisions, patterns, and lessons --
-    mapping to the three primary thought_types the brain stores (ADR-0024 extractor design).
+    The extractor must know to extract decisions, patterns, lessons, and seeds --
+    mapping to the four thought_types the brain stores (ADR-0024 extractor design).
     """
     assert EXTRACTOR_PERSONA.exists(), "brain-extractor.md not found"
     text = EXTRACTOR_PERSONA.read_text()
@@ -351,9 +351,9 @@ def test_T_0024_011_extractor_extraction_categories(thought_type):
 
 @pytest.mark.parametrize("importance", ["0.7", "0.5", "0.6"])
 def test_T_0024_012_extractor_importance_values(importance):
-    """brain-extractor persona must specify the three importance values per thought_type.
+    """brain-extractor persona must specify the importance values for all four thought_types.
 
-    Per ADR-0024 extractor design: decision -> 0.7, pattern -> 0.5, lesson -> 0.6.
+    Per ADR-0024 extractor design: decision -> 0.7, pattern -> 0.5, lesson -> 0.6, seed -> 0.5.
     These values determine brain retrieval ranking.
     """
     assert EXTRACTOR_PERSONA.exists(), "brain-extractor.md not found"
@@ -361,31 +361,6 @@ def test_T_0024_012_extractor_importance_values(importance):
     assert importance in text, (
         f"brain-extractor.md missing importance value '{importance}'. "
         "Expected: decision=0.7, pattern=0.5, lesson=0.6 (ADR-0024 extractor design)."
-    )
-
-
-# ═══════════════════════════════════════════════════════════════════════
-# T-0024-013: old hooks still present in settings.json during Wave 1 (coexistence)
-# ═══════════════════════════════════════════════════════════════════════
-
-
-def test_T_0024_013_old_hooks_coexist_during_wave1():
-    """During Wave 1, both prompt-brain-capture.sh and warn-brain-capture.sh must still be present.
-
-    ADR-0024 sequences cleanup in Wave 3 (after Wave 2 removes behavioral text).
-    At Wave 1 completion, old hooks and new hook coexist -- belt and suspenders.
-    """
-    settings = load_settings()
-    settings_text = SETTINGS_JSON.read_text()
-    assert "prompt-brain-capture.sh" in settings_text, (
-        "prompt-brain-capture.sh not found in settings.json. "
-        "During Wave 1, old hooks must remain (coexistence period). "
-        "Old hooks are removed in Wave 3."
-    )
-    assert "warn-brain-capture.sh" in settings_text, (
-        "warn-brain-capture.sh not found in settings.json. "
-        "During Wave 1, old hooks must remain (coexistence period). "
-        "Old hooks are removed in Wave 3."
     )
 
 
@@ -422,4 +397,43 @@ def test_T_0024_015_extractor_frontmatter_file_exists():
     assert EXTRACTOR_FRONTMATTER.exists(), (
         f"brain-extractor.frontmatter.yml not found at {EXTRACTOR_FRONTMATTER}. "
         "Colby must create this file in Wave 1 Step 1a."
+    )
+
+# ═══════════════════════════════════════════════════════════════════════
+# T-0024-028b: .claude/hooks/prompt-brain-capture.sh does not exist (installed dir)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def test_T_0024_028b_installed_prompt_brain_capture_absent():
+    """The installed .claude/hooks/prompt-brain-capture.sh must not exist.
+
+    T-0024-028 asserts the source script is deleted. This companion test asserts
+    the installed copy is also absent -- so the hook is gone from both source/
+    and the installed .claude/ directory (ADR-0024 R7, AC-12).
+    """
+    hook_path = PROJECT_ROOT / ".claude" / "hooks" / "prompt-brain-capture.sh"
+    assert not hook_path.exists(), (
+        f".claude/hooks/prompt-brain-capture.sh still exists at {hook_path}. "
+        "Wave 3 cleanup must remove this script from the installed directory "
+        "as well as source/claude/hooks/ (ADR-0024 R7, AC-12)."
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# T-0024-029b: .claude/hooks/warn-brain-capture.sh does not exist (installed dir)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def test_T_0024_029b_installed_warn_brain_capture_absent():
+    """The installed .claude/hooks/warn-brain-capture.sh must not exist.
+
+    T-0024-029 asserts the source script is deleted. This companion test asserts
+    the installed copy is also absent -- so the hook is gone from both source/
+    and the installed .claude/ directory (ADR-0024 R8, AC-11).
+    """
+    hook_path = PROJECT_ROOT / ".claude" / "hooks" / "warn-brain-capture.sh"
+    assert not hook_path.exists(), (
+        f".claude/hooks/warn-brain-capture.sh still exists at {hook_path}. "
+        "Wave 3 cleanup must remove this script from the installed directory "
+        "as well as source/claude/hooks/ (ADR-0024 R8, AC-11)."
     )

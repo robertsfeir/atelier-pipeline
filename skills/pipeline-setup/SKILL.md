@@ -55,6 +55,15 @@ Before gathering any project information, unconditionally run this cleanup on ev
 
 This cleanup targets only quality-gate.sh entries. Other hook entries (enforce-eva-paths.sh, enforce-sequencing.sh, enforce-git.sh, etc.) are not affected.
 
+### Step 0b: Clean Up Orphan Brain-Capture Hooks
+
+Unconditionally run this cleanup on every /pipeline-setup invocation. Silent unless it finds something to remove.
+
+1. **Check prompt-brain-capture.sh:** If `.claude/hooks/prompt-brain-capture.sh` exists, delete it with `rm -f .claude/hooks/prompt-brain-capture.sh`. Note that removal occurred.
+2. **Check warn-brain-capture.sh:** If `.claude/hooks/warn-brain-capture.sh` exists, delete it with `rm -f .claude/hooks/warn-brain-capture.sh`. Note that removal occurred.
+3. **Print notice (conditional):** If either file was found and removed: print exactly `Removed orphan brain-capture hooks (superseded by brain-extractor agent).`
+4. **Silent no-op:** If neither found: do nothing. No output.
+
 ### Step 1: Gather Project Information
 
 Before installing, ask the user about their project. Ask these questions conversationally, one at a time -- do not dump a list.
@@ -295,10 +304,11 @@ optional and must be installed for the pipeline to function correctly.
 | `source/claude/hooks/log-agent-stop.sh` | `.claude/hooks/log-agent-stop.sh` | Logs agent stop events to JSONL telemetry file (SubagentStop) |
 | `source/claude/hooks/post-compact-reinject.sh` | `.claude/hooks/post-compact-reinject.sh` | Re-injects pipeline-state.md and context-brief.md after compaction (PostCompact) |
 | `source/claude/hooks/log-stop-failure.sh` | `.claude/hooks/log-stop-failure.sh` | Appends error entry to error-patterns.md on agent failure (StopFailure) |
-| `source/claude/hooks/prompt-brain-capture.sh` | `.claude/hooks/prompt-brain-capture.sh` | Brain capture prompt injection (SubagentStop) |
 | `source/claude/hooks/prompt-brain-prefetch.sh` | `.claude/hooks/prompt-brain-prefetch.sh` | Brain prefetch prompt injection (Prompt) |
-| `source/claude/hooks/warn-brain-capture.sh` | `.claude/hooks/warn-brain-capture.sh` | Brain capture warning (SubagentStop) |
 | `source/claude/hooks/prompt-compact-advisory.sh` | `.claude/hooks/prompt-compact-advisory.sh` | Wave-boundary compaction advisory (SubagentStop) |
+| `source/shared/agents/brain-extractor.md` | `.claude/agents/brain-extractor.md` | Brain knowledge extractor agent (assembled with frontmatter overlay below) |
+| `source/claude/agents/brain-extractor.frontmatter.yml` | (assembled with above into `.claude/agents/brain-extractor.md`) | Claude Code frontmatter for brain-extractor agent |
+| `source/cursor/agents/brain-extractor.frontmatter.yml` | `.cursor-plugin/agents/brain-extractor.md` | Cursor frontmatter for brain-extractor agent |
 | `source/shared/hooks/session-boot.sh` | `.claude/hooks/session-boot.sh` | Session boot data collector (SessionStart) -- reads pipeline state and config |
 | `source/claude/hooks/enforcement-config.json` | `.claude/hooks/enforcement-config.json` | Project-specific paths and agent rules |
 
@@ -354,7 +364,23 @@ file already exists. Add this hooks section:
     ],
     "SubagentStop": [
       {
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/warn-dor-dod.sh", "if": "agent_type == 'colby' || agent_type == 'roz'"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/log-agent-stop.sh"}, {"type": "prompt", "prompt": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-brain-capture.sh", "if": "agent_type == 'cal' || agent_type == 'colby' || agent_type == 'roz'"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/warn-brain-capture.sh", "if": "agent_type == 'cal' || agent_type == 'colby' || agent_type == 'roz' || agent_type == 'agatha'"}, {"type": "prompt", "prompt": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-compact-advisory.sh", "if": "agent_type == 'ellis'"}]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/warn-dor-dod.sh",
+            "if": "agent_type == 'colby' || agent_type == 'roz'"
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/log-agent-stop.sh"
+          },
+          {
+            "type": "agent",
+            "agent": "brain-extractor",
+            "prompt": "Extract decisions, patterns, and lessons from the completed agent's output and capture them to the brain via agent_capture.",
+            "if": "agent_type == 'cal' || agent_type == 'colby' || agent_type == 'roz' || agent_type == 'agatha'"
+          }
+        ]
       }
     ],
     "PreCompact": [
@@ -385,7 +411,7 @@ file already exists. Add this hooks section:
 If `jq` is not available, tell the user: "Install jq for pipeline enforcement hooks:
 `brew install jq` (macOS) or `apt install jq` (Linux)."
 
-**Total with hooks: 40 mandatory files across 7 directories.**
+**Total with hooks: 41 mandatory files across 7 directories.**
 
 #### Custom Agent Discovery
 
