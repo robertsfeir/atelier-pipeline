@@ -155,6 +155,20 @@ def test_T_0013_055_regression_gate1(hook_env):
     assert "BLOCKED" in r.stdout
 
 
+def test_two_hook_chain_ellis_active_phase_no_roz_qa(hook_env):
+    """Two-hook chain: enforce-pipeline-activation.sh passes Ellis (no phase check for Ellis),
+    but enforce-sequencing.sh Gate 1 still blocks Ellis when roz_qa is empty.
+
+    Confirms that removing Ellis from enforce-pipeline-activation.sh did not create a gap —
+    enforce-sequencing.sh Gate 1 is the authoritative guard for roz_qa enforcement.
+    """
+    write_pipeline_status(hook_env, '{"phase":"build","roz_qa":"","sizing":"small"}')
+    _config_with_state_dir(hook_env)
+    r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
+    assert r.returncode == 2
+    assert "BLOCKED" in r.stdout
+
+
 def test_T_0013_056_regression_gate2_agatha(hook_env):
     write_pipeline_status(hook_env, '{"roz_qa":"","phase":"build","ci_watch_active":true}')
     _config_with_state_dir(hook_env)
@@ -186,6 +200,18 @@ def test_T_0013_059_ci_verified_requires_active(hook_env):
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 2
     assert "BLOCKED" in r.stdout
+
+
+def test_gate1_phase_none_ellis_allowed(hook_env):
+    """Gate 1: Ellis is allowed when phase=none (no active pipeline).
+
+    phase:none means Ellis is running outside a pipeline context —
+    enforce-sequencing.sh should not block it on roz_qa grounds.
+    """
+    write_pipeline_status(hook_env, '{"phase":"none","roz_qa":""}')
+    _config_with_state_dir(hook_env)
+    r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
+    assert r.returncode == 0
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -222,6 +248,17 @@ def test_T_GATE3_004_ci_watch_no_telemetry(hook_env):
     assert r.returncode == 0
 
 
+def test_gate3_phase_none_no_telemetry_required(hook_env):
+    """Gate 3: Telemetry not required when phase=none, even with sizing=medium.
+
+    phase:none means no active pipeline, so telemetry capture is not applicable.
+    """
+    write_pipeline_status(hook_env, '{"roz_qa":"PASS","phase":"none","sizing":"medium"}')
+    _config_with_state_dir(hook_env)
+    r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
+    assert r.returncode == 0
+
+
 # ═══════════════════════════════════════════════════════════════════════
 # Gate 4: Poirot review
 # ═══════════════════════════════════════════════════════════════════════
@@ -252,6 +289,17 @@ def test_T_GATE4_003_micro_no_poirot(hook_env):
 
 def test_T_GATE4_004_ci_watch_no_poirot(hook_env):
     write_pipeline_status(hook_env, '{"roz_qa":"CI_VERIFIED","phase":"review","sizing":"small","ci_watch_active":"true"}')
+    _config_with_state_dir(hook_env)
+    r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
+    assert r.returncode == 0
+
+
+def test_gate4_phase_none_no_poirot_required(hook_env):
+    """Gate 4: Poirot not required when phase=none, even with sizing=small.
+
+    phase:none means no active pipeline, so Poirot review is not applicable.
+    """
+    write_pipeline_status(hook_env, '{"roz_qa":"PASS","phase":"none","sizing":"small"}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 0

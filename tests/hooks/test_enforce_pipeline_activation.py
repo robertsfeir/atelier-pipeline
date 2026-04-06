@@ -3,6 +3,8 @@
 import json
 import subprocess
 
+import pytest
+
 from conftest import (
     build_agent_input,
     build_tool_input,
@@ -44,6 +46,13 @@ def test_colby_blocked_no_state_file(hook_env):
     assert "/pipeline" in r.stdout
 
 
+# RETIRED: Ellis removed from enforce-pipeline-activation.sh (ADR context:
+# Ellis outside pipeline now handled by enforce-sequencing.sh Gate 1, which
+# allows Ellis when there is no state file, no marker, or an idle/complete/none
+# phase — covering infrastructure, doc-only, and setup/release-tag commits.
+# Blocking Ellis here would make that nuanced gate dead letter and prevent
+# release tagging outside a pipeline). This behavior no longer exists in this hook.
+@pytest.mark.skip(reason="Retired: Ellis removed from this hook — enforce-sequencing.sh Gate 1 handles outside-pipeline Ellis")
 def test_ellis_blocked_no_marker(hook_env):
     write_pipeline_freeform(hook_env, "Pipeline is running. Phase: review.")
     _config_with_state_dir(hook_env)
@@ -62,6 +71,13 @@ def test_colby_blocked_phase_idle(hook_env):
     assert "colby" in r.stdout
 
 
+# RETIRED: Ellis removed from enforce-pipeline-activation.sh (ADR context:
+# Ellis outside pipeline now handled by enforce-sequencing.sh Gate 1, which
+# allows Ellis when there is no state file, no marker, or an idle/complete/none
+# phase — covering infrastructure, doc-only, and setup/release-tag commits.
+# Blocking Ellis here would make that nuanced gate dead letter and prevent
+# release tagging outside a pipeline). This behavior no longer exists in this hook.
+@pytest.mark.skip(reason="Retired: Ellis removed from this hook — enforce-sequencing.sh Gate 1 handles outside-pipeline Ellis")
 def test_ellis_blocked_phase_complete(hook_env):
     write_pipeline_status(hook_env, '{"phase":"complete","roz_qa":"PASS"}')
     _config_with_state_dir(hook_env)
@@ -168,6 +184,13 @@ def test_block_message_names_colby(hook_env):
     assert "colby" in r.stdout
 
 
+# RETIRED: Ellis removed from enforce-pipeline-activation.sh (ADR context:
+# Ellis outside pipeline now handled by enforce-sequencing.sh Gate 1, which
+# allows Ellis when there is no state file, no marker, or an idle/complete/none
+# phase — covering infrastructure, doc-only, and setup/release-tag commits.
+# Blocking Ellis here would make that nuanced gate dead letter and prevent
+# release tagging outside a pipeline). This behavior no longer exists in this hook.
+@pytest.mark.skip(reason="Retired: Ellis removed from this hook — enforce-sequencing.sh Gate 1 handles outside-pipeline Ellis")
 def test_block_message_names_ellis(hook_env):
     write_pipeline_status(hook_env, '{"phase":"idle","roz_qa":""}')
     _config_with_state_dir(hook_env)
@@ -182,3 +205,30 @@ def test_colby_blocked_phase_Idle_mixed_case(hook_env):
     r = run_hook("enforce-pipeline-activation.sh", build_agent_input("colby"), hook_env)
     assert r.returncode == 2
     assert "BLOCKED" in r.stdout
+
+
+# --- New tests documenting Ellis allow-through behavior (added after architectural change) ---
+
+def test_ellis_allowed_no_marker(hook_env):
+    # Ellis removed from enforce-pipeline-activation.sh — handled by enforce-sequencing.sh Gate 1.
+    # This hook now passes Ellis through unconditionally; sequencing.sh enforces roz_qa.
+    write_pipeline_freeform(hook_env, "Pipeline is running. Phase: review.")
+    _config_with_state_dir(hook_env)
+    r = run_hook("enforce-pipeline-activation.sh", build_agent_input("ellis"), hook_env)
+    assert r.returncode == 0
+
+
+def test_ellis_allowed_phase_complete(hook_env):
+    # Ellis removed from enforce-pipeline-activation.sh — handled by enforce-sequencing.sh Gate 1.
+    write_pipeline_status(hook_env, '{"phase":"complete","roz_qa":"PASS"}')
+    _config_with_state_dir(hook_env)
+    r = run_hook("enforce-pipeline-activation.sh", build_agent_input("ellis"), hook_env)
+    assert r.returncode == 0
+
+
+def test_ellis_allowed_phase_idle(hook_env):
+    # Ellis removed from enforce-pipeline-activation.sh — handled by enforce-sequencing.sh Gate 1.
+    write_pipeline_status(hook_env, '{"phase":"idle","roz_qa":""}')
+    _config_with_state_dir(hook_env)
+    r = run_hook("enforce-pipeline-activation.sh", build_agent_input("ellis"), hook_env)
+    assert r.returncode == 0

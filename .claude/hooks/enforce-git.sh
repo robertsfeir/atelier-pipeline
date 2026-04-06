@@ -58,8 +58,13 @@ if echo "$COMMAND" | grep -qE "\bgit\s+(add|commit|push|reset|checkout\s+--|rest
   exit 2
 fi
 
-# Block test execution -- only Roz and Colby are allowed
-if echo "$COMMAND" | grep -qE "\b(bats|pytest|jest|vitest|mocha|rspec|phpunit)\b|(\b(npm|yarn|pnpm)\s+test\b)|(\bnode\s+--test\b)|(\b(go|cargo|make|dotnet|gradle|mvn)\s+test\b)" 2>/dev/null; then
+# Block test execution -- only Roz and Colby are allowed.
+# The anchor (^|&&|\|\||;|\||\n)\s* ensures we only match test runners that are
+# actually being invoked as commands, not referenced as string values inside echo,
+# variable assignments, or installation scripts. Without the anchor, a command like
+# `echo "run pytest to verify"` would produce a false positive and block Eva from
+# running diagnostic scripts that mention test tool names.
+if echo "$COMMAND" | grep -qE "(^|&&|\|\||;|\||\n|\()\s*(bats|pytest|jest|vitest|mocha|rspec|phpunit)\b|(^|&&|\|\||;|\||\n|\()\s*(npm|yarn|pnpm)\s+test\b|(^|&&|\|\||;|\||\n|\()\s*node\s+--test\b|(^|&&|\|\||;|\||\n|\()\s*(go|cargo|make|dotnet|gradle|mvn)\s+test\b" 2>/dev/null; then
   if [ "$AGENT_TYPE" = "roz" ] || [ "$AGENT_TYPE" = "colby" ]; then
     exit 0
   fi

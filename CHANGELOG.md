@@ -5,6 +5,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.23.3] - 2026-04-05
+
+### Fixed
+- **Hook enforcement:** Fixed 5 PreToolUse hooks with improved guards (enforce-eva-paths glob pattern matching, enforce-sequencing task iteration, enforce-pipeline-activation phase checks, enforce-git safety checks, enforce-context-brief state management)
+- **Haiku scout fan-out:** Colby/Roz receive pre-fetched brain context from Eva scouts in `<colby-context>` and `<qa-evidence>` blocks; fast-path re-invocations skip brain calls entirely
+- **Roz fast-path mode:** Scoped re-run for fix verification skips DoR ceremony, maxTurns reduced to 60
+- **Colby fast-path mode:** Re-invocation fix cycles skip DoR/retro/brain checks, maxTurns reduced to 75
+- **Poirot finding triage:** Test coverage assertions auto-populate, XML schema tags for xml-prompt-schema.md, eva-paths glob pattern matching simplified
+
+### Added
+- New enforcement test suite: `tests/hooks/test_enforce_eva_paths.py` covers glob patterns and path validation
+
 ## [3.23.2] - 2026-04-05
 
 ### Changed

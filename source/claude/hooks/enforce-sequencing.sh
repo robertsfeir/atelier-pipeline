@@ -108,8 +108,11 @@ if [ "$SUBAGENT_TYPE" = "ellis" ]; then
   # Normalize phase to lowercase for comparison
   PHASE=$(echo "$PHASE" | tr '[:upper:]' '[:lower:]')
 
-  # Inactive phases -> allow (pipeline not running)
-  if [ "$PHASE" = "idle" ] || [ "$PHASE" = "complete" ]; then
+  # Inactive phases -> allow (pipeline not running).
+  # "none" is included because PIPELINE_STATUS may carry phase:none when the state file
+  # exists but no pipeline has been activated yet. Without this, Ellis falls through to
+  # the Roz QA enforcement and gets blocked with "pipeline is active (phase: none)".
+  if [ "$PHASE" = "idle" ] || [ "$PHASE" = "complete" ] || [ "$PHASE" = "none" ]; then
     exit 0
   fi
 
@@ -161,7 +164,8 @@ if [ "$SUBAGENT_TYPE" = "ellis" ]; then
 
     # Only enforce after the build phase (review, reconciliation, docs).
     # During build, per-wave commits are gated by roz_qa + poirot_reviewed only.
-    if [ -n "$PHASE" ] && [ "$PHASE" != "idle" ] && [ "$PHASE" != "complete" ] && [ "$PHASE" != "build" ] && [ "$PHASE" != "test-authoring" ] && [ "$PHASE" != "design" ]; then
+    # "none" is excluded alongside idle/complete — same inactive-phase treatment as Gate 1.
+    if [ -n "$PHASE" ] && [ "$PHASE" != "idle" ] && [ "$PHASE" != "complete" ] && [ "$PHASE" != "none" ] && [ "$PHASE" != "build" ] && [ "$PHASE" != "test-authoring" ] && [ "$PHASE" != "design" ]; then
       SIZING=$(parse_pipeline_status "sizing") || true
       SIZING=$(echo "$SIZING" | tr '[:upper:]' '[:lower:]')
       # Only enforce when sizing is explicitly set to a non-micro value.
@@ -203,7 +207,8 @@ if [ "$SUBAGENT_TYPE" = "ellis" ]; then
     PHASE=$(parse_pipeline_status "phase") || true
     PHASE=$(echo "$PHASE" | tr '[:upper:]' '[:lower:]')
 
-    if [ -n "$PHASE" ] && [ "$PHASE" != "idle" ] && [ "$PHASE" != "complete" ]; then
+    # "none" is excluded alongside idle/complete — same inactive-phase treatment as Gate 1.
+    if [ -n "$PHASE" ] && [ "$PHASE" != "idle" ] && [ "$PHASE" != "complete" ] && [ "$PHASE" != "none" ]; then
       SIZING=$(parse_pipeline_status "sizing") || true
       SIZING=$(echo "$SIZING" | tr '[:upper:]' '[:lower:]')
       # Only enforce when sizing is explicitly set to a non-micro value.

@@ -50,12 +50,30 @@ Tags with no content for a given invocation are omitted entirely, not left empty
 | `<task>` | What to do -- observed symptom for debug, feature name for build. Task is always first. | None |
 | `<required-actions>` | Per-invocation capture requirements (when needed beyond persona defaults) | None |
 | `<brain-context>` | Pre-fetched brain context (only when brain is available and returned results) | None |
+| `<colby-context>` | Pre-collected scout evidence for Colby (file content, patterns, brain results) | None |
+| `<qa-evidence>` | Pre-collected scout evidence for Roz (changed files, test output, brain results) | None |
 | `<context>` | Decisions from context-brief.md | None |
 | `<hypotheses>` | Debug invocations only -- Eva's theory + alternative | None |
 | `<read>` | Comma-separated file paths to read | None |
 | `<warn>` | Retro lesson reference when error-patterns.md shows 3+ recurrences | None |
 | `<constraints>` | Boundaries for this specific invocation (3-5 bullets) | None |
 | `<output>` | What to produce, format, where to write it | None |
+
+## Scout Context Tags
+
+The `<colby-context>` and `<qa-evidence>` tags carry pre-collected scout
+evidence injected by Eva before invoking Colby or Roz. When present, the
+receiving agent uses the provided content directly and skips redundant reads
+or test runs.
+
+| Tag | Consumer | Content |
+|-----|----------|---------|
+| `<colby-context>` | Colby | File content for ADR step files, grep pattern results (file:line only), brain search results for the step's feature area. When provided: do NOT re-read listed files, do NOT re-grep listed patterns, read additional files only if context is insufficient for a specific decision. |
+| `<qa-evidence>` | Roz | Full content of changed source files (≤200 lines; ±20 lines per hunk if larger), targeted test output (`pytest` or `node --test` scoped to changed files, first 100 lines), brain search results for changed file names + feature area. When provided: do NOT re-read listed files, do NOT re-run listed tests, begin analysis immediately. |
+
+Eva populates these tags via haiku scout fan-out (see `pipeline-orchestration.md`
+phase-sizing section). Tags are omitted when scouts are skipped (Micro pipelines,
+Scoped Re-run Mode, Re-invocation fix cycle).
 
 ## Brain Context Tags
 

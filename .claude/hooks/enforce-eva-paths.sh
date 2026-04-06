@@ -21,14 +21,19 @@ FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 PROJECT_ROOT="${CURSOR_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-.}}"
 FILE_PATH="${FILE_PATH#"$PROJECT_ROOT"/}"
 
-# If still absolute after normalization, it's outside the project root
+# Reject path traversal before any exception checks — must run on all paths
+[[ "$FILE_PATH" == *..* ]] && { echo "BLOCKED: Path traversal detected in $FILE_PATH" >&2; exit 2; }
+
+# If still absolute after normalization, it's outside the project root.
+# Exception: Eva's auto-memory system writes to $HOME/.claude/projects/.../memory/.
+# Allow writes only to the memory subdirectory path pattern — not arbitrary .claude/ paths.
 if [[ "$FILE_PATH" == /* ]]; then
+  if [[ "$FILE_PATH" == ${HOME}/.claude/projects/*/memory/* ]]; then
+    exit 0
+  fi
   echo "BLOCKED: File is outside the project root. Attempted: $FILE_PATH" >&2
   exit 2
 fi
-
-# Reject path traversal
-[[ "$FILE_PATH" == *..* ]] && { echo "BLOCKED: Path traversal detected in $FILE_PATH" >&2; exit 2; }
 
 case "$FILE_PATH" in docs/pipeline/*) exit 0 ;; esac
 echo "BLOCKED: Eva can only write to docs/pipeline/. Attempted: $FILE_PATH" >&2

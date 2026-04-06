@@ -38,7 +38,7 @@ discrepancy -- do not implement a fix for a cause you cannot confirm in the code
 ## Re-invocation Mode (fix cycle)
 
 When re-invoked to fix a specific Roz finding on an already-built unit:
-skip DoR, skip retro read (Eva injects relevant lessons via `<warn>`),
+skip DoR, skip retro read (Eva injects relevant lessons via the `warn` tag),
 skip brain context review. Read only the flagged files + Roz's finding.
 Fix, run scoped tests, output a one-line DoD: "Fixed [what]. Tests pass."
 </workflow>

@@ -425,18 +425,23 @@ all units. Batch sequential by default. Worktree changes merge via git, not copy
 Mechanical: (1) existing spec? (2) existing components? (3) brain 3+ thoughts?
 Any -> assumptions mode. None -> question mode (default).
 
-### ADR Research Brief (Medium + Large)
+### Scout Fan-out Protocol
 
-Before invoking Cal on Medium or Large pipelines, Eva fans out up to 3 Explore+haiku agents in parallel to compile a research brief. Small pipelines skip this.
+Eva fans out Explore+haiku agents in parallel before invoking Cal, Roz, or Colby. Scouts collect raw evidence cheaply. The main agent receives it as a named inline block and skips the collection phase entirely.
 
-Eva launches these scouts simultaneously:
-- **Patterns scout:** Grep for existing patterns related to the feature area (file:line results)
-- **Manifest scout:** Check dependency manifests for relevant packages and versions
-- **Blast-radius scout:** Identify files likely in scope -- source files matching the feature name, adjacent modules, integration points (return <=15 file paths)
+**Invocation:** `Agent(subagent_type: "Explore", model: "haiku")`. Facts only — no design opinions. Dedup rule: each file read by at most one scout.
 
-Eva collects all three results, then queries brain for architecture/pattern/rejection thoughts (`agent_search`). The combined output populates Cal's `<context>` Research Brief block.
+#### Per-Agent Configuration
 
-**Scout invocation:** `Agent(subagent_type: "Explore", model: "haiku")`. Each scout receives a focused single-task prompt. Results are facts only -- no design opinions. Dedup rule: if 2+ scouts need the same file, only one reads it.
+| Agent | Block | Scouts | Skip condition |
+|-------|-------|--------|----------------|
+| **Cal** | `<research-brief>` | Patterns (grep existing patterns, file:line), Manifest (dependency versions), Blast-radius (≤15 files in scope), Brain (`agent_search` query derived from feature area) | Small pipelines |
+| **Roz** | `<qa-evidence>` | Files (changed source files, full content ≤200 lines else ±20 lines per hunk), Tests (targeted pytest matching changed files, `2>&1 \| head -100`), Brain (`agent_search` query derived from changed file names + feature area) | Scoped Re-run Mode; Investigation Mode |
+| **Colby** | `<colby-context>` | Existing-code (files the ADR step will modify), Patterns (grep for similar constructs, file:line only), Brain (`agent_search` query derived from ADR step description) | Micro pipelines; Re-invocation fix cycle |
+
+All scouts are `Agent(subagent_type: "Explore", model: "haiku")`. Explore agents inherit project MCP servers — the Brain scout calls `agent_search` directly, no custom agent needed. Eva collects all scout results and populates the named block before invoking the agent.
+
+**Note:** Brain scout only fires when `brain_available: true`. When brain is unavailable, the Brain scout row is skipped and the `<brain>` element is omitted from the context block.
 
 </section>
 
