@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Added
+- **brain-extractor structured quality signals:** Extended brain-extractor to emit per-invocation `thought_type: 'insight'` captures with `metadata.quality_signals` containing structured fields from Roz (verdict, test counts, finding counts), Colby (rework flag, files changed, DoD completeness), Cal (step count, test spec count, ADR revision), and Agatha (docs written, divergence findings) — with graceful degradation for absent markers (ADR-0025 Wave 1)
+
+### Fixed
+- **Agatha source_phase:** Changed from invalid 'docs' to 'handoff' to align with SOURCE_PHASES enum validation
+
 ## [3.24.0] - 2026-04-05
 
 ### Added
