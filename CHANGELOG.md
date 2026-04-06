@@ -3,6 +3,14 @@
 All notable changes to Atelier Pipeline are documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
+## [3.25.2] - 2026-04-06
+
+### Added
+- **`permissionMode: plan` for read-only agents:** robert, sable, investigator, distillator, darwin, deps, and sentinel frontmatter overlays now declare `permissionMode: plan`, adding harness-level read-only enforcement on top of the existing `disallowedTools` restrictions (issue #29 3c)
+
+### Fixed
+- **enforce-eva-paths.sh subagent bypass:** Hook now checks `agent_type` from PreToolUse stdin JSON and exits 0 for subagent contexts, letting per-agent frontmatter hooks handle their own enforcement. Previously the hook blocked all subagent writes outside `docs/pipeline/`, requiring the setup-mode sentinel as a workaround
+
 ## [3.25.1] - 2026-04-06
 
 ### Added

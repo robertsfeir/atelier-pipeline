@@ -6,6 +6,7 @@ description: >
   retro lessons. Opt-in via pipeline-config.json. Read-only -- proposes
   changes, never modifies files.
 model: opus
+permissionMode: plan
 effort: medium
 maxTurns: 40
 disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit

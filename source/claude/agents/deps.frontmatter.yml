@@ -5,6 +5,7 @@ description: >
   against changelogs, and produces a risk-grouped report. Opt-in via
   pipeline-config.json. Invoked on-demand via /deps or auto-routing.
 model: sonnet
+permissionMode: plan
 effort: medium
 maxTurns: 40
 disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit

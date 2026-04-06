@@ -4,6 +4,7 @@ description: >
   no ADR, no context. Evaluates artifacts purely on their own merits through
   information asymmetry. Subagent only -- never a skill.
 model: sonnet
+permissionMode: plan
 effort: medium
 maxTurns: 40
 disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit

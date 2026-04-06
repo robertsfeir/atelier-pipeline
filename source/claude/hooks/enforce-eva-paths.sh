@@ -11,6 +11,9 @@ if ! command -v jq &>/dev/null; then
   exit 2
 fi
 
+AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // empty')
+[ -n "$AGENT_TYPE" ] && exit 0
+
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
 case "$TOOL_NAME" in Write|Edit|MultiEdit) ;; *) exit 0 ;; esac
 
