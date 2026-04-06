@@ -201,7 +201,7 @@ your-project/
       enforce-{agent}-paths.sh            # Per-agent frontmatter hooks (roz, cal, colby, agatha, product, ux)
       enforce-sequencing.sh               # Blocks out-of-order agent invocations
       enforce-git.sh                      # Blocks git write ops from main thread
-      warn-dor-dod.sh                     # Warns when agent output is missing DoR/DoD sections
+      session-hydrate.sh                  # Runs telemetry hydration at SessionStart
       pre-compact.sh                      # Writes compaction marker to pipeline-state.md before compaction
       enforcement-config.json             # Project-specific paths and rules
     pipeline-config.json                    # Branching strategy configuration
@@ -1172,7 +1172,7 @@ The PreToolUse scripts require `jq` for JSON parsing. If `jq` is not installed, 
 | `enforce-sequencing.sh` | PreToolUse | `Agent` | Blocks out-of-order agent invocations from the main thread |
 | `enforce-git.sh` | PreToolUse | `Bash` | Blocks git write operations (`add`, `commit`, `push`, `reset`, `checkout --`, `restore`, `clean`) and test commands from the main thread |
 | `enforce-pipeline-activation.sh` | PreToolUse | `Agent` | Blocks Colby and Ellis invocations when no active pipeline exists |
-| `warn-dor-dod.sh` | SubagentStop | *(Colby and Roz completions)* | Warns when a Colby or Roz subagent output is missing DoR/DoD sections |
+| `session-hydrate.sh` | SessionStart | *(session start)* | Runs telemetry hydration (JSONL + state-file parsing) at session start |
 | `log-agent-start.sh` | SubagentStart | *(all subagent starts)* | Logs agent start events to `.claude/telemetry/session-hooks.jsonl` |
 | `log-agent-stop.sh` | SubagentStop | *(all subagent completions)* | Logs agent stop events to `.claude/telemetry/session-hooks.jsonl` |
 | `pre-compact.sh` | PreCompact | *(compaction events)* | Writes a timestamped compaction marker to `pipeline-state.md` before context is compacted |
@@ -1233,11 +1233,9 @@ Ellis, running as a subagent (non-empty `agent_id`), is not affected by this hoo
 
 This hook intercepts Agent tool calls from the main thread and blocks invocation of Colby or Ellis when no active pipeline exists. It ensures telemetry capture and quality gates are not bypassed by ad-hoc agent invocations. The hook reads `pipeline-state.md` and checks for a `PIPELINE_STATUS` marker with an active phase. Phases `none`, `idle`, and `complete` are treated as inactive. A missing state file or missing marker also triggers a block.
 
-### DoR/DoD Compliance Warning (`warn-dor-dod.sh`)
+### Session Hydration (`session-hydrate.sh`)
 
-This hook fires on SubagentStop and checks Colby and Roz output for `## DoR` and `## DoD` section headers. When either section is missing, it emits a warning on stderr. This hook is advisory only -- it never blocks (exit 0 always). Eva's DoR/DoD gate is the primary enforcement; this hook is a safety net.
-
-**Performance optimization.** This hook has an `if` conditional in `settings.json`: `"if": "agent_type == 'colby' || agent_type == 'roz'"`. The IDE evaluates this expression before spawning the hook process, so the script only runs for Colby and Roz completions rather than every subagent stop event.
+This hook fires on SessionStart and invokes `hydrate-telemetry.mjs` with `--silent` and `--state-dir` flags. It hydrates T1 JSONL telemetry data and parses pipeline state files (`pipeline-state.md`, `context-brief.md`) to capture Eva's pipeline decisions and phase transitions into the brain. The hook exits 0 on all paths (non-blocking) -- any hydration errors are suppressed via `|| true`.
 
 ### Agent Start Telemetry (`log-agent-start.sh`)
 
@@ -1245,7 +1243,7 @@ This hook fires on SubagentStart and appends a JSON line to the telemetry JSONL 
 
 ### Agent Stop Telemetry (`log-agent-stop.sh`)
 
-This hook fires on SubagentStop alongside `warn-dor-dod.sh` and appends a JSON line to `.claude/telemetry/session-hooks.jsonl` with the event type (`stop`), `agent_type`, `agent_id`, `session_id`, timestamp, and a `has_output` boolean indicating whether the agent produced non-empty output. The hook does not inspect or log the `last_assistant_message` content for privacy. It is a non-enforcement hook (exit 0 always) and does not require `jq`.
+This hook fires on SubagentStop and appends a JSON line to `.claude/telemetry/session-hooks.jsonl` with the event type (`stop`), `agent_type`, `agent_id`, `session_id`, timestamp, and a `has_output` boolean indicating whether the agent produced non-empty output. The hook does not inspect or log the `last_assistant_message` content for privacy. It is a non-enforcement hook (exit 0 always) and does not require `jq`.
 
 ### Context Re-injection (`post-compact-reinject.sh`)
 
@@ -1314,10 +1312,14 @@ The configuration file lives at `.claude/hooks/enforcement-config.json` (Claude 
         "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/log-agent-start.sh"}]
       }
     ],
+    "SessionStart": [
+      {
+        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-hydrate.sh"}]
+      }
+    ],
     "SubagentStop": [
       {
         "hooks": [
-          {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/warn-dor-dod.sh", "if": "agent_type == 'colby' || agent_type == 'roz'"},
           {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/log-agent-stop.sh"}
         ]
       }
@@ -1352,7 +1354,7 @@ Hooks signal their result via exit code:
 - **Exit 0** -- action allowed (or hook not applicable)
 - **Exit 2** -- action blocked; the reason message on stderr is shown to the agent
 
-The PreToolUse enforcement hooks (per-agent `enforce-{agent}-paths.sh`, `enforce-sequencing.sh`, `enforce-git.sh`, `enforce-pipeline-activation.sh`) exit 2 on violations. The SubagentStop hook (`warn-dor-dod.sh`) exits 0 always -- it is advisory only and never blocks. The telemetry hooks (`log-agent-start.sh`, `log-agent-stop.sh`, `log-stop-failure.sh`) exit 0 always -- they are observability hooks, not gates. The compaction hooks (`pre-compact.sh`, `post-compact-reinject.sh`) exit 0 always -- they are side-effect hooks, not gates.
+The PreToolUse enforcement hooks (per-agent `enforce-{agent}-paths.sh`, `enforce-sequencing.sh`, `enforce-git.sh`, `enforce-pipeline-activation.sh`) exit 2 on violations. The telemetry hooks (`log-agent-start.sh`, `log-agent-stop.sh`, `log-stop-failure.sh`, `session-hydrate.sh`) exit 0 always -- they are observability hooks, not gates. The compaction hooks (`pre-compact.sh`, `post-compact-reinject.sh`) exit 0 always -- they are side-effect hooks, not gates.
 
 The PreToolUse enforcement hooks exit 0 immediately when `jq` is not installed, when the config file is missing, or when the tool call is not one they care about. This ensures the hooks never interfere with unrelated tool usage or with projects that have not yet run `/pipeline-setup`. The telemetry and compaction hooks do not require `jq` -- they fall back to `grep`/`sed` parsing when `jq` is unavailable. All hooks work identically on Claude Code and Cursor.
 

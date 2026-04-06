@@ -6,16 +6,21 @@ import subprocess
 from conftest import PROJECT_ROOT
 
 
+# ADR-0025 supersedes: warn-dor-dod.sh deleted and replaced by session-hydrate.sh in technical-reference.md (ADR-0025 R11, R9)
 def test_T_0020_064_technical_reference_all_hooks():
     doc = (PROJECT_ROOT / "docs" / "guide" / "technical-reference.md").read_text()
     for hook in [
         "enforce-eva-paths.sh", "enforce-roz-paths.sh", "enforce-cal-paths.sh",
         "enforce-colby-paths.sh", "enforce-agatha-paths.sh", "enforce-product-paths.sh",
         "enforce-ux-paths.sh", "enforce-sequencing.sh", "enforce-pipeline-activation.sh",
-        "enforce-git.sh", "warn-dor-dod.sh", "pre-compact.sh",
+        "enforce-git.sh", "session-hydrate.sh", "pre-compact.sh",
         "log-agent-start.sh", "log-agent-stop.sh", "post-compact-reinject.sh", "log-stop-failure.sh",
     ]:
-        assert hook in doc
+        assert hook in doc, f"Expected hook '{hook}' in technical-reference.md"
+    # warn-dor-dod.sh must not appear in technical-reference.md after ADR-0025 deleted it
+    assert "warn-dor-dod.sh" not in doc, (
+        "warn-dor-dod.sh must not appear in technical-reference.md after ADR-0025 R11 deleted it."
+    )
     for event in ["PreToolUse", "SubagentStart", "SubagentStop", "PostCompact", "StopFailure"]:
         assert event in doc
 

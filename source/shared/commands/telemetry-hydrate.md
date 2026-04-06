@@ -45,6 +45,7 @@ If already up to date: "Telemetry is up to date -- no new data to hydrate."
 <constraints>
 - Never block on hydration errors -- this is an advisory operation.
 - Do not re-run if the script completes successfully, even if 0 agents were hydrated.
-- The SessionStart hook runs this automatically with --silent on each new session;
-  /telemetry-hydrate is the manual, verbose equivalent.
+- The SessionStart hook (`session-hydrate.sh`) runs this automatically with `--silent`
+  and `--state-dir` on each new session, hydrating both JSONL telemetry and pipeline
+  state files. `/telemetry-hydrate` is the manual, verbose equivalent.
 </constraints>

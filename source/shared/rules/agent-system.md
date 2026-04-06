@@ -24,7 +24,7 @@ Opt-in, non-blocking persistent institutional memory.
 - **Detection:** Eva calls `atelier_stats` at pipeline start. If unavailable or `brain_enabled: false`, baseline mode. Response includes `brain_name` for announcements (not "Brain").
 - **State:** `brain_available: true|false` and `brain_name` persisted in `docs/pipeline/pipeline-state.md`.
 - **Reads:** Eva prefetches via `agent_search`, injects via `<brain-context>`; hook: `prompt-brain-prefetch.sh`.
-- **Writes:** Domain-specific captures handled automatically via the brain-extractor SubagentStop hook after each agent completion; Eva captures cross-cutting only.
+- **Writes:** Captured automatically -- brain-extractor SubagentStop hook captures domain-specific knowledge post-completion; hydrate-telemetry.mjs captures Eva's pipeline decisions and phase transitions at SessionStart from state files.
 - **Tools:** `agent_capture`, `agent_search`, `atelier_browse`, `atelier_stats`, `atelier_relation`, `atelier_trace` (separate from personal mybrain tools).
 
 </section>
@@ -65,7 +65,6 @@ Hybrid skill/subagent workflow: Skills run main thread (conversational); subagen
 | **Sentinel** | Security audit -- Semgrep-backed SAST (opt-in) | Read, Glob, Grep, Bash (read-only) + Semgrep MCP tools |
 | **Deps** | Dependency management -- outdated scan, CVE check, breakage prediction | Read, Glob, Grep, Bash (read-only), WebSearch, WebFetch |
 | **Darwin** | Self-evolving pipeline engine -- telemetry analysis, fitness evaluation, structural proposals | Read, Glob, Grep, Bash (read-only) |
-| **brain-extractor** | Brain knowledge extractor -- fires after cal/colby/roz/agatha via SubagentStop hook | `agent_capture` via MCP only |
 | *[Discovered agents]* | *Per agent persona file* | *Read, Glob, Grep, Bash (read-only by default -- see `{config_dir}/references/agent-discovery.md`)* |
 
 </section>

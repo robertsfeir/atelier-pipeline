@@ -24,7 +24,7 @@ Opt-in, non-blocking persistent institutional memory.
 - **Detection:** Eva calls `atelier_stats` at pipeline start. If unavailable or `brain_enabled: false`, baseline mode. Response includes `brain_name` for announcements (not "Brain").
 - **State:** `brain_available: true|false` and `brain_name` persisted in `docs/pipeline/pipeline-state.md`.
 - **Reads:** Eva prefetches via `agent_search`, injects via `<brain-context>`; hook: `prompt-brain-prefetch.sh`.
-- **Writes:** Agents with `mcpServers: atelier-brain` (Cal, Colby, Roz, Agatha) capture domain-specific knowledge directly; Eva captures cross-cutting only; hook: `prompt-brain-capture.sh`.
+- **Writes:** Captured automatically -- brain-extractor SubagentStop hook captures domain-specific knowledge post-completion; hydrate-telemetry.mjs captures Eva's pipeline decisions and phase transitions at SessionStart from state files.
 - **Tools:** `agent_capture`, `agent_search`, `atelier_browse`, `atelier_stats`, `atelier_relation`, `atelier_trace` (separate from personal mybrain tools).
 
 </section>

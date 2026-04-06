@@ -157,6 +157,24 @@ async function runMigrations(pool) {
     } catch (err) {
       console.error("Migration 005 failed (non-fatal):", err.message);
     }
+
+    // Migration 006: pipeline source_phase enum value
+    try {
+      const pipelineCheck = await client.query(
+        `SELECT 1 FROM pg_enum WHERE enumlabel = 'pipeline' AND enumtypid = 'source_phase'::regtype`
+      );
+      if (pipelineCheck.rows.length === 0) {
+        console.log("Migration 006: adding pipeline phase...");
+        const migrationPath = path.join(brainDir, "migrations", "006-add-pipeline-phase.sql");
+        if (existsSync(migrationPath)) {
+          const sql = readFileSync(migrationPath, "utf-8");
+          await client.query(sql);
+        }
+        console.log("Migration 006: pipeline phase added.");
+      }
+    } catch (err) {
+      console.error("Migration 006 failed (non-fatal):", err.message);
+    }
   } catch (err) {
     console.error("Migration check failed (non-fatal):", err.message);
   } finally {

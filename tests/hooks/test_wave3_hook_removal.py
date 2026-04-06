@@ -347,23 +347,30 @@ def test_T_0024_040_post_compact_reinject_references_mechanical_hook():
 # ═══════════════════════════════════════════════════════════════════════
 
 
+# ADR-0025 supersedes: Eva's behavioral Writes section deleted; hydrator now owns Eva's state-file captures (ADR-0025 R10)
 def test_T_0024_041_pipeline_orch_preserves_eva_cross_cutting_writes():
-    """source/shared/rules/pipeline-orchestration.md must still contain Eva's cross-cutting Writes section.
+    """pipeline-orchestration.md must NOT contain Eva's behavioral Writes section after ADR-0025.
 
-    Eva's cross-cutting captures (user decisions, phase transitions, cross-agent
-    patterns, deploy/infra outcomes) are PRESERVED unchanged. The mechanical
-    extractor replaces only agent-domain captures, not Eva's contextual captures.
-    ADR-0024 R13, AC-17.
+    ADR-0025 R10 deletes Eva's cross-cutting Writes subsection from the Hybrid
+    Capture Model. The hydrator (hydrate-telemetry.mjs) now owns those captures
+    mechanically by parsing pipeline-state.md and context-brief.md. The remaining
+    source_agent: 'eva' references are /devops captures and telemetry-only
+    references, not the behavioral Writes list.
     """
     assert PIPELINE_ORCH.exists(), f"pipeline-orchestration.md not found at {PIPELINE_ORCH}"
     text = PIPELINE_ORCH.read_text()
-    # Eva's cross-cutting captures reference source_agent: 'eva'
-    # Multiple occurrences expected: user decisions, phase transitions, cross-agent patterns, etc.
+    # After ADR-0025, the behavioral "Writes (cross-cutting only, best-effort)" subsection
+    # is removed. Only mechanical references remain (devops + telemetry).
     eva_capture_matches = re.findall(r"source_agent: 'eva'", text)
-    assert len(eva_capture_matches) >= 3, (
-        f"pipeline-orchestration.md has only {len(eva_capture_matches)} 'source_agent: eva' "
-        "references (expected >= 3). Eva's cross-cutting Writes section may have been "
-        "accidentally removed. ADR-0024 R13, AC-17 require this section be preserved."
+    assert len(eva_capture_matches) < 3, (
+        f"pipeline-orchestration.md still has {len(eva_capture_matches)} source_agent: 'eva' "
+        "references (expected < 3 after ADR-0025 removed the behavioral Writes section). "
+        "ADR-0025 R10 requires the Writes subsection be deleted."
+    )
+    # The Writes subsection header must be gone
+    assert "Writes (cross-cutting only" not in text, (
+        "pipeline-orchestration.md still contains the behavioral Writes section header. "
+        "ADR-0025 R10 requires this section be deleted."
     )
 
 
@@ -573,40 +580,39 @@ def test_T_0024_049_brain_node_test_suite_passes():
 # ═══════════════════════════════════════════════════════════════════════
 
 
+# ADR-0025 supersedes: warn-dor-dod.sh removed from SubagentStop, count drops from 3 to 2 (ADR-0025 R11)
 def test_T_0024_050_subagent_stop_has_exactly_3_hooks():
-    """settings.json SubagentStop block must have exactly 3 hooks after Wave 3 cleanup.
+    """settings.json SubagentStop block must have exactly 2 hooks after ADR-0025 Wave 2.
 
-    Expected hooks:
-      1. warn-dor-dod.sh (command hook, if: colby || roz)
-      2. log-agent-stop.sh (command hook, no condition)
-      3. brain-extractor agent hook (type: agent, if: cal || colby || roz || agatha)
+    ADR-0025 R11 deletes warn-dor-dod.sh from SubagentStop, reducing the count from 3 to 2.
+    Expected hooks after ADR-0025:
+      1. log-agent-stop.sh (command hook, no condition)
+      2. brain-extractor agent hook (type: agent, if: cal || colby || roz || agatha)
 
-    The two removed hooks (prompt-brain-capture.sh, warn-brain-capture.sh) bring
-    the count from 4 to 2, then the new agent hook brings it back to 3.
-    ADR-0024 Step 3a AC: 'confirm settings.json has exactly 3 SubagentStop hooks'.
+    warn-dor-dod.sh is gone. The DoD completeness signal it provided is now
+    captured mechanically by the brain-extractor structured quality signals (ADR-0025 R3).
     """
     settings = load_settings()
     hooks = get_subagent_stop_hooks(settings)
     hook_count = len(hooks)
-    assert hook_count == 3, (
-        f"settings.json SubagentStop has {hook_count} hooks, expected exactly 3. "
-        f"After Wave 3: warn-dor-dod.sh + log-agent-stop.sh + brain-extractor agent hook. "
+    assert hook_count == 2, (
+        f"settings.json SubagentStop has {hook_count} hooks, expected exactly 2. "
+        f"After ADR-0025: log-agent-stop.sh + brain-extractor agent hook only. "
         f"Current hooks: {[h.get('command', h.get('agent', '?')) for h in hooks]}"
     )
 
-    # Verify the three expected hooks are present
+    # Verify the two expected hooks are present
     hook_refs = [h.get("command", h.get("agent", "")) for h in hooks]
     hook_refs_str = " ".join(hook_refs)
 
-    assert "warn-dor-dod.sh" in hook_refs_str, (
-        "warn-dor-dod.sh not found in SubagentStop hooks after cleanup. "
-        "This existing hook must be preserved."
+    assert "warn-dor-dod.sh" not in hook_refs_str, (
+        "warn-dor-dod.sh must not appear in SubagentStop after ADR-0025 deleted it."
     )
     assert "log-agent-stop.sh" in hook_refs_str, (
-        "log-agent-stop.sh not found in SubagentStop hooks after cleanup. "
+        "log-agent-stop.sh not found in SubagentStop hooks. "
         "This existing hook must be preserved."
     )
     assert "brain-extractor" in hook_refs_str, (
         "brain-extractor agent hook not found in SubagentStop hooks. "
-        "The new mechanical hook must be present."
+        "The mechanical hook must be present."
     )

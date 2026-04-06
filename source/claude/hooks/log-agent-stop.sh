@@ -1,6 +1,6 @@
 #!/bin/bash
 # SubagentStop telemetry hook -- logs agent stop events
-# Fires on SubagentStop alongside warn-dor-dod.sh. Appends a JSON line
+# Fires on SubagentStop. Appends a JSON line
 # to {config_dir}/telemetry/session-hooks.jsonl with event, agent_type,
 # agent_id, session_id, timestamp, and has_output (boolean).
 #

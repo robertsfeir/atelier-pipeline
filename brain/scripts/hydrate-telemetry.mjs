@@ -13,6 +13,7 @@
  */
 
 import { readdirSync, readFileSync, statSync, existsSync } from "fs";
+import { createHash } from "crypto";
 import path from "path";
 import { resolveConfig } from "../lib/config.mjs";
 import { createPool, runMigrations } from "../lib/db.mjs";
@@ -256,8 +257,20 @@ async function alreadyHydrated(pool, sessionId, agentId) {
  * Insert a single telemetry thought into the brain database.
  * Uses a real embedding when possible; falls back to zero vector.
  * Pass createdAt (ISO string) to override the DB default of now().
+ *
+ * Optional overrides (with backward-compatible defaults):
+ *   thought_type  — defaults to 'insight'
+ *   source_agent  — defaults to 'eva'
+ *   source_phase  — defaults to 'telemetry'
+ *   importance    — defaults to 0.3
  */
-async function insertTelemetryThought(pool, config, { content, metadata, scope, createdAt }) {
+async function insertTelemetryThought(pool, config, {
+  content, metadata, scope, createdAt,
+  thought_type = "insight",
+  source_agent = "eva",
+  source_phase = "telemetry",
+  importance = 0.3,
+}) {
   let embedding = null;
 
   if (config.openrouter_api_key) {
@@ -284,20 +297,186 @@ async function insertTelemetryThought(pool, config, { content, metadata, scope, 
       `INSERT INTO thoughts
          (content, embedding, metadata, thought_type, source_agent, source_phase,
           importance, scope, status, created_at)
-       VALUES ($1, $2::vector, $3, 'insight', 'eva', 'telemetry', 0.3,
-               ARRAY[$4::ltree], 'active', $5)`,
-      [content, embedding, JSON.stringify(metadata), scopeVal, createdAt]
+       VALUES ($1, $2::vector, $3, $5, $6, $7, $8,
+               ARRAY[$4::ltree], 'active', $9)`,
+      [content, embedding, JSON.stringify(metadata), scopeVal,
+       thought_type, source_agent, source_phase, importance, createdAt]
     );
   } else {
     await pool.query(
       `INSERT INTO thoughts
          (content, embedding, metadata, thought_type, source_agent, source_phase,
           importance, scope, status)
-       VALUES ($1, $2::vector, $3, 'insight', 'eva', 'telemetry', 0.3,
+       VALUES ($1, $2::vector, $3, $5, $6, $7, $8,
                ARRAY[$4::ltree], 'active')`,
-      [content, embedding, JSON.stringify(metadata), scopeVal]
+      [content, embedding, JSON.stringify(metadata), scopeVal,
+       thought_type, source_agent, source_phase, importance]
     );
   }
+}
+
+// =============================================================================
+// State-File Duplicate Detection
+// =============================================================================
+
+/**
+ * Check if a state-file capture with the given content hash already exists.
+ * Uses source_phase='pipeline' and a composite key in metadata to avoid
+ * re-inserting the same state-file item across sessions.
+ */
+async function stateItemAlreadyHydrated(pool, contentHash) {
+  const res = await pool.query(
+    `SELECT 1 FROM thoughts
+     WHERE source_phase = 'pipeline'
+       AND metadata @> $1
+     LIMIT 1`,
+    [JSON.stringify({ state_capture_key: contentHash, hydrated: true })]
+  );
+  return res.rows.length > 0;
+}
+
+// =============================================================================
+// State-File Parsing (pipeline-state.md + context-brief.md)
+// =============================================================================
+
+/**
+ * Parse pipeline state files from the given directory and insert brain captures
+ * for Eva's pipeline decisions and phase transitions.
+ *
+ * Reads:
+ *   {stateDir}/pipeline-state.md  — extracts Feature, Sizing, completed progress items
+ *   {stateDir}/context-brief.md   — extracts items under ## User Decisions
+ *
+ * Each item becomes one thought with:
+ *   thought_type: 'decision', source_agent: 'eva', source_phase: 'pipeline', importance: 0.6
+ *
+ * All file reads are guarded by existsSync. All errors are caught and logged.
+ * This function never throws (Retro #002, Retro #003).
+ */
+async function parseStateFiles(stateDir, pool, config, { silentMode = false } = {}) {
+  const log = (...a) => { if (!silentMode) console.log(...a); };
+
+  let inserted = 0;
+
+  // ── pipeline-state.md ──────────────────────────────────────────────────
+  const pipelineStatePath = path.join(stateDir, "pipeline-state.md");
+
+  try {
+    if (existsSync(pipelineStatePath)) {
+      const raw = readFileSync(pipelineStatePath, "utf-8");
+      const lines = raw.split("\n");
+
+      // Extract **Feature:** and **Sizing:** values
+      let feature = "unknown";
+      let sizing = "unknown";
+      for (const line of lines) {
+        const featureMatch = line.match(/\*\*Feature:\*\*\s*(.+)/);
+        if (featureMatch) feature = featureMatch[1].trim();
+        const sizingMatch = line.match(/\*\*Sizing:\*\*\s*(.+)/);
+        if (sizingMatch) sizing = sizingMatch[1].trim();
+      }
+
+      // Extract completed progress items (- [x] lines)
+      for (const line of lines) {
+        const checkboxMatch = line.match(/^-\s*\[x\]\s*(.+)/i);
+        if (!checkboxMatch) continue;
+
+        const phase_item = checkboxMatch[1].trim();
+        const contentHash = createHash("sha256").update(feature + ":" + phase_item).digest("hex").slice(0, 16);
+        const state_capture_key = `state_phase_${contentHash}`;
+
+        // Duplicate detection
+        const isDuplicate = await stateItemAlreadyHydrated(pool, state_capture_key);
+        if (isDuplicate) continue;
+
+        const content = `Pipeline phase complete: ${phase_item}`;
+        const metadata = {
+          feature,
+          sizing,
+          phase_item,
+          state_capture_key,
+          hydrated: true,
+        };
+
+        log(`  State capture: ${content}`);
+
+        await insertTelemetryThought(pool, config, {
+          content,
+          metadata,
+          scope: config.scope || "default",
+          thought_type: "decision",
+          source_agent: "eva",
+          source_phase: "pipeline",
+          importance: 0.6,
+        });
+        inserted++;
+      }
+    }
+  } catch (err) {
+    // Non-fatal: log and continue (Retro #002, Retro #003)
+    console.error(`  State-file parse error (pipeline-state.md): ${err.message}`);
+  }
+
+  // ── context-brief.md ───────────────────────────────────────────────────
+  const contextBriefPath = path.join(stateDir, "context-brief.md");
+
+  try {
+    if (existsSync(contextBriefPath)) {
+      const raw = readFileSync(contextBriefPath, "utf-8");
+      const lines = raw.split("\n");
+
+      // Extract items under ## User Decisions section
+      let inUserDecisions = false;
+      for (const line of lines) {
+        // Start capturing at ## User Decisions header
+        if (/^##\s+User Decisions/i.test(line)) {
+          inUserDecisions = true;
+          continue;
+        }
+        // Stop at the next ## header
+        if (inUserDecisions && /^##\s/.test(line)) {
+          break;
+        }
+        // Capture decision items (lines starting with - )
+        if (inUserDecisions && /^\s*-\s+/.test(line)) {
+          const decisionText = line.replace(/^\s*-\s+/, "").trim();
+          if (!decisionText) continue;
+
+          const contentHash = createHash("sha256").update("decision:" + decisionText).digest("hex").slice(0, 16);
+          const state_capture_key = `state_decision_${contentHash}`;
+
+          // Duplicate detection
+          const isDuplicate = await stateItemAlreadyHydrated(pool, state_capture_key);
+          if (isDuplicate) continue;
+
+          const content = decisionText;
+          const metadata = {
+            section: "user_decisions",
+            state_capture_key,
+            hydrated: true,
+          };
+
+          log(`  User decision capture: ${content}`);
+
+          await insertTelemetryThought(pool, config, {
+            content,
+            metadata,
+            scope: config.scope || "default",
+            thought_type: "decision",
+            source_agent: "eva",
+            source_phase: "pipeline",
+            importance: 0.6,
+          });
+          inserted++;
+        }
+      }
+    }
+  } catch (err) {
+    // Non-fatal: log and continue (Retro #002, Retro #003)
+    console.error(`  State-file parse error (context-brief.md): ${err.message}`);
+  }
+
+  return inserted;
 }
 
 // =============================================================================
@@ -414,7 +593,15 @@ async function generateTier3Summaries(pool, config) {
 async function main() {
   const args = process.argv.slice(2);
   const silentMode = args.includes("--silent");
-  const projectPathArg = args.find((a) => !a.startsWith("--"));
+
+  // Parse --state-dir <path> argument
+  let stateDirArg = null;
+  const stateDirIdx = args.indexOf("--state-dir");
+  if (stateDirIdx !== -1 && stateDirIdx + 1 < args.length) {
+    stateDirArg = args[stateDirIdx + 1];
+  }
+
+  const projectPathArg = args.find((a) => !a.startsWith("--") && a !== stateDirArg);
 
   if (!projectPathArg) {
     console.error("Usage: node brain/scripts/hydrate-telemetry.mjs <project-sessions-path> [--silent]");
@@ -639,6 +826,18 @@ async function main() {
 
   const t3Inserted = await generateTier3Summaries(pool, config);
   log(`Tier 3 summaries: ${t3Inserted} new session(s) summarized.`);
+
+  // ==========================================================================
+  // State-File Parsing (pipeline-state.md + context-brief.md)
+  // ==========================================================================
+  // When --state-dir is provided, parse pipeline state files and emit captures
+  // for Eva's decisions and phase transitions.
+
+  if (stateDirArg) {
+    log("\nParsing pipeline state files...");
+    const stateInserted = await parseStateFiles(expandHome(stateDirArg), pool, config, { silentMode });
+    log(`State-file captures: ${stateInserted} new item(s) captured.`);
+  }
 
   await pool.end();
 }

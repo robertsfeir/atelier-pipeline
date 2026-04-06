@@ -25,7 +25,7 @@ CREATE TYPE source_agent AS ENUM (
 );
 
 CREATE TYPE source_phase AS ENUM (
-  'design', 'build', 'qa', 'review', 'reconciliation', 'setup', 'handoff', 'devops', 'telemetry', 'ci-watch'
+  'design', 'build', 'qa', 'review', 'reconciliation', 'setup', 'handoff', 'devops', 'telemetry', 'ci-watch', 'pipeline'
 );
 
 CREATE TYPE thought_status AS ENUM (

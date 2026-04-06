@@ -1135,10 +1135,9 @@ These hooks never block -- they exit 0 always and degrade gracefully if the tele
 
 ### Performance: `if` conditionals
 
-Two hooks use `if` conditionals in their settings registration (`.claude/settings.json` or `.cursor/settings.json`) to skip hook execution when the condition is not met. The IDE evaluates these expressions before spawning the hook process:
+One hook uses an `if` conditional in its settings registration (`.claude/settings.json` or `.cursor/settings.json`) to skip hook execution when the condition is not met. The IDE evaluates these expressions before spawning the hook process:
 
 - **`enforce-git.sh`** -- `"if": "tool_input.command.includes('git ')"` skips the hook for Bash calls that do not contain a git command.
-- **`warn-dor-dod.sh`** -- `"if": "agent_type == 'colby' || agent_type == 'roz'"` skips the hook for subagent completions that are not Colby or Roz.
 
 This reduces overhead on high-frequency tool calls (Bash calls happen constantly; most are not git commands).
 
@@ -1343,7 +1342,7 @@ your-project/
       enforce-sequencing.sh         # Blocks out-of-order agent invocations
       enforce-git.sh                # Blocks git write ops and test commands from main thread
       enforce-pipeline-activation.sh # Blocks Colby/Ellis without active pipeline
-      warn-dor-dod.sh               # Warns on missing DoR/DoD sections (advisory)
+      session-hydrate.sh            # SessionStart hook: hydrates brain context at session start
       log-agent-start.sh            # Logs agent start events to telemetry JSONL
       log-agent-stop.sh             # Logs agent stop events to telemetry JSONL
       pre-compact.sh                # Compaction marker for pipeline state preservation

@@ -20,7 +20,7 @@ const SOURCE_AGENTS = [
   "roz", "poirot", "agatha", "distillator", "ellis",
 ];
 const SOURCE_PHASES = [
-  "design", "build", "qa", "review", "reconciliation", "setup", "handoff", "devops", "telemetry", "ci-watch",
+  "design", "build", "qa", "review", "reconciliation", "setup", "handoff", "devops", "telemetry", "ci-watch", "pipeline",
 ];
 const THOUGHT_STATUSES = [
   "active", "superseded", "invalidated", "expired", "conflicted",

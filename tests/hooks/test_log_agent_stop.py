@@ -109,20 +109,34 @@ def test_T_0020_034_timestamp_iso8601(hook_env):
     assert re.match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", data["timestamp"])
 
 
-def test_T_0020_035_regression_warn_dor_dod(hook_env):
-    inp = build_subagent_stop_input("colby", "agent-abc123", "session-xyz789", "## DoR: Requirements Extracted\nContent\n## DoD: Verification\nDone")
-    r = run_hook("warn-dor-dod.sh", inp, hook_env)
-    assert r.returncode == 0
+# ADR-0025 supersedes: warn-dor-dod.sh deleted from source and hooks dirs (ADR-0025 R11)
+def test_T_0020_035_regression_warn_dor_dod():
+    # warn-dor-dod.sh must not exist in source/claude/hooks/ or .claude/hooks/ after ADR-0025
+    source_hook = PROJECT_ROOT / "source" / "claude" / "hooks" / "warn-dor-dod.sh"
+    installed_hook = PROJECT_ROOT / ".claude" / "hooks" / "warn-dor-dod.sh"
+    assert not source_hook.exists(), (
+        f"warn-dor-dod.sh must be deleted from source/claude/hooks/ after ADR-0025 R11. "
+        f"Found: {source_hook}"
+    )
+    assert not installed_hook.exists(), (
+        f"warn-dor-dod.sh must be deleted from .claude/hooks/ after ADR-0025 R11. "
+        f"Found: {installed_hook}"
+    )
 
 
+# ADR-0025 supersedes: warn-dor-dod.sh removed from SubagentStop; count drops from 3 to 2 (ADR-0025 R11)
 def test_T_0020_036_settings_subagent_stop_both_hooks():
     settings = json.loads((PROJECT_ROOT / ".claude" / "settings.json").read_text())
     stop_matchers = settings["hooks"].get("SubagentStop", [])
     all_commands = [
         h.get("command", "") for m in stop_matchers for h in m.get("hooks", [])
     ]
-    assert any("warn-dor-dod.sh" in c for c in all_commands)
-    assert any("log-agent-stop.sh" in c for c in all_commands)
+    assert not any("warn-dor-dod.sh" in c for c in all_commands), (
+        "warn-dor-dod.sh must not appear in SubagentStop after ADR-0025 deleted it."
+    )
+    assert any("log-agent-stop.sh" in c for c in all_commands), (
+        "log-agent-stop.sh must still be present in SubagentStop."
+    )
 
 
 def test_T_0020_037_two_invocations_two_lines(hook_env):
