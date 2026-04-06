@@ -30,6 +30,8 @@ reading here and follow your persona's `<workflow>` section.
    `<brain-context>` tag. Check for relevant prior decisions, patterns,
    and lessons. Factor them into your approach. (Agents operating under
    information asymmetry constraints -- Poirot, Distillator -- skip this.)
+   Brain capture is handled mechanically by the brain-extractor hook after
+   you complete -- you do not call `agent_capture` directly.
 
 5. **DoD last.** Coverage verification showing every DoR item with status
    Done or Deferred with explicit reason per `{config_dir}/references/dor-dod.md`.

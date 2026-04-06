@@ -36,23 +36,6 @@ BRAIN_AGENTS = [
 
 
 @pytest.mark.parametrize("agent,thought_type,source_agent", BRAIN_AGENTS)
-def test_frontmatter_has_mcp_servers(agent, thought_type, source_agent):
-    for prefix in [PROJECT_ROOT / ".claude" / "agents", PROJECT_ROOT / "source" / "agents"]:
-        f = prefix / f"{agent}.md"
-        if f.exists():
-            fm = extract_frontmatter(f)
-            assert "mcpServers" in fm
-            assert "atelier-brain" in fm
-
-
-@pytest.mark.parametrize("agent,thought_type,source_agent", BRAIN_AGENTS)
-def test_brain_access_section_exists(agent, thought_type, source_agent):
-    f = PROJECT_ROOT / ".claude" / "agents" / f"{agent}.md"
-    assert f.exists()
-    assert '<protocol id="brain-access">' in f.read_text()
-
-
-@pytest.mark.parametrize("agent,thought_type,source_agent", BRAIN_AGENTS)
 def test_thought_type(agent, thought_type, source_agent):
     text = (PROJECT_ROOT / ".claude" / "agents" / f"{agent}.md").read_text()
     assert re.search(rf"thought_type.*{thought_type}|thought_type: '{thought_type}'|thought_type: \"{thought_type}\"", text)
@@ -62,23 +45,6 @@ def test_thought_type(agent, thought_type, source_agent):
 def test_source_agent(agent, thought_type, source_agent):
     text = (PROJECT_ROOT / ".claude" / "agents" / f"{agent}.md").read_text()
     assert re.search(rf"source_agent.*{source_agent}|source_agent: '{source_agent}'|source_agent: \"{source_agent}\"", text)
-
-
-@pytest.mark.parametrize("agent,thought_type,source_agent", BRAIN_AGENTS)
-def test_unavailable_clause(agent, thought_type, source_agent):
-    text = (PROJECT_ROOT / ".claude" / "agents" / f"{agent}.md").read_text()
-    assert re.search(r"when brain is unavailable", text, re.IGNORECASE)
-
-
-@pytest.mark.parametrize("agent,thought_type,source_agent", BRAIN_AGENTS)
-def test_brain_access_identical(agent, thought_type, source_agent):
-    claude_f = PROJECT_ROOT / ".claude" / "agents" / f"{agent}.md"
-    source_f = PROJECT_ROOT / "source" / "agents" / f"{agent}.md"
-    if source_f.exists() and claude_f.exists():
-        c = _extract_section(claude_f, '<protocol id="brain-access">', '</protocol>')
-        s = _extract_section(source_f, '<protocol id="brain-access">', '</protocol>')
-        assert c
-        assert c == s
 
 
 @pytest.mark.parametrize("agent,thought_type,source_agent", BRAIN_AGENTS)
@@ -143,26 +109,9 @@ def test_T_0021_050_agatha_workflow():
     assert "Audience Types" in text
 
 
-# Cal brain-access placement
-def test_T_0021_115_cal_placement():
-    text = (PROJECT_ROOT / ".claude" / "agents" / "cal.md").read_text()
-    lines = text.splitlines()
-    w_end = next((i for i, l in enumerate(lines) if "</workflow>" in l), None)
-    b_start = next((i for i, l in enumerate(lines) if '<protocol id="brain-access">' in l), None)
-    e_start = next((i for i, l in enumerate(lines) if "<examples>" in l), None)
-    assert w_end is not None and b_start is not None and e_start is not None
-    assert b_start > w_end
-    assert b_start < e_start
-
-
 # ═══════════════════════════════════════════════════════════════════════
 # Step 4: Preamble
 # ═══════════════════════════════════════════════════════════════════════
-
-
-def test_T_0021_062_preamble_mcpServers():
-    text = (PROJECT_ROOT / ".claude" / "references" / "agent-preamble.md").read_text()
-    assert re.search(r"mcpServers", text, re.IGNORECASE)
 
 
 def test_T_0021_063_source_preamble_matches():
@@ -219,15 +168,6 @@ def test_T_0021_119_ellis_still_mentions_brain():
 # ═══════════════════════════════════════════════════════════════════════
 
 
-def test_T_0021_068_agent_system_brain_mcpServers():
-    text = (PROJECT_ROOT / ".claude" / "rules" / "agent-system.md").read_text()
-    section = _extract_section(
-        PROJECT_ROOT / ".claude" / "rules" / "agent-system.md",
-        '<section id="brain-config">', '</section>',
-    )
-    assert re.search(r"mcpServers.*atelier-brain|mcpServers: atelier-brain", section, re.IGNORECASE)
-
-
 def test_T_0021_069_brain_config_four_agents():
     section = _extract_section(
         PROJECT_ROOT / ".claude" / "rules" / "agent-system.md",
@@ -235,15 +175,6 @@ def test_T_0021_069_brain_config_four_agents():
     )
     for agent in ["Cal", "Colby", "Roz", "Agatha"]:
         assert re.search(agent, section, re.IGNORECASE)
-
-
-def test_T_0021_070_brain_config_prompt_hooks():
-    section = _extract_section(
-        PROJECT_ROOT / ".claude" / "rules" / "agent-system.md",
-        '<section id="brain-config">', '</section>',
-    )
-    assert "prompt-brain-prefetch.sh" in section
-    assert "prompt-brain-capture.sh" in section
 
 
 def test_T_0021_071_no_mandatory_brain_access():
@@ -259,11 +190,6 @@ def test_T_0021_072_best_effort():
 def test_T_0021_073_no_spot_check():
     text = (PROJECT_ROOT / ".claude" / "rules" / "pipeline-orchestration.md").read_text()
     assert not re.search(r"Verification.*spot.check", text, re.IGNORECASE)
-
-
-def test_T_0021_074_brain_access_references_personas():
-    text = (PROJECT_ROOT / ".claude" / "rules" / "pipeline-orchestration.md").read_text()
-    assert re.search(r"agent persona|agent personas|mcpServers: atelier-brain", text, re.IGNORECASE)
 
 
 def test_T_0021_075_shared_behaviors_brain():
@@ -331,11 +257,6 @@ def test_T_0021_081_context_eviction_brain():
 def test_T_0021_082_no_evict_telemetry():
     text = (PROJECT_ROOT / ".claude" / "rules" / "default-persona.md").read_text()
     assert "Telemetry trend computation logic" not in text
-
-
-def test_T_0021_083_brain_section_hooks():
-    text = (PROJECT_ROOT / ".claude" / "rules" / "default-persona.md").read_text()
-    assert re.search(r"prompt-brain|mcpServers|frontmatter.*brain|brain.*frontmatter", text, re.IGNORECASE)
 
 
 def test_T_0021_084_pipeline_models_best_effort():

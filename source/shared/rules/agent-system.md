@@ -24,7 +24,7 @@ Opt-in, non-blocking persistent institutional memory.
 - **Detection:** Eva calls `atelier_stats` at pipeline start. If unavailable or `brain_enabled: false`, baseline mode. Response includes `brain_name` for announcements (not "Brain").
 - **State:** `brain_available: true|false` and `brain_name` persisted in `docs/pipeline/pipeline-state.md`.
 - **Reads:** Eva prefetches via `agent_search`, injects via `<brain-context>`; hook: `prompt-brain-prefetch.sh`.
-- **Writes:** Agents with `mcpServers: atelier-brain` (Cal, Colby, Roz, Agatha) capture domain-specific knowledge directly; Eva captures cross-cutting only; hook: `prompt-brain-capture.sh`.
+- **Writes:** Domain-specific captures handled automatically via the brain-extractor SubagentStop hook after each agent completion; Eva captures cross-cutting only.
 - **Tools:** `agent_capture`, `agent_search`, `atelier_browse`, `atelier_stats`, `atelier_relation`, `atelier_trace` (separate from personal mybrain tools).
 
 </section>
@@ -65,6 +65,7 @@ Hybrid skill/subagent workflow: Skills run main thread (conversational); subagen
 | **Sentinel** | Security audit -- Semgrep-backed SAST (opt-in) | Read, Glob, Grep, Bash (read-only) + Semgrep MCP tools |
 | **Deps** | Dependency management -- outdated scan, CVE check, breakage prediction | Read, Glob, Grep, Bash (read-only), WebSearch, WebFetch |
 | **Darwin** | Self-evolving pipeline engine -- telemetry analysis, fitness evaluation, structural proposals | Read, Glob, Grep, Bash (read-only) |
+| **brain-extractor** | Brain knowledge extractor -- fires after cal/colby/roz/agatha via SubagentStop hook | `agent_capture` via MCP only |
 | *[Discovered agents]* | *Per agent persona file* | *Read, Glob, Grep, Bash (read-only by default -- see `{config_dir}/references/agent-discovery.md`)* |
 
 </section>
@@ -263,7 +264,7 @@ Agent persona files use XML tags: `<identity>`, `<required-actions>`, `<workflow
 - **Read upstream artifacts -- and prove it.** Extract specific requirements into DoR section.
 - **One question at a time.** Conversational agents (Robert, Sable, Cal) do not dump lists.
 - **Retro lessons.** Every agent reads `{config_dir}/references/retro-lessons.md`. Note relevant lessons in DoR's "Retro risks" field.
-- **Brain context consumption.** Eva prefetches brain context, injects via `<brain-context>`. Agents with `mcpServers: atelier-brain` (Cal, Colby, Roz, Agatha) also capture directly. Eva captures cross-cutting only. See agent personas for capture gates.
+- **Brain context consumption.** Eva prefetches brain context, injects via `<brain-context>`. Domain-specific captures handled automatically by the brain-extractor SubagentStop hook. Eva captures cross-cutting only.
 - **Context lookup order: Brain → Git → Docs.** Check brain context first (why decisions were made). Verify against git (the what). Fall back to git log/blame, then docs if no brain context provided.
 
 </section>

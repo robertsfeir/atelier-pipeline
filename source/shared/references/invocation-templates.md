@@ -6,8 +6,8 @@
 ## Shared Protocols (apply to all templates below)
 
 **Brain-context injection:** Eva prefetches via `agent_search` and injects
-into `<brain-context>`. Agents with `mcpServers: atelier-brain` (Cal, Colby,
-Roz, Agatha) also capture via `agent_capture`. Omit tag when brain unavailable.
+into `<brain-context>`. Domain-specific captures handled automatically by the
+brain-extractor SubagentStop hook after each agent completion. Omit tag when brain unavailable.
 
 **Standard READ items (included in every invocation, not listed per template):**
 `{config_dir}/references/retro-lessons.md`, `{config_dir}/references/agent-preamble.md`

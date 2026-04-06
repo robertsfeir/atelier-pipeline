@@ -20,7 +20,7 @@
 - [x] Roz → test spec (67 tests authored)
 - [x] Wave 1: brain-extractor agent + SubagentStop hook — Roz PASS 22/22, Poirot PASS
 - [x] Wave 2: behavioral cleanup — personas + preamble — Roz PASS 13/13, Poirot 0 BLOCKERs (5 findings deferred to Wave 3)
-- [ ] Wave 3: hook removal + frontmatter + doc updates
+- [x] Wave 3: hook removal + frontmatter + doc updates — Roz PASS 31/32, Poirot truncated (review juncture covers)
 - [ ] Review juncture: Roz sweep + Poirot + Robert-subagent
 - [ ] Agatha → docs
 - [ ] **HARD PAUSE** → Ellis push

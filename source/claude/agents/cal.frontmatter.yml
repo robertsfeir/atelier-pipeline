@@ -13,5 +13,3 @@ hooks:
   - event: PreToolUse
     matcher: Write|Edit
     command: .claude/hooks/enforce-cal-paths.sh
-mcpServers:
-  - atelier-brain

@@ -29,11 +29,11 @@ JIT loading. `[ALWAYS]` sections load at pipeline activation. `[JIT]` sections l
 
 ## Brain Access (when brain is available)
 
-When `brain_available: true`, Eva performs these brain operations at mechanical gates. Agent domain-specific captures are wired via `mcpServers: atelier-brain` frontmatter -- see agent personas (Cal, Colby, Roz, Agatha) for capture gates.
+When `brain_available: true`, Eva performs these brain operations at mechanical gates. Agent domain-specific captures are handled automatically by the brain-extractor SubagentStop hook after each agent completion.
 
 ### Hybrid Capture Model
 
-Agents write their own domain-specific captures directly (Cal captures decisions, Colby captures implementation insights, Roz captures QA findings, etc.). Each agent uses their own name as `source_agent` so the brain tracks who learned what. Eva does NOT duplicate agent captures.
+The brain-extractor SubagentStop hook captures domain-specific knowledge automatically after each agent completion (Cal, Colby, Roz, Agatha). Each capture uses the parent agent's name as `source_agent` so the brain tracks who learned what. Eva does NOT duplicate agent captures.
 
 Eva captures **cross-cutting concerns only** — things no single agent owns:
 

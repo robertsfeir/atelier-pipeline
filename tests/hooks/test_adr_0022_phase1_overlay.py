@@ -168,12 +168,6 @@ def test_T_0022_018_disallowed_tools(agent):
     assert "disallowedTools:" in fm
 
 
-@pytest.mark.parametrize("agent", ["cal", "colby", "roz", "agatha"])
-def test_T_0022_019_mcp_servers(agent):
-    fm = (CLAUDE_DIR / "agents" / f"{agent}.frontmatter.yml").read_text()
-    assert "mcpServers:" in fm
-
-
 @pytest.mark.parametrize("agent", AGENTS_12)
 def test_T_0022_020_cursor_identical_phase1(agent):
     claude_fm = (CLAUDE_DIR / "agents" / f"{agent}.frontmatter.yml").read_text()
@@ -190,7 +184,7 @@ def test_T_0022_020_cursor_identical_phase1(agent):
 def test_T_0022_021_claude_hooks():
     assert (CLAUDE_DIR / "hooks").is_dir()
     sh_count = len(list((CLAUDE_DIR / "hooks").glob("*.sh")))
-    assert sh_count == 20
+    assert sh_count == 18  # Wave 3: prompt-brain-capture.sh and warn-brain-capture.sh removed
     assert (CLAUDE_DIR / "hooks" / "enforcement-config.json").exists()
 
 

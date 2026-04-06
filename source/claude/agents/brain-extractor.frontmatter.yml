@@ -9,5 +9,3 @@ tools:
   - Read
   - Bash
 disallowedTools: Write, Edit, MultiEdit, NotebookEdit, Agent
-mcpServers:
-  - atelier-brain

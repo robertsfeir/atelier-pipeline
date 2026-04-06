@@ -13,5 +13,3 @@ hooks:
   - event: PreToolUse
     matcher: Write|Edit|MultiEdit
     command: .claude/hooks/enforce-colby-paths.sh
-mcpServers:
-  - atelier-brain

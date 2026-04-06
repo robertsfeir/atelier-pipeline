@@ -12,5 +12,3 @@ hooks:
   - event: PreToolUse
     matcher: Write|Edit|MultiEdit
     command: .claude/hooks/enforce-agatha-paths.sh
-mcpServers:
-  - atelier-brain

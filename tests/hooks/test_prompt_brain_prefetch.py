@@ -72,5 +72,5 @@ def test_T_0021_100_installed_hooks_executable():
 
 
 def test_T_0021_117_source_hooks_executable():
+    # Wave 3: prompt-brain-capture.sh removed from source/ (ADR-0024 R7)
     assert (PROJECT_ROOT / "source" / "claude" / "hooks" / "prompt-brain-prefetch.sh").stat().st_mode & 0o111
-    assert (PROJECT_ROOT / "source" / "claude" / "hooks" / "prompt-brain-capture.sh").stat().st_mode & 0o111

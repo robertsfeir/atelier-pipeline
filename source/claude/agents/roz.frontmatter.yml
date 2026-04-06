@@ -13,5 +13,3 @@ hooks:
   - event: PreToolUse
     matcher: Write
     command: .claude/hooks/enforce-roz-paths.sh
-mcpServers:
-  - atelier-brain
