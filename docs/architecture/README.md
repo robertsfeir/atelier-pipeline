@@ -14,3 +14,4 @@
 | [ADR-0013](ADR-0013-ci-watch.md) | CI Watch (Self-Healing CI) -- Background CI Monitoring with Autonomous Fix Cycles | Proposed |
 | [ADR-0014](ADR-0014-telemetry.md) | Agent Telemetry Dashboard -- Per-Invocation Metrics, Cost Tracking, and Alert Thresholds | Proposed |
 | [ADR-0015](ADR-0015-deps-agent.md) | Deps Agent -- Predictive Dependency Management with CVE Scanning and Upgrade Risk Assessment | Proposed |
+| [ADR-0027](ADR-0027-brain-hydrate-scout-fanout.md) | Brain-Hydrate Scout Fan-Out and Model Demotion | Proposed |

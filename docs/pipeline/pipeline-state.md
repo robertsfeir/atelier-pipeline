@@ -1,12 +1,12 @@
 # Pipeline State
 
 ## Active Pipeline
-**Feature:** Mechanical telemetry extraction — brain-extractor structured quality signals + hydrator state file parsing
+**Feature:** brain-hydrate Scout swarm — fan-out Explore+Haiku scouts + Sonnet extraction subagent (ADR-0027)
 **Phase:** build
-<!-- PIPELINE_STATUS: {"phase": "review", "sizing": "small", "roz_qa": "PASS", "telemetry_captured": true, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": true, "robert_reviewed": false, "brain_available": true} -->
+<!-- PIPELINE_STATUS: {"phase": "build", "sizing": "small", "roz_qa": "PASS", "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": true, "robert_reviewed": false, "brain_available": true} -->
 **Sizing:** Small
-**Started:** 2026-04-06
-**Seed:** (no seed — architecture derived from session conversation)
+**Started:** 2026-04-07
+**Seed:** brain-hydrate runs extraction on main thread (Opus-class). Upgrade to 5 Explore+Haiku scouts + single Sonnet extraction subagent.
 
 ## Configuration
 **Branching Strategy:** trunk-based
@@ -15,15 +15,21 @@
 **Feature Branch:** main (trunk-based)
 
 ## Progress
-- [x] Cal → ADR (docs/architecture/ADR-0025-mechanical-telemetry-extraction.md, 4 steps, 2 waves, 43 tests)
-- [x] Roz → test spec review + test authoring (49 tests, 25 Wave 1)
-- [x] Wave 1: brain-extractor structured extraction (Step 1) — Roz PASS 15/15, Poirot clean
-- [x] Wave 2: hydrator quality T3 + SessionStart hook + warn-dor-dod.sh removal (Steps 2-4)
-- [ ] Review juncture
+- [x] Cal → ADR-0027 (docs/architecture/ADR-0027-brain-hydrate-scout-fanout.md, 1 step, 31 tests)
+- [x] Roz → test spec review (APPROVED WITH GAPS — 5 gaps found + fixed, 36 tests total)
+- [x] Roz → test authoring (36 tests written, 23 fail pre-build, 12 pass, 1 skip — tests/adr-0027/test_brain_hydrate_scout_fanout.py)
+- [x] Colby → implement scout swarm (36/36 tests pass)
+- [x] Roz QA + Poirot (parallel) — Roz PASS 36/36, Poirot 1 BLOCKER + 4 FIX-REQUIRED found
+- [x] Colby → fix Poirot findings (6 fixes, 36/36 still pass)
+- [x] Roz re-verify — PASS 36/36
+- [x] Sync: .cursor-plugin/skills/brain-hydrate/SKILL.md + .claude/rules/pipeline-orchestration.md
 - [ ] Ellis → push
 
-## Prior pipeline (ADR-0024 complete)
-ADR-0024 Mechanical Brain Writes shipped as v3.24.0 / brain 1.1.0 (2026-04-06).
+## Prior pipeline (ADR-0026 complete)
+ADR-0026 Beads-style provenance shipped (ebe6651, 2026-04-06). brain v1.3.0. 28/28 provenance tests, 121/121 brain suite.
+
+## Prior pipeline (ADR-0025 complete)
+ADR-0025 Mechanical Telemetry Extraction shipped as v3.25.0 (2026-04-06). v3.25.1 diagnostic scout swarm, v3.25.2 permissionMode + hook fix also shipped same day.
 
 ## Changes since last state
 - Wave 1 complete: brain-extractor structured quality signal extraction (Step 1)
@@ -33,3 +39,5 @@ ADR-0024 Mechanical Brain Writes shipped as v3.24.0 / brain 1.1.0 (2026-04-06).
   - Roz PASS 15/15 Wave 1 tests, 0 new baseline regressions
 <!-- COMPACTION: 2026-04-06T16:03:18Z -->
 <!-- COMPACTION: 2026-04-06T17:42:30Z -->
+<!-- COMPACTION: 2026-04-07T00:48:51Z -->
+<!-- COMPACTION: 2026-04-07T02:12:35Z -->

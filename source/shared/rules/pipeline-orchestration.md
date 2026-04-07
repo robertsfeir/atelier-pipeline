@@ -429,6 +429,7 @@ Eva fans out Explore+haiku agents in parallel before invoking Cal, Roz, or Colby
 | **Cal** | `<research-brief>` | Patterns (grep existing patterns, file:line), Manifest (dependency versions), Blast-radius (≤15 files in scope), Brain (`agent_search` query derived from feature area) | Small pipelines |
 | **Roz** | `<qa-evidence>` | Files (changed source files, full content ≤200 lines else ±20 lines per hunk), Tests (targeted pytest matching changed files, `2>&1 \| head -100`), Brain (`agent_search` query derived from changed file names + feature area) | Scoped Re-run Mode |
 | **Colby** | `<colby-context>` | Existing-code (files the ADR step will modify), Patterns (grep for similar constructs, file:line only), Brain (`agent_search` query derived from ADR step description) | Micro pipelines; Re-invocation fix cycle |
+| **brain-hydrate** | `<hydration-content>` | ADR scout (reads `docs/architecture/ADR-*.md` or `docs/adrs/ADR-*.md`), Spec scout (reads `docs/product/*.md`), UX scout (reads `docs/ux/*.md`), Pipeline scout (reads error-patterns + retro-lessons + context-brief), Git scout (runs `git log`, filters significant commits) | Per-source type skip when user excludes that source type from scope or scan finds 0 files for that category |
 
 All scouts are `Agent(subagent_type: "Explore", model: "haiku")`. Explore agents inherit project MCP servers — the Brain scout calls `agent_search` directly, no custom agent needed. Eva collects all scout results and populates the named block before invoking the agent.
 

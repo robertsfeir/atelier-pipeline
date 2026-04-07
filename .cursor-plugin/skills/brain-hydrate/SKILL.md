@@ -44,7 +44,7 @@ Scan the project for extractable sources. Use Glob and Bash to inventory:
 | Feature specs | `ls docs/product/*.md` | Number of spec files |
 | UX docs | `ls docs/ux/*.md` | Number of UX files |
 | Error patterns | `cat docs/pipeline/error-patterns.md` | Number of entries |
-| Retro lessons | `cat .cursor/references/retro-lessons.md` or `cat source/references/retro-lessons.md` | Number of lessons |
+| Retro lessons | `cat .claude/references/retro-lessons.md` or `cat source/shared/references/retro-lessons.md` | Number of lessons |
 | Context briefs | `cat docs/pipeline/context-brief.md` | Exists or not |
 | Git history | `git log --oneline --since="6 months ago"` (or full history if <500 commits) | Number of significant commits |
 
@@ -75,13 +75,124 @@ The user may exclude sources ("skip git history", "only ADRs") or adjust the tim
 
 ---
 
+<protocol id="scout-fanout">
+
+## Phase 2a: Scout Fan-Out
+
+After the user approves the scan inventory, Eva fans out Explore+haiku scouts in parallel. Each scout reads one category of artifact files and returns raw content in a named inline block. This keeps all file reading off the main thread and off Opus.
+
+**Invocation pattern:** `Agent(subagent_type: "Explore", model: "haiku")`. Facts only -- no extraction, no opinions. Each scout returns raw file content with clear delimiters per file.
+
+**Dedup rule:** Each file is read by exactly one scout. No file appears in more than one scout's file set.
+
+### Scout Categories
+
+| Scout | Files | Block element |
+|-------|-------|---------------|
+| **ADR scout** | `docs/architecture/ADR-*.md` or `docs/adrs/ADR-*.md` | `<adrs>` |
+| **Specs scout** | `docs/product/*.md` | `<specs>` |
+| **UX scout** | `docs/ux/*.md` | `<ux-docs>` |
+| **Pipeline scout** | `error-patterns.md` + `retro-lessons.md` + `context-brief.md` | `<pipeline-artifacts>` |
+| **Git scout** | `git log` output -- filter for significant commits only; if no significant commits found, returns empty | `<git-history>` |
+
+### Scout Content Format
+
+Each scout returns content using file delimiters:
+
+```
+=== FILE: docs/architecture/ADR-0002-team-collaboration.md ===
+[full file content]
+=== END FILE ===
+
+=== FILE: docs/architecture/ADR-0005-xml-prompt-structure.md ===
+[full file content]
+=== END FILE ===
+```
+
+The Sonnet subagent parses these delimiters to process each file individually against the extraction rules.
+
+### Skip Conditions
+
+- **User excluded source type:** If the user narrowed scope (e.g., "only ADRs"), only the ADR scout fires. All other scouts are skipped.
+- **Zero files in category:** If the Phase 1 scan found zero files for a category (e.g., no UX docs), that scout is skipped entirely. The Sonnet subagent skips that source type gracefully.
+- **Scope-based exclusion:** If the user explicitly says "skip git history", the Git scout does not fire.
+
+### File-Count Gate
+
+If a single scout would read **more than 20 files**, split into multiple sub-scouts with **disjoint** (non-overlapping) file sets. Each file is assigned to exactly one sub-scout.
+
+Example: 25 ADRs → ADR scout A (13 files) + ADR scout B (12 files). Split as evenly as possible; if the count is odd, the first sub-scout gets the larger half. Eva determines the split at fan-out time using Phase 1 inventory counts. The Sonnet subagent receives all sub-scout outputs concatenated in the same `<adrs>` element.
+
+### Dry-Run Mode (Phase 2a)
+
+In dry-run mode, scouts still fire normally so the user can preview what content would be extracted. Scout results are collected but not passed to a capture subagent.
+
+### Scout Failure Handling
+
+If a scout fails (timeout or error), Eva reports which category failed to the user. **No automatic re-invocation.** The user decides whether to proceed with partial content or abort. Consistent with retro lesson #004: hang-and-timeout failures are diagnostic information, not a trigger for re-invocation.
+
+### Completeness Check (Gate Before Extraction)
+
+Before invoking the Sonnet subagent, Eva verifies scout output completeness: the file count returned by each scout must match the Phase 1 inventory count for that category. If a mismatch is found, Eva reports the gap to the user before proceeding. Skipped scouts (per skip conditions above -- zero-file categories, user-excluded sources, or scope-based exclusions) are excluded from this check and do not count as mismatches.
+
+</protocol>
+
+---
+
 <procedure id="extract-capture">
 
-## Phase 2: Extract & Capture
+## Phase 2b: Extract & Capture (Sonnet Subagent)
 
-Process each source type in order. For each artifact, read the full file, then use LLM reasoning to extract thoughts. **Do not capture verbatim text** -- synthesize the reasoning into atomic thoughts.
+After scouts complete and the completeness check passes, Eva invokes a **Sonnet subagent** to perform all extraction and capture work. Extraction does NOT run on the main thread.
+
+### Invocation
+
+**Note:** This subagent is the intentional exception to the agent-preamble rule that says subagents do not call `agent_capture` directly. Per ADR-0027, extraction is the Sonnet subagent's primary job -- it calls `agent_capture` and `agent_search` directly as its core function.
+
+Eva invokes `Agent(model: "sonnet")` with the collected scout content in a `<hydration-content>` block:
+
+```xml
+<task>Extract reasoning and decisions from project artifacts into brain thoughts.
+Follow the extraction rules exactly. Call agent_capture for each thought.
+Call agent_search (threshold 0.85) before each capture for dedup.
+Cap at 100 thoughts. Report progress per source type.</task>
+
+<hydration-content>
+  <adrs>[ADR scout output]</adrs>
+  <specs>[Specs scout output]</specs>
+  <ux-docs>[UX scout output]</ux-docs>
+  <pipeline-artifacts>[Pipeline scout output]</pipeline-artifacts>
+  <git-history>[Git scout output]</git-history>
+</hydration-content>
+
+<read>skills/brain-hydrate/SKILL.md</read>
+
+<constraints>
+- Extract the WHY, never the WHAT. Synthesize reasoning, never copy content.
+- Never capture code, function signatures, SQL schemas, or config snippets.
+- Respect write-time conflict detection -- if agent_capture returns conflict, skip.
+- Maximum 100 thoughts per run. If more are extractable, stop and report.
+- Dedup: agent_search at 0.85 before each capture. >0.85 = skip. 0.7-0.85 = new thought + evolves_from relation.
+- Create relations via `atelier_relation` per source extraction rules (evolves_from, triggered_by, supports, contradicts).
+- User scope constraints: [injected from Phase 1]
+</constraints>
+
+<output>Progress report per source type with counts:
+  [Source] Captured N decisions, N rejections, N insights. Created N relations. Skipped N (already captured).
+Final totals: total captured, total skipped, total relations.</output>
+```
+
+**No shell access.** Git history commands are run by the Git scout only. The Sonnet subagent works entirely from the scout-collected content in the `<hydration-content>` block -- no filesystem reads, no shell commands.
+
+**Dry-run mode (Phase 2b):** In dry-run mode, the Sonnet subagent must NOT call `agent_capture`. It may process the hydration content and report what WOULD be captured (counts per source type, estimated thought types), but writes zero thoughts to the brain.
+
+### Failure Handling (SPOF)
+
+If the Sonnet subagent fails mid-run (context exhaustion, MCP timeout, or model error), all thoughts captured so far are preserved (the brain is append-only). Eva detects the subagent failure, reports captured-vs-expected count to the user, and suggests re-running. The incremental re-hydration protocol (dedup via `agent_search`) makes re-running safe -- already-captured thoughts will be skipped automatically.
 
 ### Extraction Rules by Source Type
+
+The Sonnet subagent follows these rules for each source type. **Do not capture verbatim text** -- synthesize the reasoning into atomic thoughts.
 
 #### ADRs → decisions, rejections, insights
 
@@ -165,7 +276,7 @@ Read `docs/pipeline/error-patterns.md`. Extract each entry:
 
 #### Retro Lessons → lessons, corrections
 
-Read `.cursor/references/retro-lessons.md` (or `source/references/retro-lessons.md`). Extract each lesson:
+Read `.claude/references/retro-lessons.md` (or `source/shared/references/retro-lessons.md`). Extract each lesson:
 
 1. **Each lesson** → `agent_capture` with:
    - `thought_type: "lesson"` (general lessons) or `"correction"` (if the lesson corrects a prior approach)
@@ -191,7 +302,7 @@ Read `docs/pipeline/context-brief.md` if it exists. Extract:
 
 #### Git History → insights, lessons, decisions
 
-Run `git log --format="%H|%s|%b" --since="6 months ago"` (adjust window per user).
+Git history arrives pre-collected in the `<git-history>` block from the Git scout. The Sonnet subagent reads from that block only -- no shell access, no `git log` commands.
 
 **Filter for significant commits only.** Skip:
 - Merge commits with no body
@@ -225,9 +336,11 @@ For significant commits (those with narrative bodies explaining WHY):
 
 ## Phase 3: Progress & Summary
 
+The Sonnet subagent produces a progress report per source type. Eva reads this output and presents the summary on the main thread.
+
 ### During Extraction
 
-Report progress after each source type:
+The Sonnet subagent reports progress after each source type:
 
 ```
 [ADRs] Captured 12 decisions, 5 rejections, 3 insights. Created 4 relations.
@@ -278,11 +391,13 @@ automatically during pipeline runs.
 If the user runs `/brain-hydrate` on a project that was previously hydrated:
 
 1. The scan phase is identical.
-2. Before each capture, the skill calls `agent_search` with the candidate thought text (threshold 0.85).
+2. The Sonnet subagent performs dedup before each capture by calling `agent_search` with the candidate thought text (threshold 0.85):
    - **Match found (>0.85 similarity):** Skip — this knowledge is already in the brain. Log: "Skipped (already captured): [summary]"
    - **Partial match (0.7-0.85):** Capture as a new thought and create an `evolves_from` relation to the existing thought.
    - **No match (<0.7):** Capture normally.
-3. Report skip count in the summary: "Skipped [N] thoughts already in brain."
+3. The Sonnet subagent reports skip count in its progress output: "Skipped [N] thoughts already in brain."
+
+If all candidates are already captured, the Sonnet subagent completes normally with captured=0 and reports the full skip count. Eva presents this in the Phase 3 summary.
 
 This makes re-hydration safe to run multiple times. The brain's write-time conflict detection provides a second safety net.
 
@@ -338,5 +453,16 @@ These rules are mandatory:
 - **First hydration on a new project is the primary use case.** Incremental re-hydration is the secondary use case for catching up after work done outside the pipeline.
 - **Quality over quantity.** 30 high-signal thoughts are worth more than 200 noisy ones. When in doubt, skip the extraction — the brain should be a curated reasoning ledger, not a dump.
 - **The user can abort at any time.** Thoughts already captured remain (they're individually valid). The brain is append-only — partial hydration is fine.
+
+### Model Assignment
+
+| Component | Model | Rationale |
+|-----------|-------|-----------|
+| Phase 1 (scan) | Opus (main thread) | Lightweight, conversational -- just Glob, shell inventory, stats |
+| Phase 2a (scouts) | Haiku (Explore subagent) | File reading only, no reasoning needed |
+| Phase 2b (extraction) | Sonnet (subagent) | Synthesis quality sufficient for structured extraction rules |
+| Phase 3 (summary) | Opus (main thread) | Format and present results |
+
+Scouts use `model: "haiku"` via `Agent(subagent_type: "Explore", model: "haiku")`. The capture subagent uses `model: "sonnet"` via `Agent(model: "sonnet")`.
 
 </section>
