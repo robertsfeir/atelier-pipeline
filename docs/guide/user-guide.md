@@ -31,6 +31,7 @@ A structured, multi-agent development workflow for Claude Code and Cursor. Twelv
 - [Agent Discovery](#agent-discovery)
 - [Context Management](#context-management)
 - [Mechanical Enforcement](#mechanical-enforcement)
+  - [Enforcement Audit Trail](#enforcement-audit-trail)
 - [Uninstalling](#uninstalling)
 - [Updating the Plugin](#updating-the-plugin)
 - [Troubleshooting](#troubleshooting)
@@ -891,6 +892,14 @@ After processing all Tier 1 entries, the script generates Tier 3 session summari
 
 Already-hydrated agents are skipped automatically. You can run hydration repeatedly without creating duplicate entries.
 
+### Live cost data vs. post-session cost data
+
+The pipeline telemetry summary at pipeline end (showing cost per agent and total) is computed from token data extracted by `hydrate-telemetry.mjs` from session JSONL files -- this is the authoritative source for cost figures.
+
+The Claude Code Agent tool does not expose per-agent input/output token counts at runtime (this was investigated as part of ADR-0030 and confirmed unavailable). Eva cannot accumulate a live running cost during the pipeline. What Eva shows mid-pipeline is a heuristic estimate based on phase sizing; the actual figures appear in the post-session telemetry summary after `session-hydrate.sh` runs at the next session start.
+
+If you need cost data before the next session, run `/telemetry-hydrate` manually -- it processes the current session's JSONL files and reports results immediately.
+
 ---
 
 ## Agent Discovery
@@ -1247,6 +1256,18 @@ Beyond the blocking hooks, four additional hooks handle telemetry and context pr
 - **Failure tracking** (`log-stop-failure.sh`) -- fires on StopFailure events (when an agent turn ends due to an API error), appending structured entries to `error-patterns.md` for post-pipeline analysis.
 
 These hooks never block -- they exit 0 always and degrade gracefully if the telemetry directory or pipeline files are unavailable.
+
+### Enforcement Audit Trail
+
+Every enforcement decision is durably logged so you can audit what happened during a session and detect recurring violation patterns across sessions.
+
+**What gets logged.** Every time an enforcement hook fires -- whether it blocks an action or allows it -- a JSON line is appended to `~/.claude/logs/enforcement-YYYY-MM-DD.jsonl` (one file per calendar day, UTC). The log captures six fields: timestamp, the tool being intercepted (Write, Edit, Bash, Agent), the agent involved, the decision (blocked or allowed), the reason, and which hook fired. Write failures to this file are silent and never affect the enforcement decision.
+
+**What gets brain-captured.** At session start, `session-hydrate.sh` calls `session-hydrate-enforcement.sh`, which reads the previous day's log and captures blocked decisions into the brain database. Allowed decisions are logged locally for forensic analysis but are not brain-captured (too much noise relative to signal). Blocked events are stored as `insight` thoughts with `metadata.enforcement_event: true`, making them queryable via `agent_search` and visible to Darwin for pattern detection.
+
+**It is automatic and fail-open.** You do not configure or trigger enforcement logging. If the log directory cannot be written, logging degrades silently. If the brain is unavailable during hydration, capture is skipped. The enforcement decision itself is never affected by logging or capture failures.
+
+For the log schema and brain capture details, see the [Technical Reference](technical-reference.md#enforcement-audit-trail).
 
 ### Performance: `if` conditionals
 

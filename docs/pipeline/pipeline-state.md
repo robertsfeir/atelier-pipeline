@@ -1,7 +1,7 @@
 # Pipeline State
 
 ## Active Pipeline
-**Feature:** ADR-0028 Named Stop Reason Taxonomy + ADR-0029 Token Budget Estimate Gate (v3.26.0)
+**Feature:** ADR-0031 Permission Audit Trail + ADR-0030 Token Exposure Probe (v3.27.0)
 **Phase:** complete
 <!-- PIPELINE_STATUS: {"phase": "complete", "sizing": "small", "roz_qa": "PASS", "telemetry_captured": true, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": true, "robert_reviewed": false, "brain_available": true} -->
 **Sizing:** Small

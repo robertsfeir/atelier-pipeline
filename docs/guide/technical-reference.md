@@ -48,6 +48,7 @@ Throughout this document, paths like `.claude/` refer to `.cursor/` on Cursor, a
 15. [Setup and Install System](#setup-and-install-system)
 16. [Branching Strategy Variants](#branching-strategy-variants)
 17. [Enforcement Hooks](#enforcement-hooks)
+    - [Enforcement Audit Trail](#enforcement-audit-trail)
 18. [Sentinel Security Agent](#sentinel-security-agent)
 19. [Agent Teams](#agent-teams)
 20. [CI Watch](#ci-watch)
@@ -1408,6 +1409,78 @@ The PreToolUse enforcement hooks (per-agent `enforce-{agent}-paths.sh`, `enforce
 
 The PreToolUse enforcement hooks exit 0 immediately when `jq` is not installed, when the config file is missing, or when the tool call is not one they care about. This ensures the hooks never interfere with unrelated tool usage or with projects that have not yet run `/pipeline-setup`. The telemetry and compaction hooks do not require `jq` -- they fall back to `grep`/`sed` parsing when `jq` is unavailable. All hooks work identically on Claude Code and Cursor.
 
+### Enforcement Audit Trail
+
+Every enforcement hook decision is appended to a local JSONL log and, at session start, blocked events are captured to the brain for pattern analysis. This is implemented by ADR-0031.
+
+#### Log file
+
+Each hook writes one JSON line per decision to `~/.claude/logs/enforcement-YYYY-MM-DD.jsonl` (user-level, date-partitioned, UTC). The file is created if absent. Writes use `|| true` so write failures are silent and never affect the enforcement exit code.
+
+#### Log schema
+
+```json
+{
+  "timestamp": "2026-04-07T14:30:00Z",
+  "tool_name": "Write",
+  "agent_type": "colby",
+  "decision": "blocked",
+  "reason": "Colby cannot write to blocked path. Attempted: docs/pipeline/state.md",
+  "hook_name": "enforce-colby-paths"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `timestamp` | string | ISO 8601 UTC |
+| `tool_name` | string | The tool intercepted: `Write`, `Edit`, `MultiEdit`, `Bash`, or `Agent` |
+| `agent_type` | string | Subagent frontmatter name (e.g., `colby`, `roz`). Empty string for main thread (Eva). |
+| `decision` | string | `"blocked"` or `"allowed"` |
+| `reason` | string | Human-readable reason -- for blocked decisions, this is the BLOCKED message |
+| `hook_name` | string | Script basename without `.sh` extension (e.g., `enforce-colby-paths`) |
+
+Both `"blocked"` and `"allowed"` decisions are logged locally. Only `"blocked"` decisions are brain-captured (allowed decisions are high-volume, low-signal).
+
+#### Brain capture
+
+`session-hydrate-enforcement.sh` is called by `session-hydrate.sh` at session start. It reads the current day's enforcement log, filters for `"decision":"blocked"` lines, and inserts each into the brain database via `brain/scripts/hydrate-enforcement.mjs`.
+
+Brain capture shape:
+
+| Field | Value |
+|-------|-------|
+| `thought_type` | `'insight'` |
+| `source_agent` | `'eva'` |
+| `source_phase` | `'qa'` |
+| `importance` | `0.4` |
+| `content` | `"Enforcement: [hook_name] blocked [agent_type] from [tool_name]. Reason: [reason]"` |
+| `metadata.enforcement_event` | `true` |
+| `metadata.hook_name` | hook basename |
+| `metadata.agent_type` | agent identifier |
+| `metadata.tool_name` | tool name |
+| `metadata.decision` | `"blocked"` |
+| `metadata.reason` | reason string |
+| `metadata.session_date` | `"YYYY-MM-DD"` |
+
+Note: `thought_type: 'insight'` with `metadata.enforcement_event: true` is used rather than a dedicated enum value. The brain schema uses closed PostgreSQL enums; adding `'enforcement'` would require a migration. The metadata tag is sufficient for `agent_search` queries and Darwin filtering. See ADR-0031 for the full rationale.
+
+#### Querying enforcement data
+
+```
+agent_search: "enforcement blocked colby"
+atelier_browse: filter by metadata.enforcement_event = true
+```
+
+Captures are idempotent. Each blocked event is hashed; re-running hydration on the same log file skips already-captured entries.
+
+#### Fail-open guarantees
+
+- Log write failure: silent (`|| true`), enforcement decision unaffected
+- Brain unavailable during hydration: skipped, exit 0
+- Log file absent: hydration skipped, exit 0
+- Any hydration error: exit 0, never blocks session startup
+- No retry logic (Retro lesson #004: hung process retry loop)
+
 ---
 
 ## Sentinel Security Agent
@@ -1803,10 +1876,12 @@ Accumulated after every Agent tool completion. Eva does NOT call `agent_capture`
 | `agent_name` | string | Agent identity |
 | `duration_ms` | integer | Wall-clock timing |
 | `model` | string | Agent tool result metadata |
-| `input_tokens` / `output_tokens` | integer | Agent tool result metadata (0 when unavailable) |
+| `input_tokens` / `output_tokens` | integer | Agent tool result metadata (0 when unavailable -- see note below) |
 | `cost_usd` | float or null | Computed from cost estimation table |
 | `context_utilization` | float or null | `(input + output tokens) / context_window_max` |
 | `is_retry` | boolean | Whether this is a rework invocation |
+
+**Token exposure gap (ADR-0030).** The Claude Code Agent tool does not expose per-agent `input_tokens` or `output_tokens` in real time. This was probed and confirmed unavailable as of 2026-04-07. Eva cannot accumulate a live running cost during a pipeline. The `input_tokens` / `output_tokens` fields default to `0` during live pipeline execution. Accurate token counts and cost figures are computed post-session by `hydrate-telemetry.mjs`, which reads the session JSONL files and extracts per-turn token usage. The pipeline-end telemetry summary reflects these post-hoc figures, not live Agent tool metadata. `cost_usd` is `null` for live Tier 1 captures and is populated by `hydrate-telemetry.mjs` after the session ends.
 
 Full schema: `.claude/references/telemetry-metrics.md`.
 
