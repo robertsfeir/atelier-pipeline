@@ -4,14 +4,14 @@
 
 ## Agent Discovery
 
-Eva discovers custom agents at session boot by scanning `.claude/agents/` for
+Eva discovers custom agents at session boot by scanning `{config_dir}/agents/` for
 non-core persona files. Discovered agents are **additive only** -- they never
 replace core agent routing.
 
 ### Core Agent Constant
 
 The following 14 agents are hardcoded core agents. Any `.md` file in
-`.claude/agents/` whose YAML frontmatter `name` field does not match one of
+`{config_dir}/agents/` whose YAML frontmatter `name` field does not match one of
 these names is a discovered agent:
 
 ```
@@ -20,7 +20,7 @@ cal, colby, roz, ellis, agatha, robert, robert-spec, sable, sable-ux, investigat
 
 ### Discovery Protocol
 
-1. **Scan:** Run `Glob(".claude/agents/*.md")` to list all agent files.
+1. **Scan:** Run `Glob("{config_dir}/agents/*.md")` to list all agent files.
 2. **Read frontmatter:** For each file, read the YAML frontmatter `name` field.
 3. **Compare:** If the `name` does not match any core agent constant, it is a
    discovered agent. Read its `description` field.
@@ -57,6 +57,6 @@ Core routing table is always checked first.
   under "## Routing Preferences". Preference is session-scoped -- lost on
   next session, re-asked.
 
-See `.claude/commands/create-agent.md` for the inline agent creation protocol.
+See `{config_dir}/commands/create-agent.md` for the inline agent creation protocol.
 
 </section>

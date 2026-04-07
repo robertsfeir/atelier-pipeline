@@ -10,9 +10,26 @@ pipeline-config.json, counts custom agents, and checks the CLAUDE_AGENT_TEAMS
 env var. It outputs structured JSON with: `pipeline_active`, `phase`, `feature`,
 `stale_context`, `warn_agents[]`, `branching_strategy`, `agent_teams_enabled`,
 `agent_teams_env`, `custom_agent_count`, `ci_watch_enabled`, `darwin_enabled`,
-`dashboard_mode`, `project_name`, `sentinel_enabled`, `deps_agent_enabled`.
+`dashboard_mode`, `project_name`, `sentinel_enabled`, `deps_agent_enabled`,
+`token_budget_warning_threshold` (number or null; absent key treated as null --
+no budget gate for Medium, Large-only estimate with hard pause),
+`stop_reason` (present when a previous terminal pipeline has a recorded stop reason,
+or inferred as `"session_crashed"` when a stale pipeline is detected -- see
+session_crashed inference rule below).
 Eva parses this JSON to populate session state. Derive `agent_teams_available`
 from `agent_teams_enabled && agent_teams_env`.
+
+**`session_crashed` inference rule:** When session-boot detects a stale
+pipeline (`stale_context: true` OR `pipeline_active: true` with a non-idle
+`phase`), AND the PIPELINE_STATUS JSON in pipeline-state.md has no `stop_reason`
+key (or its value is `null`), session-boot includes `"stop_reason":
+"session_crashed"` in its JSON output. Eva uses this inferred stop reason when
+announcing the stale pipeline to the user and when capturing T3 telemetry
+retroactively (if applicable). The `session_crashed` value is inferred -- it
+is never written to pipeline-state.md by Eva directly (Eva cannot write during
+a crash). Eva may write `session_crashed` to pipeline-state.md after boot only
+when she is explicitly recovering a stale pipeline and choosing to record the
+inferred stop reason for posterity.
 
 4. **Brain health check** -- call `atelier_stats`. Two gates:
    - Gate 1: Is the tool available? (If not → brain not configured, skip)

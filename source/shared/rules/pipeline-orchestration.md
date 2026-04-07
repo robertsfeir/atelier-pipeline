@@ -22,6 +22,7 @@ JIT loading. `[ALWAYS]` sections load at pipeline activation. `[JIT]` sections l
 | Investigation Discipline | JIT | Debug flow entered |
 | State File Descriptions | JIT | First state write |
 | Phase Sizing Rules | JIT | Pipeline sizing decision |
+| Budget Estimate Gate | JIT | Pipeline sizing decision |
 
 </section>
 
@@ -287,6 +288,85 @@ the same severity as Eva editing source code.
 
 </gate>
 
+<protocol id="terminal-transition">
+
+## Terminal Transition Protocol [ALWAYS]
+
+Eva writes `stop_reason` to pipeline-state.md at **every** terminal pipeline
+transition -- the same write that sets `phase: idle`. The field appears as
+both a markdown field (`**Stop Reason:** {value}`) and a key in the
+PIPELINE_STATUS JSON comment (`"stop_reason": "{value}"`).
+
+**Canonical enum** (closed -- Eva does not invent values at runtime):
+
+| Value | When Eva writes it |
+|-------|-------------------|
+| `completed_clean` | Ellis final commit/push succeeds with no accepted drift or divergence |
+| `completed_with_warnings` | Pipeline completes but Agatha divergence or Robert/Sable DRIFT was accepted (not fixed) |
+| `roz_blocked` | Roz BLOCKER that the user chose not to fix, or gate 12 loop-breaker fires and user abandons |
+| `user_cancelled` | User explicitly says "stop", "cancel", or "abandon" during an active pipeline |
+| `hook_violation` | A PreToolUse hook blocks an agent action that cannot be retried, and user abandons |
+| `budget_threshold_reached` | User declines to proceed after token budget estimate gate |
+| `brain_unavailable` | Pipeline requires brain (e.g., Darwin auto-trigger) and brain is down; user abandons |
+| `session_crashed` | Inferred at next session boot when a stale pipeline has no `stop_reason` (never written in real time -- Eva cannot write during a crash) |
+| `scope_changed` | Cal discovers scope-changing information and user decides to re-plan rather than continue |
+| `legacy_unknown` | Read-only sentinel for pre-ADR-0028 pipelines that lack the field entirely -- never written by Eva, only inferred on read |
+
+**Extension rule:** New stop reasons are added by a new ADR that supersedes the
+enum table above. Eva never adds values at runtime.
+
+**`legacy_unknown` is read-only.** Eva never writes `legacy_unknown` to
+pipeline-state.md. It is a read-time inference only, applied when a reader
+encounters a pipeline-state.md that has no `stop_reason` field (pre-ADR-0028
+file). Eva writes one of the nine active values; the reader synthesizes
+`legacy_unknown` when the field is absent.
+
+### State Write Procedure
+
+At every terminal transition (phase -> idle), Eva writes pipeline-state.md:
+
+```
+**Phase:** idle
+**Stop Reason:** {stop_reason_value}
+```
+
+And updates PIPELINE_STATUS JSON:
+```json
+{"phase": "idle", "sizing": null, "roz_qa": null, "telemetry_captured": false, "stop_reason": "{stop_reason_value}"}
+```
+
+### Trigger Conditions
+
+| Current Phase | Trigger | Stop Reason |
+|--------------|---------|-------------|
+| Any active phase | Ellis final commit succeeds, no accepted drift | `completed_clean` |
+| Any active phase | Ellis final commit succeeds + accepted drift/divergence | `completed_with_warnings` |
+| build / review | Roz BLOCKER + user abandons, or gate 12 fires + user abandons | `roz_blocked` |
+| Any active phase | User says "stop" / "cancel" / "abandon" | `user_cancelled` |
+| Any active phase | Hook blocks + unrecoverable + user abandons | `hook_violation` |
+| pre-pipeline (sizing) | User declines after budget estimate gate | `budget_threshold_reached` |
+| Any active phase | Brain required + unavailable + user abandons | `brain_unavailable` |
+| Any active phase | Session ends without clean transition | `session_crashed` (inferred at boot by session-boot) |
+| architecture | Cal scope-changing discovery + user re-plans | `scope_changed` |
+
+### T3 Telemetry Capture
+
+At pipeline end, Eva includes `stop_reason` in the T3 brain capture:
+
+```json
+{
+  "metadata": {
+    "telemetry_tier": 3,
+    "pipeline_id": "{pipeline_id}",
+    "stop_reason": "{stop_reason_value}"
+  }
+}
+```
+
+This enables `agent_search` filtering by stop reason: `filter: { stop_reason: "roz_blocked" }`.
+
+</protocol>
+
 <protocol id="observation-masking">
 
 ## Agent Output Masking
@@ -445,6 +525,75 @@ All scouts are `Agent(subagent_type: "Explore", model: "haiku")`. Explore agents
 | **Error grep** | Greps for the error string / exception type across the codebase; file:line output only, `\| head -30` |
 
 </section>
+
+<gate id="budget-estimate">
+
+## Budget Estimate Gate [JIT -- Pipeline sizing decision]
+
+Fires after the user picks a pipeline sizing, before the first agent invocation.
+Formula and per-invocation cost tables are in the "Budget Estimate Heuristic"
+section of `telemetry-metrics.md`. Configuration: `token_budget_warning_threshold`
+in `pipeline-config.json` (type: `number | null`, default: `null`).
+
+### Gate Rules
+
+| Sizing | `token_budget_warning_threshold` absent or null | `token_budget_warning_threshold` configured |
+|--------|------------------------------------------------|--------------------------------------------|
+| Micro | No gate, no estimate | No gate, no estimate |
+| Small | No gate, no estimate | No gate, no estimate |
+| Medium | No gate, no estimate | Estimate shown; hard pause fires only if estimate EXCEEDS threshold |
+| Large | Estimate shown + hard pause (always) | Estimate shown + hard pause (always); threshold comparison shown |
+
+"Hard pause" means Eva will not invoke the first agent until the user explicitly responds. When the threshold is configured and the estimate exceeds it, the pause is a structured warning (see presentation format below). When the threshold is configured and the estimate is within it, Eva shows the estimate and proceeds without a hard pause on Medium. On Large, the hard pause always fires regardless of threshold status.
+
+### Estimate Presentation Format
+
+Shown after sizing choice, before first agent invocation. Label "order-of-magnitude -- not billing" is required on every presentation.
+
+**Large pipeline (always shown):**
+```
+Pipeline estimate (order-of-magnitude -- not billing):
+  Sizing: Large | Steps: [N or "TBD -- estimated after Cal"] | Agents: [roster count]
+  Estimated cost: $X.XX -- $Y.YY (based on sizing heuristics and model assignments)
+  [Threshold: $Z.ZZ -- estimate EXCEEDS threshold]   <-- only if threshold configured and exceeded
+  [Threshold: $Z.ZZ -- within threshold]              <-- only if threshold configured and within
+
+Proceed? (yes / cancel / downsize to Medium)
+```
+
+**Medium pipeline with threshold configured:**
+```
+Pipeline estimate (order-of-magnitude -- not billing):
+  Sizing: Medium | Steps: [N or "TBD"] | Agents: [roster count]
+  Estimated cost: $X.XX -- $Y.YY (based on sizing heuristics and model assignments)
+  Threshold: $Z.ZZ -- [within / EXCEEDS]
+
+Proceed? (yes / cancel)
+```
+
+The "downsize to Medium" option appears only in the Large pipeline prompt. The Medium pipeline prompt does not include a downsize option.
+
+### User Cancellation Flow
+
+When the user cancels after seeing the estimate:
+
+1. Eva writes `stop_reason: budget_threshold_reached` to pipeline-state.md (requires ADR-0028 stop reasons to be implemented; when ADR-0028 is not yet implemented, Eva writes `user_cancelled` instead)
+2. Eva announces: "Pipeline cancelled. Stop reason: budget threshold. Consider: (a) downsizing to Medium/Small, (b) breaking the feature into smaller increments, (c) adjusting the threshold in pipeline-config.json."
+3. Pipeline transitions to idle.
+
+### Brain Integration
+
+After the estimate is shown and the user proceeds, Eva records the estimate in memory. At pipeline end (T3 capture), Eva includes the estimate in T3 brain metadata:
+- `metadata.budget_estimate_low`: lower bound (float, USD)
+- `metadata.budget_estimate_high`: upper bound (float, USD)
+
+When `brain_available: true` and 5+ prior T3 captures with both `budget_estimate_low` and `total_cost_usd` are present, Eva may announce at session boot: "Historical accuracy: budget estimates have been within Xx of actual costs." This is informational only -- the formula is not auto-tuned.
+
+### Absent Threshold Behavior
+
+When `token_budget_warning_threshold` is absent from pipeline-config.json or is `null`, it is treated as `null`. No gate fires for Micro, Small, or Medium. Large still shows the estimate and hard-pauses. This is the default behavior for existing installations that have not set the threshold.
+
+</gate>
 
 <protocol id="invocation-dor-dod">
 

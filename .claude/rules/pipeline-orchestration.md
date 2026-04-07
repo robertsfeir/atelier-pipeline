@@ -4,7 +4,7 @@ paths:
 ---
 # Pipeline Orchestration -- Operational Procedures
 
-Loads automatically when Eva reads `docs/pipeline/` files. Contains
+Loads automatically when Eva reads `{pipeline_state_dir}/` files. Contains
 mandatory gates, brain capture model, investigation discipline, pipeline
 flow, agent standards, and verification procedures.
 
@@ -144,7 +144,7 @@ thoughts referencing files modified in this pipeline. >50% churn since capture
 
 ### Dashboard Bridge (post-pipeline, PlanVisualizer only)
 
-If `dashboard_mode: "plan-visualizer"`: run `.claude/dashboard/telemetry-bridge.sh`.
+If `dashboard_mode: "plan-visualizer"`: run `{config_dir}/dashboard/telemetry-bridge.sh`.
 Failure is never a blocker. `claude-code-kanban` or `none`: skip entirely.
 
 Eva boot dashboard announcement: `plan-visualizer` -> "Dashboard: PlanVisualizer",
@@ -295,7 +295,7 @@ the same severity as Eva editing source code.
 
 ## Agent Output Masking
 
-After processing each agent's return, Eva replaces the full output in her working context with a structured receipt. The full output remains on disk (in files the agent wrote, in `docs/pipeline/last-qa-report.md`, or in brain captures). Eva re-reads from disk only when she needs detail for a downstream invocation.
+After processing each agent's return, Eva replaces the full output in her working context with a structured receipt. The full output remains on disk (in files the agent wrote, in `{pipeline_state_dir}/last-qa-report.md`, or in brain captures). Eva re-reads from disk only when she needs detail for a downstream invocation.
 
 ### Receipt Format Per Agent
 
@@ -335,7 +335,7 @@ After processing each agent's return, Eva replaces the full output in her workin
 ## Investigation Discipline
 
 When Eva enters a debug flow, she creates (or resets)
-`docs/pipeline/investigation-ledger.md` with the symptom and an empty
+`{pipeline_state_dir}/investigation-ledger.md` with the symptom and an empty
 hypothesis table. Eva updates it after each investigation step.
 
 ### Layer Escalation Protocol
@@ -366,7 +366,7 @@ before forming new hypotheses to avoid repetition.
 Eva updates `pipeline-state.md` after each wave completes, not after each
 unit. Within a wave, Eva tracks unit progress in-memory.
 
-Eva maintains five files in `docs/pipeline`:
+Eva maintains five files in `{pipeline_state_dir}`:
 - **`pipeline-state.md`** -- Wave-level progress tracker with "Changes since last state" section.
 - **`context-brief.md`** -- Conversational decisions, corrections, user preferences. Reset per feature.
 - **`error-patterns.md`** -- Post-pipeline error log categorized by type.
@@ -380,7 +380,7 @@ Eva maintains five files in `docs/pipeline`:
 ## Phase Sizing Rules
 
 **Robert-subagent on Small:** When Roz flags doc impact, Eva checks for an
-existing spec: `ls docs/product/*<feature>*`. Spec exists -> run Robert.
+existing spec: `ls {product_specs_dir}/*<feature>*`. Spec exists -> run Robert.
 No spec -> skip, log gap.
 
 User overrides: "full ceremony" forces Small minimum. "stop"/"hold" halts auto-advance.
@@ -468,7 +468,7 @@ signals. Score >=3 -> Opus. Brain failures +3. Large always Opus.
 **DoR/DoD gate:** Spot-check DoR against spec. Verify DoD has no silent drops.
 Pass Colby's requirements to Roz for independent verification.
 
-**UX pre-flight:** Check `docs/ux/*<feature>*`. UX doc exists -> ADR
+**UX pre-flight:** Check `{ux_docs_dir}/*<feature>*`. UX doc exists -> ADR
 must have UX Coverage section. Unmapped surfaces = reject ADR.
 
 **Rejection protocol:** List gaps, re-invoke with "Revise -- missing: [list]".
@@ -494,7 +494,7 @@ Idea -> Robert spec -> Sable UX + Agatha doc plan (parallel)
 
 ### Spec Requirement (Medium/Large)
 
-`ls docs/product/*<feature>*`. Exists -> advance. Missing -> invoke Robert-skill.
+`ls {product_specs_dir}/*<feature>*`. Exists -> advance. Missing -> invoke Robert-skill.
 
 ### Sable Mockup Verification Gate
 
@@ -530,7 +530,7 @@ User overrides: "skip to [agent]", "back to [agent]", "stop".
 
 Compaction API manages context automatically. Eva suggests fresh session only
 when: (a) response quality visibly degrades, (b) pipeline spans multiple days.
-Pipeline state preserved in `docs/pipeline` for recovery.
+Pipeline state preserved in `{pipeline_state_dir}` for recovery.
 
 </section>
 
@@ -544,7 +544,7 @@ After Sable completes the UX doc, Colby builds a **mockup** (real UI, mock data)
 
 ## What Lives on Disk
 
-**On disk:** `docs/product` (specs, living), `docs/ux` (UX docs, living), `docs/architecture` (ADRs, immutable), `docs/CONVENTIONS.md`, `docs/pipeline`, `CHANGELOG.md`, code, tests, Agatha's docs. **NOT on disk:** QA reports, acceptance reports, agent state. See `pipeline-operations.md` for context hygiene.
+**On disk:** `{product_specs_dir}` (specs, living), `{ux_docs_dir}` (UX docs, living), `{architecture_dir}` (ADRs, immutable), `{conventions_file}`, `{pipeline_state_dir}`, `{changelog_file}`, code, tests, Agatha's docs. **NOT on disk:** QA reports, acceptance reports, agent state. See `pipeline-operations.md` for context hygiene.
 
 <gate id="agent-standards">
 
@@ -554,12 +554,12 @@ After Sable completes the UX doc, Colby builds a **mockup** (real UI, mock data)
 - DRIFT/AMBIGUOUS from Robert/Sable = hard pause. See Triage Consensus Matrix in pipeline-operations.md.
 - Spec reconciliation is continuous. Updated living artifacts ship in same commit as code.
 - ADRs are immutable. Cal writes a new ADR to supersede; original marked "Superseded by ADR-NNN."
-- All commits follow Conventional Commits with narrative body. CHANGELOG.md in Keep a Changelog format.
+- All commits follow Conventional Commits with narrative body. {changelog_file} in Keep a Changelog format.
 - **No mock data in production code paths.** Mock data only on mockup routes for UAT. Cal flags wiring in ADR. Colby never promotes without real APIs. Roz greps for `MOCK_`, `INITIAL_`, hardcoded arrays -- BLOCKER if found.
 - **Agatha's divergence report ships in the pipeline report.** When Agatha
   produces a Divergence Report (documenting gaps between code and docs),
   Eva summarizes the divergence findings in the final pipeline report
-  written to `docs/pipeline/pipeline-state.md`. Divergence findings
+  written to `{pipeline_state_dir}/pipeline-state.md`. Divergence findings
   that are silently dropped -- not summarized, not acted on -- are the same
   class of violation as skipping spec reconciliation.
 

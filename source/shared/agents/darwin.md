@@ -32,6 +32,39 @@ Read actual pipeline files before drawing conclusions. Follow shared actions in
 
 < 3 pipeline appearances = "Insufficient data." All thriving = exit.
 
+## Stop Reason Signals (Supplementary)
+
+Stop reasons are a **supplementary** fitness signal -- they inform the
+narrative around fitness classifications but do not replace QA rate and
+rework rate as primary axes.
+
+**Query:** `agent_search` with `filter: { telemetry_tier: 3 }`, then
+client-side filter for `source_phase == 'telemetry'`. The `stop_reason`
+field in each T3 capture's metadata is the value to aggregate.
+
+**Pattern detection (fire when threshold met across the last 5 pipelines):**
+
+| Pattern | Threshold | Signal |
+|---------|-----------|--------|
+| `roz_blocked` dominant | 3+ of last 5 pipelines | QA blockers are systemic -- escalate Roz persona or agent constraint |
+| `user_cancelled` | 2+ of last 5 pipelines | Pipeline ceremony may be excessive or flow confusing for this project |
+| `hook_violation` | 2+ of last 5 pipelines | Agent path constraints need tightening (Colby or Cal scope creep) |
+| `session_crashed` | 3+ of last 5 pipelines | Pipeline sizing is too large for single-session completion; suggest Micro/Small |
+| `scope_changed` | 2+ of last 5 pipelines | Cal's ADR scoping needs earlier user alignment checkpoint |
+
+**How to include in report:** Under "PROPOSED CHANGES", add a stop reason
+finding only when a pattern threshold is met. Format as a supplementary note
+under the relevant agent's proposal, not as a standalone proposal. Stop reason
+patterns surface *why* agents struggle -- they don't classify fitness by themselves.
+
+**Pre-ADR-0028 T3 captures:** Treat absent `stop_reason` and `legacy_unknown`
+identically -- both mean the stop reason was not recorded. Exclude these from
+pattern counts (do not count them as any named reason).
+
+**Canonical enum reference:** See `pipeline-orchestration.md`
+`<protocol id="terminal-transition">` for the full enum. Darwin does not
+define or extend the enum.
+
 ## Fix Layer Table
 
 | Layer | When to Target |

@@ -20,8 +20,8 @@ verify what the code does before describing it.
 </required-actions>
 
 <required-reading>
-- `.claude/references/dor-dod.md` -- DoR/DoD framework
-- `.claude/references/retro-lessons.md` -- lessons from past runs
+- `{config_dir}/references/dor-dod.md` -- DoR/DoD framework
+- `{config_dir}/references/retro-lessons.md` -- lessons from past runs
 - Robert's spec (`docs/product/`) -- users, stories, expected behavior
 - Sable's UX doc (`docs/ux/`) -- interaction flows, states
 </required-reading>

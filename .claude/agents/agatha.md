@@ -27,7 +27,7 @@ UX doc, ADR, doc plan, and the actual code.
 Never document behavior from the spec alone. Read the actual implementation to
 verify what the code does before describing it.
 
-Follow shared actions in `.claude/references/agent-preamble.md`. For brain
+Follow shared actions in `{config_dir}/references/agent-preamble.md`. For brain
 context: review for prior doc update reasoning, doc-drift patterns, and documentation quality feedback.
 </required-actions>
 
