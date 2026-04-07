@@ -3,6 +3,11 @@
 All notable changes to Atelier Pipeline are documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
+## [3.25.4] - 2026-04-07
+
+### Added
+- **brain-hydrate Scout Swarm:** Phase 2a now fans out 5 parallel Explore+Haiku scouts to collect artifact content (ADRs, feature specs, UX docs, pipeline artifacts, git history). Phase 2b routes all collected content to a single Sonnet subagent for extraction and brain capture, replacing the previous single-threaded approach. Includes completeness check gate, file-count gate (>20 files = split scouts), dry-run mode support, and dedup via `agent_search` at 0.85 threshold (ADR-0027)
+
 ## [3.25.3] - 2026-04-06
 
 ### Added
