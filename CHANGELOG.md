@@ -3,6 +3,12 @@
 All notable changes to Atelier Pipeline are documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
+## [3.26.0] - 2026-04-07
+
+### Added
+- **Named Stop Reason Taxonomy (ADR-0028):** Every terminal pipeline transition now writes a `stop_reason` field to `pipeline-state.md` from a closed 10-value enum: `completed_clean`, `completed_with_warnings`, `roz_blocked`, `user_cancelled`, `hook_violation`, `budget_threshold_reached`, `brain_unavailable`, `session_crashed`, `scope_changed`, `legacy_unknown` (read-only inference for upgrade safety). T3 telemetry includes `stop_reason`; Darwin can filter pipeline history by stop reason. Upgrade safety: absent field infers `legacy_unknown` on read, stale pipelines infer `session_crashed` at boot.
+- **Token Budget Estimate Gate — Track A (ADR-0029):** Eva now shows a heuristic cost estimate before Large pipelines (always) and Medium pipelines (when `token_budget_warning_threshold` is configured). Estimate based on sizing tier, agent roster, and step count when known. Hard pause fires before the first agent invocation; Large prompt includes a "downsize to Medium" option. Estimate labeled "order-of-magnitude — not billing." New `token_budget_warning_threshold` field in `pipeline-config.json` (type: number | null, default: null). T3 telemetry captures `budget_estimate_low` and `budget_estimate_high` for post-hoc accuracy analysis.
+
 ## [3.25.5] - 2026-04-07
 
 ### Added

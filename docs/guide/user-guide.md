@@ -13,6 +13,8 @@ A structured, multi-agent development workflow for Claude Code and Cursor. Twelv
 - [Running a Full Pipeline](#running-a-full-pipeline)
 - [Debugging with /debug](#debugging-with-debug)
 - [Phase Sizing](#phase-sizing)
+- [Token Budget Estimate Gate](#token-budget-estimate-gate)
+- [Pipeline Stop Reasons](#pipeline-stop-reasons)
 - [The Atelier Brain](#the-atelier-brain)
 - [Team Collaboration](#team-collaboration)
 - [State Recovery](#state-recovery)
@@ -275,6 +277,8 @@ Eva stops and asks you before:
 - A scope-changing discovery from Cal
 - Applying a bug fix (you approve Roz's diagnosis first)
 - A Stuck Pipeline Analysis (the same task has failed 3 consecutive times -- you decide whether to intervene, re-scope, or abandon)
+- Invoking the first agent on a Large pipeline (token budget estimate gate -- always fires)
+- Invoking the first agent on a Medium pipeline when your configured threshold is exceeded
 
 ---
 
@@ -426,6 +430,96 @@ Some ADR steps produce no testable application code -- schema DDL, agent instruc
 3. Agatha runs after Roz passes (sequentially, not in parallel with Colby, because there is no Roz test spec approval to gate the parallel launch)
 
 If an ADR mixes code and non-code steps, Eva splits them: code steps follow the normal Roz-first TDD flow, non-code steps follow this flow. Both must pass before Ellis commits.
+
+---
+
+## Token Budget Estimate Gate
+
+Before starting a Large pipeline, Eva shows you a cost estimate so you can decide whether to proceed. This is an order-of-magnitude estimate -- not billing -- based on the agent roster, model assignments, and expected number of invocations for your chosen sizing tier.
+
+### What you see
+
+After you confirm the sizing and before Eva invokes the first agent, you will see something like:
+
+```
+Pipeline estimate (order-of-magnitude -- not billing):
+  Sizing: Large | Steps: TBD -- estimated after Cal | Agents: 15-30+
+  Estimated cost: $8.10 -- $17.35 (based on sizing heuristics and model assignments)
+
+Proceed? (yes / cancel / downsize to Medium)
+```
+
+If the estimate exceeds your configured threshold, the output includes a threshold comparison line:
+
+```
+  Threshold: $10.00 -- estimate EXCEEDS threshold
+```
+
+Eva waits for your response before invoking any agent. Saying "cancel" writes a `budget_threshold_reached` stop reason to `pipeline-state.md` and closes the pipeline cleanly.
+
+### When the estimate appears
+
+| Sizing | No threshold set | Threshold configured |
+|--------|-----------------|---------------------|
+| Micro | No estimate | No estimate |
+| Small | No estimate | No estimate |
+| Medium | No estimate | Estimate shown if threshold exceeded |
+| Large | Estimate always shown | Estimate always shown |
+
+### Configuring a threshold
+
+Add `token_budget_warning_threshold` to your project's `.claude/pipeline-config.json` (Claude Code) or `.cursor/pipeline-config.json` (Cursor):
+
+```json
+{
+  "token_budget_warning_threshold": 10.0
+}
+```
+
+- **Type:** number (USD) or null
+- **Default:** null (Large-only estimate shown, no threshold gate on Medium)
+- **Example:** `10.0` triggers the gate on Medium pipelines when the estimate exceeds $10.00
+
+Set it to null (or remove the key) to return to the default Large-only behavior.
+
+### What the estimate is based on
+
+The estimate uses your pipeline sizing, the number of agent invocations typical for that tier, and per-model average token costs from the pricing table in `telemetry-metrics.md`. It applies a 0.7x optimistic and 1.5x pessimistic multiplier to produce a range. When Cal has already produced an ADR with a step count, Colby and Roz invocation counts are derived from the actual number of steps.
+
+The estimate is a heuristic. It will be wrong on features with deep rework cycles or unusually large context windows. Treat the range as guidance, not a budget ceiling.
+
+---
+
+## Pipeline Stop Reasons
+
+Every pipeline ends with a structured reason written to `docs/pipeline/pipeline-state.md`. This tells Eva (and you) exactly how the pipeline ended, which matters for session recovery and trend analysis.
+
+### Where you see stop reasons
+
+**In the Pipeline Complete report** -- at the end of every pipeline, Eva includes a Stop Reason line in the summary.
+
+**In `docs/pipeline/pipeline-state.md`** -- the `**Stop Reason:**` field is updated at every terminal transition. You can open this file at any time to see why the last pipeline ended.
+
+### Stop reason values
+
+| Value | When Eva writes it |
+|-------|--------------------|
+| `completed_clean` | Pipeline reached Ellis final commit and pushed successfully |
+| `completed_with_warnings` | Pipeline completed but an Agatha divergence or Robert/Sable DRIFT was accepted rather than fixed |
+| `roz_blocked` | Roz returned a BLOCKER verdict and you chose not to fix it, or the loop-breaker (3 consecutive failures) fired and you abandoned |
+| `user_cancelled` | You said "stop", "cancel", or "abandon" during an active pipeline |
+| `hook_violation` | A PreToolUse hook blocked an agent action that could not be retried (path violation), and you abandoned rather than retrying |
+| `budget_threshold_reached` | You declined to proceed after the token budget estimate gate |
+| `brain_unavailable` | The pipeline required the brain (e.g., Darwin auto-trigger) and the brain was down; you chose to abandon rather than continue in baseline mode |
+| `scope_changed` | Cal discovered scope-changing information and you decided to re-plan rather than continue |
+| `session_crashed` | Inferred at next session boot when Eva detects a stale (non-idle) pipeline with no stop reason -- Eva cannot write this in real time during a crash |
+| `legacy_unknown` | Read-only inference for pipelines that ran before this feature existed; never written by Eva |
+
+### How session recovery uses stop reasons
+
+When you reopen your IDE after an unclean shutdown, Eva reads the stop reason from `pipeline-state.md`. A `session_crashed` inference tells Eva the previous session ended unexpectedly. A `user_cancelled` tells Eva you made a deliberate choice to stop. These lead to different recovery suggestions.
+
+If the pipeline is stale (non-idle phase, no stop reason recorded), Eva infers `session_crashed` and treats the pipeline as interrupted rather than intentionally stopped.
 
 ---
 

@@ -1,6 +1,6 @@
 # Atelier Pipeline -- Technical Reference
 
-Version: 3.18.0
+Version: 3.26.0
 
 This document is the comprehensive technical reference for the atelier-pipeline plugin. It covers plugin architecture, agent system design, orchestration logic, brain infrastructure, and customization points. The pipeline runs on both Claude Code and Cursor with near-complete feature parity. For usage-oriented documentation, see [the user guide](user-guide.md).
 
@@ -60,6 +60,8 @@ Throughout this document, paths like `.claude/` refer to `.cursor/` on Cursor, a
 27. [Observation Masking and Context Hygiene](#observation-masking-and-context-hygiene)
 28. [Compaction API Integration](#compaction-api-integration)
 29. [Customization Points](#customization-points)
+30. [Pipeline Stop Reasons](#pipeline-stop-reasons)
+31. [Token Budget Estimate Gate](#token-budget-estimate-gate)
 
 ---
 
@@ -459,6 +461,8 @@ When no pipeline is active, Eva classifies every user message against the intent
 - Cal reports a scope-changing discovery
 - User says "stop" or "hold"
 - After Roz's diagnosis on a user-reported bug (user must approve fix approach)
+- Before first agent invocation on Large pipelines (token budget estimate gate -- always fires)
+- Before first agent invocation on Medium pipelines when `token_budget_warning_threshold` is configured and the estimate exceeds it
 
 ### Mandatory Gates (12 gates, never skippable, same severity as Eva writing code)
 
@@ -532,6 +536,33 @@ Eva maintains five files in `docs/pipeline/`:
 | `error-patterns.md` | Post-pipeline error log categorized by type. Recurrence tracking for WARN injection. | Append-only |
 | `investigation-ledger.md` | Debug hypothesis tracking. Records each theory, layer, evidence, outcome. | Reset at start of each new investigation |
 | `last-qa-report.md` | Roz's most recent QA report. Persisted so scoped re-runs can reference previous findings. | Overwritten on each Roz QA pass |
+
+### Stop Reason Field
+
+Every terminal pipeline transition writes a `stop_reason` field to `pipeline-state.md` (both as a human-readable markdown field and inside the `PIPELINE_STATUS` JSON comment). The field is a closed enum -- Eva never invents values outside this list.
+
+| Value | Trigger | Written by |
+|-------|---------|------------|
+| `completed_clean` | Ellis final commit and push succeeded | Eva at terminal transition |
+| `completed_with_warnings` | Pipeline completed, but an Agatha divergence report or Robert/Sable DRIFT was accepted rather than fixed | Eva at terminal transition |
+| `roz_blocked` | Roz returned a BLOCKER verdict and the user abandoned, or the loop-breaker gate (gate 12) fired and the user abandoned | Eva at terminal transition |
+| `user_cancelled` | User explicitly said "stop", "cancel", or "abandon" during an active pipeline | Eva at terminal transition |
+| `hook_violation` | A PreToolUse hook blocked an agent action that could not be retried, and the user abandoned | Eva at terminal transition |
+| `budget_threshold_reached` | User declined to proceed after the token budget estimate gate (ADR-0029) | Eva at pre-pipeline sizing gate |
+| `brain_unavailable` | Pipeline required the brain (e.g., Darwin auto-trigger) and the brain was down; user abandoned rather than continuing baseline | Eva at terminal transition |
+| `scope_changed` | Cal discovered scope-changing information and the user chose to re-plan rather than continue | Eva at terminal transition |
+| `session_crashed` | Inferred at next session boot when a stale pipeline (non-idle phase) has no `stop_reason` field | session-boot.sh at next boot; never written by Eva in real time |
+| `legacy_unknown` | Read-only inference for pre-ADR-0028 pipelines that lack the field entirely | Read-only; never written by Eva |
+
+**Upgrade safety:** Absent `stop_reason` reads as `legacy_unknown`. Pre-ADR-0028 pipelines do not crash.
+
+**`legacy_unknown` is read-only.** It is an inference for pipelines that ran before the named stop reason taxonomy was introduced. Eva never writes this value -- it surfaces only when the field is missing from an older pipeline record.
+
+**`session_crashed` is always retroactive.** Eva cannot write a stop reason during a crash. `session-boot.sh` detects stale pipelines (non-idle phase, no `stop_reason`) at the start of the next session and infers `session_crashed` in the boot state report.
+
+**T3 telemetry inclusion:** The `stop_reason` field is included in the Tier 3 brain capture at pipeline end (as `metadata.stop_reason`), enabling Darwin to filter and pattern-match by outcome (`agent_search` with `filter: { stop_reason: 'roz_blocked' }`).
+
+**Extension rule:** New stop reason values are added by a new ADR that supersedes the enum section. Eva never invents reasons at runtime.
 
 ---
 
@@ -1117,7 +1148,9 @@ The selected strategy is persisted in `.claude/pipeline-config.json`:
   "sentinel_enabled": false,
   "agent_teams_enabled": false,
   "deps_agent_enabled": false,
-  "darwin_enabled": false
+  "darwin_enabled": false,
+  "dashboard_mode": "none",
+  "token_budget_warning_threshold": null
 }
 ```
 
@@ -1135,6 +1168,8 @@ The selected strategy is persisted in `.claude/pipeline-config.json`:
 | `agent_teams_enabled` | Enable Agent Teams parallel wave execution. Set by `/pipeline-setup` Step 6b. Default: `false` |
 | `deps_agent_enabled` | Enable Deps dependency scan agent. Set by `/pipeline-setup` Step 6d. Default: `false` |
 | `darwin_enabled` | Enable Darwin self-evolving pipeline engine. Requires brain. Set by `/pipeline-setup`. Default: `false` |
+| `dashboard_mode` | Dashboard display mode. Default: `"none"`. |
+| `token_budget_warning_threshold` | Type: `number \| null`. Units: USD. Default: `null`. When set to a number (e.g., `10.0`), Eva shows the pre-pipeline cost estimate and fires the budget gate on Medium pipelines when the estimate exceeds the threshold. When `null`, the estimate is shown on Large pipelines only with no threshold comparison. Upgrade-safe: absent key treated as `null`. |
 
 Eva reads this file during the session boot sequence. Colby reads it to determine branch naming conventions and merge targets. Ellis reads it to determine commit targets.
 
@@ -2236,6 +2271,162 @@ When agents work in isolated git worktrees (Claude Code only):
 - Worktree agents do not see each other's changes
 
 When Agent Teams is active (Claude Code only), worktrees are managed by Claude Code (not by Eva via Bash). Merge order is deterministic (task creation order). Full test suite runs between each Teammate merge. Merge conflicts trigger fallback to sequential for the conflicting unit.
+
+---
+
+## Pipeline Stop Reasons
+
+Design rationale: ADR-0028.
+
+Every pipeline run ends by writing a `stop_reason` field to `pipeline-state.md` -- both as a human-readable markdown field (`**Stop Reason:** completed_clean`) and as a key in the `PIPELINE_STATUS` JSON comment. The field is a closed enum. Eva never invents values outside this list.
+
+### Stop Reason Enum
+
+| Value | When Eva writes it | Terminal? |
+|-------|--------------------|-----------|
+| `completed_clean` | Pipeline reaches Ellis final commit and push successfully | Yes |
+| `completed_with_warnings` | Pipeline completes but an Agatha divergence report or Robert/Sable DRIFT was accepted (not fixed) | Yes |
+| `roz_blocked` | Roz BLOCKER that the user chose not to fix, or the loop-breaker gate (gate 12) fired and the user abandoned | Yes |
+| `user_cancelled` | User explicitly said "stop", "cancel", or "abandon" during an active pipeline | Yes |
+| `hook_violation` | A PreToolUse hook blocked an agent action that could not be retried (path violation) and the user abandoned | Yes |
+| `budget_threshold_reached` | User declined to proceed after the token budget estimate gate (ADR-0029) | Yes |
+| `brain_unavailable` | Pipeline required the brain (e.g., Darwin auto-trigger) and the brain was down; user abandoned rather than continuing in baseline mode | Yes |
+| `scope_changed` | Cal discovered scope-changing information and the user chose to re-plan rather than continue | Yes |
+| `session_crashed` | Inferred at next session boot when a stale pipeline (non-idle phase) has no `stop_reason` | Yes (retroactive) |
+| `legacy_unknown` | Read-only inference for pre-ADR-0028 pipelines that lack the field entirely | N/A (inferred, read-only) |
+
+### Implementation Rules
+
+**`legacy_unknown` is never written by Eva.** It is a read-only sentinel that session-boot.sh and the hydrator apply when the `stop_reason` field is absent from an older pipeline record. Darwin treats absent and `legacy_unknown` identically.
+
+**`session_crashed` is always retroactive.** Eva cannot write a stop reason during a crash. At next session boot, `session-boot.sh` detects stale pipelines (non-idle phase, no `stop_reason`) and reports `stop_reason: session_crashed` in its boot JSON output.
+
+**Extension rule:** New stop reason values require a new ADR that supersedes the enum section. Eva never invents reasons at runtime.
+
+### State Write Format
+
+Eva writes `stop_reason` on every terminal transition -- at the same time she writes `phase: idle`. The value appears in two places in `pipeline-state.md`:
+
+1. A markdown field: `**Stop Reason:** completed_clean`
+2. The `PIPELINE_STATUS` JSON comment: `"stop_reason": "completed_clean"`
+
+### T3 Telemetry Inclusion
+
+The `stop_reason` value is included in the Tier 3 brain capture at pipeline end under `metadata.stop_reason`. Darwin can filter by this field using `agent_search` with `filter: { stop_reason: 'roz_blocked' }`. No brain schema changes are required -- it is a metadata field on the existing Tier 3 thought.
+
+### Upgrade Safety
+
+Pre-ADR-0028 pipeline state files lack the `stop_reason` field. Absent field reads as `legacy_unknown`. The pipeline never crashes on a missing field. Old T3 brain captures that lack `metadata.stop_reason` are treated identically to `legacy_unknown` by Darwin queries.
+
+---
+
+## Token Budget Estimate Gate
+
+Design rationale: ADR-0029. This is Track A (heuristic pre-run estimate only). Track B (live token accumulation) is out of scope for this release.
+
+### Overview
+
+Before invoking the first agent on a Large pipeline, Eva shows a pre-run cost estimate. The estimate is labeled "order-of-magnitude -- not billing" and presented as a range to communicate inherent uncertainty. When `token_budget_warning_threshold` is configured, the gate also fires on Medium pipelines when the estimate exceeds the threshold.
+
+This is a behavioral gate -- no PreToolUse hook enforces it. Eva is required to show the estimate and wait for the user to respond before invoking any agent.
+
+### Gate Rules
+
+| Sizing | No threshold (`null`) | Threshold configured |
+|--------|----------------------|---------------------|
+| Micro | No gate, no estimate | No gate, no estimate |
+| Small | No gate, no estimate | No gate, no estimate |
+| Medium | No gate, no estimate | Estimate shown; hard pause if threshold exceeded |
+| Large | Estimate always shown; hard pause | Estimate always shown; hard pause |
+
+"Hard pause" means Eva will not invoke the first agent until the user explicitly responds.
+
+For Medium pipelines with a threshold: if the estimate is within the threshold, Eva shows the estimate with a "within threshold" note but does not hard pause. If the estimate exceeds the threshold, Eva hard pauses.
+
+### Estimate Presentation Format
+
+```
+Pipeline estimate (order-of-magnitude -- not billing):
+  Sizing: Large | Steps: [N or "TBD -- estimated after Cal"] | Agents: [roster count]
+  Estimated cost: $X.XX -- $Y.YY (based on sizing heuristics and model assignments)
+  [Threshold: $Z.ZZ -- estimate EXCEEDS threshold]  <- only when threshold configured and exceeded
+  [Threshold: $Z.ZZ -- within threshold]             <- only when threshold configured and within
+
+Proceed? (yes / cancel / downsize to Medium)
+```
+
+The "downsize to Medium" option appears only on Large pipelines. Medium proceed/cancel prompts do not include a downsize option.
+
+### Sizing Model
+
+The estimate formula uses three inputs:
+
+**1. Agent roster by sizing tier:**
+
+| Sizing | Typical agent invocations |
+|--------|--------------------------|
+| Micro | 1-2 (Colby + Roz) |
+| Small | 3-5 (Cal skill + Colby + Roz + Ellis) |
+| Medium | 8-15 (Robert? + Sable? + Cal + Roz test + Colby*N + Roz QA*N + Poirot + Ellis) |
+| Large | 15-30+ (full ceremony: Robert + Sable + Agatha plan + Colby mockup + Sable verify + Cal + Roz test + Colby*N + Roz QA*N + Poirot*N + Robert review + Sable review + Sentinel? + Agatha docs + Ellis) |
+
+**2. Per-invocation token estimate by model tier:**
+
+| Model | Avg input tokens | Avg output tokens | Cost per invocation |
+|-------|-----------------|-------------------|---------------------|
+| Opus | 50,000 | 8,000 | ~$1.35 |
+| Sonnet | 40,000 | 6,000 | ~$0.21 |
+| Haiku | 20,000 | 3,000 | ~$0.035 |
+
+These are order-of-magnitude averages. Actual usage varies by feature complexity, context window fill, tool calls, and rework cycles.
+
+**3. Step count multiplier (when known):**
+
+When Cal has already produced an ADR with N steps:
+- Colby invocations: `N * 1.3` (30% rework assumption)
+- Roz QA invocations: `N * 1.1` (10% scoped re-run assumption)
+- Poirot invocations: `ceil(N / wave_size)` where `wave_size` defaults to 3
+
+When step count is not yet known (estimate runs before Cal), the sizing-tier defaults from the table above apply.
+
+**Formula:**
+
+```
+low_estimate  = sum(agent_count_by_model[model] * cost_per_invocation[model]) * 0.7
+high_estimate = sum(agent_count_by_model[model] * cost_per_invocation[model]) * 1.5
+```
+
+The 0.7x multiplier models optimistic conditions (smaller context windows, no rework). The 1.5x multiplier models pessimistic conditions (full context windows, rework cycles, retries).
+
+### Configuration
+
+`token_budget_warning_threshold` in `pipeline-config.json`:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `token_budget_warning_threshold` | `number \| null` | `null` | Cost threshold in USD. When set, Eva shows the estimate and fires the gate on Medium pipelines when the estimate exceeds this value. When `null`, the estimate is shown on Large pipelines only with no threshold comparison. Upgrade-safe: absent key treated as `null`. |
+
+### Cancellation Flow
+
+When the user cancels after the estimate:
+
+1. Eva writes `stop_reason: budget_threshold_reached` to `pipeline-state.md`
+2. Eva announces: "Pipeline cancelled. Stop reason: budget threshold. Consider: (a) downsizing to Medium/Small, (b) breaking the feature into smaller increments, (c) adjusting `token_budget_warning_threshold` in `pipeline-config.json`."
+3. Pipeline transitions to idle.
+
+### T3 Telemetry Inclusion
+
+After the estimate is shown and the user proceeds, Eva includes the estimate range in the Tier 3 capture at pipeline end:
+- `metadata.budget_estimate_low`: the low-end USD estimate
+- `metadata.budget_estimate_high`: the high-end USD estimate
+
+This enables post-hoc calibration: `actual_cost / budget_estimate_high > 2.0` indicates the formula is significantly under-estimating.
+
+### Anti-Goals (Track A)
+
+- **No live token accumulation.** The Agent tool does not reliably expose token counts during execution. The gate is pre-run only.
+- **No automatic pipeline downsizing.** Decomposition of a Large feature into multiple Smalls is a Cal responsibility, not a mechanical sizing rule.
+- **No hook enforcement.** The gate is behavioral. A future PreToolUse hook could enforce it, but that is out of scope for Track A.
 
 ---
 

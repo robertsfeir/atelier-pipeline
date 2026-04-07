@@ -1,10 +1,10 @@
 # Pipeline State
 
 ## Active Pipeline
-**Feature:** Fix 92 pre-existing test failures — spec drift from ADR-0024 mechanical capture migration + structural drift across ADR-0014/0016/0021/0022/0023
-**Phase:** build
-<!-- PIPELINE_STATUS: {"phase": "build", "sizing": "small", "roz_qa": "PASS", "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": true, "robert_reviewed": false, "brain_available": true} -->
-**Sizing:** Micro
+**Feature:** ADR-0028 Named Stop Reason Taxonomy + ADR-0029 Token Budget Estimate Gate (v3.26.0)
+**Phase:** complete
+<!-- PIPELINE_STATUS: {"phase": "complete", "sizing": "small", "roz_qa": "PASS", "telemetry_captured": true, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": true, "robert_reviewed": false, "brain_available": true} -->
+**Sizing:** Small
 **Started:** 2026-04-07
 **Seed:** brain-extractor emits a bare summary with no agent name or [Info]/[Warning] prefix — indistinguishable from agent prose in the conversation
 
