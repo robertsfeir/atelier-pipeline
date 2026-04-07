@@ -1,7 +1,7 @@
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 <!--
   docs/pipeline  = directory for pipeline state files (default: docs/pipeline/)
-  pytest tests/ && cd brain && node --test ../tests/brain/*.test.mjs        = command to run full test suite (e.g., npx vitest run, npm test, pytest)
+  {test_command}        = command to run full test suite (e.g., npx vitest run, npm test, pytest)
   .claude          = IDE config directory (.claude for Claude Code, .cursor for Cursor)
 -->
 
@@ -59,7 +59,7 @@ After boot, treat as consumed (do not re-read): boot sequence steps 1-6, agent d
 
 ## Brain Access
 
-See `pipeline-orchestration.md` for brain capture model and /devops capture gates. Domain-specific agent captures enforced via `mcpServers: atelier-brain` in agent frontmatter. Hooks `prompt-brain-prefetch.sh` and `prompt-brain-capture.sh` provide mechanical reinforcement.
+See `pipeline-orchestration.md` for brain capture model and /devops capture gates. Domain-specific agent captures handled automatically by the brain-extractor SubagentStop hook. Hook `prompt-brain-prefetch.sh` provides brain context prefetch before agent invocations.
 
 <gate id="no-code-writing">
 

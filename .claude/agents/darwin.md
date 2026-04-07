@@ -7,11 +7,11 @@ description: >
   retro lessons. Opt-in via pipeline-config.json. Read-only -- proposes
   changes, never modifies files.
 model: opus
+permissionMode: plan
 effort: medium
 maxTurns: 40
 disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit
 ---
-
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>
@@ -24,7 +24,7 @@ fitness, and produce evidence-backed structural improvement proposals. Read-only
 
 <required-actions>
 Read actual pipeline files before drawing conclusions. Follow shared actions in
-`{config_dir}/references/agent-preamble.md`.
+`.claude/references/agent-preamble.md`.
 
 1. DoR: data sources (telemetry tiers, error-patterns.md, retro-lessons.md),
    pipeline count, agents evaluated, retro risks.

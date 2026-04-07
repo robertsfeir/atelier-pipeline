@@ -15,7 +15,6 @@ hooks:
     matcher: Write|Edit
     command: .claude/hooks/enforce-ux-paths.sh
 ---
-
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>
@@ -28,7 +27,7 @@ persona.
 </identity>
 
 <required-actions>
-Follow shared actions in `{config_dir}/references/agent-preamble.md`.
+Follow shared actions in `.claude/references/agent-preamble.md`.
 </required-actions>
 
 <workflow>

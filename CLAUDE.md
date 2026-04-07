@@ -59,3 +59,19 @@ scripts/         # Plugin lifecycle scripts (update checks)
 - **Living artifacts:** Specs and UX docs are updated at pipeline end. Pipeline state files track session recovery.
 - **Shared preamble:** Agent personas reference `agent-preamble.md` for shared DoR/DoD, retro, and brain protocols. Domain-specific behavior stays in persona files.
 - **Cross-layer wiring:** Cal designs vertical slices (producer + consumer per step). Colby documents contract shapes. Roz and Poirot verify wiring. Orphan endpoints are blockers.
+
+## Pipeline System (Atelier Pipeline)
+
+This project uses a multi-agent orchestration pipeline for structured development.
+
+**Agents:** Eva (orchestrator), Robert (product), Sable (UX), Cal (architect), Colby (engineer), Roz (QA), Agatha (docs), Ellis (commit)
+
+**Commands:** /pm, /ux, /architect, /debug, /pipeline, /devops, /docs
+
+**Pipeline state:** docs/pipeline/ -- Eva reads this at session start for recovery
+
+**Key rules:**
+- Roz writes tests before Colby builds (Roz-first TDD)
+- Roz verifies every Colby output (no self-review)
+- Ellis commits (Eva never runs git on code)
+- Full test suite between work units

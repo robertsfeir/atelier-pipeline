@@ -83,10 +83,10 @@ BRAIN_AGENTS = ["cal", "colby", "roz", "agatha", "robert", "sable", "ellis"]
 # Agents without brain context
 NO_BRAIN_AGENTS = ["investigator", "distillator"]
 
-# The 7 persona tags in required order
+# The 6 persona tags in required order (tools removed per ADR-0023)
 PERSONA_TAGS = [
     "identity", "required-actions", "workflow",
-    "examples", "tools", "constraints", "output",
+    "examples", "constraints", "output",
 ]
 
 # The skill command tags in required order
@@ -101,7 +101,7 @@ SKILL_TAGS = [
 COGNITIVE_DIRECTIVES = {
     "cal": "Never design against assumed codebase structure.",
     "architect": "Never design against assumed codebase structure.",
-    "colby": "Never assume code structure from the ADR alone.",
+    "colby": "never assume code structure from the ADR alone",
     "roz": "Never flag a violation based on the diff alone.",
     "debug": "Never flag a violation based on the diff alone.",
     "agatha": "Never document behavior from the spec alone.",

@@ -3,6 +3,22 @@
 All notable changes to Atelier Pipeline are documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
+## [3.25.5] - 2026-04-07
+
+### Added
+- brain-extractor now emits `[Brain]` prefixed status lines after each agent completes, distinguishing brain output from agent prose in the conversation
+- session-boot.sh added to source/claude/hooks/ (was missing source counterpart despite being installed)
+
+### Changed
+- Colby and Ellis can now write to `.github/` and `scripts/` — removed from enforce-colby-paths.sh blocked list
+- Test suite fully migrated from `.claude/` to `source/` (source is the canonical truth, not the installed copy)
+
+### Fixed
+- Roz Investigation Mode now explicitly handles pre-collected `debug-evidence` blocks from Eva's scout swarm
+- Removed 8 dead skip stubs: 3 retired Ellis enforcement behaviors, 2 pre-ADR-0016 darwin-not-in-core assertions, 1 bats stub, 2 ADR-0023 removed-behavior assertions
+- Enabled 3 previously-skipped tests now that ADR-0023 is complete: 6-tag persona schema check, identity pronouns check, no-Brain-Access-heading check
+- PERSONA_TAGS updated to 6-tag schema (removed `tools` tag moved to frontmatter per ADR-0023)
+
 ## [3.25.4] - 2026-04-07
 
 ### Added

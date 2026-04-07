@@ -140,10 +140,19 @@ Search `last_assistant_message` for:
 
 ### Extraction output
 
-After both passes complete, emit a brief summary: number of knowledge captures
-made (decisions/patterns/lessons/seeds combined), and number of quality signal
-captures made. If zero captures total, emit: "No captures." Do not emit the
-content of captures.
+After both passes complete, emit one of the following [Brain] prefix lines:
+
+- **Success with captures:** `[Brain] Hydrated post {source_agent} work: {N} captures ({K} quality signals)`
+- **Zero captures:** `[Brain] No captures post {source_agent} work`
+- **Brain unavailable:** `[Brain] WARNING: Brain unavailable — 0 captures post {source_agent} work`
+- **Capture errors:** `[Brain] WARNING: {N} capture failure(s) post {source_agent} work`
+
+Where:
+- `{source_agent}` is the parent agent name (cal, colby, roz, or agatha)
+- `{N}` is total knowledge captures (decisions + patterns + lessons + seeds)
+- `{K}` is quality signal captures
+
+Do not emit the content of captures.
 
 </workflow>
 

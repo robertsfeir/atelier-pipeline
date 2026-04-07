@@ -34,7 +34,7 @@ def test_T_0022_001_shared_commands():
 
 def test_T_0022_002_shared_references():
     count = len(list((SHARED_DIR / "references").glob("*.md")))
-    assert count == 11
+    assert count == 13
 
 
 def test_T_0022_003_shared_pipeline():
@@ -184,7 +184,7 @@ def test_T_0022_020_cursor_identical_phase1(agent):
 def test_T_0022_021_claude_hooks():
     assert (CLAUDE_DIR / "hooks").is_dir()
     sh_count = len(list((CLAUDE_DIR / "hooks").glob("*.sh")))
-    assert sh_count == 18  # Wave 3: prompt-brain-capture.sh and warn-brain-capture.sh removed
+    assert sh_count == 19  # Wave 3: prompt-brain-capture.sh and warn-brain-capture.sh removed; session-boot.sh added
     assert (CLAUDE_DIR / "hooks" / "enforcement-config.json").exists()
 
 

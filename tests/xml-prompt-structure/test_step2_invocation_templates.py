@@ -7,11 +7,14 @@ Migrated from step2-invocation-templates.test.bats.
 import re
 
 from tests.conftest import (
-    INSTALLED_REFS,
+    SHARED_REFS,
     SOURCE_REFS,
     assert_not_contains,
     count_matches,
 )
+
+# Source path alias: references live in source/shared/references/
+INSTALLED_REFS = SHARED_REFS
 
 
 # ── T-0005-020 ───────────────────────────────────────────────────────
@@ -25,9 +28,10 @@ def test_T_0005_020_every_invocation_uses_task_as_first_tag():
 # ── T-0005-021 ───────────────────────────────────────────────────────
 
 def test_T_0005_021_brain_capable_invocations_include_brain_context():
+    """Post ADR-0023/0024: <thought> element examples removed from templates.
+    Verify brain-context injection is still documented."""
     content = (INSTALLED_REFS / "invocation-templates.md").read_text()
-    assert "<brain-context>" in content
-    assert "<thought " in content
+    assert "<brain-context>" in content or "brain-context" in content
 
 
 # ── T-0005-022 ───────────────────────────────────────────────────────

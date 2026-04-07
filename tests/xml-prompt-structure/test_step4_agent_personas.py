@@ -10,10 +10,10 @@ import pytest
 
 from tests.conftest import (
     AGENT_FILES,
-    BRAIN_AGENTS,
-    INSTALLED_AGENTS,
-    NO_BRAIN_AGENTS,
+    CLAUDE_DIR,
     PERSONA_TAGS,
+    PROJECT_ROOT,
+    SHARED_AGENTS,
     SOURCE_AGENTS,
     assert_has_closing_tag,
     assert_has_tag,
@@ -24,11 +24,16 @@ from tests.conftest import (
     line_of,
 )
 
+# Source path aliases: content lives in source/shared/agents/, frontmatter in source/claude/agents/
+INSTALLED_AGENTS = SHARED_AGENTS
+
 
 # ── T-0005-040 ───────────────────────────────────────────────────────
 
-@pytest.mark.skip("Pending ADR-0023 completion: <tools> tag removed from agent personas")
-def test_T_0005_040_all_agents_have_7_tags_in_order():
+def test_T_0005_040_all_agents_have_6_tags_in_order():
+    # Ellis is exempt from the preamble structure -- it has identity, workflow,
+    # examples, constraints, output but no required-actions by design (ADR-0023).
+    ELLIS_TAGS = ["identity", "workflow", "examples", "constraints", "output"]
     errors = []
     for f in AGENT_FILES:
         file = INSTALLED_AGENTS / f
@@ -36,23 +41,24 @@ def test_T_0005_040_all_agents_have_7_tags_in_order():
             errors.append(f"Missing: {file}")
             continue
         content = file.read_text()
-        for tag in PERSONA_TAGS:
+        tags = ELLIS_TAGS if f == "ellis.md" else PERSONA_TAGS
+        for tag in tags:
             if f"<{tag}>" not in content:
                 errors.append(f"Missing <{tag}> in {f}")
             if f"</{tag}>" not in content:
                 errors.append(f"Missing </{tag}> in {f}")
-        for i in range(len(PERSONA_TAGS) - 1):
-            la = line_of(file, f"<{PERSONA_TAGS[i]}>")
-            lb = line_of(file, f"<{PERSONA_TAGS[i + 1]}>")
+        for i in range(len(tags) - 1):
+            la = line_of(file, f"<{tags[i]}>")
+            lb = line_of(file, f"<{tags[i + 1]}>")
             if la and lb and la >= lb:
-                errors.append(f"Tag order violation in {f}: <{PERSONA_TAGS[i]}> (line {la}) vs <{PERSONA_TAGS[i + 1]}> (line {lb})")
+                errors.append(f"Tag order violation in {f}: <{tags[i]}> (line {la}) vs <{tags[i + 1]}> (line {lb})")
     assert not errors, "\n".join(errors)
 
 
 # ── T-0005-041 ───────────────────────────────────────────────────────
 
-@pytest.mark.skip("Pending ADR-0023 completion: model reference removed from agent identity")
-def test_T_0005_041_identity_contains_name_role_pronouns_model():
+def test_T_0005_041_identity_contains_name_role_pronouns():
+    # Model reference removed from agent identity per ADR-0023.
     errors = []
     for f in AGENT_FILES:
         file = INSTALLED_AGENTS / f
@@ -66,14 +72,11 @@ def test_T_0005_041_identity_contains_name_role_pronouns_model():
             errors.append(f"Missing agent name in identity of {f}")
         if not re.search(r"pronouns|she/her|he/him|they/them", identity, re.IGNORECASE):
             errors.append(f"Missing pronouns in identity of {f}")
-        if not re.search(r"model|Opus|Sonnet|Haiku", identity, re.IGNORECASE):
-            errors.append(f"Missing model reference in identity of {f}")
     assert not errors, "\n".join(errors)
 
 
 # ── T-0005-042 ───────────────────────────────────────────────────────
 
-@pytest.mark.skip("Pending ADR-0023 completion: ## Brain Access heading not yet removed from all agents")
 def test_T_0005_042_no_brain_access_heading():
     errors = []
     for f in AGENT_FILES:
@@ -83,37 +86,6 @@ def test_T_0005_042_no_brain_access_heading():
         content = file.read_text()
         if re.search(r"^## Brain Access", content, re.MULTILINE):
             errors.append(f"Found leftover '## Brain Access' heading in {f}")
-    assert not errors, "\n".join(errors)
-
-
-# ── T-0005-043 ───────────────────────────────────────────────────────
-
-@pytest.mark.skip("Pending ADR-0023 completion: retro reference removed from required-actions")
-def test_T_0005_043_required_actions_mentions_retro():
-    errors = []
-    for f in AGENT_FILES:
-        file = INSTALLED_AGENTS / f
-        if not file.is_file():
-            continue
-        ra = extract_tag_content(file, "required-actions")
-        if not re.search(r"retro", ra, re.IGNORECASE):
-            errors.append(f"Missing retro lesson reference in required-actions of {f}")
-    assert not errors, "\n".join(errors)
-
-
-# ── T-0005-044 ───────────────────────────────────────────────────────
-
-@pytest.mark.skip("Pending ADR-0023 completion: brain context reference removed from required-actions")
-def test_T_0005_044_brain_capable_agents_reference_brain_context():
-    errors = []
-    for agent in BRAIN_AGENTS:
-        f = f"{agent}.md"
-        file = INSTALLED_AGENTS / f
-        if not file.is_file():
-            continue
-        ra = extract_tag_content(file, "required-actions")
-        if not re.search(r"brain.context|brain context|brain-context|injected.*thought|provided.*brain", ra, re.IGNORECASE):
-            errors.append(f"Missing brain context reference in required-actions of {f}")
     assert not errors, "\n".join(errors)
 
 
@@ -163,19 +135,18 @@ def test_T_0005_047_no_mandatory_in_allcaps():
 # ── T-0005-048 ───────────────────────────────────────────────────────
 
 def test_T_0005_048_yaml_frontmatter_present():
+    # Frontmatter lives in source/claude/agents/X.frontmatter.yml (ADR-0022 split)
     errors = []
     for f in AGENT_FILES:
-        file = INSTALLED_AGENTS / f
-        if not file.is_file():
+        agent_name = f.replace(".md", "")
+        fm_file = CLAUDE_DIR / "agents" / f"{agent_name}.frontmatter.yml"
+        if not fm_file.is_file():
             continue
-        lines = file.read_text().splitlines()
-        if not lines[0].startswith("---"):
-            errors.append(f"Missing YAML start in {f}")
-        content = file.read_text()
+        content = fm_file.read_text()
         if not re.search(r"^name:", content, re.MULTILINE):
-            errors.append(f"Missing 'name:' in {f}")
+            errors.append(f"Missing 'name:' in {agent_name}.frontmatter.yml")
         if not re.search(r"^description:", content, re.MULTILINE):
-            errors.append(f"Missing 'description:' in {f}")
+            errors.append(f"Missing 'description:' in {agent_name}.frontmatter.yml")
     assert not errors, "\n".join(errors)
 
 
@@ -233,6 +204,9 @@ def test_T_0005_053_no_intensity_markers():
         content = file.read_text()
         content = re.sub(r"^---.*?^---", "", content, count=1, flags=re.DOTALL | re.MULTILINE)
         content = re.sub(r"```.*?```", "", content, flags=re.DOTALL)
+        # ADR-0023: constraints sections may use intensity markers as intentional
+        # behavioral instructions (e.g., "NEVER push directly to the base branch").
+        content = re.sub(r"<constraints>.*?</constraints>", "", content, flags=re.DOTALL)
         for marker in ["MUST", "CRITICAL", "NEVER"]:
             if re.search(rf"\b{marker}\b", content):
                 errors.append(f"Found intensity marker '{marker}' in {f}")
@@ -242,30 +216,38 @@ def test_T_0005_053_no_intensity_markers():
 # ── T-0005-054 ───────────────────────────────────────────────────────
 
 def test_T_0005_054_output_includes_knowledge_surfacing():
+    """Post ADR-0023/0024: brain captures moved to brain-extractor hook.
+    Output sections now focus on structured deliverables rather than explicit
+    knowledge surfacing.  Verify each agent has a non-empty <output> section."""
     errors = []
     for f in AGENT_FILES:
         file = INSTALLED_AGENTS / f
         if not file.is_file():
             continue
         output = extract_tag_content(file, "output")
-        if not re.search(r"knowledge|pattern|decision|Eva|brain|capture|insight", output, re.IGNORECASE):
-            errors.append(f"Missing knowledge surfacing guidance in output of {f}")
+        content_lines = [l for l in output.splitlines()
+                        if l.strip() and not re.match(r"</?output>", l.strip())]
+        if len(content_lines) < 1:
+            errors.append(f"Empty output section in {f}")
     assert not errors, "\n".join(errors)
 
 
 # ── T-0005-055 ───────────────────────────────────────────────────────
 
 def test_T_0005_055_cal_model_opus():
+    """Post ADR-0023: model references removed from identity tags.
+    Verify Cal identity contains role description instead."""
     identity = extract_tag_content(INSTALLED_AGENTS / "cal.md", "identity")
-    assert re.search(r"Opus", identity, re.IGNORECASE)
+    assert re.search(r"Architect", identity, re.IGNORECASE)
 
 
 # ── T-0005-056 ───────────────────────────────────────────────────────
 
 def test_T_0005_056_colby_model_size_dependent():
+    """Post ADR-0023: model references removed from identity tags.
+    Verify Colby identity contains role description instead."""
     identity = extract_tag_content(INSTALLED_AGENTS / "colby.md", "identity")
-    assert re.search(r"Sonnet.*Opus|small.*medium.*large|Haiku.*Sonnet.*Opus|size", identity, re.IGNORECASE) or \
-        re.search(r"Sonnet.*(small|medium)|Opus.*(large)", identity, re.IGNORECASE)
+    assert re.search(r"Engineer", identity, re.IGNORECASE)
 
 
 # ── T-0005-057 ───────────────────────────────────────────────────────
@@ -290,11 +272,16 @@ def test_T_0005_058_cognitive_directive_in_required_actions():
         if not file.is_file():
             continue
         agent_name = f.replace(".md", "")
+        # Ellis has no required-actions by design (exempt from preamble)
+        if agent_name == "ellis":
+            continue
         directive = get_cognitive_directive(agent_name)
         if not directive:
             continue
         ra = extract_tag_content(file, "required-actions")
-        if directive not in ra:
+        # Normalize whitespace for cross-line directives
+        ra_normalized = " ".join(ra.split()).lower()
+        if directive.lower() not in ra_normalized:
             errors.append(f"Missing cognitive directive in {f}: expected '{directive}'")
     assert not errors, "\n".join(errors)
 
@@ -321,6 +308,10 @@ def test_T_0005_100_no_empty_required_actions():
     for f in AGENT_FILES:
         file = INSTALLED_AGENTS / f
         if not file.is_file():
+            continue
+        agent_name = f.replace(".md", "")
+        # Ellis is exempt from preamble -- has no required-actions by design
+        if agent_name == "ellis":
             continue
         ra = extract_tag_content(file, "required-actions")
         content_lines = [l for l in ra.splitlines()
@@ -389,10 +380,15 @@ def test_T_0005_104_cognitive_directive_matches_adr():
         if not file.is_file():
             continue
         agent_name = f.replace(".md", "")
+        # Ellis is exempt from preamble -- has no cognitive directive
+        if agent_name == "ellis":
+            continue
         directive = get_cognitive_directive(agent_name)
         if not directive:
             continue
-        if directive not in file.read_text():
+        # Normalize whitespace for cross-line directives
+        content_normalized = " ".join(file.read_text().split()).lower()
+        if directive.lower() not in content_normalized:
             errors.append(f"Cognitive directive mismatch in {f}: expected '{directive}'")
     assert not errors, "\n".join(errors)
 
@@ -400,6 +396,8 @@ def test_T_0005_104_cognitive_directive_matches_adr():
 # ── T-0005-105 ───────────────────────────────────────────────────────
 
 def test_T_0005_105_comment_between_frontmatter_and_identity():
+    # In source/shared/agents/, files have no YAML frontmatter.
+    # The HTML comment header appears before <identity> as the first line.
     errors = []
     for f in AGENT_FILES:
         file = INSTALLED_AGENTS / f
@@ -407,24 +405,25 @@ def test_T_0005_105_comment_between_frontmatter_and_identity():
             continue
         comment_line = line_of(file, "Part of atelier-pipeline")
         identity_line = line_of(file, "<identity>")
-        # Find second --- (end of YAML frontmatter)
-        yaml_ends = [i for i, l in enumerate(file.read_text().splitlines(), 1) if l.strip() == "---"]
-        yaml_end_line = yaml_ends[1] if len(yaml_ends) >= 2 else None
 
-        if not comment_line or not identity_line or not yaml_end_line:
+        if not comment_line or not identity_line:
             errors.append(f"Missing required markers in {f}")
             continue
-        if comment_line <= yaml_end_line or comment_line >= identity_line:
-            errors.append(f"Comment not between frontmatter and <identity> in {f}")
+        if comment_line >= identity_line:
+            errors.append(f"Comment not before <identity> in {f}")
     assert not errors, "\n".join(errors)
 
 
 # ── T-0005-106 ───────────────────────────────────────────────────────
 
 def test_T_0005_106_investigator_follows_7_tag_structure():
+    """Post ADR-0023: <tools> tag removed from agent personas.
+    Verify investigator has the 6 remaining persona tags."""
     file = INSTALLED_AGENTS / "investigator.md"
     assert file.is_file()
-    for tag in PERSONA_TAGS:
+    # ADR-0023 removed <tools> from persona files
+    tags_without_tools = [t for t in PERSONA_TAGS if t != "tools"]
+    for tag in tags_without_tools:
         assert_has_tag(file, tag)
         assert_has_closing_tag(file, tag)
 

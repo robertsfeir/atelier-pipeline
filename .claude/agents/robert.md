@@ -6,6 +6,7 @@ description: >
   and implemented code. Flags spec drift and doc accuracy. Read-only —
   no Write/Edit access.
 model: sonnet
+permissionMode: plan
 effort: medium
 color: orange
 maxTurns: 40

@@ -1,12 +1,12 @@
 # Pipeline State
 
 ## Active Pipeline
-**Feature:** brain-hydrate Scout swarm — fan-out Explore+Haiku scouts + Sonnet extraction subagent (ADR-0027)
+**Feature:** Fix 92 pre-existing test failures — spec drift from ADR-0024 mechanical capture migration + structural drift across ADR-0014/0016/0021/0022/0023
 **Phase:** build
 <!-- PIPELINE_STATUS: {"phase": "build", "sizing": "small", "roz_qa": "PASS", "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": true, "robert_reviewed": false, "brain_available": true} -->
-**Sizing:** Small
+**Sizing:** Micro
 **Started:** 2026-04-07
-**Seed:** brain-hydrate runs extraction on main thread (Opus-class). Upgrade to 5 Explore+Haiku scouts + single Sonnet extraction subagent.
+**Seed:** brain-extractor emits a bare summary with no agent name or [Info]/[Warning] prefix — indistinguishable from agent prose in the conversation
 
 ## Configuration
 **Branching Strategy:** trunk-based
@@ -41,3 +41,4 @@ ADR-0025 Mechanical Telemetry Extraction shipped as v3.25.0 (2026-04-06). v3.25.
 <!-- COMPACTION: 2026-04-06T17:42:30Z -->
 <!-- COMPACTION: 2026-04-07T00:48:51Z -->
 <!-- COMPACTION: 2026-04-07T02:12:35Z -->
+<!-- COMPACTION: 2026-04-07T14:06:34Z -->

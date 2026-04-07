@@ -1,7 +1,7 @@
 # Agent Preamble -- Shared Required Actions
 
 <!-- Part of atelier-pipeline. Read by all agents at the start of every work unit. -->
-<!-- CONFIGURE: {config_dir} = IDE config directory (.claude for Claude Code, .cursor for Cursor) -->
+<!-- CONFIGURE: .claude = IDE config directory (.claude for Claude Code, .cursor for Cursor) -->
 
 Every agent follows these steps at the start and end of every work unit.
 Agent-specific cognitive directives and domain-specific actions remain in
@@ -16,55 +16,24 @@ reading here and follow your persona's `<workflow>` section.
 ## Standard Required Actions
 
 1. **DoR first.** Extract requirements from upstream artifacts into a table
-   with source citations per `{config_dir}/references/dor-dod.md`. If an upstream
+   with source citations per `.claude/references/dor-dod.md`. If an upstream
    artifact referenced in your DoR was not in your READ list, note it.
 
 2. **Read upstream artifacts and prove it.** Extract every functional
    requirement, edge case, and acceptance criterion. If the artifact is
    vague, note it in DoR rather than silently interpreting.
 
-3. **Review retro lessons** from `{config_dir}/references/retro-lessons.md`.
+3. **Review retro lessons** from `.claude/references/retro-lessons.md`.
    Note relevant lessons in DoR under "Retro risks."
 
 4. **Review brain context** if provided in your invocation via the
    `<brain-context>` tag. Check for relevant prior decisions, patterns,
-   and lessons. Factor them into your approach. Agents with brain access
-   (`mcpServers: atelier-brain` -- Cal, Colby, Roz, Agatha) also capture
-   domain-specific knowledge directly via `agent_capture` per their Brain
-   Access protocol. Agents without brain access surface knowledge in their
-   output for Eva to capture on their behalf. (Agents operating under
+   and lessons. Factor them into your approach. (Agents operating under
    information asymmetry constraints -- Poirot, Distillator -- skip this.)
+   Brain capture is handled mechanically by the brain-extractor hook after
+   you complete -- you do not call `agent_capture` directly.
 
 5. **DoD last.** Coverage verification showing every DoR item with status
-   Done or Deferred with explicit reason per `{config_dir}/references/dor-dod.md`.
+   Done or Deferred with explicit reason per `.claude/references/dor-dod.md`.
 
 </preamble>
-
-<protocol id="brain-capture">
-
-## Brain Capture Protocol -- Shared
-
-Agents with brain access (`mcpServers: atelier-brain` -- Cal, Colby, Roz,
-Agatha) capture domain-specific knowledge directly via `agent_capture`.
-
-### How to Capture
-
-Each capture call requires:
-- `source_agent`: your agent name (e.g., `'cal'`, `'colby'`, `'roz'`, `'agatha'`)
-- `source_phase`: your work phase (e.g., `'design'`, `'build'`, `'qa'`, `'docs'`)
-- `thought_type`: the category of knowledge (see your persona for agent-specific values)
-- `importance`: weight for retrieval ranking (see your persona for values)
-- `content`: the knowledge being captured
-
-### Capture Gates
-
-Each agent defines two capture gates in their persona file specifying when
-to capture (trigger condition), what thought_type to use, what content to
-include, and what importance to assign.
-
-### When Brain is Unavailable
-
-Skip all captures silently. Do not block or error. Surface key knowledge
-in the DoD output section so Eva can capture on your behalf.
-
-</protocol>

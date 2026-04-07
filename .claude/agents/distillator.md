@@ -5,6 +5,7 @@ description: >
   preserving every fact, decision, constraint, and relationship. Compression,
   not summarization. Subagent only -- never a skill.
 model: haiku
+permissionMode: plan
 effort: medium
 maxTurns: 30
 disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit

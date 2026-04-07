@@ -525,15 +525,21 @@ def test_T_0018_068_Existing_invocation_templates_are_unchanged_after_dashboard_
 
 
 def test_T_0018_069_Eva_boot_sequence_steps_1_6_in_default_persona_md_are_unchanged_except_conditional_dashbo():
-    """T-0018-069: Eva boot sequence steps 1-6 in default-persona.md are unchanged except conditional dashboard line."""
+    """T-0018-069: Eva boot sequence delegates to session-boot.md for steps 1-6."""
+    # ADR-0023 refactored boot sequence into session-boot.md;
+    # default-persona.md references it and mentions key artifacts.
     f = INSTALLED_RULES / "default-persona.md"
     c = f.read_text()
-    assert re.search(r"Read.*pipeline-state\.md", c)
-    assert re.search(r"Read.*context-brief\.md", c)
-    assert re.search(r"Scan.*error-patterns\.md", c)
-    assert "Brain health check" in c
-    assert "Brain context retrieval" in c
-    assert "Announce session state" in c
+    assert re.search(r"pipeline-state\.md", c)
+    assert re.search(r"context-brief\.md", c)
+    assert re.search(r"session-boot", c)
+    # Detailed boot steps (Brain health, Brain context, Announce) are in session-boot.md
+    sb = INSTALLED_REFS / "session-boot.md"
+    assert sb.is_file()
+    sbc = sb.read_text()
+    assert "Brain health check" in sbc
+    assert "Brain context retrieval" in sbc
+    assert re.search(r"Announce session state|Announce.*state", sbc)
 
 
 def test_T_0018_070_source_claude_hooks_enforce_eva_paths_sh_contains_bypass_line_as_first_executable_line_af():

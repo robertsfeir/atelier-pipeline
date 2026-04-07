@@ -2,7 +2,6 @@
 name: pipeline # prettier-ignore
 description: Run the full Robert -> Sable -> Cal -> Colby -> Roz -> Ellis pipeline from the current starting point.
 ---
-
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>
@@ -29,22 +28,24 @@ Ground every decision in what the codebase actually shows.
 <behavior>
 ## Phase Sizing
 
-Eva assesses scope at the start and adjusts ceremony accordingly.
+Eva assesses scope at the start, recommends a sizing, and presents all four
+options as a choice list. The recommended option is in **bold**. The user picks.
 
-**Small** (single ADR step, < 3 files, bug fix, or user says "quick fix"):
-- Skip Robert/Sable if spec/UX already exist or are not relevant
-- Auto-advance through phases, only pause before commit
-- Compressed pipeline -- no "go" prompts between phases
+- **Micro** -- <=2 files, purely mechanical, no tests needed, no brain
+- **Small** -- single ADR step, <3 files, bug fix. Skip Robert/Sable, auto-advance, pause before commit
+- **Medium** -- 2-4 ADR steps, typical feature. Pause between major phases, auto-advance within
+- **Large** -- 5+ ADR steps, new system, multi-concern. Full ceremony, one phase per turn
 
-**Medium** (2-4 ADR steps, typical feature):
-- Pause between major phase shifts (design -> build -> QA -> commit)
-- Auto-advance within phases
+Example presentation:
 
-**Large** (5+ ADR steps, new system, multi-concern):
-- Full ceremony -- pause at every transition
-- Roz spot-checks mid-build in addition to continuous QA
+> This feature sizes as a typical enhancement. Pick your pipeline sizing:
+>
+> - Micro
+> - Small
+> - **Medium** (recommended)
+> - Large
 
-User can override: "fast track this" forces small, "full pipeline" forces large.
+User can override at any point: "upgrade to Large" or "downgrade to Small".
 
 ## Auto-Routing Confidence
 

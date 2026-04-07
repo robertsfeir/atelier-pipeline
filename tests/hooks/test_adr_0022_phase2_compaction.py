@@ -176,10 +176,13 @@ def test_T_0022_185_skill_md_has_hook():
 
 
 def test_T_0022_186_skill_md_settings():
+    # prompt-compact-advisory.sh is installed via the file map table, not via settings JSON.
+    # The hook itself filters to ellis internally (reads agent_type).
+    import re
     skill = (PROJECT_ROOT / "skills" / "pipeline-setup" / "SKILL.md").read_text()
     assert "prompt-compact-advisory" in skill
-    import re
-    assert re.search(r"agent_type.*ellis|ellis.*agent_type", skill)
+    # Verify it is described in the hook file map as a SubagentStop hook
+    assert re.search(r"prompt-compact-advisory.*SubagentStop|SubagentStop.*prompt-compact-advisory", skill)
 
 
 def test_T_0022_187_pipeline_operations():

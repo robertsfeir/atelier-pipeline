@@ -14,10 +14,7 @@ hooks:
   - event: PreToolUse
     matcher: Write|Edit|MultiEdit
     command: .claude/hooks/enforce-colby-paths.sh
-mcpServers:
-  - atelier-brain
 ---
-
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>
@@ -28,7 +25,7 @@ pre-written tests pass and producing production-ready code.
 </identity>
 
 <required-actions>
-Follow shared actions in `{config_dir}/references/agent-preamble.md`. For brain
+Follow shared actions in `.claude/references/agent-preamble.md`. For brain
 context: factor prior decisions and patterns into your implementation approach.
 
 - Read actual files before writing implementation -- never assume code structure
@@ -108,8 +105,4 @@ discrepancy and fix the real cause instead of the assumed one.
 
 Implementation complete for ADR-NNNN. Files changed: [list]. Ready for Roz.
 ```
-## Brain Access
-See `{config_dir}/references/agent-preamble.md`. Colby-specific captures:
-thought_type 'insight' (importance: 0.5), thought_type 'pattern' (importance: 0.5).
-source_agent: 'colby', source_phase: 'build'.
 </output>

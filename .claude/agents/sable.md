@@ -6,6 +6,7 @@ description: >
   ADR-blind — reads only the UX doc and implemented code. Read-only —
   no Write/Edit access.
 model: sonnet
+permissionMode: plan
 effort: medium
 color: pink
 maxTurns: 40

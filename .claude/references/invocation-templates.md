@@ -6,8 +6,8 @@
 ## Shared Protocols (apply to all templates below)
 
 **Brain-context injection:** Eva prefetches via `agent_search` and injects
-into `<brain-context>`. Agents with `mcpServers: atelier-brain` (Cal, Colby,
-Roz, Agatha) also capture via `agent_capture`. Omit tag when brain unavailable.
+into `<brain-context>`. Domain-specific captures handled automatically by the
+brain-extractor SubagentStop hook after each agent completion. Omit tag when brain unavailable.
 
 **Standard READ items (included in every invocation, not listed per template):**
 `.claude/references/retro-lessons.md`, `.claude/references/agent-preamble.md`
@@ -67,12 +67,13 @@ Note: darwin-edit-proposal uses colby-build with Darwin proposal in CONTEXT.
 <template id="cal-adr-large">
 ### Cal (Large ADR -- With Research Brief)
 <task>Produce ADR for [feature name]</task>
-<context>[User preferences from context-brief.md]
-Research Brief (Medium/Large -- from Explore+haiku scouts):
-- Existing patterns: [from patterns scout]
-- Dependencies: [from manifest scout]
-- Blast-radius files: [from blast-radius scout]
-- Brain context: [from agent_search]</context>
+<research-brief>
+- Existing patterns: [from patterns scout, file:line]
+- Dependencies: [from manifest scout, name + version]
+- Blast-radius files: [from blast-radius scout, ≤15 paths]
+- Brain context: [from agent_search]
+</research-brief>
+<context>[User preferences from context-brief.md]</context>
 <read>docs/product/FEATURE.md, docs/ux/FEATURE-ux.md, docs/product/FEATURE-doc-plan.md</read>
 <constraints>
 - Map blast radius. Two alternatives with tradeoffs.
@@ -119,6 +120,11 @@ Three scouts launched in parallel by Eva. Each receives one focused prompt.
 **CI Watch variant:** TASK = "Fix CI failure -- [root cause]". CONTEXT includes
 Roz's CI diagnosis + failure logs. Scope to the specific CI failure.
 <task>Implement ADR-NNNN Step N -- [description]</task>
+<colby-context>
+  <existing-code>[Existing-code scout: contents of files the ADR step will modify]</existing-code>
+  <patterns>[Patterns scout: grep results for similar constructs, file:line only]</patterns>
+  <brain>[Brain scout: agent_search results for ADR step description (only when brain_available: true)]</brain>
+</colby-context>
 <context>Roz's tests define correct behavior. Make them pass. Do not modify assertions.
 [Prior step's Contracts Produced table when consuming a contract.]</context>
 <read>ADR-NNNN (Step N + Contract Boundaries), [Roz-authored test files]</read>
@@ -172,11 +178,16 @@ includes CI logs (200 lines/job), branch, SHA, platform. Diagnose from logs.
 <template id="roz-code-qa">
 ### Roz Code QA (Wave-Level)
 <task>Full QA on ADR-NNNN Wave W -- Steps [N, M, ...]</task>
-<read>ADR-NNNN, docs/product/FEATURE.md, docs/ux/FEATURE-ux.md, .claude/references/qa-checks.md</read>
+<qa-evidence>
+  <changed-files>[File scout: file contents or diff hunks]</changed-files>
+  <test-output>[Test scout: pytest output, head -100]</test-output>
+</qa-evidence>
+<read>.claude/references/qa-checks.md</read>
 <constraints>
 - REQUIREMENTS TO VERIFY: [Eva pastes from spec/ADR]
 - Verify Colby's DoD claims. Grep TODO/FIXME/HACK -- non-test = BLOCKER.
-- Full test suite: pytest tests/ && cd brain && node --test ../tests/brain/*.test.mjs
+- qa-evidence is pre-collected. Do NOT re-read listed files. Do NOT re-run tests.
+- Full test suite for final sweep only: pytest tests/ && cd brain && node --test ../tests/brain/*.test.mjs
 </constraints>
 <output>QA Report: verdict, check table, requirements verification, issues</output>
 </template>

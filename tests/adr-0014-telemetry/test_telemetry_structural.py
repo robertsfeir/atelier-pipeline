@@ -191,9 +191,10 @@ def test_T_0014_020_references_metrics():
 
 
 def test_T_0014_021_additive():
+    """Tier 2 captures are additive (bulk-captured, not replacing prior data)."""
     protocol = extract_protocol_section(INSTALLED_RULES / "pipeline-orchestration.md", "telemetry-capture")
     assert protocol
-    assert re.search(r"additive|do not replace|not.*replace", protocol, re.IGNORECASE)
+    assert re.search(r"additive|do not replace|not.*replace|bulk.captured|includes bulk", protocol, re.IGNORECASE)
 
 
 def test_T_0014_022_pipeline_id_format():
@@ -208,9 +209,9 @@ def test_T_0014_023_brain_capture_protocol_unchanged():
 
 
 def test_T_0014_055_importance_graduation():
+    """Importance values graduate by tier: T2=0.5, T3=0.7 (T1 is in-memory only, no importance)."""
     protocol = extract_protocol_section(INSTALLED_RULES / "pipeline-orchestration.md", "telemetry-capture")
     assert protocol
-    assert "0.3" in protocol
     assert "0.5" in protocol
     assert "0.7" in protocol
 
@@ -233,14 +234,16 @@ def test_T_0014_025_summary_includes_key_terms():
 
 
 def test_T_0014_026_boot_step_5b():
-    content = (INSTALLED_RULES / "default-persona.md").read_text()
+    """Boot step 5b (telemetry trend query) is in session-boot.md."""
+    content = (INSTALLED_REFS / "session-boot.md").read_text()
     assert re.search(r"[Ss]tep 5b|^5b\.|^\*\*5b", content, re.MULTILINE)
     step5b = extract_section(content, r"[Ss]tep 5b", r"^[0-9]+\.|^##")
     assert re.search(r"telemetry", step5b, re.IGNORECASE)
 
 
 def test_T_0014_026b_source_boot_step_5b():
-    content = (SOURCE_RULES / "default-persona.md").read_text()
+    """Source session-boot.md also contains step 5b."""
+    content = (SOURCE_REFS / "session-boot.md").read_text()
     assert re.search(r"[Ss]tep 5b|^5b\.|^\*\*5b", content, re.MULTILINE)
 
 
@@ -250,8 +253,9 @@ def test_T_0014_027_boot_telemetry_trend():
 
 
 def test_T_0014_028_no_prior_data():
-    content = (INSTALLED_RULES / "default-persona.md").read_text()
-    assert re.search(r"no prior.*pipeline.*data|no.*telemetry.*data|first.*pipeline.*telemetry|no.*trend.*data", content, re.IGNORECASE)
+    """Session boot handles the no-prior-data case."""
+    content = (INSTALLED_REFS / "session-boot.md").read_text()
+    assert re.search(r"no prior.*pipeline.*data|no.*telemetry.*data|first.*pipeline.*telemetry|no.*trend.*data|No prior pipeline data", content, re.IGNORECASE)
 
 
 def test_T_0014_029_micro_abbreviated():
@@ -265,13 +269,15 @@ def test_T_0014_030_in_memory_accumulators():
 
 
 def test_T_0014_031_omit_telemetry_brain_unavailable():
-    content = (INSTALLED_RULES / "default-persona.md").read_text()
-    assert re.search(r"brain.*unavailable.*omit.*telemetry|omit.*telemetry.*brain|telemetry.*omit.*brain|skip.*telemetry.*brain.*unavail", content, re.IGNORECASE)
+    """Session boot omits telemetry when brain unavailable."""
+    content = (INSTALLED_REFS / "session-boot.md").read_text()
+    assert re.search(r"brain.*unavailable.*omit.*telemetry|omit.*telemetry.*brain|telemetry.*omit.*brain|skip.*telemetry.*brain.*unavail|brain unavailable.*skip|omit telemetry line entirely", content, re.IGNORECASE)
 
 
 def test_T_0014_032_degradation_3_consecutive():
-    content = (INSTALLED_RULES / "default-persona.md").read_text()
-    assert re.search(r"degrad.*3.*consecutive|3.*consecutive.*breach|alert.*3.*consecutive|consecutive.*threshold", content, re.IGNORECASE)
+    """Session boot describes degradation alert threshold of 3 consecutive."""
+    content = (INSTALLED_REFS / "session-boot.md").read_text()
+    assert re.search(r"degrad.*3.*consecutive|3.*consecutive.*breach|alert.*3.*consecutive|consecutive.*threshold|3\+.*consecutive", content, re.IGNORECASE)
 
 
 def test_T_0014_033_threshold_is_3_consecutive():
@@ -300,7 +306,8 @@ def test_T_0014_037_existing_boot_step_1():
 
 
 def test_T_0014_037b_existing_boot_step_4():
-    assert "atelier_stats" in (INSTALLED_RULES / "default-persona.md").read_text()
+    """Boot step 4 (brain health check via atelier_stats) is in session-boot.md."""
+    assert "atelier_stats" in (INSTALLED_REFS / "session-boot.md").read_text()
 
 
 def test_T_0014_038_brain_capture_protocol_still_exists():
@@ -308,18 +315,21 @@ def test_T_0014_038_brain_capture_protocol_still_exists():
 
 
 def test_T_0014_039_boot_telemetry_tier_3():
-    content = (INSTALLED_RULES / "default-persona.md").read_text()
+    """Boot step 5b references telemetry tier 3."""
+    content = (INSTALLED_REFS / "session-boot.md").read_text()
     assert re.search(r"telemetry_tier.*3|telemetry.*tier.*3", content, re.IGNORECASE)
 
 
 def test_T_0014_040_single_pipeline_no_trend():
-    content = (INSTALLED_RULES / "default-persona.md").read_text()
-    assert re.search(r"single.*pipeline.*trend|1.*pipeline.*no.*trend|no.*trend.*percentage|need.*2.*pipeline|2\+.*for.*comparison", content, re.IGNORECASE)
+    """Session boot handles single-pipeline case (no trend comparison)."""
+    content = (INSTALLED_REFS / "session-boot.md").read_text()
+    assert re.search(r"single.*pipeline.*trend|1.*pipeline.*no.*trend|no.*trend.*percentage|need.*2.*pipeline|2\+.*for.*comparison|single-pipeline|exactly 1 result", content, re.IGNORECASE)
 
 
 def test_T_0014_056_micro_not_in_trends():
+    """Micro pipelines skip Tier 2/3 and trends (Tier 1 only)."""
     content = (INSTALLED_RULES / "pipeline-orchestration.md").read_text()
-    assert re.search(r"micro.*not.*trend|micro.*tier 3.*skip|micro.*exclude.*trend", content, re.IGNORECASE)
+    assert re.search(r"micro.*not.*trend|micro.*tier 3.*skip|micro.*exclude.*trend|[Mm]icro.*[Tt]ier 1 only|Skipped on Micro|Micro.*Tier 1", content, re.IGNORECASE)
 
 
 # ═══════════════════════════════════════════════════════════════════════

@@ -5,6 +5,7 @@ description: >
   juncture to identify vulnerabilities, injection risks, and security
   misconfigurations in changed code. Opt-in via pipeline-config.json.
 model: sonnet
+permissionMode: plan
 effort: high
 maxTurns: 40
 disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit

@@ -118,11 +118,13 @@ def test_T_0022_143_cross_cutting_hooks():
 
 
 def test_T_0022_144_lifecycle_hooks():
+    # warn-dor-dod.sh and prompt-brain-capture.sh were deprecated (ADR-0024).
+    # Check currently deployed lifecycle hooks instead.
     skill = (PROJECT_ROOT / "skills" / "pipeline-setup" / "SKILL.md").read_text()
     assert "log-agent-start.sh" in skill
     assert "log-agent-stop.sh" in skill
-    assert "warn-dor-dod.sh" in skill
-    assert "prompt-brain-capture.sh" in skill
+    assert "session-hydrate.sh" in skill
+    assert "prompt-brain-prefetch.sh" in skill
 
 
 def test_T_0022_145_ellis_no_hooks():

@@ -10,6 +10,7 @@ from conftest import (
     ALL_HOOK_SCRIPT_NAMES,
     CLAUDE_DIR,
     PROJECT_ROOT,
+    SIMPLIFIED_CONFIG,
     build_per_agent_input,
     hide_jq_env,
     prepare_per_agent_hook,
@@ -260,16 +261,15 @@ def test_T_0022_087f_eva_blocks_src(simplified_env):
 
 
 def test_T_0022_092_colby_all_14_blocked():
+    """All 13 colby_blocked_paths are enforced (.github/ intentionally removed)."""
     blocked = [
-        "docs/readme.md", ".github/workflows/ci.yml", ".gitlab-ci.yml",
+        "docs/readme.md", ".gitlab-ci.yml",
         ".circleci/config.yml", "Jenkinsfile", "Dockerfile",
         "docker-compose.yml", ".gitlab/merge_request_templates/default.md",
         "deploy/prod.yml", "infra/main.tf", "terraform/main.tf",
         "pulumi/index.ts", "k8s/deployment.yml", "kubernetes/service.yml",
     ]
-    # This test needs a simplified_env -- use tmp_path directly
     import tempfile
-    from conftest import SIMPLIFIED_CONFIG
     with tempfile.TemporaryDirectory() as td:
         tmp = Path(td)
         (tmp / "docs" / "pipeline").mkdir(parents=True)

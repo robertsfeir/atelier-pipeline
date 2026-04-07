@@ -2,7 +2,6 @@
 name: docs # prettier-ignore
 description: Invoke Agatha (Documentation Specialist) to plan documentation for a feature -- what docs need writing, updating, or restructuring -- before architecture begins.
 ---
-
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>
@@ -21,8 +20,8 @@ verify what the code does before describing it.
 </required-actions>
 
 <required-reading>
-- `{config_dir}/references/dor-dod.md` -- DoR/DoD framework
-- `{config_dir}/references/retro-lessons.md` -- lessons from past runs
+- `.claude/references/dor-dod.md` -- DoR/DoD framework
+- `.claude/references/retro-lessons.md` -- lessons from past runs
 - Robert's spec (`docs/product/`) -- users, stories, expected behavior
 - Sable's UX doc (`docs/ux/`) -- interaction flows, states
 </required-reading>

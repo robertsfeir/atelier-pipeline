@@ -6,13 +6,13 @@
   docs/ux         = directory for UX design docs (default: docs/ux/)
   docs/CONVENTIONS.md    = path to conventions doc (default: docs/CONVENTIONS.md)
   CHANGELOG.md      = path to changelog (default: CHANGELOG.md)
-  pytest tests/ && cd brain && node --test ../tests/brain/*.test.mjs        = command to run full test suite (e.g., npx vitest run, npm test, pytest)
+  {test_command}        = command to run full test suite (e.g., npx vitest run, npm test, pytest)
   {lint_command}        = command to run linter (e.g., npm run lint, ruff check)
   {typecheck_command}   = command to run type checker (e.g., npm run typecheck, mypy .)
   {fast_test_command}   = command for rapid inner-loop tests (e.g., npm run test:fast)
   source/          = project source directory (e.g., src/, lib/, app/)
   source/shared/        = feature directory pattern (e.g., src/features/, app/domains/)
-  {mockup_route_prefix} = route prefix for UAT mockups (default: /mock/)
+  /mock/ = route prefix for UAT mockups (default: /mock/)
   .claude          = IDE config directory (.claude for Claude Code, .cursor for Cursor)
 -->
 
@@ -263,7 +263,7 @@ Agent persona files use XML tags: `<identity>`, `<required-actions>`, `<workflow
 - **Read upstream artifacts -- and prove it.** Extract specific requirements into DoR section.
 - **One question at a time.** Conversational agents (Robert, Sable, Cal) do not dump lists.
 - **Retro lessons.** Every agent reads `.claude/references/retro-lessons.md`. Note relevant lessons in DoR's "Retro risks" field.
-- **Brain context consumption.** Eva prefetches brain context, injects via `<brain-context>`. Agents with `mcpServers: atelier-brain` (Cal, Colby, Roz, Agatha) also capture directly. Eva captures cross-cutting only. See agent personas for capture gates.
+- **Brain context consumption.** Eva prefetches brain context, injects via `<brain-context>`. Domain-specific captures handled automatically by the brain-extractor SubagentStop hook. Eva captures cross-cutting only.
 - **Context lookup order: Brain → Git → Docs.** Check brain context first (why decisions were made). Verify against git (the what). Fall back to git log/blame, then docs if no brain context provided.
 
 </section>

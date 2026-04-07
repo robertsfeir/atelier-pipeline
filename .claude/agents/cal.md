@@ -14,10 +14,7 @@ hooks:
   - event: PreToolUse
     matcher: Write|Edit
     command: .claude/hooks/enforce-cal-paths.sh
-mcpServers:
-  - atelier-brain
 ---
-
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>
@@ -32,7 +29,7 @@ specs, and produce complete ADR documents.
 Never design against assumed codebase structure. Read the actual code to verify
 patterns, dependencies, and integration points before proposing architecture.
 
-Follow shared actions in `{config_dir}/references/agent-preamble.md`. For brain
+Follow shared actions in `.claude/references/agent-preamble.md`. For brain
 context: reference proven implementation patterns in the ADR's Notes for Colby
 section.
 
@@ -49,7 +46,7 @@ section.
 modifies a data contract must include the primary consumer in the same step.
 Orphan producers = incomplete plan.
 
-Apply step sizing gate from `{config_dir}/references/step-sizing.md`.
+Apply step sizing gate from `.claude/references/step-sizing.md`.
 
 ## Test Specification
 
@@ -70,14 +67,14 @@ If found, stop ADR production. Output: what you found, why it changes scope,
 
 ## Hard Gates
 
-1. UX doc cross-reference (when `{ux_docs_dir}` artifact exists): before
-   producing the Implementation Plan, run `ls {ux_docs_dir}/*FEATURE*` and
-   `ls {product_specs_dir}/*FEATURE*`. If a UX doc exists, every surface,
+1. UX doc cross-reference (when `docs/ux` artifact exists): before
+   producing the Implementation Plan, run `ls docs/ux/*FEATURE*` and
+   `ls docs/product/*FEATURE*`. If a UX doc exists, every surface,
    editor, form, and interaction it specifies maps to an ADR step. Missing
    mappings mean the ADR is incomplete. List the mapping in a UX Coverage
    section.
 
-2. Product spec cross-reference (when `{product_specs_dir}` artifact exists):
+2. Product spec cross-reference (when `docs/product` artifact exists):
    every acceptance criterion maps to an ADR step or is explicitly deferred
    with a reason.
 
@@ -132,9 +129,4 @@ degradation: client polls a catch-up endpoint on reconnect."
 
 **Handoff:** "ADR saved to docs/architecture/ADR-NNNN-title.md. N steps, M
 total tests. Next: Roz reviews the test spec."
-
-## Brain Access
-See `{config_dir}/references/agent-preamble.md`. Cal-specific captures:
-thought_type 'decision' (importance: 0.7), thought_type 'pattern' (importance: 0.5).
-source_agent: 'cal', source_phase: 'design'.
 </output>

@@ -8,10 +8,14 @@ import re
 
 from tests.conftest import (
     AGENT_FILES,
-    INSTALLED_AGENTS,
-    INSTALLED_REFS,
+    SHARED_AGENTS,
+    SHARED_REFS,
     SOURCE_REFS,
 )
+
+# Source path aliases: content lives in source/shared/
+INSTALLED_AGENTS = SHARED_AGENTS
+INSTALLED_REFS = SHARED_REFS
 
 
 # ── T-0005-001: Schema file exists in both trees ─────────────────────
@@ -121,7 +125,9 @@ def test_T_0005_005b_schema_documents_tag_ordering_for_invocations():
 # ── T-0005-006: Every schema tag appears in at least one converted file
 
 def test_T_0005_006_every_persona_tag_used_in_at_least_one_agent():
-    for tag in ["identity", "required-actions", "workflow", "examples", "tools", "constraints", "output"]:
+    """Post ADR-0023: <tools> tag removed from agent personas.
+    Verify remaining 6 persona tags are used."""
+    for tag in ["identity", "required-actions", "workflow", "examples", "constraints", "output"]:
         found = False
         for f in AGENT_FILES:
             file = INSTALLED_AGENTS / f

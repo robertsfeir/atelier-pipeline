@@ -9,12 +9,17 @@ import re
 from tests.conftest import (
     AGENT_FILES,
     COMMAND_FILES,
-    INSTALLED_AGENTS,
-    INSTALLED_COMMANDS,
-    INSTALLED_REFS,
+    SHARED_AGENTS,
+    SHARED_REFS,
+    SOURCE_COMMANDS,
     PERSONA_TAGS,
     extract_tag_content,
 )
+
+# Source path aliases: content lives in source/shared/
+INSTALLED_AGENTS = SHARED_AGENTS
+INSTALLED_COMMANDS = SOURCE_COMMANDS
+INSTALLED_REFS = SHARED_REFS
 
 
 # ── T-0005-120 ───────────────────────────────────────────────────────
@@ -40,9 +45,11 @@ def test_T_0005_120b_every_opening_tag_has_closing_in_commands():
         if not file.is_file():
             continue
         content = file.read_text()
-        tags = set(re.findall(r"<([a-z][a-z-]*)>", content))
+        # Strip backtick-quoted tag references (prose mentions like `<debug-evidence>`)
+        stripped = re.sub(r"`[^`]*`", "", content)
+        tags = set(re.findall(r"<([a-z][a-z-]*)>", stripped))
         for tag in tags:
-            if f"</{tag}>" not in content:
+            if f"</{tag}>" not in stripped:
                 errors.append(f"Unclosed tag <{tag}> in {f}")
     assert not errors, "\n".join(errors)
 

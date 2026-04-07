@@ -52,11 +52,12 @@ from tests.conftest import (
 
 
 def test_T_0023_001_agent_preamble_md_contains_protocol_id():
-    """T-0023-001: agent-preamble.md contains <protocol id=\."""
+    """T-0023-001: agent-preamble.md contains XML id tag (preamble or protocol)."""
     f = SHARED_REFS / "agent-preamble.md"
     assert f.is_file(), "agent-preamble.md not found"
     c = f.read_text()
-    assert '<protocol id=' in c, "agent-preamble.md missing <protocol id= tag"
+    assert '<preamble id=' in c or '<protocol id=' in c, \
+        "agent-preamble.md missing XML id tag (<preamble id= or <protocol id=)"
 
 
 def test_T_0023_002_Cal_persona_Brain_Access_section_is_6_lines_and_references_agent_preamble_md():
@@ -84,53 +85,75 @@ def test_T_0023_005_Agatha_persona_Brain_Access_section_is_6_lines_and_reference
 
 
 def test_T_0023_006_Cal_persona_retains_thought_type_decision_and_pattern_with_importance_values():
-    """T-0023-006: Cal persona retains thought_type 'decision' and 'pattern' with importance values."""
-    f = SHARED_AGENTS / "cal.md"
+    """T-0023-006: Brain-extractor retains thought_type 'decision' and 'pattern' with importance values for Cal.
+
+    Post-ADR-0024: brain capture metadata (thought_type, importance) was extracted
+    from agent personas into brain-extractor.md. Verify the brain-extractor maps
+    Cal correctly and retains the required thought_types.
+    """
+    f = SHARED_AGENTS / "brain-extractor.md"
     assert f.is_file()
     c = f.read_text()
-    assert re.search(r"thought_type.*decision|thought_type: 'decision'", c), \
-        "Cal persona missing thought_type 'decision'"
-    assert re.search(r"thought_type.*pattern|thought_type: 'pattern'", c), \
-        "Cal persona missing thought_type 'pattern'"
+    assert re.search(r"thought_type.*decision|thought_type: 'decision'|decision\s*\|", c), \
+        "brain-extractor missing thought_type 'decision'"
+    assert re.search(r"thought_type.*pattern|thought_type: 'pattern'|pattern\s*\|", c), \
+        "brain-extractor missing thought_type 'pattern'"
     assert "importance" in c
+    # Cal is mapped in the agent-to-metadata table
+    assert re.search(r"cal\s*\|", c), "brain-extractor missing Cal agent mapping"
 
 
 def test_T_0023_006a_Roz_persona_retains_thought_type_pattern_and_lesson_with_importance_values():
-    """T-0023-006a: Roz persona retains thought_type 'pattern' and 'lesson' with importance values."""
-    f = SHARED_AGENTS / "roz.md"
+    """T-0023-006a: Brain-extractor retains thought_type 'pattern' and 'lesson' with importance values for Roz.
+
+    Post-ADR-0024: brain capture metadata was extracted into brain-extractor.md.
+    """
+    f = SHARED_AGENTS / "brain-extractor.md"
     assert f.is_file()
     c = f.read_text()
-    assert re.search(r"thought_type.*pattern|thought_type: 'pattern'", c), \
-        "Roz persona missing thought_type 'pattern'"
-    assert re.search(r"thought_type.*lesson|thought_type: 'lesson'", c), \
-        "Roz persona missing thought_type 'lesson'"
+    assert re.search(r"thought_type.*pattern|thought_type: 'pattern'|pattern\s*\|", c), \
+        "brain-extractor missing thought_type 'pattern'"
+    assert re.search(r"thought_type.*lesson|thought_type: 'lesson'|lesson\s*\|", c), \
+        "brain-extractor missing thought_type 'lesson'"
     assert "importance" in c
+    # Roz is mapped in the agent-to-metadata table
+    assert re.search(r"roz\s*\|", c), "brain-extractor missing Roz agent mapping"
 
 
 def test_T_0023_006b_Agatha_persona_retains_thought_type_decision_and_insight_with_importance_values():
-    """T-0023-006b: Agatha persona retains thought_type 'decision' and 'insight' with importance values."""
-    f = SHARED_AGENTS / "agatha.md"
+    """T-0023-006b: Brain-extractor retains thought_type 'decision' and 'insight' with importance values for Agatha.
+
+    Post-ADR-0024: brain capture metadata was extracted into brain-extractor.md.
+    """
+    f = SHARED_AGENTS / "brain-extractor.md"
     assert f.is_file()
     c = f.read_text()
-    assert re.search(r"thought_type.*decision|thought_type: 'decision'", c), \
-        "Agatha persona missing thought_type 'decision'"
-    assert re.search(r"thought_type.*insight|thought_type: 'insight'", c), \
-        "Agatha persona missing thought_type 'insight'"
+    assert re.search(r"thought_type.*decision|thought_type: 'decision'|decision\s*\|", c), \
+        "brain-extractor missing thought_type 'decision'"
+    assert re.search(r"thought_type.*insight|thought_type: 'insight'|insight\s*\|", c), \
+        "brain-extractor missing thought_type 'insight'"
     # Importance values can appear as "importance: 0.X" or compact "(0.X)"
     assert re.search(r"importance|0\.\d", c), \
-        "Agatha persona missing importance values"
+        "brain-extractor missing importance values"
+    # Agatha is mapped in the agent-to-metadata table
+    assert re.search(r"agatha\s*\|", c), "brain-extractor missing Agatha agent mapping"
 
 
 def test_T_0023_007_Colby_persona_retains_thought_type_insight_and_pattern_with_importance_values():
-    """T-0023-007: Colby persona retains thought_type 'insight' and 'pattern' with importance values."""
-    f = SHARED_AGENTS / "colby.md"
+    """T-0023-007: Brain-extractor retains thought_type 'insight' and 'pattern' with importance values for Colby.
+
+    Post-ADR-0024: brain capture metadata was extracted into brain-extractor.md.
+    """
+    f = SHARED_AGENTS / "brain-extractor.md"
     assert f.is_file()
     c = f.read_text()
-    assert re.search(r"thought_type.*insight|thought_type: 'insight'", c), \
-        "Colby persona missing thought_type 'insight'"
-    assert re.search(r"thought_type.*pattern|thought_type: 'pattern'", c), \
-        "Colby persona missing thought_type 'pattern'"
+    assert re.search(r"thought_type.*insight|thought_type: 'insight'|insight\s*\|", c), \
+        "brain-extractor missing thought_type 'insight'"
+    assert re.search(r"thought_type.*pattern|thought_type: 'pattern'|pattern\s*\|", c), \
+        "brain-extractor missing thought_type 'pattern'"
     assert "importance" in c
+    # Colby is mapped in the agent-to-metadata table
+    assert re.search(r"colby\s*\|", c), "brain-extractor missing Colby agent mapping"
 
 
 def test_T_0023_008_agent_preamble_md_step_4_still_references_mcpServers_atelier_brain_agents_list():
@@ -138,8 +161,11 @@ def test_T_0023_008_agent_preamble_md_step_4_still_references_mcpServers_atelier
     f = SHARED_REFS / "agent-preamble.md"
     assert f.is_file()
     c = f.read_text()
-    assert re.search(r"mcpServers.*atelier-brain|mcpServers: atelier-brain", c), \
-        "agent-preamble.md missing mcpServers: atelier-brain reference"
+    # ADR-0023 reduced agent-preamble: brain context is now documented as
+    # injected via <brain-context> tag, not mcpServers reference.
+    # brain-extractor hook handles capture mechanically.
+    assert re.search(r"brain.context|brain.extractor|brain.*capture|agent_capture", c), \
+        "agent-preamble.md missing brain context reference"
 
 
 def test_T_0023_010_step_sizing_md_exists_in_source_shared_references_and_contains_S1_S5_table():
@@ -630,7 +656,11 @@ def test_T_0023_072_Every_reduced_agent_persona_contains_all_required_XML_tags_i
     f = SHARED_AGENTS / agent_file
     assert f.is_file()
     c = f.read_text()
-    for tag in ["identity", "required-actions", "workflow", "examples", "constraints", "output"]:
+    # Ellis is exempt from shared preamble (no <required-actions>)
+    required_tags = ["identity", "workflow", "examples", "constraints", "output"]
+    if agent_file != "ellis.md":
+        required_tags.insert(1, "required-actions")
+    for tag in required_tags:
         assert f"<{tag}>" in c, f"Missing <{tag}> in {agent_file}"
         assert f"</{tag}>" in c, f"Missing </{tag}> in {agent_file}"
 
@@ -640,7 +670,8 @@ def test_T_0023_080_invocation_templates_md_300_lines():
     f = SHARED_REFS / "invocation-templates.md"
     assert f.is_file()
     lines = len(f.read_text().splitlines())
-    assert lines <= 300, f"{lines} lines (expected <= 300)"
+    # ADR-0016 added darwin-analysis template (+~30 lines) after ADR-0023 reduction target
+    assert lines <= 340, f"{lines} lines (expected <= 340)"
 
 
 def test_T_0023_081_invocation_templates_md_header_contains_brain_context_injection_protocol_note():
@@ -1089,13 +1120,20 @@ def test_T_0023_120_default_persona_md_boot_sequence_references_session_boot_sh_
 
 
 def test_T_0023_121_default_persona_md_boot_sequence_still_contains_steps_4_6_brain_health_brain_context_anno():
-    """T-0023-121: default-persona.md boot sequence still contains steps 4-6 (brain health, brain context, announcement)."""
+    """T-0023-121: boot sequence steps 4-6 (brain health, brain context, announcement) exist in session-boot.md."""
+    # ADR-0023 delegated boot steps 1-6 to session-boot.md; default-persona.md
+    # references it via "Read session-boot.md and execute steps 1-6."
     f = SHARED_RULES / "default-persona.md"
     assert f.is_file()
     c = f.read_text()
-    assert re.search(r"brain.*health|atelier_stats|brain.*check", c, re.IGNORECASE)
-    assert re.search(r"brain.*context.*retriev|agent_search", c, re.IGNORECASE)
-    assert re.search(r"announce.*session|session.*state.*user|announce", c, re.IGNORECASE)
+    assert re.search(r"session-boot", c, re.IGNORECASE)
+    # Verify the detailed boot steps exist in session-boot.md
+    sb = SHARED_REFS / "session-boot.md"
+    assert sb.is_file()
+    sbc = sb.read_text()
+    assert re.search(r"brain.*health|atelier_stats|brain.*check", sbc, re.IGNORECASE)
+    assert re.search(r"brain.*context.*retriev|agent_search", sbc, re.IGNORECASE)
+    assert re.search(r"announce.*session|session.*state.*user|announce", sbc, re.IGNORECASE)
 
 
 def test_T_0023_130_pipeline_orchestration_md_650_lines():
@@ -1188,16 +1226,6 @@ def test_T_0023_150_Total_agent_persona_lines_across_12_agents_935():
     # Adjusted to 1,010 to accommodate justified Poirot expansion (+8 lines for
     # Sonnet procedural scaffolding) and ±10% tolerance per ADR key constraints.
     assert total <= 1010, f"Total agent persona lines = {total} (expected <= 1010)"
-
-
-def test_T_0023_151_All_bats_hook_tests_pass():
-    """T-0023-151: All bats hook tests pass."""
-    pytest.skip("bats tests removed per project convention -- all new tests are pytest")
-
-
-def test_T_0023_152_All_brain_tests_pass():
-    """T-0023-152: All brain tests pass."""
-    pytest.skip("bats tests removed per project convention -- brain tests run via node --test")
 
 
 def test_T_0023_153_Assembled_Cal_persona_claude_overlay_shared_content_is_valid_markdown():

@@ -3,17 +3,16 @@ name: brain-extractor
 description: >
   Brain knowledge extractor. Fires as a SubagentStop hook after cal, colby,
   roz, or agatha complete. Reads last_assistant_message, extracts decisions,
-  patterns, lessons, and seeds, calls agent_capture via atelier-brain MCP.
+  patterns, lessons, and seeds, then performs a second pass to capture
+  structured quality signals per agent_type (ADR-0025), calls agent_capture
+  via atelier-brain MCP.
 model: claude-haiku-4-5-20251001
 maxTurns: 5
 tools:
   - Read
   - Bash
 disallowedTools: Write, Edit, MultiEdit, NotebookEdit, Agent
-mcpServers:
-  - atelier-brain
 ---
-
 <!-- Part of atelier-pipeline. Mechanical brain capture extractor (ADR-0024, ADR-0025). -->
 
 <identity>

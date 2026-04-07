@@ -11,7 +11,6 @@ maxTurns: 12
 disallowedTools: Agent, NotebookEdit
 permissionMode: acceptEdits
 ---
-
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>
