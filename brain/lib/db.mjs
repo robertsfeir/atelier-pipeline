@@ -175,6 +175,9 @@ async function runMigrations(pool) {
     } catch (err) {
       console.error("Migration 006 failed (non-fatal):", err.message);
     }
+
+    // Migration 007: Beads provenance (ADR-0026) -- no DDL changes
+    console.log("Migration 007: Beads provenance -- no DDL changes needed (metadata JSONB).");
   } catch (err) {
     console.error("Migration check failed (non-fatal):", err.message);
   } finally {

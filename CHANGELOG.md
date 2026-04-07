@@ -3,6 +3,11 @@
 All notable changes to Atelier Pipeline are documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
+## [3.25.3] - 2026-04-06
+
+### Added
+- **brain 1.3.0: Beads-style structured provenance fields:** Extended `agent_capture` schema with optional metadata fields for `thought_type: decision` — `decided_by` (`{agent: string, human_approved: boolean}`), `alternatives_rejected` (array of `{alternative, reason}`), `evidence` (array of `{file, line}`), and `confidence` (0-1 number). No DDL migration needed; fields stored in existing metadata JSONB column (GIN-indexed). `atelier_trace` adds `superseded_by` reverse lookup (computed from thought_relations, not stored). Migration 007 is noop. Graceful degradation: missing provenance fields accepted. Wiring coverage verified via Roz test spec (T-0026 series, 28 tests). Poirot review fixes: merge-path enrichment, dead try/catch removal in migration 007, non-destructive destructuring, empty chainIds guard, decided_by consistency guard (issue #23, ADR-0026)
+
 ## [3.25.2] - 2026-04-06
 
 ### Added

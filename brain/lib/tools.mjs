@@ -47,6 +47,20 @@ function registerAgentCapture(srv, pool, apiKey, capturedBy, cfg) {
       supersedes_id: z.string().uuid().optional().describe("UUID of thought this supersedes"),
       scope: z.array(z.string()).optional().describe("ltree scope paths"),
       metadata: z.record(z.string(), z.unknown()).optional().describe("Additional metadata"),
+      decided_by: z.object({
+        agent: z.string(),
+        human_approved: z.boolean(),
+      }).optional().describe("Who made the decision and whether a human signed off"),
+      alternatives_rejected: z.array(z.object({
+        alternative: z.string(),
+        reason: z.string(),
+      })).optional().describe("Alternatives considered and why rejected"),
+      evidence: z.array(z.object({
+        file: z.string(),
+        line: z.number().int().positive(),
+      })).optional().describe("File:line references supporting the decision"),
+      confidence: z.number().min(0).max(1).optional()
+        .describe("Decision confidence 0-1; low values flag for retro review"),
     },
     async (params) => handleAgentCapture(params, pool, apiKey, capturedBy, cfg)
   );
@@ -54,7 +68,8 @@ function registerAgentCapture(srv, pool, apiKey, capturedBy, cfg) {
 
 async function handleAgentCapture(params, pool, apiKey, capturedBy, cfg) {
   const { content, thought_type, source_agent, source_phase, importance,
-          trigger_event, supersedes_id, scope, metadata = {} } = params;
+          trigger_event, supersedes_id, scope, metadata = {},
+          decided_by, alternatives_rejected, evidence, confidence } = params;
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -76,12 +91,35 @@ async function handleAgentCapture(params, pool, apiKey, capturedBy, cfg) {
       conflictResult = await detectConflicts(client, embedding, content, scopeArray, brainConfig, apiKey);
     }
 
+    // Build provenance fields from explicit params (ADR-0026)
+    const hasAnyProvenanceParam = decided_by !== undefined
+      || alternatives_rejected !== undefined
+      || evidence !== undefined
+      || confidence !== undefined;
+
+    const provenanceFields = {};
+    if (decided_by !== undefined) provenanceFields.decided_by = decided_by;
+    if (alternatives_rejected?.length) provenanceFields.alternatives_rejected = alternatives_rejected;
+    if (evidence?.length) provenanceFields.evidence = evidence;
+    if (confidence !== undefined) provenanceFields.confidence = confidence;
+
+    let enrichedMetadata;
+    if (Object.keys(provenanceFields).length > 0) {
+      enrichedMetadata = { ...metadata, provenance: provenanceFields };
+    } else if (hasAnyProvenanceParam) {
+      // Explicit provenance params were passed but all were empty/absent --
+      // still create an empty provenance object to signal intent (ADR-0026).
+      enrichedMetadata = { ...metadata, provenance: {} };
+    } else {
+      enrichedMetadata = metadata;
+    }
+
     if (conflictResult.action === "merge") {
-      return await handleMerge(client, content, importance, metadata, conflictResult);
+      return await handleMerge(client, content, importance, enrichedMetadata, conflictResult);
     }
 
     const newThought = await insertThought(client, {
-      content, embedding, metadata, thought_type, source_agent,
+      content, embedding, metadata: enrichedMetadata, thought_type, source_agent,
       source_phase, importance, trigger_event, capturedBy,
       conflictResult, scopeArray,
     });
@@ -456,7 +494,7 @@ function registerAtelierTrace(srv, pool) {
     async ({ thought_id, direction = "both", max_depth = 10 }) => {
       try {
         const rootResult = await pool.query(
-          `SELECT id, content, thought_type, source_agent, source_phase, importance, status, scope, captured_by, created_at
+          `SELECT id, content, thought_type, source_agent, source_phase, importance, status, scope, captured_by, created_at, metadata
            FROM thoughts WHERE id = $1`,
           [thought_id]
         );
@@ -476,6 +514,33 @@ function registerAtelierTrace(srv, pool) {
         }
 
         chain.sort((a, b) => a.depth - b.depth);
+
+        // Batch superseded_by lookup (ADR-0026): single query for entire chain
+        const chainIds = chain.map(n => n.id);
+        let supersededByMap = new Map();
+        if (chainIds.length > 0) {
+          const supersededByResult = await pool.query(
+            `SELECT target_id, array_agg(source_id) AS superseded_by
+             FROM thought_relations
+             WHERE target_id = ANY($1) AND relation_type = 'supersedes'
+             GROUP BY target_id`,
+            [chainIds]
+          );
+          supersededByMap = new Map(
+            supersededByResult.rows.map(r => [r.target_id, r.superseded_by])
+          );
+        }
+
+        // Enrich each chain node with provenance and superseded_by
+        for (let i = 0; i < chain.length; i++) {
+          const { metadata: _m, ...rest } = chain[i];
+          chain[i] = {
+            ...rest,
+            provenance: chain[i].metadata?.provenance || null,
+            superseded_by: supersededByMap.get(chain[i].id) || [],
+          };
+        }
+
         return { content: [{ type: "text", text: JSON.stringify({ chain }) }] };
       } catch (err) {
         return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
@@ -487,13 +552,13 @@ function registerAtelierTrace(srv, pool) {
 async function traverseBackward(pool, thoughtId, maxDepth, visited, chain) {
   const result = await pool.query(
     `WITH RECURSIVE chain AS (
-      SELECT t.id, t.content, t.thought_type, t.source_agent, t.source_phase, t.importance, t.status, t.scope, t.captured_by, t.created_at,
+      SELECT t.id, t.content, t.thought_type, t.source_agent, t.source_phase, t.importance, t.status, t.scope, t.captured_by, t.created_at, t.metadata,
              1 AS depth, r.relation_type AS via_relation, r.context AS via_context
       FROM thought_relations r
       JOIN thoughts t ON t.id = r.target_id
       WHERE r.source_id = $1
       UNION ALL
-      SELECT t.id, t.content, t.thought_type, t.source_agent, t.source_phase, t.importance, t.status, t.scope, t.captured_by, t.created_at,
+      SELECT t.id, t.content, t.thought_type, t.source_agent, t.source_phase, t.importance, t.status, t.scope, t.captured_by, t.created_at, t.metadata,
              chain.depth + 1, r.relation_type, r.context
       FROM thought_relations r
       JOIN thoughts t ON t.id = r.target_id
@@ -514,13 +579,13 @@ async function traverseBackward(pool, thoughtId, maxDepth, visited, chain) {
 async function traverseForward(pool, thoughtId, maxDepth, visited, chain) {
   const result = await pool.query(
     `WITH RECURSIVE chain AS (
-      SELECT t.id, t.content, t.thought_type, t.source_agent, t.source_phase, t.importance, t.status, t.scope, t.captured_by, t.created_at,
+      SELECT t.id, t.content, t.thought_type, t.source_agent, t.source_phase, t.importance, t.status, t.scope, t.captured_by, t.created_at, t.metadata,
              1 AS depth, r.relation_type AS via_relation, r.context AS via_context
       FROM thought_relations r
       JOIN thoughts t ON t.id = r.source_id
       WHERE r.target_id = $1
       UNION ALL
-      SELECT t.id, t.content, t.thought_type, t.source_agent, t.source_phase, t.importance, t.status, t.scope, t.captured_by, t.created_at,
+      SELECT t.id, t.content, t.thought_type, t.source_agent, t.source_phase, t.importance, t.status, t.scope, t.captured_by, t.created_at, t.metadata,
              chain.depth + 1, r.relation_type, r.context
       FROM thought_relations r
       JOIN thoughts t ON t.id = r.source_id
