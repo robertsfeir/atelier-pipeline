@@ -3,6 +3,12 @@
 All notable changes to Atelier Pipeline are documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
+## [3.27.0] - 2026-04-07
+
+### Added
+- **Permission Audit Trail (ADR-0031):** All 10 enforce-*.sh PreToolUse hooks now emit structured JSONL enforcement records to `~/.claude/logs/enforcement-YYYY-MM-DD.jsonl` on both block and allow decisions. Fields: timestamp, tool_name, agent_type, decision, reason, hook_name. A new `session-hydrate-enforcement.sh` script (called from `session-hydrate.sh`) bulk-captures blocked events to the brain at session end as `thought_type: 'insight'` with `metadata.enforcement_event: true`. Fail-open: log write failures and brain unavailability are silent. Allowed events log to file only (not brain-captured).
+- **Token Exposure Probe (ADR-0030, Branch 2b):** Confirmed that the Claude Code Agent tool does not expose `input_tokens`/`output_tokens` split in real-time Agent tool result metadata (768 records examined). `total_tokens` is present but insufficient for cost computation. Gap documented in `telemetry-metrics.md`. Live accumulator (Track B) deferred. Note: full input/output split is available post-hoc in subagent JSONL files, which `hydrate-telemetry.mjs` already reads.
+
 ## [3.26.0] - 2026-04-07
 
 ### Added
