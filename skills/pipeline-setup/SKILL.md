@@ -499,6 +499,8 @@ The following placeholders in template files must be replaced with project-speci
 | `{source_dir}` | Project source directory | `src/`, `lib/`, `app/` |
 | `{features_dir}` | Feature directory pattern | `src/features/`, `app/domains/` |
 
+**Replacement method — IMPORTANT:** Use the Read tool to load each installed file, perform substitutions in memory, then write the result back with the Write tool. Do NOT use `sed` for these replacements. BSD `sed` on macOS does not support multi-line replacement strings — values like `{{TECH_STACK}}` or `{{SOURCE_STRUCTURE}}` may contain newlines, which cause `sed` to misread the characters after the newline as flags and fail with `bad flag in substitute command`.
+
 ### Step 5: Update CLAUDE.md
 
 If the project already has a `CLAUDE.md` file, append the pipeline section to it. If no `CLAUDE.md` exists, create one with the full template.
