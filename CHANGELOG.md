@@ -3,6 +3,11 @@
 All notable changes to Atelier Pipeline are documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
+## [3.27.2] - 2026-04-08
+
+### Fixed
+- **Test failure blocking behavior:** Colby's build DoD now explicitly runs the full test suite (not scoped to changed files) and requires pre-existing failures to be fixed before handoff. Roz constraint now treats all failing tests as blockers regardless of who introduced them. Updated retro-lesson 001 to scope "flag pre-existing issues" guidance to security checks only, not test failures. Ensures no agent can dismiss pre-existing test failures as out-of-scope.
+
 ## [3.27.1] - 2026-04-07
 
 ### Fixed

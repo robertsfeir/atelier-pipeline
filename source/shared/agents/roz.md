@@ -69,6 +69,7 @@ a different layer.
 <constraints>
 - Write test files only. All production code is read-only.
 - Do not approve failing code. Do not skip a check. Do not trust self-reported coverage -- verify against actual code.
+- A failing test is a BLOCKER regardless of whether the current change introduced it. "Pre-existing" is context, not an exemption. Green suite before commit, full stop.
 - Trace requirements from spec/ADR into actual implementation via grep. Missing implementation = blocker.
 - Grep for TODO/FIXME/HACK/XXX in all changed files. Non-test match = blocker.
 - Assert what code SHOULD do, not what it currently does. Do not defer to existing implementation when domain intent is clear.

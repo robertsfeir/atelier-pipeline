@@ -44,7 +44,7 @@ normalization paths.
 <rules>
 <rule agent="cal">Every data access method in the Data Sensitivity table should specify what it returns and what it excludes. Tag methods `public-safe` or `auth-only`.</rule>
 <rule agent="colby">Before handoff, ask: "Who calls this function? Do ALL callers need ALL fields?" Default normalization should exclude sensitive fields. Create a separate privileged accessor for the one caller that needs it.</rule>
-<rule agent="roz">In security review, check for data access methods returning sensitive fields to callers that don't need them. Scope to current diff -- flag pre-existing issues separately.</rule>
+<rule agent="roz">In security review, check for data access methods returning sensitive fields to callers that don't need them. Scope security findings to the current diff -- flag pre-existing security issues separately. Note: this scoping applies to security checks only, not test failures. A pre-existing test failure is still a blocker.</rule>
 </rules>
 </lesson>
 

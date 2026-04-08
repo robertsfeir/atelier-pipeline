@@ -1,88 +1,89 @@
-# QA Report -- 2026-04-06
+# QA Report -- 2026-04-08
 
-## ADR-0027: Brain-Hydrate Scout Fan-Out -- Scoped Re-Run (Poirot 6-Finding Fix Verification)
+## Micro: marketplace.json version bump 3.27.0 -> 3.27.1
 
 ### Verdict: PASS
 
 | Check | Status | Details |
 |-------|--------|---------|
-| ADR-0027 Tests (scoped) | PASS | 36/36 passed, 0 failed, 0 skipped (0.13s) |
-| Poirot Finding 1: no git log shell imperative in extraction rules | PASS | SKILL.md line 305 explicitly states "no shell access, no `git log` commands" in the extraction rules section |
-| Poirot Finding 2: atelier_relation in subagent constraints | PASS | SKILL.md line 176: `atelier_relation` listed in the extraction agent `<constraints>` block |
-| Poirot Finding 3: skipped scouts excluded from completeness check | PASS | SKILL.md line 136: "Skipped scouts (per skip conditions above -- zero-file categories, user-excluded sources, or scope-based exclusions) are excluded from this check and do not count as mismatches." |
-| Poirot Finding 4: dry-run notes in Phase 2a and Phase 2b | PASS | Phase 2a: SKILL.md line 128 "Dry-Run Mode (Phase 2a)" subsection present. Phase 2b: SKILL.md line 187 "Dry-run mode (Phase 2b)" paragraph present |
-| Poirot Finding 5: preamble exemption note near invocation template | PASS | SKILL.md line 150: "Note: This subagent is the intentional exception to the agent-preamble rule..." appears immediately before the invocation template |
-| Poirot Finding 6: split rounding rule stated | PASS | SKILL.md line 124: "if the count is odd, the first sub-scout gets the larger half" |
-| Unfinished Markers | PASS | 0 TODO/FIXME/HACK/XXX in changed file |
-| Regression (pre-existing tests) | PASS | All 36 tests pass -- no regression introduced by Colby's fixes |
+| Version field reads 3.27.1 | PASS | `plugins[0].version` confirmed as "3.27.1" at line 11 |
+| No other fields changed | PASS | Diff shows exactly one line changed: version string only |
+| Diff is a single-line change | PASS | `-"version": "3.27.0"` / `+"version": "3.27.1"` -- all other fields identical |
+| TODO/FIXME/HACK/XXX grep | PASS | Zero markers in `.claude-plugin/marketplace.json` |
+| pytest full suite | PASS (baseline) | 1484 passed, 5 failed -- all 5 failures pre-existing, unrelated to this change |
+| brain node tests | PASS | 121 pass, 0 fail |
 
 ---
 
-## Requirements Verification
+### Requirements Verification
 
 | # | Requirement | Colby Claims | Roz Verified | Finding |
 |---|-------------|-------------|-------------|---------|
-| 1 | No git log shell imperative in extraction rules | Fixed | PASS | Line 305: "no shell access, no `git log` commands" -- Sonnet subagent explicitly prohibited from running shell commands in the Git History extraction section |
-| 2 | atelier_relation in subagent constraints | Fixed | PASS | Line 176: `atelier_relation` appears in the extraction agent `<constraints>` block, matching the constraint placement required by Poirot |
-| 3 | Skipped scouts excluded from completeness check | Fixed | PASS | Line 136: completeness check paragraph explicitly enumerates skip conditions and states they "do not count as mismatches" |
-| 4 | Dry-run notes in Phase 2a and 2b | Fixed | PASS | Both phases have their own dedicated dry-run subsection -- Phase 2a at line 128, Phase 2b at line 187 -- with distinct behaviors documented (scouts still fire in 2a; subagent must NOT call agent_capture in 2b) |
-| 5 | Preamble exemption note near invocation template | Fixed | PASS | Line 150: note is co-located with the invocation template in the `extract-capture` procedure, not isolated elsewhere |
-| 6 | Split rounding rule stated | Fixed | PASS | Line 124: "if the count is odd, the first sub-scout gets the larger half" -- unambiguous, deterministic |
+| 1 | `plugins[0].version` field set to "3.27.1" | Done | Confirmed at line 11 of `.claude-plugin/marketplace.json` | OK |
+| 2 | No other fields in the file changed | Done | Git diff shows single-line change: version string only | OK |
+| 3 | File is valid JSON | Done | File parses; all surrounding structure intact | OK |
 
 ---
 
-## Test Results
+### Change Verification
+
+Git diff against HEAD confirms the change is exactly what was specified:
 
 ```
-pytest tests/adr-0027/test_brain_hydrate_scout_fanout.py -v
-36 passed, 1 warning in 0.13s
+-      "version": "3.27.0",
++      "version": "3.27.1",
 ```
 
-All 36 tests pass: 10 structural (T-0027-001 through T-0027-010), 9 preservation
-(T-0027-011 through T-0027-019), 8 failure/edge (T-0027-020 through T-0027-027),
-4 integration (T-0027-028 through T-0027-031), 5 Roz-added (ROZ-001 through ROZ-005).
-
-No regressions. All tests that passed in the initial QA pass continue to pass.
-
----
-
-## Unfinished Markers
-
-`grep -r "TODO|FIXME|HACK|XXX"` in `skills/brain-hydrate/SKILL.md`: 0 matches.
+All other fields in `.claude-plugin/marketplace.json` are identical to HEAD:
+- `name`: "atelier-pipeline" -- unchanged
+- `description`: unchanged
+- `owner.name` and `owner.email`: unchanged
+- `plugins[0].name`: "atelier-pipeline" -- unchanged
+- `plugins[0].source`: "./" -- unchanged
+- `plugins[0].description`: unchanged
 
 ---
 
-## Issues Found
+### Unfinished Markers
 
-None. All 6 Poirot findings are correctly addressed.
-
-No BLOCKERs. No FIX-REQUIRED items.
-
-Pending items from prior QA pass (not affected by this fix):
-- `.claude/rules/pipeline-orchestration.md` sync (requires `/pipeline-setup`)
-- `.cursor-plugin/skills/brain-hydrate/SKILL.md` sync (requires `/pipeline-setup`)
-These remain unchanged -- Colby's 6-finding fix did not touch either file.
+`grep -r "TODO|FIXME|HACK|XXX"` in `.claude-plugin/marketplace.json`: 0 matches.
 
 ---
 
-## Doc Impact: YES
+### Issues Found
 
-`skills/brain-hydrate/SKILL.md` is the deliverable. All 6 fixes are in-place edits within
-that file. No separate documentation affected.
+None. No BLOCKERs. No FIX-REQUIRED items.
 
 ---
 
-## Roz's Assessment
+### Pre-existing Test Failures (not introduced by this change)
 
-Colby's 6-finding fix is clean and complete. Each Poirot finding maps to a specific
-line in SKILL.md and the fix is exact -- no over-engineering, no collateral changes.
-The two most structurally important fixes (Finding 1: no shell imperative; Finding 3:
-skipped scout exclusion from completeness check) are correctly placed at the logical
-boundary where the rule applies. Finding 4 (dry-run notes in both phases) correctly
-distinguishes the two behaviors: scouts still fire in Phase 2a dry-run to give the
-user a preview, but the Sonnet subagent writes nothing in Phase 2b dry-run. That
-asymmetry is preserved verbatim in the two subsections.
+Confirmed via stash round-trip: the same 5 pytest failures exist on HEAD before this Micro change is applied. Identical failure set with and without the marketplace.json change.
 
-All 36 ADR-0027 tests continue to pass. No regression.
+| Test | Failure | Cause |
+|------|---------|-------|
+| `test_T_0023_061_Darwin_persona_100_lines` | 133 lines > 100 limit | darwin.md persona exceeds ADR-0023 budget -- pre-existing |
+| `test_T_0023_130_pipeline_orchestration_md_650_lines` | 759 lines > 650 limit | pipeline-orchestration.md exceeds budget -- pre-existing |
+| `test_T_0023_150_Total_agent_persona_lines_across_12_agents_935` | 1026 > 1010 limit | Total agent lines exceeds tolerance -- pre-existing |
+| `test_T_0022_021_claude_hooks` | 20 .sh files != expected 19 | Hook count mismatch from prior wave -- pre-existing |
+| `test_T_0024_048_full_pytest_suite_passes` | Cascade from above 4 failures | Meta-test that asserts suite passes -- pre-existing |
+
+None of these tests reference `.claude-plugin/marketplace.json`. The Micro change introduces zero new failures.
+
+---
+
+### Doc Impact: NO
+
+`.claude-plugin/marketplace.json` is a distribution manifest. The version change aligns it with the installed version. No documentation requires updating.
+
+---
+
+### Roz's Assessment
+
+The Micro change is clean and surgically correct. Exactly one field was modified: `plugins[0].version` from "3.27.0" to "3.27.1". The JSON structure is intact, all surrounding fields are unchanged, and the version now matches what `installed_plugins.json` records (3.27.1), which resolves the Doctor mismatch the pipeline state file describes.
+
+Test suite baseline is unchanged: 5 pre-existing failures, all in ADR-0023 line-count budgets and hook count assertions that long predate this change. Brain tests pass cleanly (121/121).
+
+Micro safety valve satisfied: full test suite ran, no new failures introduced.
 
 **Verdict: PASS. Route to Ellis.**
