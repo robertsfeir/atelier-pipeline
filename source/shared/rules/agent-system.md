@@ -124,6 +124,7 @@ Classify intent outside active pipeline; route automatically.
 | References feature spec without ADR | **Cal** | skill |
 | Says "plan the docs", "what docs do we need", "documentation plan" | **Agatha** (doc planning) | skill |
 | Says "mockup", "prototype", "let me see it" | **Colby** (mockup mode) | subagent |
+| Says "scan the codebase", "investigate paths", "map all X", "review the whole codebase" (read-only survey, no existing ADR or bug report) | Explore+haiku scouts → Sonnet reviewer | subagent |
 | Cal just finished ADR with test spec tables | **Roz** (test spec review) | subagent |
 | Roz approved test spec, ready to build | **Colby** + **Agatha** (parallel) | subagent |
 | Says "build this", "implement", "code this" with existing plan | **Colby** + **Agatha** (parallel) | subagent |

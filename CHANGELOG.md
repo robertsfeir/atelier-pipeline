@@ -3,6 +3,11 @@
 All notable changes to Atelier Pipeline are documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
+## [3.27.1] - 2026-04-07
+
+### Fixed
+- **Classifier gap on codebase investigation tasks:** `Explore` agent was missing from the pipeline-models.md base-models table, causing the universal scope classifier to promote read-only codebase surveys (security mapping, architecture reviews) to Opus via the auth/security signal (+2) and file-count signal (+2). Added `Explore` as Haiku, classifier-exempt (like Distillator). Added `-3` scoring signal for read-only codebase scans to mechanically demote pure survey tasks. Added auto-routing intent row for "scan the codebase" to route to Explore+haiku scouts → Sonnet reviewer. Added compact `codebase-investigation` invocation template.
+
 ## [3.27.0] - 2026-04-07
 
 ### Added

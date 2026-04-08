@@ -39,6 +39,7 @@ scope classifier may promote any of these to Opus.
 | **Poirot** | Sonnet | Blind diff review; classifier promotes to Opus at final review juncture. |
 | **Sentinel** | Sonnet | Semgrep provides data; Sentinel interprets relevance; classifier promotes to Opus when auth/security files change. |
 | **Distillator** | Haiku | Mechanical compression with structured validation. No judgment required. Classifier does not apply. |
+| **Explore** | Haiku | File collection only — no synthesis, no judgment. Classifier does not apply. Always Haiku regardless of task scope or security signals. |
 
 </model-table>
 
@@ -74,6 +75,7 @@ from its base model to Opus. Distillator is always exempt (Haiku regardless).
 | Task is mechanical (rename, format, config) | -2 |
 | Pipeline sizing is Large | +1 |
 | Brain shows Sonnet failures on similar tasks for this agent | +3 |
+| Task is read-only codebase scan — collecting evidence, no ADR, no code changes | -3 |
 
 **Promotion threshold: Score >= 4 → Opus. Score < 4 → base model. Score <= -2 → Haiku (mechanical demotion).**
 

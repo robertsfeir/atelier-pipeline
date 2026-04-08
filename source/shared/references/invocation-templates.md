@@ -27,6 +27,7 @@ tool invocation. `duration_ms = end_time - start_time`.
 | 1 | cal-adr | Cal | ADR production (standard) |
 | 2 | cal-adr-large | Cal | ADR production with research brief (medium/large) |
 | 2a | scout-research-brief | Explore+haiku (x3) | Pre-Cal research scouts (medium+large) |
+| 2b | codebase-investigation | Explore+haiku (xN) → Sonnet reviewer | Ad-hoc codebase scan: partition by area, collect evidence, synthesize |
 | 3 | colby-mockup | Colby | UI mockup with mock data |
 | 4 | colby-build | Colby | Build unit; **CI Watch variant:** scope to CI fix |
 | 5 | roz-investigation | Roz | Bug investigation; **CI Watch variant:** CI logs in CONTEXT |
@@ -100,6 +101,11 @@ Three scouts launched in parallel by Eva. Each receives one focused prompt.
 <task>Identify source files likely in scope for [feature area]: files matching the feature name, adjacent modules, integration points, test files.</task>
 <constraints>- Return file paths only. Max 15 files. Prefer specific over broad.</constraints>
 <output>blast_radius_files: [path, ...]</output>
+</template>
+
+<template id="codebase-investigation">
+### Codebase Investigation (Explore+haiku → Sonnet)
+Ad-hoc read-only surveys (security mapping, architecture reviews, dependency tracing). No ADR, no code changes. Eva fans out parallel area scouts — `Agent(subagent_type: "Explore", model: "haiku")`, one concern per scout, facts only, `findings: [{file, line, description}]`. Passes evidence to `Agent(model: "sonnet")` via named `<scout-evidence>` blocks. Synthesis produces structured findings table with file:line evidence. DoR/DoD.
 </template>
 
 <template id="colby-mockup">
