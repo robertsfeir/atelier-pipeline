@@ -3,6 +3,16 @@
 All notable changes to Atelier Pipeline are documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
+## [3.27.3] - 2026-04-09
+
+### Added
+- **Atelier Hydrate MCP Tool:** New `atelier_hydrate` tool enables non-blocking JSONL telemetry hydration through the brain server's existing database connection. Replaces the standalone `hydrate-telemetry.mjs` script path that could not reliably resolve credentials in all environments. Called automatically from SessionStart hook; available on-demand via MCP interface.
+- **Scout Swarm Evidence Enforcement:** New `enforce-scout-swarm.sh` PreToolUse hook blocks Cal/Roz/Colby Agent invocations that lack required evidence blocks (research-brief for Cal; debug-evidence for Roz; qa-evidence for Colby). Respects micro/small pipeline skip conditions. Ensures high-context invocations and prevents orphan agent calls.
+
+### Changed
+- **Brain Hydration Refactoring:** Extracted hydration logic into shared `brain/lib/hydrate.mjs` module for reuse by both `hydrate-telemetry.mjs` (offline) and `atelier_hydrate` MCP tool (online). Improves consistency and maintainability.
+- **Session Boot Simplification:** `session-hydrate.sh` now exits immediately; hydration responsibility transferred to `atelier_hydrate` MCP tool invoked at session boot. Eliminates shell script race conditions and credential resolution issues.
+
 ## [3.27.2] - 2026-04-08
 
 ### Fixed
