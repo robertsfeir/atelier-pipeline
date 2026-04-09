@@ -26,6 +26,14 @@ import {
 // Tool Registration
 // =============================================================================
 
+/**
+ * Module-level status map for atelier_hydrate calls.
+ * Key: expanded session_path (string)
+ * Value: status object with shape:
+ *   { status, session_path, started_at, completed_at?, files_processed, files_skipped, thoughts_inserted, errors[] }
+ */
+const hydrateStatusMap = new Map();
+
 function registerTools(srv, pool, cfg) {
   const apiKey = cfg.openrouter_api_key;
   const capturedBy = cfg.capturedBy;
@@ -37,6 +45,7 @@ function registerTools(srv, pool, cfg) {
   registerAtelierRelation(srv, pool);
   registerAtelierTrace(srv, pool);
   registerAtelierHydrate(srv, pool, cfg);
+  registerAtelierHydrateStatus(srv);
 }
 
 // =============================================================================
@@ -627,24 +636,57 @@ function registerAtelierHydrate(srv, pool, cfg) {
     async ({ session_path }) => {
       const expandedPath = expandHome(session_path);
 
+      // Write initial "running" status before setImmediate so callers can
+      // poll atelier_hydrate_status immediately after the queued response.
+      hydrateStatusMap.set(expandedPath, {
+        status: "running",
+        session_path: expandedPath,
+        started_at: new Date().toISOString(),
+        completed_at: undefined,
+        files_processed: 0,
+        files_skipped: 0,
+        thoughts_inserted: 0,
+        errors: [],
+      });
+
       // Fire-and-forget: setImmediate schedules hydration after current event loop
       // tick so the MCP response returns immediately to the caller.
       setImmediate(async () => {
+        const entry = hydrateStatusMap.get(expandedPath);
         try {
           const subagentFiles = discoverSubagentFiles(expandedPath);
           const evaFiles = discoverEvaFiles(expandedPath);
 
           for (const file of subagentFiles) {
-            await hydrateSubagentFile(pool, cfg, file);
+            const inserted = await hydrateSubagentFile(pool, cfg, file);
+            if (inserted) {
+              entry.files_processed++;
+              entry.thoughts_inserted++;
+            } else {
+              entry.files_skipped++;
+            }
           }
           for (const file of evaFiles) {
-            await hydrateEvaFile(pool, cfg, file);
+            const inserted = await hydrateEvaFile(pool, cfg, file);
+            if (inserted) {
+              entry.files_processed++;
+              entry.thoughts_inserted++;
+            } else {
+              entry.files_skipped++;
+            }
           }
 
-          await generateTier3Summaries(pool, cfg);
+          const tier3Count = await generateTier3Summaries(pool, cfg);
+          entry.thoughts_inserted += tier3Count;
+
+          entry.status = "completed";
+          entry.completed_at = new Date().toISOString();
         } catch (err) {
           // Non-fatal: log only — the MCP response has already been sent
           console.error(`atelier_hydrate background error: ${err.message}`);
+          entry.status = "error";
+          entry.errors.push(err.message);
+          entry.completed_at = new Date().toISOString();
         }
       });
 
@@ -658,4 +700,37 @@ function registerAtelierHydrate(srv, pool, cfg) {
   );
 }
 
-export { registerTools };
+// =============================================================================
+// Tool 8: atelier_hydrate_status
+// =============================================================================
+
+function registerAtelierHydrateStatus(srv) {
+  srv.tool(
+    "atelier_hydrate_status",
+    "Returns the completion state of a previous atelier_hydrate call for the given session_path. Status is 'running' while processing, 'completed' on success, 'error' on failure, or 'idle' if no hydration has been queued for this path.",
+    {
+      session_path: z.string().min(1).describe("Absolute path passed to atelier_hydrate (same value, ~ expansion is applied automatically)"),
+    },
+    ({ session_path }) => {
+      const expandedPath = expandHome(session_path);
+      const entry = hydrateStatusMap.get(expandedPath);
+      const payload = entry
+        ? { ...entry }
+        : {
+            status: "idle",
+            session_path: expandedPath,
+            files_processed: 0,
+            files_skipped: 0,
+            thoughts_inserted: 0,
+            errors: [],
+            started_at: undefined,
+            completed_at: undefined,
+          };
+      return {
+        content: [{ type: "text", text: JSON.stringify(payload) }],
+      };
+    }
+  );
+}
+
+export { registerTools, hydrateStatusMap };

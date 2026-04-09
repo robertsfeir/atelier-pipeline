@@ -20,7 +20,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { createMockPool } from './helpers/mock-pool.mjs';
-import { registerTools } from '../../brain/lib/tools.mjs';
+import { registerTools, hydrateStatusMap } from '../../brain/lib/tools.mjs';
 import { resetBrainConfigCache } from '../../brain/lib/conflict.mjs';
 
 // ---------------------------------------------------------------------------
@@ -123,7 +123,7 @@ describe('atelier_hydrate MCP tool', () => {
   // ─────────────────────────────────────────────────────────────────────────
   it('T-HYDRATE-001: registerTools registers atelier_hydrate as the 7th tool', () => {
     assert.ok(srv.tools.has('atelier_hydrate'), 'atelier_hydrate must be registered');
-    assert.strictEqual(srv.tools.size, 7, 'Total tool count must be 7 (6 existing + atelier_hydrate)');
+    assert.strictEqual(srv.tools.size, 8, 'Total tool count must be 8 (6 existing + atelier_hydrate + atelier_hydrate_status)');
   });
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -286,5 +286,63 @@ describe('atelier_hydrate MCP tool', () => {
     for (const name of existingTools) {
       assert.ok(srv.tools.has(name), `Tool '${name}' must still be registered`);
     }
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // T-HYDRATE-013: atelier_hydrate_status returns "idle" for unknown path
+  // ─────────────────────────────────────────────────────────────────────────
+  it('T-HYDRATE-013: atelier_hydrate_status returns idle for a path that was never hydrated', () => {
+    hydrateStatusMap.clear();
+    const handler = getToolHandler('atelier_hydrate_status');
+    const result = handler({ session_path: '/tmp/never-hydrated-path-xyz' });
+
+    assert.ok(result.content, 'result must have content array');
+    const body = JSON.parse(result.content[0].text);
+    assert.strictEqual(body.status, 'idle');
+    assert.strictEqual(body.session_path, '/tmp/never-hydrated-path-xyz');
+    assert.strictEqual(body.files_processed, 0);
+    assert.strictEqual(body.files_skipped, 0);
+    assert.strictEqual(body.thoughts_inserted, 0);
+    assert.deepStrictEqual(body.errors, []);
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // T-HYDRATE-014: status transitions from "running" to "completed"
+  // ─────────────────────────────────────────────────────────────────────────
+  it('T-HYDRATE-014: status is "running" immediately after atelier_hydrate and "completed" after drain', async () => {
+    hydrateStatusMap.clear();
+    buildSessionDir(tmpDir);
+
+    const hydrateHandler = getToolHandler('atelier_hydrate');
+    const statusHandler = getToolHandler('atelier_hydrate_status');
+
+    // Kick off hydration — status should be "running" before setImmediate drains
+    await hydrateHandler({ session_path: tmpDir });
+
+    const runningBody = JSON.parse(statusHandler({ session_path: tmpDir }).content[0].text);
+    assert.strictEqual(runningBody.status, 'running', 'status must be "running" before setImmediate drains');
+    assert.ok(runningBody.started_at, 'started_at must be set when running');
+
+    // Drain setImmediate so background hydration completes
+    await drainSetImmediate();
+
+    const completedBody = JSON.parse(statusHandler({ session_path: tmpDir }).content[0].text);
+    assert.strictEqual(completedBody.status, 'completed', 'status must be "completed" after drain');
+    assert.ok(completedBody.completed_at, 'completed_at must be set after completion');
+    assert.ok(typeof completedBody.files_processed === 'number', 'files_processed must be a number');
+    assert.ok(typeof completedBody.files_skipped === 'number', 'files_skipped must be a number');
+    assert.ok(typeof completedBody.thoughts_inserted === 'number', 'thoughts_inserted must be a number');
+    assert.deepStrictEqual(completedBody.errors, [], 'errors must be empty on success');
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // T-HYDRATE-015: atelier_hydrate_status is registered as Tool 8
+  // ─────────────────────────────────────────────────────────────────────────
+  it('T-HYDRATE-015: atelier_hydrate_status is registered as the 8th tool', () => {
+    assert.ok(srv.tools.has('atelier_hydrate_status'), 'atelier_hydrate_status must be registered');
+    const toolDef = srv.tools.get('atelier_hydrate_status');
+    assert.ok(toolDef.description.toLowerCase().includes('session_path') ||
+              toolDef.description.toLowerCase().includes('status'),
+              'description must reference status behavior');
   });
 });
