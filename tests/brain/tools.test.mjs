@@ -63,14 +63,15 @@ describe('tools.mjs', () => {
   }
 
   describe('registerTools()', () => {
-    it('registers all 6 MCP tools', () => {
+    it('registers all 7 MCP tools', () => {
       assert.ok(srv.tools.has('agent_capture'));
       assert.ok(srv.tools.has('agent_search'));
       assert.ok(srv.tools.has('atelier_browse'));
       assert.ok(srv.tools.has('atelier_stats'));
       assert.ok(srv.tools.has('atelier_relation'));
       assert.ok(srv.tools.has('atelier_trace'));
-      assert.strictEqual(srv.tools.size, 6);
+      assert.ok(srv.tools.has('atelier_hydrate'));
+      assert.strictEqual(srv.tools.size, 7);
     });
   });
 

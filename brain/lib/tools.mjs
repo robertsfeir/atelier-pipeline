@@ -12,6 +12,15 @@ import {
 } from "./config.mjs";
 import { getEmbedding } from "./embed.mjs";
 import { detectConflicts, getBrainConfig } from "./conflict.mjs";
+import {
+  discoverSubagentFiles,
+  discoverEvaFiles,
+  hydrateSubagentFile,
+  hydrateEvaFile,
+  generateTier3Summaries,
+  parseStateFiles,
+  expandHome,
+} from "./hydrate.mjs";
 
 // =============================================================================
 // Tool Registration
@@ -27,6 +36,7 @@ function registerTools(srv, pool, cfg) {
   registerAtelierStats(srv, pool, cfg);
   registerAtelierRelation(srv, pool);
   registerAtelierTrace(srv, pool);
+  registerAtelierHydrate(srv, pool, cfg);
 }
 
 // =============================================================================
@@ -601,6 +611,51 @@ async function traverseForward(pool, thoughtId, maxDepth, visited, chain) {
       chain.push({ ...row, direction: "forward" });
     }
   }
+}
+
+// =============================================================================
+// Tool 7: atelier_hydrate
+// =============================================================================
+
+function registerAtelierHydrate(srv, pool, cfg) {
+  srv.tool(
+    "atelier_hydrate",
+    "Hydrate JSONL telemetry from a Claude Code project sessions directory into the brain. Non-blocking: queues processing via setImmediate and returns immediately. Idempotent — already-hydrated files are skipped.",
+    {
+      session_path: z.string().min(1).describe("Absolute path to the Claude Code project sessions directory (e.g. ~/.claude/projects/-Users-you-myproject)"),
+    },
+    async ({ session_path }) => {
+      const expandedPath = expandHome(session_path);
+
+      // Fire-and-forget: setImmediate schedules hydration after current event loop
+      // tick so the MCP response returns immediately to the caller.
+      setImmediate(async () => {
+        try {
+          const subagentFiles = discoverSubagentFiles(expandedPath);
+          const evaFiles = discoverEvaFiles(expandedPath);
+
+          for (const file of subagentFiles) {
+            await hydrateSubagentFile(pool, cfg, file);
+          }
+          for (const file of evaFiles) {
+            await hydrateEvaFile(pool, cfg, file);
+          }
+
+          await generateTier3Summaries(pool, cfg);
+        } catch (err) {
+          // Non-fatal: log only — the MCP response has already been sent
+          console.error(`atelier_hydrate background error: ${err.message}`);
+        }
+      });
+
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({ status: "queued", session_path: expandedPath }),
+        }],
+      };
+    }
+  );
 }
 
 export { registerTools };

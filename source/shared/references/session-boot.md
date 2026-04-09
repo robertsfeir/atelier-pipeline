@@ -36,6 +36,17 @@ inferred stop reason for posterity.
    - Gate 2: Does it return `brain_enabled: true`? (If not → brain disabled by user)
    - Both pass → set `brain_available: true` in pipeline state
    - Either fails → set `brain_available: false`, log reason, proceed baseline
+
+4b. **Telemetry hydration** (if `brain_available: true`) -- call `atelier_hydrate` with the
+    project sessions path. Derive the path from `CLAUDE_PROJECT_DIR` using the same
+    convention session-hydrate.sh used:
+    `~/.claude/projects/-{CLAUDE_PROJECT_DIR with / replaced by -}` (leading `/` becomes `-`).
+    Example: `CLAUDE_PROJECT_DIR=/Users/alice/projects/myapp` →
+    `~/.claude/projects/-Users-alice-projects-myapp`.
+    Non-blocking: `atelier_hydrate` returns `{status: "queued"}` immediately.
+    Do not await the result. Move directly to step 5 without waiting for hydration to complete.
+    When `brain_available: false`: skip this step entirely.
+
 5. **Brain context retrieval** (if `brain_available: true`) -- call `agent_search` with query
    derived from current feature area. Inject results alongside context-brief.md.
 5b. **Telemetry trend query** (OPTIONAL -- skip unless a pipeline is about to

@@ -10,17 +10,22 @@
  *
  * Example:
  *   node brain/scripts/hydrate-telemetry.mjs ~/.claude/projects/-Users-sfeirr-projects-atelier-pipeline
+ *
+ * Core functions are re-exported from this module so brain/lib/hydrate.mjs can
+ * share them with the atelier_hydrate MCP tool without duplicating logic.
+ * Guard: main() only runs when this module is the entry point (not on import).
  */
 
 import { readdirSync, readFileSync, statSync, existsSync } from "fs";
 import { createHash } from "crypto";
 import path from "path";
+import { fileURLToPath } from "url";
 import { resolveConfig } from "../lib/config.mjs";
 import { createPool, runMigrations } from "../lib/db.mjs";
 import { getEmbedding } from "../lib/embed.mjs";
 
 // =============================================================================
-// Scope Fallback Warning (fires once per script run)
+// Scope Fallback Warning (fires once per module lifetime)
 // =============================================================================
 
 let scopeWarningEmitted = false;
@@ -167,7 +172,7 @@ function discoverEvaFiles(projectPath) {
     entries = readdirSync(projectPath);
   } catch (err) {
     console.error(`Cannot read project path: ${projectPath} (${err.message})`);
-    process.exit(1);
+    return results;
   }
 
   for (const entry of entries) {
@@ -196,7 +201,7 @@ function discoverSubagentFiles(projectPath) {
     entries = readdirSync(projectPath);
   } catch (err) {
     console.error(`Cannot read project path: ${projectPath} (${err.message})`);
-    process.exit(1);
+    return results;
   }
 
   for (const entry of entries) {
@@ -587,6 +592,152 @@ async function generateTier3Summaries(pool, config) {
 }
 
 // =============================================================================
+// Per-File Hydration Helpers (shared with atelier_hydrate MCP tool via hydrate.mjs)
+// =============================================================================
+
+/**
+ * Hydrate a single subagent JSONL file into the brain database.
+ * Returns true if inserted, false if skipped (duplicate or error).
+ */
+async function hydrateSubagentFile(pool, config, { sessionId, agentId, jsonlPath, metaPath }) {
+  const duplicate = await alreadyHydrated(pool, sessionId, agentId);
+  if (duplicate) return false;
+
+  let agentType = "unknown";
+  let description = "";
+  if (metaPath && existsSync(metaPath)) {
+    try {
+      const meta = JSON.parse(readFileSync(metaPath, "utf-8"));
+      agentType   = meta.agentType   || "unknown";
+      description = meta.description || "";
+    } catch {
+      // non-fatal
+    }
+  }
+
+  let durationMs = 0;
+  let fileCreatedAt = null;
+  try {
+    const jsonlStat = statSync(jsonlPath);
+    const birthtimeMs = jsonlStat.birthtimeMs || jsonlStat.ctimeMs;
+    const modifiedAt  = jsonlStat.mtimeMs;
+    durationMs    = Math.max(0, modifiedAt - birthtimeMs);
+    fileCreatedAt = new Date(birthtimeMs).toISOString();
+  } catch {
+    // leave 0 / null
+  }
+
+  const { model, inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens, turnCount } =
+    parseJsonl(jsonlPath);
+
+  const totalAgentTokens = inputTokens + outputTokens + cacheReadTokens + cacheCreationTokens;
+  const cost = computeCost(model, inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens);
+
+  const costStr = cost !== null ? `$${cost.toFixed(6)}` : "cost unknown";
+  const descStr = description ? ` (${description})` : "";
+  const content = `Telemetry T1: ${agentType}${descStr} — ${model}, ${totalAgentTokens} tokens, ${costStr}`;
+
+  const metadata = {
+    telemetry_tier: 1,
+    agent_id: agentId,
+    agent_name: agentType,
+    agent_type: agentType,
+    description,
+    model,
+    input_tokens: inputTokens,
+    output_tokens: outputTokens,
+    cache_read_tokens: cacheReadTokens,
+    cache_creation_tokens: cacheCreationTokens,
+    total_tokens: totalAgentTokens,
+    duration_ms: durationMs,
+    cost_usd: cost,
+    turn_count: turnCount,
+    session_id: sessionId,
+    hydrated: true,
+  };
+
+  warnIfDefaultScope(config.scope);
+
+  try {
+    await insertTelemetryThought(pool, config, {
+      content,
+      metadata,
+      scope: config.scope || "default",
+      createdAt: fileCreatedAt,
+    });
+    return true;
+  } catch (err) {
+    console.error(`  Failed to insert ${agentId}: ${err.message}`);
+    return false;
+  }
+}
+
+/**
+ * Hydrate a single Eva (parent session) JSONL file into the brain database.
+ * Returns true if inserted, false if skipped (duplicate or error).
+ */
+async function hydrateEvaFile(pool, config, { sessionId, agentId, jsonlPath }) {
+  const duplicate = await alreadyHydrated(pool, sessionId, agentId);
+  if (duplicate) return false;
+
+  let durationMs = 0;
+  let fileCreatedAt = null;
+  try {
+    const jsonlStat = statSync(jsonlPath);
+    const birthtimeMs = jsonlStat.birthtimeMs || jsonlStat.ctimeMs;
+    const modifiedAt  = jsonlStat.mtimeMs;
+    durationMs    = Math.max(0, modifiedAt - birthtimeMs);
+    fileCreatedAt = new Date(birthtimeMs).toISOString();
+  } catch {
+    // leave 0 / null
+  }
+
+  const { model, inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens, turnCount } =
+    parseJsonl(jsonlPath);
+
+  const totalAgentTokens = inputTokens + outputTokens + cacheReadTokens + cacheCreationTokens;
+  const cost = computeCost(model, inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens);
+
+  const costStr = cost !== null ? `$${cost.toFixed(6)}` : "cost unknown";
+  const description = "Eva (orchestrator) — main thread";
+  const content = `Telemetry T1: eva (${description}) — ${model}, ${totalAgentTokens} tokens, ${costStr}`;
+
+  const metadata = {
+    telemetry_tier: 1,
+    agent_id: agentId,
+    agent_name: "eva",
+    agent_type: "eva",
+    description,
+    model,
+    input_tokens: inputTokens,
+    output_tokens: outputTokens,
+    cache_read_tokens: cacheReadTokens,
+    cache_creation_tokens: cacheCreationTokens,
+    total_tokens: totalAgentTokens,
+    duration_ms: durationMs,
+    cost_usd: cost,
+    turn_count: turnCount,
+    session_id: sessionId,
+    hydrated: true,
+  };
+
+  warnIfDefaultScope(config.scope);
+
+  try {
+    await insertTelemetryThought(pool, config, {
+      content,
+      metadata,
+      scope: config.scope || "default",
+      createdAt: fileCreatedAt,
+    });
+    return true;
+  } catch (err) {
+    console.error(`  Failed to insert Eva ${agentId}: ${err.message}`);
+    return false;
+  }
+}
+
+// =============================================================================
 // Main
 // =============================================================================
 
@@ -842,7 +993,37 @@ async function main() {
   await pool.end();
 }
 
-main().catch((err) => {
-  console.error("Fatal:", err.message);
-  process.exit(1);
-});
+// =============================================================================
+// Exports (shared with atelier_hydrate MCP tool via brain/lib/hydrate.mjs)
+// =============================================================================
+
+export {
+  expandHome,
+  discoverEvaFiles,
+  discoverSubagentFiles,
+  alreadyHydrated,
+  hydrateSubagentFile,
+  hydrateEvaFile,
+  insertTelemetryThought,
+  generateTier3Summaries,
+  parseStateFiles,
+  parseJsonl,
+  computeCost,
+  lookupPricing,
+  warnIfDefaultScope,
+  stateItemAlreadyHydrated,
+};
+
+// Guard: only run main() when this is the entry point, not when imported as a module.
+// This allows brain/lib/hydrate.mjs to re-export these functions without triggering
+// the CLI main() path (which would call process.exit on missing args).
+const isEntryPoint = process.argv[1] &&
+  (process.argv[1] === fileURLToPath(import.meta.url) ||
+   process.argv[1].endsWith("hydrate-telemetry.mjs"));
+
+if (isEntryPoint) {
+  main().catch((err) => {
+    console.error("Fatal:", err.message);
+    process.exit(1);
+  });
+}
