@@ -3,6 +3,11 @@
 All notable changes to Atelier Pipeline are documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
+## [3.27.4] - 2026-04-09
+
+### Added
+- **Atelier Hydrate Status MCP Tool:** New `atelier_hydrate_status` tool (Tool 8) returns completion state (running/completed/error/idle), file counts (processed, skipped, thoughts_inserted), errors array, and timestamps for a previous `atelier_hydrate` call. Enables non-blocking async hydration monitoring without polling the shell.
+
 ## [3.27.3] - 2026-04-09
 
 ### Added
