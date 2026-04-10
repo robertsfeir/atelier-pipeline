@@ -164,7 +164,31 @@ For remote PostgreSQL, the URL includes the remote host and SSL parameters:
 
 Set `brain_config.brain_enabled = true` in the database via `PUT /api/config`.
 
-### Step 8: Confirm
+### Step 8: Pre-approve Brain MCP Tools
+
+To allow the brain to work without interruption (including in background hook agents), I'll add the atelier-brain tools to your project's `permissions.allow` in `.claude/settings.json`. This means Claude Code won't prompt you each time a brain tool is called.
+
+**Idempotency check:** Read `.claude/settings.json` and check whether all 8 tools below are already present in `permissions.allow`. If all 8 are already present, skip this step silently and proceed to Step 9.
+
+The tools to be added:
+
+- `mcp__plugin_atelier-pipeline_atelier-brain__agent_capture`
+- `mcp__plugin_atelier-pipeline_atelier-brain__agent_search`
+- `mcp__plugin_atelier-pipeline_atelier-brain__atelier_stats`
+- `mcp__plugin_atelier-pipeline_atelier-brain__atelier_hydrate`
+- `mcp__plugin_atelier-pipeline_atelier-brain__atelier_hydrate_status`
+- `mcp__plugin_atelier-pipeline_atelier-brain__atelier_browse`
+- `mcp__plugin_atelier-pipeline_atelier-brain__atelier_relation`
+- `mcp__plugin_atelier-pipeline_atelier-brain__atelier_trace`
+
+Ask the user:
+
+> "Add these to permissions.allow? (Recommended yes)"
+
+- **If yes (or accepted):** Read `.claude/settings.json`, merge the 8 tool names into the `permissions.allow` array (dedup — skip any already present), and write the file back.
+- **If no:** Note: "Brain tools will require manual approval on each call. Background captures via the brain-extractor hook may be silently blocked."
+
+### Step 9: Confirm
 
 Print a confirmation message:
 
@@ -218,7 +242,27 @@ The pipeline will run in baseline mode until these are configured.
 Add them to your shell profile or .env file (not committed to git).
 ```
 
-### Step 3: No Further Interaction
+### Step 3: Pre-approve Brain MCP Tools
+
+**Idempotency check:** Read `.claude/settings.json` and check whether all 8 tools below are already present in `permissions.allow`. If all 8 are already present, skip this step silently and proceed to Step 4.
+
+Path B is non-interactive, so do not ask — just act:
+
+1. Read `.claude/settings.json`.
+2. Merge any of the following tools not already in `permissions.allow` into that array:
+   - `mcp__plugin_atelier-pipeline_atelier-brain__agent_capture`
+   - `mcp__plugin_atelier-pipeline_atelier-brain__agent_search`
+   - `mcp__plugin_atelier-pipeline_atelier-brain__atelier_stats`
+   - `mcp__plugin_atelier-pipeline_atelier-brain__atelier_hydrate`
+   - `mcp__plugin_atelier-pipeline_atelier-brain__atelier_hydrate_status`
+   - `mcp__plugin_atelier-pipeline_atelier-brain__atelier_browse`
+   - `mcp__plugin_atelier-pipeline_atelier-brain__atelier_relation`
+   - `mcp__plugin_atelier-pipeline_atelier-brain__atelier_trace`
+3. Write the file back.
+4. If any tools were added, print: "Added [N] brain tool(s) to permissions.allow."
+5. If all tools were already present, skip silently.
+
+### Step 4: No Further Interaction
 
 Path B is non-interactive beyond env var guidance. Do not prompt for database setup, scope, or other configuration -- the shared config already has everything.
 
