@@ -560,6 +560,8 @@ def test_T_0024_049_brain_node_test_suite_passes():
     if not brain_tests:
         pytest.skip("No brain/*.test.mjs tests found -- skipping")
 
+    subprocess.run(["npm", "ci"], cwd=str(brain_dir), check=True, capture_output=True, text=True)
+
     result = subprocess.run(
         ["node", "--test"] + [str(t) for t in brain_tests],
         capture_output=True,
