@@ -3,6 +3,16 @@
 All notable changes to Atelier Pipeline are documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
+## [3.27.5] - 2026-04-10
+
+### Fixed
+- **brain-extractor silent capture failure:** `agent_capture` was absent from the brain-extractor agent's `tools` allowlist, causing every MCP call to be silently blocked. The agent's own "brain unavailable → exit cleanly" fallback masked the failure — captures appeared to succeed but nothing landed in the brain. Adding `agent_capture` to the allowlist restores automatic post-agent knowledge extraction for cal, colby, roz, and agatha.
+- **brain-setup missing permissions pre-approval:** Brain-setup now adds all 8 atelier-brain MCP tools to `permissions.allow` in `.claude/settings.json` during setup (Path A interactive, Path B silent). Prevents per-call approval prompts and ensures background hook agents like brain-extractor are not silently blocked by the tool permission gate.
+- **Node brain tests fail on clean checkout:** `test_T_0024_049_brain_node_test_suite_passes` now runs `npm ci` in `brain/` before invoking `node --test`. Previously, the test assumed `node_modules` was present; a fresh clone without pre-installed deps would fail with `ERR_MODULE_NOT_FOUND`.
+
+### Changed
+- **ADR-0023 line cap compliance restored:** `source/shared/agents/darwin.md` compressed from 134 to 100 lines; `source/shared/rules/pipeline-orchestration.md` compressed from 759 to 647 lines. Both were above their ADR-0023 structural caps due to content added after the reduction target was set.
+
 ## [3.27.4] - 2026-04-09
 
 ### Added
