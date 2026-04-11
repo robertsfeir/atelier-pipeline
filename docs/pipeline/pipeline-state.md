@@ -2,8 +2,9 @@
 
 ## Active Pipeline
 **Feature:** Source hook enforcement audit — fix all review findings
-**Phase:** build (wave 1 complete — pending Ellis commit)
-<!-- PIPELINE_STATUS: {"phase": "build", "sizing": "medium", "roz_qa": "PASS", "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": true, "robert_reviewed": false, "brain_available": true} -->
+**Phase:** review
+<!-- PIPELINE_STATUS: {"phase": "review", "sizing": "medium", "roz_qa": "PASS", "telemetry_captured": true, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": true, "robert_reviewed": true, "brain_available": true} -->
+<!-- Robert: skipped — ADR-0033 is infrastructure-only with no user-facing surface (ADR §UX Coverage: N/A). No product spec exists or is required. Smart context detection: no spec in docs/product/ for this feature. -->
 **Sizing:** Medium
 **Started:** 2026-04-11
 
@@ -66,8 +67,8 @@ only. .claude/ is not touched.
 - [x] Ellis → Wave 1 commit: 460381f (23 files, 1382 insertions)
 - [x] Colby → implement (wave 2: SKILL.md, Steps 8-10, 5/5 tests PASS)
 - [x] Roz QA Wave 2: 5/5 PASS. Poirot: 3 MUST-FIX resolved, 3 accepted.
-- [ ] Ellis → Wave 2 commit
-- [ ] Robert review
-- [ ] Agatha → update impacted docs if any
-- [ ] Ellis → final push
+- [x] Ellis → Wave 2 commit: 9b73eec (2 files)
+- [x] Robert → skipped (no spec/UI — ADR-0033 is infrastructure only, N/A per ADR)
+- [x] Agatha → docs/guide/technical-reference.md + docs/product/mechanical-brain-writes.md updated (11 locations, 9-agent scope + Agatha source_phase correction)
+- [ ] Ellis → final commit + push
 <!-- COMPACTION: 2026-04-11T20:55:08Z -->

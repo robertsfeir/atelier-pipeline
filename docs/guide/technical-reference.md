@@ -852,7 +852,7 @@ The config file also supports an optional `brain_name` field -- a display name f
 
 ### Hybrid Capture Model
 
-Brain writes from Cal, Colby, Roz, and Agatha are **mechanical**: when any of these four agents completes, a `SubagentStop` `"type": "agent"` hook launches a lightweight Haiku extractor (`brain-extractor`). The extractor reads the parent agent's `last_assistant_message`, identifies decisions, patterns, lessons, and seeds worth preserving, and calls `agent_capture` using the correct `source_agent`, `thought_type`, `source_phase`, and `importance` values. No agent instruction is required -- the pipeline captures knowledge automatically on every completion.
+Brain writes from Cal, Colby, Roz, Agatha, Robert, Robert-spec, Sable, Sable-ux, and Ellis are **mechanical**: when any of these nine agents completes, a `SubagentStop` `"type": "agent"` hook launches a lightweight Haiku extractor (`brain-extractor`). The extractor reads the parent agent's `last_assistant_message`, identifies decisions, patterns, lessons, and seeds worth preserving, and calls `agent_capture` using the correct `source_agent`, `thought_type`, `source_phase`, and `importance` values. No agent instruction is required -- the pipeline captures knowledge automatically on every completion.
 
 **Agent-to-metadata mapping (extractor-assigned):**
 
@@ -861,7 +861,12 @@ Brain writes from Cal, Colby, Roz, and Agatha are **mechanical**: when any of th
 | Cal   | `cal`          | `design`       |
 | Colby | `colby`        | `build`        |
 | Roz   | `roz`          | `qa`           |
-| Agatha | `agatha`      | `docs`         |
+| Agatha | `agatha`      | `handoff`      |
+| Robert | `robert`      | `product`      |
+| Robert-spec | `robert-spec` | `product`  |
+| Sable | `sable`        | `ux`           |
+| Sable-ux | `sable-ux`  | `ux`           |
+| Ellis | `ellis`        | `commit`       |
 
 **Extractor behavior:**
 - Captures only what the parent agent explicitly stated -- never fabricates

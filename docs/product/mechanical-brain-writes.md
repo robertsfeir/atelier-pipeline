@@ -14,7 +14,9 @@
 | 9 | Background hydration extension (hydrate-telemetry.mjs) is explicitly out of scope | Seed: scope note |
 | 10 | No new MCP tools, no brain schema changes | Seed: scope note |
 
-**Retro risks:** Lesson #003 (stop hook race condition) — the new agent hook fires on every SubagentStop. It MUST be scoped to the four brain-access agents (cal, colby, roz, agatha) via `if:` condition. A Haiku agent that itself triggers SubagentStop could create a capture loop. The extractor agent must be filtered out of its own hook condition.
+**Retro risks:** Lesson #003 (stop hook race condition) — the new agent hook fires on every SubagentStop. It is scoped to nine production agents (cal, colby, roz, agatha, robert, robert-spec, sable, sable-ux, ellis) via `if:` condition. A Haiku agent that itself triggers SubagentStop could create a capture loop. The extractor agent must be filtered out of its own hook condition.
+
+**Status update (ADR-0033):** The scope expanded from four target agents to nine. See ADR-0033 § Consequences (G1) for full rationale.
 
 ---
 
@@ -40,15 +42,15 @@ Pipeline maintainers and users running the atelier-pipeline with brain enabled. 
 
 ## Business Value
 
-- **Reliability:** Every Cal, Colby, Roz, and Agatha completion triggers a brain write attempt — not dependent on the agent remembering to call `agent_capture`
+- **Reliability:** Every Cal, Colby, Roz, Agatha, Robert, Robert-spec, Sable, Sable-ux, and Ellis completion triggers a brain write attempt — not dependent on the agent remembering to call `agent_capture`
 - **Persona clarity:** Removing brain capture behavioral sections from four agent persona files reduces persona length and eliminates a class of agent instruction the agent was already frequently ignoring
 - **Hook simplification:** Replacing two partial-enforcement hooks (prompt advisory + warning) with one mechanical hook reduces hook surface and eliminates dead-weight script maintenance
-- **KPI:** Brain write call rate for the four target agents rises from opportunistic (current: unmeasured, known incomplete) to mechanical (post-feature: one extractor invocation per agent completion when brain is available)
+- **KPI:** Brain write call rate for the target agents rises from opportunistic (current: unmeasured, known incomplete) to mechanical (post-feature: one extractor invocation per agent completion when brain is available). Extended from four to nine agents in ADR-0033 to cover all production agents with meaningful output.
 - **Measurement:** Compare `agent_capture` calls in brain per pipeline run before and after. Track via `atelier_stats` thought counts across pipeline runs.
 
 ## User Stories
 
-1. As a pipeline maintainer, I want brain writes to happen automatically when Cal, Colby, Roz, or Agatha completes, so I don't have to audit persona files to verify capture compliance
+1. As a pipeline maintainer, I want brain writes to happen automatically when any production agent completes, so I don't have to audit persona files to verify capture compliance
 2. As a pipeline maintainer, I want agent persona files to contain only functional instructions, so new agents are easier to write and existing agents are easier to tune
 3. As a pipeline user, I want the brain to accumulate structured knowledge from every pipeline run without any Eva behavioral overhead, so brain retrieval quality improves over time without token cost increases
 
@@ -56,7 +58,7 @@ Pipeline maintainers and users running the atelier-pipeline with brain enabled. 
 
 No user-visible flow change. The feature is entirely infrastructure:
 
-1. Cal, Colby, Roz, or Agatha completes (SubagentStop fires)
+1. Any of the nine target agents completes (SubagentStop fires)
 2. Mechanical hook launches Haiku extractor agent
 3. Haiku reads `last_assistant_message` from hook input, extracts structured knowledge (decisions, patterns, lessons), calls `agent_capture` with appropriate `source_agent`, `thought_type`, `source_phase`, and `importance` values
 4. Brain server receives the capture, handles embedding, dedup, and conflict detection
@@ -66,7 +68,7 @@ No user-visible flow change. The feature is entirely infrastructure:
 
 **Hook type change.** The current `warn-brain-capture.sh` is a `"type": "command"` hook (a shell script that exits 0). The replacement is a `"type": "agent"` hook entry in `settings.json` SubagentStop configuration. The `"type": "agent"` hook launches a Haiku subagent synchronously (within the SubagentStop event) with the hook input as context.
 
-**Scoping requirement.** The `if:` condition on the new hook must restrict invocation to the four brain-access agents: `agent_type == 'cal' || agent_type == 'colby' || agent_type == 'roz' || agent_type == 'agatha'`. The Haiku extractor itself must not match this condition (i.e., the extractor `agent_type` must not be one of these four strings) to prevent a capture loop.
+**Scoping requirement.** The `if:` condition on the new hook restricts invocation to the nine production agents: `agent_type == 'cal' || agent_type == 'colby' || agent_type == 'roz' || agent_type == 'agatha' || agent_type == 'robert' || agent_type == 'robert-spec' || agent_type == 'sable' || agent_type == 'sable-ux' || agent_type == 'ellis'`. The Haiku extractor itself must not match this condition (i.e., the extractor `agent_type` must not be one of these nine strings) to prevent a capture loop.
 
 **Extractor contract.** The Haiku extractor receives `last_assistant_message` and the `agent_type` from the hook input. It outputs zero or more `agent_capture` calls. It does not read files, does not write files, and does not invoke other agents. Its only output is brain captures. It extracts:
 - Decisions (architectural choices, scope decisions, trade-off resolutions)
@@ -117,7 +119,7 @@ Content that does not fit these categories is not captured. The extractor uses t
 ## Scope
 
 **In scope:**
-- New `"type": "agent"` SubagentStop hook targeting cal, colby, roz, agatha
+- New `"type": "agent"` SubagentStop hook targeting cal, colby, roz, agatha, robert, robert-spec, sable, sable-ux, ellis (extended in ADR-0033)
 - Haiku extractor agent persona/prompt (minimal — instructions + output contract)
 - settings.json SubagentStop block update (add agent hook, remove prompt-brain-capture and warn-brain-capture entries)
 - Deletion of `source/claude/hooks/warn-brain-capture.sh`
@@ -183,7 +185,7 @@ Small pipeline. Two deliverables: (1) new hook wiring + Haiku extractor persona,
 
 | # | Requirement | Status | Evidence |
 |---|-------------|--------|----------|
-| 1 | Agent hook fires for cal, colby, roz, agatha | Specified | AC-1 through AC-4 |
+| 1 | Agent hook fires for cal, colby, roz, agatha, robert, robert-spec, sable, sable-ux, ellis | Specified | AC-1 through AC-9 (extended in ADR-0033) |
 | 2 | Agent hook does not fire for other agents | Specified | AC-5 |
 | 3 | No capture loop | Specified | AC-6 |
 | 4 | Graceful skip when brain unavailable | Specified | AC-7 |
