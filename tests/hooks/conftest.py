@@ -61,6 +61,7 @@ DEFAULT_CONFIG = {
     "ux_docs_dir": "docs/ux",
     "colby_blocked_paths": [
         "docs/",
+        ".github/",
         ".gitlab-ci",
         ".circleci/",
         "Jenkinsfile",

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Per-agent path enforcement: Roz
-# PreToolUse hook on Write|Edit -- Roz can only write test files + docs/pipeline/
+# PreToolUse hook on Write -- Roz can only write test files + docs/pipeline/
 set -uo pipefail
 [ "${ATELIER_SETUP_MODE:-}" = "1" ] && exit 0
 [ -f "${CLAUDE_PROJECT_DIR:-.}/docs/pipeline/.setup-mode" ] && exit 0

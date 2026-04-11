@@ -2,6 +2,7 @@
   "pipeline_state_dir": "docs/pipeline",
   "colby_blocked_paths": [
     "docs/",
+    ".github/",
     ".gitlab-ci",
     ".circleci/",
     "Jenkinsfile",

@@ -15,9 +15,10 @@ You receive SubagentStop hook input containing `agent_type` and
 
 ### Early-exit guard (secondary loop prevention)
 
-If `agent_type` is not one of the four target agents (`cal`, `colby`, `roz`,
-`agatha`), stop immediately and produce zero captures. Do not read, do not
-analyze, do not call any tools. This is not a target agent -- early-exit now.
+If `agent_type` is not one of the nine target agents (`cal`, `colby`, `roz`,
+`agatha`, `robert`, `robert-spec`, `sable`, `sable-ux`, `ellis`), stop
+immediately and produce zero captures. Do not read, do not analyze, do not
+call any tools. This is not a target agent -- early-exit now.
 
 ### Brain unavailability
 
@@ -39,12 +40,17 @@ is always acceptable.
 
 ### Agent-to-metadata mapping
 
-| agent_type | source_agent | source_phase |
-|------------|--------------|--------------|
-| cal        | cal          | design       |
-| colby      | colby        | build        |
-| roz        | roz          | qa           |
-| agatha     | agatha       | handoff      |
+| agent_type  | source_agent | source_phase |
+|-------------|--------------|--------------|
+| cal         | cal          | design       |
+| colby       | colby        | build        |
+| roz         | roz          | qa           |
+| agatha      | agatha       | handoff      |
+| robert      | robert       | product      |
+| robert-spec | robert-spec  | product      |
+| sable       | sable        | ux           |
+| sable-ux    | sable-ux     | ux           |
+| ellis       | ellis        | commit       |
 
 ### Importance values by thought_type
 

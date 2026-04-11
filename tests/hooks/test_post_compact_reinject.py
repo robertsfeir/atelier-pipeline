@@ -120,3 +120,60 @@ def test_T_0020_050_security_no_error_patterns(hook_env):
     assert "UNIQUE_CONTEXT_BRIEF_MARKER_50" in r.stdout
     assert "UNIQUE_ERROR_PATTERNS_MARKER_50" not in r.stdout
     assert "UNIQUE_INVESTIGATION_LEDGER_MARKER_50" not in r.stdout
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# ADR-0033 Step 5 (m3): Brain Protocol Reminder wording and scope
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def test_T_0033_027_brain_protocol_reminder_wording_and_scope(hook_env):
+    """post-compact-reinject.sh Brain Protocol Reminder must:
+      (a) contain "reminds" (not "injects") — the hook is advisory only,
+          it does not automatically inject anything.
+      (b) list only cal/colby/roz (no agatha) — matches the narrowed
+          prompt-brain-prefetch.sh scope from ADR-0033 Step 6 (G2).
+
+    Old line 57:
+      "- Prefetch hook: prompt-brain-prefetch.sh (before Agent) injects brain
+       context for cal/colby/roz/agatha."
+    New line 57:
+      "- Prefetch hook: prompt-brain-prefetch.sh (before Agent) reminds Eva to
+       call agent_search for cal/colby/roz before invoking them. Eva injects
+       results into <brain-context>."
+    """
+    (hook_env / "docs" / "pipeline" / "pipeline-state.md").write_text(
+        "# Pipeline State\n\nFeature: ADR-0033 hook audit fixes\n"
+    )
+    r = run_hook_with_project_dir("post-compact-reinject.sh", "", hook_env)
+    assert r.returncode == 0
+
+    # (a) "reminds" present, "injects brain" no longer present.
+    assert "reminds" in r.stdout, (
+        f"Brain Protocol Reminder must contain 'reminds' — the hook is advisory. "
+        f"Output:\n{r.stdout}"
+    )
+    assert "injects brain" not in r.stdout, (
+        f"Brain Protocol Reminder still says 'injects brain' — that claim was false. "
+        f"Output:\n{r.stdout}"
+    )
+
+    # (b) Locate the Prefetch-hook bullet line. It must list cal/colby/roz but NOT agatha.
+    prefetch_line = None
+    for line in r.stdout.splitlines():
+        if "prompt-brain-prefetch.sh" in line:
+            prefetch_line = line
+            break
+    assert prefetch_line is not None, (
+        f"Could not find prompt-brain-prefetch.sh bullet in Brain Protocol Reminder. "
+        f"Output:\n{r.stdout}"
+    )
+    for required in ("cal", "colby", "roz"):
+        assert required in prefetch_line, (
+            f"Prefetch bullet missing '{required}'. Line: {prefetch_line!r}"
+        )
+    # Specifically reject "cal/colby/roz/agatha" pattern — agatha was narrowed out.
+    assert "agatha" not in prefetch_line, (
+        f"Prefetch bullet still references agatha — ADR-0033 Step 5 (m3) + Step 6 "
+        f"narrows the scope to cal/colby/roz. Line: {prefetch_line!r}"
+    )

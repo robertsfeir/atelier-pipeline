@@ -46,3 +46,40 @@ def test_T_ROZ_003_write_source_file_blocked(hook_env):
     r = run_hook_with_project_dir(HOOK, inp, hook_env)
     assert r.returncode == 2
     assert "BLOCKED" in r.stdout
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# ADR-0033 Step 5 (m1): header comment matches actual case statement
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def test_T_0033_026_header_comment_says_write_not_write_edit():
+    """enforce-roz-paths.sh header comment (line 3) must say "Write" — not
+    "Write|Edit" — because the case statement on line 16 only matches Write.
+
+    Old: `# PreToolUse hook on Write|Edit -- Roz can only write test files + docs/pipeline/`
+    New: `# PreToolUse hook on Write -- Roz can only write test files + docs/pipeline/`
+
+    This is a pure documentation fix. Behavior is unchanged. Preventing drift
+    between the comment and the case statement so future readers aren't misled.
+    """
+    from conftest import PROJECT_ROOT
+    hook_path = PROJECT_ROOT / "source" / "claude" / "hooks" / "enforce-roz-paths.sh"
+    assert hook_path.exists(), f"enforce-roz-paths.sh missing at {hook_path}"
+    lines = hook_path.read_text().splitlines()
+    # Find the header-comment line that describes the PreToolUse registration.
+    header_line = None
+    for line in lines[:10]:
+        if "PreToolUse" in line and "Roz" in line:
+            header_line = line
+            break
+    assert header_line is not None, (
+        "Could not find the header-comment line describing PreToolUse + Roz"
+    )
+    assert "Write|Edit" not in header_line, (
+        f"Header comment still says 'Write|Edit'. ADR-0033 Step 5 (m1) fixes "
+        f"this to match the actual case statement. Current header: {header_line!r}"
+    )
+    assert "Write" in header_line, (
+        f"Header comment lost 'Write' token entirely. Current: {header_line!r}"
+    )

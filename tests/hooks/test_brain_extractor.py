@@ -437,3 +437,184 @@ def test_T_0024_029b_installed_warn_brain_capture_absent():
         "Wave 3 cleanup must remove this script from the installed directory "
         "as well as source/claude/hooks/ (ADR-0024 R8, AC-11)."
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# ADR-0033 Step 7 (G1): extend brain-extractor agent_type scope to 9 agents
+# ═══════════════════════════════════════════════════════════════════════
+#
+# T-0033-018: persona early-exit guard lists all 9 target agent types
+# T-0033-019: persona agent-to-metadata table has 9 unique rows
+# T-0033-028: frontmatter uses `model: haiku` stable alias
+# T-0033-029: frontmatter description lists 9 agent types
+#
+# Colby MUST NOT modify these assertions.
+
+
+EXPECTED_9_AGENTS = [
+    "cal", "colby", "roz", "agatha",
+    "robert", "robert-spec", "sable", "sable-ux", "ellis",
+]
+
+
+def test_T_0033_018_extractor_early_exit_guard_lists_nine_agents():
+    """The early-exit guard paragraph in brain-extractor.md must reference all
+    9 target agent types (cal, colby, roz, agatha, robert, robert-spec,
+    sable, sable-ux, ellis).
+
+    Implementation note: the guard is a single prose paragraph that lists the
+    target set. This test finds the paragraph containing "early-exit" or
+    "not one of" and asserts every expected agent name appears within it.
+    """
+    assert EXTRACTOR_PERSONA.exists(), "brain-extractor.md not found"
+    persona_text = EXTRACTOR_PERSONA.read_text()
+
+    # Locate the early-exit guard section body. The persona has a markdown
+    # section `### Early-exit guard ...` followed by a paragraph that lists the
+    # target agents. We grab everything from the heading to the next section
+    # heading (or the end of file).
+    section_match = re.search(
+        r"###\s+Early-exit guard[^\n]*\n(.*?)(?=\n###\s|\n##\s|\Z)",
+        persona_text,
+        re.DOTALL,
+    )
+    assert section_match is not None, (
+        "Could not locate the `### Early-exit guard` section in brain-extractor.md"
+    )
+    guard_paragraph = section_match.group(1)
+
+    for agent in EXPECTED_9_AGENTS:
+        assert agent in guard_paragraph, (
+            f"Early-exit guard missing agent '{agent}'. "
+            f"ADR-0033 Step 7 (G1) expands the target list to 9 agents. "
+            f"Guard paragraph:\n{guard_paragraph}"
+        )
+
+
+def test_T_0033_019_extractor_metadata_table_has_nine_unique_rows():
+    """The agent-to-metadata mapping table in brain-extractor.md must contain
+    9 data rows (one per target agent) with unique (agent_type, source_agent,
+    source_phase) tuples.
+
+    ADR-0033 Step 7 table:
+      cal         | cal         | design
+      colby       | colby       | build
+      roz         | roz         | qa
+      agatha      | agatha      | handoff
+      robert      | robert      | product
+      robert-spec | robert-spec | product
+      sable       | sable       | ux
+      sable-ux    | sable-ux    | ux
+      ellis       | ellis       | commit
+    """
+    assert EXTRACTOR_PERSONA.exists(), "brain-extractor.md not found"
+    text = EXTRACTOR_PERSONA.read_text()
+
+    # Find the agent-to-metadata mapping table. It's a markdown table with
+    # header "agent_type" / "source_agent" / "source_phase".
+    # Simplest approach: scan lines that look like `| name | name | phase |`
+    # and filter out the header/separator.
+    rows: list[tuple[str, str, str]] = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("|") or not stripped.endswith("|"):
+            continue
+        cells = [c.strip() for c in stripped.strip("|").split("|")]
+        if len(cells) != 3:
+            continue
+        # Skip header and separator rows
+        if cells[0] == "agent_type":
+            continue
+        if set("".join(cells)) <= set("-:"):  # e.g. "---", "----"
+            continue
+        # Must look like a real row: no dashes-only, contains letters
+        if not re.search(r"[a-z]", cells[0]):
+            continue
+        rows.append((cells[0], cells[1], cells[2]))
+
+    # Filter to rows whose agent_type is in the expected 9-agent set.
+    agent_rows = [r for r in rows if r[0] in EXPECTED_9_AGENTS]
+
+    assert len(agent_rows) >= 9, (
+        f"Agent-to-metadata table should have at least 9 matching rows, "
+        f"found {len(agent_rows)}. Rows: {agent_rows}"
+    )
+
+    # Every expected agent appears exactly once.
+    agent_types_in_table = [r[0] for r in agent_rows]
+    for expected in EXPECTED_9_AGENTS:
+        assert agent_types_in_table.count(expected) == 1, (
+            f"agent_type '{expected}' should appear exactly once in the "
+            f"metadata table. Count: {agent_types_in_table.count(expected)}"
+        )
+
+    # Tuples unique (no duplicate agent_type → source_agent → source_phase).
+    assert len(set(agent_rows)) == len(agent_rows), (
+        f"Duplicate rows in metadata table: {agent_rows}"
+    )
+
+    # Spot-check specific rows per ADR-0033 Step 7.
+    expected_rows = {
+        "cal":         ("cal",         "design"),
+        "colby":       ("colby",       "build"),
+        "roz":         ("roz",         "qa"),
+        "agatha":      ("agatha",      "handoff"),
+        "robert":      ("robert",      "product"),
+        "robert-spec": ("robert-spec", "product"),
+        "sable":       ("sable",       "ux"),
+        "sable-ux":    ("sable-ux",    "ux"),
+        "ellis":       ("ellis",       "commit"),
+    }
+    for row in agent_rows:
+        agent_type, source_agent, source_phase = row
+        if agent_type not in expected_rows:
+            continue
+        expected_source, expected_phase = expected_rows[agent_type]
+        assert source_agent == expected_source, (
+            f"Row for {agent_type}: source_agent={source_agent!r}, "
+            f"expected {expected_source!r}"
+        )
+        assert source_phase == expected_phase, (
+            f"Row for {agent_type}: source_phase={source_phase!r}, "
+            f"expected {expected_phase!r}"
+        )
+
+
+def test_T_0033_028_extractor_frontmatter_model_is_haiku_alias():
+    """brain-extractor.frontmatter.yml must use the stable `model: haiku`
+    alias rather than a dated string like `claude-haiku-4-5-20251001`.
+
+    ADR-0033 Step 5 (m5): avoids pinning to a dated model string that goes
+    stale on every Anthropic release.
+    """
+    assert EXTRACTOR_FRONTMATTER.exists(), "brain-extractor.frontmatter.yml not found"
+    fm = parse_frontmatter(EXTRACTOR_FRONTMATTER)
+    model = fm.get("model")
+    assert model == "haiku", (
+        f"brain-extractor model should be exactly 'haiku' (stable alias). "
+        f"Got {model!r}. ADR-0033 Step 5 (m5) replaces the dated model string "
+        f"with the stable alias."
+    )
+
+
+def test_T_0033_029_extractor_frontmatter_description_lists_nine_agents():
+    """brain-extractor.frontmatter.yml description field must list all 9
+    target agent types (cal, colby, roz, agatha, robert, robert-spec, sable,
+    sable-ux, ellis).
+
+    The description is user-facing documentation in the Claude Code agent
+    picker. It must match the persona's target set (Step 7).
+    """
+    assert EXTRACTOR_FRONTMATTER.exists(), "brain-extractor.frontmatter.yml not found"
+    fm = parse_frontmatter(EXTRACTOR_FRONTMATTER)
+    description = fm.get("description", "")
+    assert description, "brain-extractor frontmatter missing description field"
+
+    # The description is a single folded string after YAML parsing.
+    description_str = str(description)
+    for agent in EXPECTED_9_AGENTS:
+        assert agent in description_str, (
+            f"Description missing agent type '{agent}'. "
+            f"ADR-0033 Step 7 (G1) expands the description to list 9 agents. "
+            f"Current description: {description_str!r}"
+        )
