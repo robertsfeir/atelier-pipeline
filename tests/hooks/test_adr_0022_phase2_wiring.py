@@ -127,9 +127,13 @@ def test_T_0022_144_lifecycle_hooks():
     assert "prompt-brain-prefetch.sh" in skill
 
 
-def test_T_0022_145_ellis_no_hooks():
+def test_T_0022_145_ellis_hooks():
+    # Ellis now has path enforcement -- gap closed by enforce-ellis-paths.sh
     fm = (CLAUDE_DIR / "agents" / "ellis.frontmatter.yml").read_text()
-    assert "hooks:" not in fm
+    assert "hooks:" in fm
+    assert "enforce-ellis-paths.sh" in fm
+    assert re.search(r"matcher:.*Write.*Edit.*MultiEdit|matcher:.*Write\|Edit\|MultiEdit", fm)
+    assert "PreToolUse" in fm
 
 
 # ═══ Step 2f: Eva Routing + Documentation ════════════════════════════

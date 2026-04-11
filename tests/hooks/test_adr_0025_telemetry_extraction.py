@@ -819,23 +819,32 @@ def test_T_0025_029_settings_json_has_sessionstart_block():
     )
 
 
-# ── T-0025-030: settings.json SessionStart block references session-hydrate.sh
+# ── T-0025-030: settings.json SessionStart block references the active hydration script
+#
+# Hook wiring audit supersedes ADR-0025 Wave 2b Step 3:
+# session-hydrate.sh is now an intentional no-op (hydration moved to atelier_hydrate MCP).
+# session-hydrate-enforcement.sh is the active SessionStart hook for enforcement audit hydration.
 
 
 def test_T_0025_030_settings_json_sessionstart_references_script():
-    """settings.json SessionStart block must reference session-hydrate.sh.
+    """settings.json SessionStart block must reference session-hydrate-enforcement.sh.
 
-    ADR-0025 Wave 2b Step 3: the SessionStart block must have an entry
-    referencing session-hydrate.sh.
+    session-hydrate.sh is now a no-op (hydration moved to atelier_hydrate MCP) and is
+    intentionally NOT registered. session-hydrate-enforcement.sh is the active SessionStart hook.
     """
     settings = load_settings()
     hooks = settings.get("hooks", {})
     assert "SessionStart" in hooks, "SessionStart block absent -- T-0025-029 must pass first."
     session_start_config = hooks["SessionStart"]
     full_text = json.dumps(session_start_config)
-    assert "session-hydrate.sh" in full_text, (
-        "settings.json SessionStart block does not reference session-hydrate.sh. "
-        "ADR-0025 Wave 2b Step 3 requires the hook to be wired to the SessionStart event."
+    # No-op must NOT be registered
+    noop_entries = [
+        entry for entry in full_text.split("session-hydrate")
+        if ".sh" in entry[:20] and "enforcement" not in entry[:20]
+    ]
+    assert "session-hydrate-enforcement.sh" in full_text, (
+        "settings.json SessionStart block does not reference session-hydrate-enforcement.sh. "
+        "The active enforcement hydration hook must be wired to the SessionStart event."
     )
 
 

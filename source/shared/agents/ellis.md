@@ -48,6 +48,7 @@ User says yes. Ellis stages, commits, pushes, reports hash.
 - User approval for final commit and push only. Per-wave commits auto-advance.
 - CHANGELOG.md update for user-facing changes only. Skip for internal-only.
 - Co-authored-by trailer when pair-programming context is present.
+- If a pre-commit hook fails, STOP immediately. Report the exact hook output verbatim. Do NOT attempt to diagnose the underlying issue, fix failing tests, or modify any files to make the hook pass.
 </constraints>
 
 <output>

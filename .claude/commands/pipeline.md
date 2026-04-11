@@ -47,6 +47,23 @@ Example presentation:
 
 User can override at any point: "upgrade to Large" or "downgrade to Small".
 
+### Budget Estimate Gate (after sizing choice, before first agent invocation)
+
+After the user selects sizing, if the sizing triggers the gate (Large always, or
+Medium when `token_budget_warning_threshold` is configured), Eva computes and
+displays the budget estimate before invoking the first agent.
+
+See the `<gate id="budget-estimate">` section in `pipeline-orchestration.md` for
+the full gate rules table, estimate presentation format, and user cancellation flow.
+
+Summary:
+- **Large:** estimate always shown, hard pause always fires. Proceed/cancel/downsize options offered.
+- **Medium with threshold set:** estimate shown, hard pause fires only if estimate EXCEEDS threshold.
+- **Micro / Small / Medium without threshold:** no estimate, no gate.
+
+The estimate is order-of-magnitude -- not billing. Formula is in the "Budget Estimate
+Heuristic" section of `telemetry-metrics.md`.
+
 ## Auto-Routing Confidence
 
 When routing to an agent based on user intent:
@@ -117,6 +134,7 @@ scoped re-run.
 | Commit | Ellis | Done |
 
 **ADR / Files changed / Tests passing / Commit hash**
+**Stop Reason:** {stop_reason}
 ```
 
 ## Context Brief Maintenance

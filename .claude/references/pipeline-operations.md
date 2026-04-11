@@ -470,6 +470,7 @@ wait for user input
 | `ci_watch_active` | boolean | Whether a watch is currently running |
 | `ci_watch_retry_count` | integer | Number of fix cycles completed in this session |
 | `ci_watch_commit_sha` | string | SHA of the commit being watched |
+| `stop_reason` | string | Terminal pipeline stop reason (enum; see pipeline-orchestration.md `terminal-transition` protocol for canonical values). Written by Eva at every terminal transition (phase -> idle). Set to `null` while a pipeline is active. Read as `legacy_unknown` when absent (pre-ADR-0028 pipelines). Never written as `legacy_unknown` -- that value is a read-time inference only. |
 
 **Watch replacement:** When Ellis pushes again while a watch is active, Eva sets `ci_watch_active: false` on the old watch and starts a new watch for the new commit SHA. Only one watch is active at a time.
 
@@ -492,6 +493,12 @@ accumulators: `telemetry_total_invocations`, `telemetry_total_cost_usd`, and `te
 **Upgrade safety:** On the first pipeline after upgrade, PIPELINE_STATUS will lack telemetry fields.
 Eva initializes absent telemetry fields to zero defaults: `telemetry_total_invocations: 0`,
 `telemetry_total_cost_usd: null`, `telemetry_rework_by_unit: {}`. No crash, no undefined values.
+
+**Upgrade safety (stop_reason):** PIPELINE_STATUS entries from pre-ADR-0028 pipelines lack the
+`stop_reason` key. Eva reads absent `stop_reason` as `legacy_unknown` -- no crash, no undefined
+behavior. When session-boot detects a stale pipeline (non-idle phase with no `stop_reason`), it
+infers `stop_reason: "session_crashed"` and includes this in the boot JSON output for Eva to
+recover with. `legacy_unknown` is a read-time inference only -- Eva never writes that value.
 
 </operations>
 

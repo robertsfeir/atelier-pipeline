@@ -26,6 +26,7 @@ JIT loading. `[ALWAYS]` sections load at pipeline activation. `[JIT]` sections l
 | Investigation Discipline | JIT | Debug flow entered |
 | State File Descriptions | JIT | First state write |
 | Phase Sizing Rules | JIT | Pipeline sizing decision |
+| Budget Estimate Gate | JIT | Pipeline sizing decision |
 
 </section>
 
@@ -81,74 +82,29 @@ pipeline?" The user decides — seeds are suggestions, not requirements.
 
 ## Telemetry Capture Protocol (when brain is available)
 
-All captures use `thought_type: 'insight'`, `source_agent: 'eva'`,
-`source_phase: 'telemetry'`, `metadata.pipeline_id` (set at pipeline start).
-Eva reads `telemetry-metrics.md` at pipeline start for metric schemas and cost tables.
-When `brain_available: false`, skip all captures. In-memory accumulators still run.
+Captures use `thought_type: 'insight'`, `source_agent: 'eva'`, `source_phase: 'telemetry'`, `metadata.pipeline_id`. Eva reads `telemetry-metrics.md` at pipeline start. `brain_available: false` -> skip captures; in-memory accumulators still run.
 
-### Tier 1 (per-invocation, in-memory only)
+**Tier 1 (per-invocation, in-memory):** After every Agent completion, record duration/model/tokens/cost into accumulators (`total_cost`, `total_invocations`, `invocations_by_agent/model`). NOT captured individually -- bulk-captured at T2. Micro: T1 only.
 
-After every Agent tool completion: record duration, extract model/tokens/cost
-from result, add to accumulators (`total_cost`, `total_invocations`,
-`invocations_by_agent/model`, per-invocation records). NOT captured to brain
-individually -- bulk-captured at Tier 2. Micro pipelines: Tier 1 only.
+**Tier 2 (per-wave, best-effort):** Single `agent_capture` after each wave passes Roz QA. Per-unit: `rework_cycles`, `first_pass_qa`, `unit_cost_usd`. Wave: `finding_counts`, `finding_convergence`, `evoscore_delta`. `importance: 0.5`, `metadata.telemetry_tier: 2`. `evoscore_delta = (tests_after - tests_broken) / tests_before` (0 tests = 1.0). On failure: log and continue. Skipped on Micro.
 
-### Tier 2 (per-wave, best-effort)
+**Tier 3 (per-pipeline, best-effort):** At pipeline end after Ellis commit. Aggregate: `rework_rate`, `first_pass_qa_rate`, `evoscore`, `phase_durations`, `total_cost_usd`, `total_duration_ms`, `agent_failures`. `importance: 0.7`, `metadata.telemetry_tier: 3`. Success -> set `telemetry_captured: true` in PIPELINE_STATUS (Ellis gate requires it). Failure -> do NOT set flag. Skipped on Micro.
 
-After each wave passes Roz QA, single `agent_capture` per wave:
-- Per-unit: `rework_cycles`, `first_pass_qa`, `unit_cost_usd`
-- Wave: `finding_counts`, `finding_convergence`, `evoscore_delta`
-- `importance: 0.5`, `metadata.telemetry_tier: 2`, includes bulk T1 data
-- `evoscore_delta = (tests_after - tests_broken) / tests_before` (0 tests = 1.0)
-- On failure: log and continue. Skipped on Micro.
-
-### Tier 3 (per-pipeline, best-effort)
-
-At pipeline end after Ellis final commit:
-- Aggregate from accumulators + T2: `rework_rate`, `first_pass_qa_rate`, `evoscore`,
-  `phase_durations`, `total_cost_usd`, `total_duration_ms`, `agent_failures`
-- `importance: 0.7`, `metadata.telemetry_tier: 3`
-- On success: set `telemetry_captured: true` in PIPELINE_STATUS (required for Ellis gate)
-- On failure: do NOT set flag -- gate blocks Ellis, prompting retry
-- Skipped on Micro.
-
-### Pipeline-End Telemetry Summary
-
-Standard format:
+**Pipeline-End Summary format:**
 ```
 Pipeline complete. Telemetry summary:
   Cost: ${total_cost_usd} ({agent}: ${agent_cost}, ...)
-  Duration: {total_duration_min} min ({phase}: {phase_duration_min} min, ...)
-  Rework: {rework_rate} cycles/unit ({total_units} units, {first_pass_count} first-pass QA)
-  EvoScore: {evoscore} ({tests_before} tests before, {tests_after} after, {tests_broken} broken)
+  Duration: {total_duration_min} min | Rework: {rework_rate} cycles/unit
+  EvoScore: {evoscore} ({tests_before} before, {tests_after} after, {tests_broken} broken)
   Findings: Roz {N}, Poirot {N}, Robert {N} (convergence: {N} shared)
 ```
-Micro: `Telemetry: {invocation_count} invocations, {total_duration_min} min`
-Cost unavailable: print "Cost: unavailable (token counts not exposed)".
-Post-summary: "Tip: Run /telemetry-hydrate to capture detailed token usage."
+Micro: `Telemetry: {invocation_count} invocations, {total_duration_min} min`. Cost unavailable: "Cost: unavailable". Post-summary: "Tip: Run /telemetry-hydrate to capture detailed token usage."
 
-### Darwin Auto-Trigger (at pipeline end)
+**Darwin Auto-Trigger:** Fires when ALL: `darwin_enabled: true`, `brain_available: true`, degradation alert fired, sizing != Micro. Eva pre-fetches T3 + prior Darwin proposals + error-patterns.md, invokes Darwin. User approves/rejects/modifies each proposal individually (hard pause). Approved: capture + route Colby + Roz verify + Ellis commit. Rejected: capture with reason. Does not block pipeline completion.
 
-Fires when ALL: `darwin_enabled: true`, `brain_available: true`, degradation
-alert fired, sizing != Micro. Eva pre-fetches T3 telemetry + prior Darwin
-proposals + error-patterns.md, invokes Darwin. User approves/rejects/modifies
-each proposal individually (hard pause). Approved: capture + route to Colby
-+ Roz verify + Ellis commit. Rejected: capture with reason. Does not block
-pipeline completion.
+**Pattern Staleness (pipeline end):** Check `thought_type: 'pattern'` thoughts for files modified this pipeline. >50% churn -> invalidate via `atelier_relation` supersedes. 20-50% -> append warning.
 
-### Pattern Staleness Check (pipeline end)
-
-After pipeline (and Darwin if applicable): check `thought_type: 'pattern'`
-thoughts referencing files modified in this pipeline. >50% churn since capture
-= invalidate via `atelier_relation` supersedes. 20-50% churn = append warning.
-
-### Dashboard Bridge (post-pipeline, PlanVisualizer only)
-
-If `dashboard_mode: "plan-visualizer"`: run `{config_dir}/dashboard/telemetry-bridge.sh`.
-Failure is never a blocker. `claude-code-kanban` or `none`: skip entirely.
-
-Eva boot dashboard announcement: `plan-visualizer` -> "Dashboard: PlanVisualizer",
-`claude-code-kanban` -> "Dashboard: claude-code-kanban", `none`/absent -> omit.
+**Dashboard Bridge (post-pipeline):** `dashboard_mode: "plan-visualizer"` -> run `{config_dir}/dashboard/telemetry-bridge.sh`. Never a blocker. `claude-code-kanban` or `none` -> skip. Boot announcement: `plan-visualizer` -> "Dashboard: PlanVisualizer", `claude-code-kanban` -> "Dashboard: claude-code-kanban", `none`/absent -> omit.
 
 </protocol>
 
@@ -290,6 +246,85 @@ the same severity as Eva editing source code.
     tokens and produce increasingly degraded output.
 
 </gate>
+
+<protocol id="terminal-transition">
+
+## Terminal Transition Protocol [ALWAYS]
+
+Eva writes `stop_reason` to pipeline-state.md at **every** terminal pipeline
+transition -- the same write that sets `phase: idle`. The field appears as
+both a markdown field (`**Stop Reason:** {value}`) and a key in the
+PIPELINE_STATUS JSON comment (`"stop_reason": "{value}"`).
+
+**Canonical enum** (closed -- Eva does not invent values at runtime):
+
+| Value | When Eva writes it |
+|-------|-------------------|
+| `completed_clean` | Ellis final commit/push succeeds with no accepted drift or divergence |
+| `completed_with_warnings` | Pipeline completes but Agatha divergence or Robert/Sable DRIFT was accepted (not fixed) |
+| `roz_blocked` | Roz BLOCKER that the user chose not to fix, or gate 12 loop-breaker fires and user abandons |
+| `user_cancelled` | User explicitly says "stop", "cancel", or "abandon" during an active pipeline |
+| `hook_violation` | A PreToolUse hook blocks an agent action that cannot be retried, and user abandons |
+| `budget_threshold_reached` | User declines to proceed after token budget estimate gate |
+| `brain_unavailable` | Pipeline requires brain (e.g., Darwin auto-trigger) and brain is down; user abandons |
+| `session_crashed` | Inferred at next session boot when a stale pipeline has no `stop_reason` (never written in real time -- Eva cannot write during a crash) |
+| `scope_changed` | Cal discovers scope-changing information and user decides to re-plan rather than continue |
+| `legacy_unknown` | Read-only sentinel for pre-ADR-0028 pipelines that lack the field entirely -- never written by Eva, only inferred on read |
+
+**Extension rule:** New stop reasons are added by a new ADR that supersedes the
+enum table above. Eva never adds values at runtime.
+
+**`legacy_unknown` is read-only.** Eva never writes `legacy_unknown` to
+pipeline-state.md. It is a read-time inference only, applied when a reader
+encounters a pipeline-state.md that has no `stop_reason` field (pre-ADR-0028
+file). Eva writes one of the nine active values; the reader synthesizes
+`legacy_unknown` when the field is absent.
+
+### State Write Procedure
+
+At every terminal transition (phase -> idle), Eva writes pipeline-state.md:
+
+```
+**Phase:** idle
+**Stop Reason:** {stop_reason_value}
+```
+
+And updates PIPELINE_STATUS JSON:
+```json
+{"phase": "idle", "sizing": null, "roz_qa": null, "telemetry_captured": false, "stop_reason": "{stop_reason_value}"}
+```
+
+### Trigger Conditions
+
+| Current Phase | Trigger | Stop Reason |
+|--------------|---------|-------------|
+| Any active phase | Ellis final commit succeeds, no accepted drift | `completed_clean` |
+| Any active phase | Ellis final commit succeeds + accepted drift/divergence | `completed_with_warnings` |
+| build / review | Roz BLOCKER + user abandons, or gate 12 fires + user abandons | `roz_blocked` |
+| Any active phase | User says "stop" / "cancel" / "abandon" | `user_cancelled` |
+| Any active phase | Hook blocks + unrecoverable + user abandons | `hook_violation` |
+| pre-pipeline (sizing) | User declines after budget estimate gate | `budget_threshold_reached` |
+| Any active phase | Brain required + unavailable + user abandons | `brain_unavailable` |
+| Any active phase | Session ends without clean transition | `session_crashed` (inferred at boot by session-boot) |
+| architecture | Cal scope-changing discovery + user re-plans | `scope_changed` |
+
+### T3 Telemetry Capture
+
+At pipeline end, Eva includes `stop_reason` in the T3 brain capture:
+
+```json
+{
+  "metadata": {
+    "telemetry_tier": 3,
+    "pipeline_id": "{pipeline_id}",
+    "stop_reason": "{stop_reason_value}"
+  }
+}
+```
+
+This enables `agent_search` filtering by stop reason: `filter: { stop_reason: "roz_blocked" }`.
+
+</protocol>
 
 <protocol id="observation-masking">
 
@@ -450,6 +485,43 @@ All scouts are `Agent(subagent_type: "Explore", model: "haiku")`. Explore agents
 
 </section>
 
+<gate id="budget-estimate">
+
+## Budget Estimate Gate [JIT -- Pipeline sizing decision]
+
+Fires after user picks sizing, before first agent invocation. Formula and cost tables in `telemetry-metrics.md` "Budget Estimate Heuristic". Config: `token_budget_warning_threshold` in `pipeline-config.json` (`number | null`, default `null`).
+
+| Sizing | threshold absent/null | threshold configured |
+|--------|----------------------|---------------------|
+| Micro/Small | No gate | No gate |
+| Medium | No gate | Estimate shown; hard pause only if EXCEEDS threshold |
+| Large | Estimate + hard pause (always) | Estimate + hard pause + threshold comparison |
+
+Hard pause = Eva waits for explicit user response. Large always hard-pauses regardless of threshold. Label "order-of-magnitude -- not billing" required on every presentation.
+
+**Large format:**
+```
+Pipeline estimate (order-of-magnitude -- not billing):
+  Sizing: Large | Steps: [N or "TBD -- estimated after Cal"] | Agents: [roster count]
+  Estimated cost: $X.XX -- $Y.YY
+  [Threshold: $Z.ZZ -- estimate EXCEEDS threshold / within threshold]
+Proceed? (yes / cancel / downsize to Medium)
+```
+**Medium format (threshold configured):**
+```
+Pipeline estimate (order-of-magnitude -- not billing):
+  Sizing: Medium | Steps: [N or "TBD"] | Agents: [roster count]
+  Estimated cost: $X.XX -- $Y.YY | Threshold: $Z.ZZ -- [within / EXCEEDS]
+Proceed? (yes / cancel)
+```
+"Downsize to Medium" appears only in Large prompt.
+
+**On cancel:** Write `stop_reason: budget_threshold_reached` (or `user_cancelled` if ADR-0028 not yet implemented). Announce: "Pipeline cancelled. Stop reason: budget threshold. Consider: (a) downsize to Medium/Small, (b) break into smaller increments, (c) adjust threshold." Transition to idle.
+
+**Brain integration:** Record estimate in memory; include in T3 metadata: `budget_estimate_low`, `budget_estimate_high`. With 5+ prior T3 captures: announce historical accuracy at boot (informational, formula not auto-tuned). Absent threshold -> no gate for Micro/Small/Medium; Large still hard-pauses.
+
+</gate>
+
 <protocol id="invocation-dor-dod">
 
 ## Subagent Invocation & DoR/DoD Verification
@@ -528,9 +600,7 @@ User overrides: "skip to [agent]", "back to [agent]", "stop".
 
 ### Context Cleanup Advisory
 
-Compaction API manages context automatically. Eva suggests fresh session only
-when: (a) response quality visibly degrades, (b) pipeline spans multiple days.
-Pipeline state preserved in `{pipeline_state_dir}` for recovery.
+Compaction API manages context automatically. Eva suggests fresh session only when: (a) response quality visibly degrades, (b) pipeline spans multiple days. Pipeline state preserved in `{pipeline_state_dir}` for recovery.
 
 </section>
 
@@ -556,12 +626,7 @@ After Sable completes the UX doc, Colby builds a **mockup** (real UI, mock data)
 - ADRs are immutable. Cal writes a new ADR to supersede; original marked "Superseded by ADR-NNN."
 - All commits follow Conventional Commits with narrative body. {changelog_file} in Keep a Changelog format.
 - **No mock data in production code paths.** Mock data only on mockup routes for UAT. Cal flags wiring in ADR. Colby never promotes without real APIs. Roz greps for `MOCK_`, `INITIAL_`, hardcoded arrays -- BLOCKER if found.
-- **Agatha's divergence report ships in the pipeline report.** When Agatha
-  produces a Divergence Report (documenting gaps between code and docs),
-  Eva summarizes the divergence findings in the final pipeline report
-  written to `{pipeline_state_dir}/pipeline-state.md`. Divergence findings
-  that are silently dropped -- not summarized, not acted on -- are the same
-  class of violation as skipping spec reconciliation.
+- **Agatha's divergence report ships in the pipeline report.** Agatha's Divergence Report (code-vs-docs gaps) must be summarized in `{pipeline_state_dir}/pipeline-state.md`. Silently dropped divergence findings are the same class of violation as skipping spec reconciliation.
 
 </gate>
 
@@ -569,46 +634,18 @@ After Sable completes the UX doc, Colby builds a **mockup** (real UI, mock data)
 
 ## CI Watch Protocol
 
-Opt-in, session-scoped protocol that monitors CI after Ellis pushes. See
-`pipeline-operations.md` for platform commands, polling pseudocode, log truncation.
+Opt-in, session-scoped. Monitors CI after Ellis pushes. Platform commands, polling pseudocode, log truncation: see `pipeline-operations.md`.
 
-### Activation & State
+**Activation:** `ci_watch_enabled: true` AND Ellis just pushed. PIPELINE_STATUS fields: `ci_watch_active`, `ci_watch_retry_count`, `ci_watch_commit_sha`, plus standard fields. Eva reads config, announces watch, launches background polling (30s intervals, 60s timeout). `ci_watch_poll_command` unconfigured -> skip.
 
-Activates when `ci_watch_enabled: true` AND Ellis just pushed. PIPELINE_STATUS
-fields: `ci_watch_active`, `ci_watch_retry_count`, `ci_watch_commit_sha`,
-plus standard `phase`, `sizing`, `roz_qa`, `telemetry_captured`.
+**On CI Pass:** Notify user, set `ci_watch_active: false`, capture brain pattern.
 
-### Watch Launch
+**On CI Failure:** Pull logs (200 lines/job) -> Roz diagnoses (autonomous) -> Colby fixes (autonomous) -> Roz verifies (autonomous) -> **HARD PAUSE**: present summary + fix + verdict + retry count.
+- User approves: Ellis pushes, increment retry, `roz_qa: CI_VERIFIED` (single-use), re-launch watch for new SHA. Reset `roz_qa` after Ellis consumes.
+- User rejects or Ellis blocked: stop watch, user handles manually.
 
-Eva reads config, announces watch, launches background polling (30s intervals,
-60s timeout per command). If `ci_watch_poll_command` unconfigured: skip.
+**Timeout/Exhaustion/Failure:** 30 min -> prompt keep/abandon. Retry exhaustion -> stop + cumulative summary. Roz/Colby failure -> stop immediately, user handles. New push while active -> replace watch, reset retry. One watch at a time.
 
-### On CI Pass
-
-Notify user, set `ci_watch_active: false`, capture brain pattern.
-
-### On CI Failure
-
-1. Pull logs (200 lines/job) -> 2. Roz diagnoses (autonomous) -> 3. Colby fixes
-(autonomous) -> 4. Roz verifies (autonomous) -> 5. **HARD PAUSE**: present
-summary + fix + verdict + retry count to user.
-- User approves: Ellis pushes, increment retry, `roz_qa: CI_VERIFIED` (single-use),
-  re-launch watch for new SHA. Reset `roz_qa` after Ellis consumes.
-- User rejects: stop watch, user handles manually.
-- Ellis push blocked: stop watch, notify user.
-
-### Timeout / Exhaustion / Agent Failure
-
-30 min timeout -> prompt keep/abandon. Retry exhaustion -> stop + cumulative
-summary. Roz/Colby failure during auto-fix -> stop immediately, user handles.
-
-### Watch Replacement
-
-New push while active: replace watch, reset retry count. One watch at a time.
-
-### Brain Capture
-
-After resolution: `agent_capture` with `thought_type: 'pattern'`,
-`source_phase: 'ci-watch'`, content: failure pattern + fix + outcome.
+**Brain Capture:** After resolution: `agent_capture` `thought_type: 'pattern'`, `source_phase: 'ci-watch'`, content: failure pattern + fix + outcome.
 
 </protocol>

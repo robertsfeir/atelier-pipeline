@@ -113,10 +113,63 @@ check_block_present() {
   echo "$PROMPT" | grep -qF "<${tag}" 2>/dev/null
 }
 
+# Check that a block both exists and has sufficient content (>= 50 chars).
+# Strategy: collapse the prompt to a single line so sed can match across
+# newlines, wrap the capture in sentinels to distinguish "matched empty" from
+# "no match", then measure content length. Fails-open if no match (closing tag
+# absent or structure ambiguous). Blocks empty/whitespace-only blocks and
+# blocks with extracted content under 50 chars.
+# Returns 0 if block has sufficient content or extraction is ambiguous, 1 if too short.
+check_block_content() {
+  local tag="$1"
+  local min_len=50
+  local sentinel_start="__BLOCK_START__"
+  local sentinel_end="__BLOCK_END__"
+
+  # Block must be present at all (opening tag check)
+  if ! check_block_present "$tag"; then
+    return 1
+  fi
+
+  # Collapse to one line so sed can match across newlines.
+  local one_line result content
+  one_line=$(echo "$PROMPT" | tr '\n' '\001') || true
+
+  # Wrap captured content in sentinels so we can distinguish empty-match from no-match.
+  result=$(echo "$one_line" | sed -n "s/.*<${tag}[^>]*>\(.*\)<\/${tag}>.*/${sentinel_start}\1${sentinel_end}/p" | tr '\001' '\n') || true
+
+  # No match → closing tag absent or structure ambiguous — fail-open.
+  if [[ "$result" != "${sentinel_start}"*"${sentinel_end}" ]]; then
+    return 0
+  fi
+
+  # Strip sentinels to get raw content.
+  content="${result#"${sentinel_start}"}"
+  content="${content%"${sentinel_end}"}"
+
+  # Strip whitespace to check for an effectively-empty block.
+  local trimmed
+  trimmed=$(echo "$content" | tr -d '[:space:]') || true
+
+  # Empty or whitespace-only block → block it (0 chars is < 50).
+  [ -z "$trimmed" ] && return 1
+
+  # Measure actual content length. Under 50 chars → block.
+  local len
+  len=${#content}
+  [ "$len" -lt "$min_len" ] && return 1
+
+  return 0
+}
+
 case "$SUBAGENT_TYPE" in
   cal)
     if ! check_block_present "research-brief"; then
       echo "BLOCKED: Cannot invoke Cal without a <research-brief> block. Run scout fan-out first to populate research evidence (pipeline-orchestration.md §Scout Fan-out Protocol)." >&2
+      exit 2
+    fi
+    if ! check_block_content "research-brief"; then
+      echo "BLOCKED: <research-brief> block is empty or too short (< 50 chars). Run the scout fan-out to generate real search results before invoking Cal." >&2
       exit 2
     fi
     ;;
@@ -129,6 +182,10 @@ case "$SUBAGENT_TYPE" in
   colby)
     if ! check_block_present "colby-context"; then
       echo "BLOCKED: Cannot invoke Colby without a <colby-context> block. Run scout fan-out first to populate implementation context (pipeline-orchestration.md §Scout Fan-out Protocol)." >&2
+      exit 2
+    fi
+    if ! check_block_content "colby-context"; then
+      echo "BLOCKED: <colby-context> block is empty or too short (< 50 chars). Run the scout fan-out to generate real search results before invoking Colby." >&2
       exit 2
     fi
     ;;

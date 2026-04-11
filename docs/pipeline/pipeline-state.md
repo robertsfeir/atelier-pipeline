@@ -15,3 +15,5 @@ Doctor flags "Plugin atelier-pipeline not found in marketplace atelier-pipeline"
 
 ## Progress
 - [x] Colby → bump version field in marketplace.json
+<!-- COMPACTION: 2026-04-11T14:19:26Z -->
+<!-- COMPACTION: 2026-04-11T14:53:46Z -->

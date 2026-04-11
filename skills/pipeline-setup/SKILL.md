@@ -295,6 +295,7 @@ optional and must be installed for the pipeline to function correctly.
 | `source/claude/hooks/enforce-agatha-paths.sh` | `.claude/hooks/enforce-agatha-paths.sh` | Per-agent: Agatha can only write to docs/ |
 | `source/claude/hooks/enforce-product-paths.sh` | `.claude/hooks/enforce-product-paths.sh` | Per-agent: Robert-spec can only write to docs/product/ |
 | `source/claude/hooks/enforce-ux-paths.sh` | `.claude/hooks/enforce-ux-paths.sh` | Per-agent: Sable-ux can only write to docs/ux/ |
+| `source/claude/hooks/enforce-ellis-paths.sh` | `.claude/hooks/enforce-ellis-paths.sh` | Per-agent: Ellis can only write to CHANGELOG.md, git config files, and CI/CD paths |
 | `source/claude/hooks/enforce-sequencing.sh` | `.claude/hooks/enforce-sequencing.sh` | Blocks out-of-order agent invocations (e.g., Ellis without Roz QA) |
 | `source/claude/hooks/enforce-pipeline-activation.sh` | `.claude/hooks/enforce-pipeline-activation.sh` | Blocks Colby/Ellis invocation when no active pipeline exists |
 | `source/claude/hooks/enforce-git.sh` | `.claude/hooks/enforce-git.sh` | Blocks git write operations from main thread (must go through Ellis) |
@@ -365,7 +366,8 @@ file already exists. Add this hooks section:
     "SessionStart": [
       {
         "hooks": [
-          {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-hydrate.sh"}
+          {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-boot.sh"},
+          {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-hydrate-enforcement.sh"}
         ]
       }
     ],
@@ -375,6 +377,11 @@ file already exists. Add this hooks section:
           {
             "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/log-agent-stop.sh"
+          },
+          {
+            "type": "prompt",
+            "prompt": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-compact-advisory.sh",
+            "if": "agent_type == 'ellis'"
           },
           {
             "type": "agent",
@@ -398,11 +405,6 @@ file already exists. Add this hooks section:
     "StopFailure": [
       {
         "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/log-stop-failure.sh"}]
-      }
-    ],
-    "SessionStart": [
-      {
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-boot.sh"}]
       }
     ]
   }

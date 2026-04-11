@@ -74,6 +74,11 @@ Skipped on Micro pipelines.
 | `evoscore` | float | Average `evoscore_delta` across all Tier 2 captures | `null` when no units |
 | `regression_count` | integer | Count of units where `evoscore_delta < 1.0` | `0` |
 | `project_name` | string | From `pipeline_project_name` session state | Current directory basename |
+| `stop_reason` | string | From pipeline-state.md at terminal transition (see pipeline-orchestration.md terminal-transition protocol for enum values) | `"legacy_unknown"` |
+| `budget_estimate_low` | float or null | Eva's pre-pipeline heuristic estimate lower bound (USD); set at sizing gate, before first agent invocation. See Budget Estimate Heuristic section. | `null` |
+| `budget_estimate_high` | float or null | Eva's pre-pipeline heuristic estimate upper bound (USD); set at sizing gate, before first agent invocation. See Budget Estimate Heuristic section. | `null` |
+
+**T3 `budget_estimate_low` / `budget_estimate_high` producer:** Eva computes and stores the estimate at the sizing decision gate (before the first agent invocation). These fields are set in memory at that point and written to T3 brain capture at pipeline end. When the gate does not fire (Micro, Small, or Medium without threshold), both fields remain `null`.
 
 ---
 
@@ -161,3 +166,57 @@ Last [N]: [values]. [suggestion].
 ```
 
 **Anti-fatigue rule:** Track the streak count for each alert type. Reset to 0 when a pipeline passes the threshold. Only fire the alert announcement at the 3rd consecutive breach and again every 3 breaches thereafter (not on every pipeline once triggered).
+
+---
+
+## Budget Estimate Heuristic
+
+Order-of-magnitude estimates for the pre-pipeline token budget gate (see `<gate id="budget-estimate">` in `pipeline-orchestration.md`). Not for billing. These numbers are rough averages -- actual usage varies by context fill, tool calls, rework, and output length.
+
+### Per-Invocation Cost Estimates by Model
+
+Derived from the Cost Estimation Table above using typical context window utilization rates.
+
+| Model | Avg input tokens | Avg output tokens | Typical cost per invocation (USD) |
+|-------|-----------------|-------------------|------------------------------------|
+| claude-opus-4 (Opus) | 50,000 | 8,000 | ~$1.35 |
+| claude-sonnet-4-5 (Sonnet) | 40,000 | 6,000 | ~$0.21 |
+| claude-haiku-3-5 (Haiku) | 20,000 | 3,000 | ~$0.035 |
+
+These estimates are order-of-magnitude -- not billing. Per-model pricing comes from the Cost Estimation Table above. If that table is updated with new pricing, these per-invocation estimates inherit the change.
+
+### Agent Roster by Sizing Tier
+
+Typical agent invocation counts per sizing tier. Used as the base input to the estimate formula when step count is not yet known.
+
+| Sizing | Agent Invocations (typical range) | Notes |
+|--------|-----------------------------------|-------|
+| Micro | 1--2 (Colby + Roz) | No estimate shown |
+| Small | 3--5 (Cal skill + Colby + Roz + Ellis) | No estimate shown |
+| Medium | 8--15 (Robert? + Sable? + Cal + Roz test + Colby*N + Roz QA*N + Poirot + Ellis) | Estimate shown only if `token_budget_warning_threshold` is set |
+| Large | 15--30+ (full ceremony: Robert + Sable + Agatha plan + Colby mockup + Sable verify + Cal + Roz test + Colby*N + Roz QA*N + Poirot*N + Robert review + Sable review + Sentinel? + Agatha docs + Ellis) | Estimate always shown |
+
+### Estimate Formula
+
+```
+low_estimate  = sum(agent_count_by_model[model] * cost_per_invocation[model]) * 0.7
+high_estimate = sum(agent_count_by_model[model] * cost_per_invocation[model]) * 1.5
+```
+
+Where `agent_count_by_model` is derived from the agent roster table above, mapping each agent to its model tier per `pipeline-models.md` at the current sizing.
+
+**Multipliers:**
+- `0.7x` (optimistic): fewer tool calls, smaller context windows, no rework
+- `1.5x` (pessimistic): full context windows, rework cycles, retries, larger outputs
+
+### Step Count Multiplier
+
+When Cal has already produced an ADR with N steps, apply these multipliers to the agent roster before computing the estimate. When step count is not yet known (estimate runs before Cal), use the sizing-tier defaults from the agent roster table above.
+
+| Agent | Invocation count with N steps |
+|-------|-------------------------------|
+| Colby | N * 1.3 (30% rework assumption) |
+| Roz (QA) | N * 1.1 (10% scoped re-run assumption) |
+| Poirot | ceil(N / wave_size) where `wave_size` defaults to 3 |
+
+**Default `wave_size`:** 3 (three ADR steps per wave before Poirot blind-review).

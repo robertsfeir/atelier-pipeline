@@ -9,3 +9,7 @@ color: cyan
 maxTurns: 12
 disallowedTools: Agent, NotebookEdit
 permissionMode: acceptEdits
+hooks:
+  - event: PreToolUse
+    matcher: Write|Edit|MultiEdit
+    command: .claude/hooks/enforce-ellis-paths.sh

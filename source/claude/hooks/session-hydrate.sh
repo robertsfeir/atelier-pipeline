@@ -1,4 +1,5 @@
 #!/bin/bash
+# NOT REGISTERED in settings.json — intentional no-op. See comment below.
 # session-hydrate.sh -- SessionStart hook
 #
 # Hydration is now handled by the atelier_hydrate MCP tool, which runs

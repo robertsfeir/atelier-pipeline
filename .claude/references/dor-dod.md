@@ -110,7 +110,8 @@ Here is the structural pattern:
 ### Agent-Specific DoD Conditions
 
 **Colby (build):**
-- `{lint_command} && {typecheck_command} && {test_command} [changed files]` passes
+- `{lint_command} && {typecheck_command} && {test_command}` passes (full suite -- not scoped to changed files)
+- If the full suite reveals failures in code Colby did not touch: fix them. "We didn't write that code" is not an exemption. Green suite before commit, full stop.
 - Grep for TODO/FIXME/HACK across changed files -- show results
 - Every ADR step acceptance criterion listed with pass evidence
 

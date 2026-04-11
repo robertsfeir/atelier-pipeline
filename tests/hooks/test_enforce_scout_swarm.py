@@ -106,7 +106,7 @@ def test_T_SCOUT_006_colby_with_block_allowed(hook_env):
     _config_with_state_dir(hook_env)
     inp = build_agent_prompt_input(
         "colby",
-        "<colby-context><existing-code>foo.py</existing-code></colby-context>\nImplement the feature.",
+        "<colby-context><existing-code>foo.py lines 1-120, entry point for feature</existing-code></colby-context>\nImplement the feature.",
     )
     r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
     assert r.returncode == 0
@@ -131,7 +131,7 @@ def test_T_SCOUT_008_cal_with_block_allowed(hook_env):
     _config_with_state_dir(hook_env)
     inp = build_agent_prompt_input(
         "cal",
-        "<research-brief><patterns>found pattern at line 42</patterns></research-brief>\nWrite ADR.",
+        "<research-brief><patterns>found pattern at line 42 of source/claude/hooks/enforce.sh</patterns></research-brief>\nWrite ADR.",
     )
     r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
     assert r.returncode == 0
@@ -241,7 +241,7 @@ def test_T_SCOUT_017_colby_micro_with_block_allowed(hook_env):
     _config_with_state_dir(hook_env)
     inp = build_agent_prompt_input(
         "colby",
-        "<colby-context>context here</colby-context>",
+        "<colby-context>context here: feature flag enabled, see source/shared/agents/colby.md</colby-context>",
     )
     r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
     assert r.returncode == 0
@@ -255,7 +255,7 @@ def test_T_SCOUT_018_cal_medium_with_block_allowed(hook_env):
     _config_with_state_dir(hook_env)
     inp = build_agent_prompt_input(
         "cal",
-        "<research-brief>Pattern analysis complete.</research-brief>",
+        "<research-brief>Pattern analysis complete. Found 3 matching hooks in source/claude/hooks/.</research-brief>",
     )
     r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
     assert r.returncode == 0
@@ -281,7 +281,7 @@ def test_T_SCOUT_020_colby_large_with_block_allowed(hook_env):
     _config_with_state_dir(hook_env)
     inp = build_agent_prompt_input(
         "colby",
-        "<colby-context><existing-code>main.py</existing-code></colby-context>",
+        "<colby-context><existing-code>main.py is the entry point, 340 lines</existing-code></colby-context>",
     )
     r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
     assert r.returncode == 0
@@ -360,6 +360,35 @@ def test_T_SCOUT_025_roz_both_evidence_types_allowed(hook_env):
     inp = build_agent_prompt_input(
         "roz",
         "<qa-evidence>files here</qa-evidence>\n<debug-evidence>trace here</debug-evidence>",
+    )
+    r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
+    assert r.returncode == 0
+
+
+# ── T-SCOUT-026: cal empty <research-brief> block → blocked ────────────────
+
+def test_T_SCOUT_026_cal_empty_research_brief_blocked(hook_env):
+    """Empty <research-brief></research-brief> block is blocked — empty-block bypass fix."""
+    write_pipeline_status(hook_env, '{"phase":"design","sizing":"medium"}')
+    _config_with_state_dir(hook_env)
+    inp = build_agent_prompt_input("cal", "<research-brief></research-brief>\nWrite ADR.")
+    r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
+    assert r.returncode == 2
+    assert "BLOCKED" in r.stdout
+    assert "research-brief" in r.stdout
+
+
+# ── T-SCOUT-027: cal <research-brief> with 60+ chars of content → allowed ──
+
+def test_T_SCOUT_027_cal_research_brief_sufficient_content_allowed(hook_env):
+    """<research-brief> block with 60+ chars of real content passes the content check."""
+    write_pipeline_status(hook_env, '{"phase":"design","sizing":"medium"}')
+    _config_with_state_dir(hook_env)
+    # Content is 73 chars: well over the 50-char minimum
+    content = "Found enforce-scout-swarm.sh at source/claude/hooks/ — 3 related patterns"
+    inp = build_agent_prompt_input(
+        "cal",
+        f"<research-brief>{content}</research-brief>\nWrite ADR.",
     )
     r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
     assert r.returncode == 0

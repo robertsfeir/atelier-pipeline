@@ -184,7 +184,7 @@ def test_T_0022_020_cursor_identical_phase1(agent):
 def test_T_0022_021_claude_hooks():
     assert (CLAUDE_DIR / "hooks").is_dir()
     sh_count = len(list((CLAUDE_DIR / "hooks").glob("*.sh")))
-    assert sh_count == 21  # Wave 3: prompt-brain-capture.sh and warn-brain-capture.sh removed; session-boot.sh added; prompt-compact-advisory.sh + session-hydrate-enforcement.sh + enforce-scout-swarm.sh added
+    assert sh_count == 22  # Wave 3: prompt-brain-capture.sh and warn-brain-capture.sh removed; session-boot.sh added; prompt-compact-advisory.sh + session-hydrate-enforcement.sh + enforce-scout-swarm.sh + enforce-ellis-paths.sh added
     assert (CLAUDE_DIR / "hooks" / "enforcement-config.json").exists()
 
 

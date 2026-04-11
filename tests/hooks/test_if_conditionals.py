@@ -28,6 +28,8 @@ def test_T_0020_001_enforce_git_if_field():
 
 
 # ADR-0025 supersedes: warn-dor-dod.sh deleted from SubagentStop; replaced by session-hydrate.sh in SessionStart (ADR-0025 R11, R9)
+# Hook wiring audit: session-hydrate.sh is now a no-op and was removed from SessionStart.
+# session-hydrate-enforcement.sh replaces it for actual enforcement hydration.
 def test_T_0020_002_warn_dor_dod_if_field():
     settings = json.loads((PROJECT_ROOT / ".claude" / "settings.json").read_text())
     stop_matchers = settings["hooks"].get("SubagentStop", [])
@@ -40,15 +42,17 @@ def test_T_0020_002_warn_dor_dod_if_field():
         "warn-dor-dod.sh must not appear in SubagentStop after ADR-0025 deleted it. "
         f"Found: {dod_hooks}"
     )
-    # Replacement: session-hydrate.sh must be wired in SessionStart
+    # session-hydrate.sh is now a no-op intentionally removed from SessionStart.
+    # The real enforcement hydration is handled by session-hydrate-enforcement.sh.
     session_start = settings["hooks"].get("SessionStart", [])
-    hydrate_hooks = [
+    hydrate_noop_hooks = [
         h for m in session_start for h in m.get("hooks", [])
         if h.get("command") and "session-hydrate.sh" in h["command"]
+        and "enforcement" not in h["command"]
     ]
-    assert len(hydrate_hooks) >= 1, (
-        "session-hydrate.sh must be present in SessionStart after ADR-0025 R9. "
-        f"SessionStart hooks: {session_start}"
+    assert len(hydrate_noop_hooks) == 0, (
+        "session-hydrate.sh (no-op) must NOT be registered in SessionStart. "
+        f"Found: {hydrate_noop_hooks}"
     )
 
 
@@ -125,6 +129,8 @@ def test_T_0020_009_enforce_git_if_field_type():
 
 
 # ADR-0025 supersedes: warn-dor-dod.sh deleted from SubagentStop; SessionStart carries session-hydrate.sh instead (ADR-0025 R11, R9)
+# Hook wiring audit: session-hydrate.sh is now a no-op and removed from SessionStart.
+# session-hydrate-enforcement.sh provides the active SessionStart enforcement hydration.
 def test_T_0020_010_warn_dor_dod_if_field_type():
     settings = json.loads((PROJECT_ROOT / ".claude" / "settings.json").read_text())
     stop_matchers = settings["hooks"].get("SubagentStop", [])
@@ -136,13 +142,15 @@ def test_T_0020_010_warn_dor_dod_if_field_type():
     assert len(dod_hooks) == 0, (
         "warn-dor-dod.sh must not appear in SubagentStop after ADR-0025 deleted it."
     )
-    # Replacement: session-hydrate.sh command must be a non-empty string in SessionStart
+    # session-hydrate.sh (no-op) must NOT be registered; session-hydrate-enforcement.sh is the active replacement.
     session_start = settings["hooks"].get("SessionStart", [])
-    hydrate_hooks = [
+    enforcement_hooks = [
         h for m in session_start for h in m.get("hooks", [])
-        if h.get("command") and "session-hydrate.sh" in h["command"]
+        if h.get("command") and "session-hydrate-enforcement.sh" in h["command"]
     ]
-    assert len(hydrate_hooks) >= 1
-    cmd_val = hydrate_hooks[0].get("command")
+    assert len(enforcement_hooks) >= 1, (
+        "session-hydrate-enforcement.sh must be registered in SessionStart."
+    )
+    cmd_val = enforcement_hooks[0].get("command")
     assert isinstance(cmd_val, str)
     assert len(cmd_val) > 0
