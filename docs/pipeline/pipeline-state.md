@@ -63,10 +63,11 @@ only. .claude/ is not touched.
 - [x] Roz → test authoring (30 tests across 10 files; 23 red pre-build, 7 green)
 - [x] Colby → implement (wave 1: 12 source files; Poirot F2+F6 fixed post-review)
 - [x] Roz QA Wave 1: 26/26 PASS. Poirot: 2 MUST-FIX resolved, 6 NIT accepted.
-- [ ] Ellis → Wave 1 commit
-- [ ] Colby → implement (wave 2: skills/pipeline-setup/SKILL.md)
-- [ ] Roz QA + Poirot (parallel)
+- [x] Ellis → Wave 1 commit: 460381f (23 files, 1382 insertions)
+- [x] Colby → implement (wave 2: SKILL.md, Steps 8-10, 5/5 tests PASS)
+- [x] Roz QA Wave 2: 5/5 PASS. Poirot: 3 MUST-FIX resolved, 3 accepted.
+- [ ] Ellis → Wave 2 commit
 - [ ] Robert review
 - [ ] Agatha → update impacted docs if any
-- [ ] Ellis → final commit
+- [ ] Ellis → final push
 <!-- COMPACTION: 2026-04-11T20:55:08Z -->

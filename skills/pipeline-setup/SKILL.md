@@ -64,6 +64,25 @@ Unconditionally run this cleanup on every /pipeline-setup invocation. Silent unl
 3. **Print notice (conditional):** If either file was found and removed: print exactly `Removed orphan brain-capture hooks (superseded by brain-extractor agent).`
 4. **Silent no-op:** If neither found: do nothing. No output.
 
+### Step 0c: Clean Up Orphan session-hydrate.sh Registration
+
+Unconditionally run this cleanup on every /pipeline-setup invocation. Silent unless it finds something to remove.
+
+`session-hydrate.sh` is now an intentional no-op (superseded by the `atelier_hydrate` MCP tool) and must NOT be registered in `.claude/settings.json`. Older installs may still have a registration entry.
+
+1. **Check settings.json:** Check if `.claude/settings.json` exists and contains a hook entry whose command string contains exactly `session-hydrate.sh` (not `session-hydrate-enforcement.sh` or other similarly-named hooks) across all hook event types (SessionStart is the typical location). If found:
+   - Parse the JSON. If the JSON is malformed or invalid, log a warning ("Warning: .claude/settings.json is malformed JSON -- skipping session-hydrate.sh entry removal. Does not block setup.") and continue to Step 1 (Gather Project Information).
+   - Remove the hook entry containing "session-hydrate.sh" from the command string.
+   - If removing that entry leaves an empty hooks array for an event type, remove the event type entry entirely (no empty arrays left behind).
+   - Write the updated JSON back to `.claude/settings.json`.
+   - Note that removal occurred.
+2. **Print notice (conditional):** If the entry was found and removed: print exactly `Removed orphan session-hydrate.sh registration (intentional no-op, see source comment).`
+3. **Silent no-op:** If not found: do nothing. No output.
+
+**Note:** The `.claude/hooks/session-hydrate.sh` file itself is NOT deleted — it is re-copied by Step 3a as an intentional no-op backward-compatibility shim. Only the `settings.json` registration is removed.
+
+This cleanup targets only session-hydrate.sh registrations. Other hook entries are not affected.
+
 ### Step 1: Gather Project Information
 
 Before installing, ask the user about their project. Ask these questions conversationally, one at a time -- do not dump a list.
@@ -298,8 +317,9 @@ optional and must be installed for the pipeline to function correctly.
 | `source/claude/hooks/enforce-ellis-paths.sh` | `.claude/hooks/enforce-ellis-paths.sh` | Per-agent: Ellis can only write to CHANGELOG.md, git config files, and CI/CD paths |
 | `source/claude/hooks/enforce-sequencing.sh` | `.claude/hooks/enforce-sequencing.sh` | Blocks out-of-order agent invocations (e.g., Ellis without Roz QA) |
 | `source/claude/hooks/enforce-pipeline-activation.sh` | `.claude/hooks/enforce-pipeline-activation.sh` | Blocks Colby/Ellis invocation when no active pipeline exists |
+| `source/claude/hooks/enforce-scout-swarm.sh` | `.claude/hooks/enforce-scout-swarm.sh` | Blocks Cal/Colby/Roz invocations missing the required scout evidence block (research-brief, colby-context, debug-evidence, qa-evidence) |
 | `source/claude/hooks/enforce-git.sh` | `.claude/hooks/enforce-git.sh` | Blocks git write operations from main thread (must go through Ellis) |
-| `source/claude/hooks/session-hydrate.sh` | `.claude/hooks/session-hydrate.sh` | Runs telemetry hydration at SessionStart (JSONL + state-file parsing) |
+| `source/claude/hooks/session-hydrate.sh` | `.claude/hooks/session-hydrate.sh` | Intentional no-op — superseded by atelier_hydrate MCP tool. Installed for backward-compatibility only; NOT registered in settings.json. |
 | `source/claude/hooks/pre-compact.sh` | `.claude/hooks/pre-compact.sh` | Writes compaction marker to pipeline-state.md before context is compacted (PreCompact) |
 | `source/claude/hooks/log-agent-start.sh` | `.claude/hooks/log-agent-start.sh` | Logs agent start events to JSONL telemetry file (SubagentStart) |
 | `source/claude/hooks/log-agent-stop.sh` | `.claude/hooks/log-agent-stop.sh` | Logs agent stop events to JSONL telemetry file (SubagentStop) |
@@ -351,7 +371,7 @@ file already exists. Add this hooks section:
       },
       {
         "matcher": "Agent",
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-sequencing.sh"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-pipeline-activation.sh"}, {"type": "prompt", "prompt": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-brain-prefetch.sh", "if": "tool_input.subagent_type == 'cal' || tool_input.subagent_type == 'colby' || tool_input.subagent_type == 'roz' || tool_input.subagent_type == 'agatha'"}]
+        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-sequencing.sh"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-pipeline-activation.sh"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-scout-swarm.sh"}, {"type": "prompt", "prompt": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-brain-prefetch.sh", "if": "tool_input.subagent_type == 'cal' || tool_input.subagent_type == 'colby' || tool_input.subagent_type == 'roz'"}]
       },
       {
         "matcher": "Bash",
@@ -387,7 +407,7 @@ file already exists. Add this hooks section:
             "type": "agent",
             "agent": "brain-extractor",
             "prompt": "Extract decisions, patterns, and lessons from the completed agent's output and capture them to the brain via agent_capture.",
-            "if": "agent_type == 'cal' || agent_type == 'colby' || agent_type == 'roz' || agent_type == 'agatha'"
+            "if": "agent_type == 'cal' || agent_type == 'colby' || agent_type == 'roz' || agent_type == 'agatha' || agent_type == 'robert' || agent_type == 'robert-spec' || agent_type == 'sable' || agent_type == 'sable-ux' || agent_type == 'ellis'"
           }
         ]
       }
@@ -415,7 +435,7 @@ file already exists. Add this hooks section:
 If `jq` is not available, tell the user: "Install jq for pipeline enforcement hooks:
 `brew install jq` (macOS) or `apt install jq` (Linux)."
 
-**Total with hooks: 41 mandatory files across 7 directories.**
+**Total with hooks: 42 mandatory files across 7 directories.**
 
 #### Custom Agent Discovery
 
@@ -531,7 +551,7 @@ This project uses a multi-agent orchestration pipeline for structured developmen
 
 After installation, print:
 
-1. A count of files installed (40 mandatory files across 7 directories, plus any optional tech-stack references)
+1. A count of files installed (41 mandatory files across 7 directories, plus any optional tech-stack references)
 2. The directory tree showing what was created
 3. The configured branching strategy and any CI recommendations
 4. A reminder of available slash commands
