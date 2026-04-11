@@ -44,7 +44,7 @@
 
 ## Status
 
-Proposed — Roz round 1 addressed; pending Roz re-review.
+Approved — Roz round 3 signed off. Ready for implementation.
 
 **Depends on:** None (self-contained).
 **Supersedes:** None.
@@ -318,7 +318,7 @@ This step establishes the new path scheme and wires it through both SessionStart
 
 This step wires the consumer side. Producers from Step 1 must have consumers in this step to avoid orphan path drift.
 
-**Files to modify (11):**
+**Files to modify (10):**
 
 1. `brain/scripts/hydrate-telemetry.mjs` -- specific changes to `parseStateFiles` (line 361):
    - Change the function signature: `parseStateFiles(stateDir, pool, config, options)` already takes a `stateDir` parameter -- preserve it. The caller at line 989 passes `expandHome(stateDirArg)` from command-line args. Change the caller chain so that when `stateDirArg` is not explicitly provided, the module computes the default state dir using a new helper `resolveDefaultStateDir()` that:
@@ -353,8 +353,6 @@ This step wires the consumer side. Producers from Step 1 must have consumers in 
 
 10. `source/shared/rules/pipeline-orchestration.md` -- search for any hardcoded `docs/pipeline/` references in Eva's orchestration rules. For each session-specific file reference (pipeline-state.md, context-brief.md, investigation-ledger.md, last-qa-report.md), replace with `{pipeline_state_dir}/...`. For `error-patterns.md` references, leave as `docs/pipeline/error-patterns.md` (shared path).
 
-11. `source/claude/hooks/session-hydrate.sh` -- Line 12: replace `STATE_DIR="$PROJECT_DIR/docs/pipeline"` with the output of sourcing `pipeline-state-path.sh`: `source "$(dirname "${BASH_SOURCE[0]}")/pipeline-state-path.sh" 2>/dev/null || true` then `STATE_DIR="${ATELIER_STATE_DIR:-$PROJECT_DIR/docs/pipeline}"`. This ensures the hydration script receives the per-worktree state dir. No other changes to this file.
-
 **Acceptance criteria:**
 - `hydrate-telemetry.mjs` `parseStateFiles` resolves its default state dir to `$HOME/.atelier/pipeline/{slug}/{hash}/` when the directory exists.
 - `hydrate-telemetry.mjs` gracefully exits with 0 inserted when the state dir does not exist (no uncaught `ENOENT`).
@@ -366,11 +364,11 @@ This step wires the consumer side. Producers from Step 1 must have consumers in 
 - Command files (architect.md, devops.md) reference `{pipeline_state_dir}` placeholder.
 - `pipeline-orchestration.md` distinguishes session-specific file references (use `{pipeline_state_dir}`) from `error-patterns.md` references (use `docs/pipeline/`).
 
-**Complexity:** Medium. 11 files (above the 8-file default but all mechanical path substitution). Justified below.
+**Complexity:** Medium. 10 files (above the 8-file default but all mechanical path substitution). Justified below.
 
-**Justification for 11 files exceeding the default 8-file limit:**
+**Justification for 10 files exceeding the default 8-file limit:**
 S1 (demo): "After this step, Eva can write state to the new path, agents read from the new path via template placeholders, brain hydration finds the new path, enforcement allows it, and the `/pipeline` command file instructs Eva to use the placeholder-resolved paths." Single coherent demo.
-S2 (file count): 11 files. All changes are path-substitution. None introduce new logic. Splitting this step would create orphan producers (Step 1 produces a new state dir with no consumer) for the duration between commits, violating retro lesson #005. The addition of `pipeline.md` over the initial 9-file count is required because Roz flagged it as an in-scope consumer: the `/pipeline` command file contains Eva action instructions that hardcode `docs/pipeline/pipeline-state.md` and `docs/pipeline/context-brief.md` at lines 19, 20, 138, 148 -- leaving them unchanged would create an Eva invocation path that routes writes to the legacy directory even after the helper is wired. The addition of `session-hydrate.sh` brings the count to 11 because this SessionStart hook hardcodes `STATE_DIR="$PROJECT_DIR/docs/pipeline"` and passes it to `hydrate-telemetry.mjs` via `--state-dir`, which would silently route telemetry hydration to the legacy path post-migration -- a second orphan-consumer gap in the same vertical slice.
+S2 (file count): 10 files. All changes are path-substitution. None introduce new logic. Splitting this step would create orphan producers (Step 1 produces a new state dir with no consumer) for the duration between commits, violating retro lesson #005. The addition of `pipeline.md` over the initial 9-file count is required because Roz flagged it as an in-scope consumer: the `/pipeline` command file contains Eva action instructions that hardcode `docs/pipeline/pipeline-state.md` and `docs/pipeline/context-brief.md` at lines 19, 20, 138, 148 -- leaving them unchanged would create an Eva invocation path that routes writes to the legacy directory even after the helper is wired.
 S3 (testable): Each file is independently testable -- hook tests for enforce-eva-paths, pytest for hydrate-telemetry, grep for persona file and pipeline.md references.
 S4 (revert): Each file reverts independently via `git checkout`.
 S5 (single behavior): "Wire the new state path to its consumers." One vertical slice.
@@ -486,7 +484,6 @@ S5 (single behavior): "Wire the new state path to its consumers." One vertical s
 | `enforce-eva-paths.sh` whitelist | `$HOME/.atelier/pipeline/*/*/*` allowed | Eva's runtime writes | Step 2 |
 | `{pipeline_state_dir}` template placeholder in persona files | resolved to `$ATELIER_STATE_DIR` at invocation time | cal.md, colby.md, roz.md, architect.md, devops.md | Step 2 |
 | Eva (pipeline.md command file) | Writes `{pipeline_state_dir}/pipeline-state.md`, `{pipeline_state_dir}/context-brief.md` | session-boot.sh, post-compact-reinject.sh, hydrate-telemetry.mjs, cal/colby/roz agents | Step 2 |
-| `session-hydrate.sh` (SessionStart hook) | Passes `$ATELIER_STATE_DIR` as `--state-dir` arg to `hydrate-telemetry.mjs` | `hydrate-telemetry.mjs` `parseStateFiles()` | 2 |
 | Eva's concurrent-session hard-pause protocol | user-facing menu, three options | User, `context-brief.md` write | Step 3 |
 
 **Orphan check:** Every producer has at least one consumer in the same step or earlier. No orphan producers. `pipeline-state-path.sh` produces env vars consumed by two hooks in the same step. `enforce-eva-paths.sh` whitelist produces a permission that Eva consumes at runtime. Agent persona placeholder changes produce path-lookup expectations that `{pipeline_state_dir}` resolution at runtime consumes. Step 3's hard-pause protocol consumes the `concurrent_session_detected` field produced in Step 1.
@@ -525,7 +522,7 @@ The relocation from in-repo to `$HOME/.atelier/pipeline/` does not change the se
 - **Agent persona files use `{pipeline_state_dir}` as a placeholder.** Verify this placeholder is already resolved at plugin-install time by `/pipeline-setup`. If it is NOT (i.e., the persona files are copied verbatim), we need to either: (a) resolve the placeholder at install time to `$HOME/.atelier/pipeline/{slug}/{hash}/` (bad -- install-time resolution is static, hash changes per worktree), or (b) have Eva resolve the placeholder dynamically at invocation time (good -- Eva sources the helper and substitutes). Option (b) is the correct choice. The install-time `/pipeline-setup` must NOT substitute `{pipeline_state_dir}` in persona files with a hardcoded path -- it must leave the placeholder alone for runtime resolution. Verify this in Step 2.
 - **Tests for concurrent-session detection (T-0032-042, T-0032-043) require simulation.** Use pytest with a fixture that writes `.session-marker` files with controlled nonces and timestamps, then invokes `session-boot.sh` via subprocess with `CLAUDE_PROJECT_DIR` set. Do not attempt to run two real Claude Code sessions.
 - **Tests must be pytest, not bats** (per user feedback `feedback_pytest_only.md`). The helper shell script is tested by a Python test that subprocess-invokes it.
-- **Rollback plan:** Single-step rollback. Revert the four files from Step 1 + the nine files from Step 2 + one file from Step 3. The new out-of-repo directory (`$HOME/.atelier/pipeline/`) becomes orphan but does no harm. Users who ran the new code have their state files in the new path; on rollback, `session-boot.sh` re-reads `docs/pipeline/` and finds the pre-migration copies (migration was copy, not move). Zero data loss on rollback. Rollback window: any time; no migration barrier.
+- **Rollback plan:** Single-step rollback. Revert the four files from Step 1 + the ten files from Step 2 + one file from Step 3. The new out-of-repo directory (`$HOME/.atelier/pipeline/`) becomes orphan but does no harm. Users who ran the new code have their state files in the new path; on rollback, `session-boot.sh` re-reads `docs/pipeline/` and finds the pre-migration copies (migration was copy, not move). Zero data loss on rollback. Rollback window: any time; no migration barrier.
 - **Migration plan:** On first invocation of the new `session-boot.sh` (or any hook that sources the helper), the one-time migration block runs. Legacy `docs/pipeline/*.md` files are COPIED to `$ATELIER_STATE_DIR/*.md` (leaving originals). Subsequent writes go to the new path. No user action required. `error-patterns.md` never migrates.
 
 ---
@@ -537,13 +534,13 @@ The relocation from in-repo to `$HOME/.atelier/pipeline/` does not change the se
 | R1 | Concurrent sessions must not clobber each other's pipeline state | Done | Step 1 (worktree-hash isolation), Step 3 (same-worktree hard pause). T-0032-010, T-0032-015, T-0032-042. |
 | R2 | Agent Teams worktrees must be isolated | Done | Step 1 worktree-hash isolation (distinct filesystem paths yield distinct hashes). T-0032-002, T-0032-010. |
 | R3 | `error-patterns.md` must remain cross-session shared | Done | Decision section explicit: stays in `docs/pipeline/`. Step 1 helper does not touch it. T-0032-008, T-0032-013, T-0032-037, T-0032-038. |
-| R4 | Fix must work for Cursor (no session IDs) | Done | Worktree-path hash is the scoping key, not session ID. Helper uses `CURSOR_PROJECT_DIR` fallback. T-0032-027, T-0032-028. |
+| R4 | Fix must work for Cursor (no session IDs) | Done | Worktree-path hash is the scoping key, not session ID. Helper uses `CURSOR_PROJECT_DIR` fallback. T-0032-027a, T-0032-027b, T-0032-028. |
 | R5 | No manual cleanup between sessions | Done | Automatic `mkdir -p`, automatic nonce rotation, automatic migration. No user action required. |
 | R6 | `session-boot.sh` updated | Done | Step 1 file 2, specific changes listed. |
 | R7 | `post-compact-reinject.sh` updated | Done | Step 1 file 3, specific changes listed. |
 | R8 | `hydrate-telemetry.mjs` updated; graceful empty-dir degradation | Done | Step 2 file 1, `parseStateFiles` early-exit added. T-0032-019, T-0032-020, T-0032-021, T-0032-022. |
 | R9 | Agent persona required-reading references still resolve | Done | Step 2 files 3-8 update `{pipeline_state_dir}` placeholder. T-0032-029..T-0032-034. |
-| R10 | No dependency on Claude Code session IDs | Done | Alternative D explicitly rejected. T-0032-027. |
+| R10 | No dependency on Claude Code session IDs | Done | Alternative D explicitly rejected. T-0032-027a, T-0032-027b. |
 | R11 | Staleness detection still works | Done | Existing feature-mismatch check preserved in Step 1 file 2. T-0032-014. |
 | R12 | Four strategies evaluated with tradeoffs | Done | Alternatives Considered section: A (rejected), B (rejected), C (chosen), D (rejected). |
 | R13 | No new git-tracked files per session | Done | New path is `$HOME/.atelier/pipeline/` -- out-of-repo. No `.gitignore` changes needed. Only `error-patterns.md` remains git-tracked. |
