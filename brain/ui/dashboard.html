@@ -313,6 +313,17 @@
       transform: none;
     }
 
+    .agent-card:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+      box-shadow: var(--shadow-hover);
+      transform: translateY(-2px);
+    }
+
+    .agent-card--orchestrator:focus-visible {
+      outline: none;
+    }
+
     .agent-card-header {
       display: flex;
       align-items: center;
@@ -541,6 +552,24 @@
       100% { background-position: -200% 0; }
     }
 
+    .skeleton-text {
+      height: 14px;
+      width: 60%;
+      margin-bottom: 8px;
+    }
+
+    .skeleton-stat {
+      height: 32px;
+      width: 80%;
+    }
+
+    .skeleton-card {
+      padding: 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
     /* =========================================================================
        Agent Detail Modal
        ========================================================================= */
@@ -756,7 +785,7 @@
         <h1>Atelier Dashboard</h1>
       </div>
       <div class="header-meta">
-        <div class="scope-selector hidden" id="scope-selector">
+        <div class="scope-selector hidden" id="scope-selector" aria-live="polite">
           <span class="scope-label">Project:</span>
           <select class="scope-select" id="scope-select">
             <option value="all">All Projects</option>
@@ -851,7 +880,7 @@
 
     <!-- Agent Detail Modal -->
     <div class="modal-overlay" id="agent-modal-overlay">
-      <div class="modal" id="agent-modal">
+      <div class="modal" id="agent-modal" role="dialog" aria-modal="true" aria-labelledby="modal-agent-name">
         <div class="modal-header">
           <div class="modal-header-left">
             <span class="modal-agent-name" id="modal-agent-name"></span>
@@ -860,7 +889,7 @@
           <button class="modal-close" id="modal-close" aria-label="Close">&times;</button>
         </div>
         <div class="modal-accent-line"></div>
-        <div id="modal-body">
+        <div id="modal-body" aria-live="polite">
           <div class="modal-loading">Loading agent detail...</div>
         </div>
       </div>
@@ -965,6 +994,8 @@
       var qualityChart = null;
       var refreshTimer = null;
       var selectedScope = "all";
+      var modalTrigger = null;
+      var isLoadingData = false;
 
       // =======================================================================
       // Scope Selector
@@ -1019,16 +1050,29 @@
       function loadData() {
         var errorBanner = document.getElementById("error-banner");
         var scopeParam = buildScopeParam();
+        isLoadingData = true;
+
+        // Show loading skeletons while fetching
+        var agentGrid = document.getElementById("agent-grid");
+        if (agentGrid && (!agentData.length || isLoadingData)) {
+          agentGrid.innerHTML = /* trusted: static literal markup */ Array(6).join(
+            '<div class="skeleton-card"><div class="skeleton skeleton-text"></div>' +
+            '<div class="skeleton skeleton-stat"></div></div>'
+          );
+        }
+
         Promise.all([
           api("/api/telemetry/summary" + scopeParam),
           api("/api/telemetry/agents" + scopeParam)
         ]).then(function (results) {
+          isLoadingData = false;
           summaryData = results[0] || [];
           agentData = results[1] || [];
           errorBanner.classList.remove("visible");
           render();
           updateRefreshTime();
         }).catch(function () {
+          isLoadingData = false;
           errorBanner.classList.add("visible");
           updateRefreshTime();
         });
@@ -1422,7 +1466,9 @@
             var badge = getAgentBadge(agent);
             badgeHtml = '<span class="agent-badge ' + escapeHtml(badge.cls) + '">' + escapeHtml(badge.label) + '</span>';
           }
-          return '<div class="agent-card' + (isEva ? ' agent-card--orchestrator' : '') + '" data-agent="' + escapeHtml(agent.agent || "") + '">' +
+          return '<div class="agent-card' + (isEva ? ' agent-card--orchestrator' : '') + '"' +
+            (isEva ? '' : ' role="button" tabindex="0"') +
+            ' data-agent="' + escapeHtml(agent.agent || "") + '">' +
             '<div class="agent-card-header">' +
               '<span class="agent-name">' + escapeHtml(agent.agent || "Unknown") + '</span>' +
               badgeHtml +
@@ -1443,6 +1489,12 @@
           if (agentName && agentName.toLowerCase() !== "eva") {
             card.addEventListener("click", function () {
               openAgentModal(agentName);
+            });
+            card.addEventListener("keydown", function (e) {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                openAgentModal(agentName);
+              }
             });
           }
         });
@@ -1499,9 +1551,21 @@
           badgeEl.style.cssText = "";
           badgeEl.textContent = badge.label;
         }
-        bodyEl.innerHTML = /* trusted: static literal markup */ '<div class="modal-loading">Loading agent detail...</div>';
+        bodyEl.innerHTML = /* trusted: static literal markup */ '<div class="modal-loading">' +
+          '<div class="skeleton skeleton-text" style="width:40%;margin-bottom:12px"></div>' +
+          '<div class="skeleton skeleton-text" style="width:70%"></div>' +
+          '<div class="skeleton skeleton-stat" style="margin-top:16px"></div>' +
+          '</div>';
 
         overlay.classList.add("visible");
+        // Save trigger element for focus restoration
+        modalTrigger = document.activeElement;
+        // Focus the close button (first focusable element in modal)
+        var closeBtn = document.getElementById("modal-close");
+        if (closeBtn) closeBtn.focus();
+        // Attach focus trap (remove first to prevent listener accumulation)
+        overlay.removeEventListener("keydown", modalKeyHandler);
+        overlay.addEventListener("keydown", modalKeyHandler);
 
         var url = "/api/telemetry/agent-detail?name=" + encodeURIComponent(agentName) + (selectedScope && selectedScope !== "all" ? "&scope=" + encodeURIComponent(selectedScope) : "");
 
@@ -1512,7 +1576,7 @@
           }
           renderModalBody(bodyEl, rows);
         }).catch(function () {
-          bodyEl.innerHTML = /* trusted: static literal markup */ '<div class="modal-loading" style="color:var(--red)">Failed to load agent detail.</div>';
+          bodyEl.innerHTML = /* trusted: static literal markup */ '<div class="modal-loading" role="alert" style="color:var(--red)">Failed to load agent detail.</div>';
         });
       }
 
@@ -1612,6 +1676,34 @@
       function closeAgentModal() {
         var overlay = document.getElementById("agent-modal-overlay");
         overlay.classList.remove("visible");
+        overlay.removeEventListener("keydown", modalKeyHandler);
+        if (modalTrigger) {
+          modalTrigger.focus();
+          modalTrigger = null;
+        }
+      }
+
+      function modalKeyHandler(e) {
+        var overlay = document.getElementById("agent-modal-overlay");
+        if (!overlay || !overlay.classList.contains('visible')) return;
+        if (e.key === "Escape") {
+          closeAgentModal();
+          return;
+        }
+        if (e.key === "Tab") {
+          var modal = document.getElementById("agent-modal");
+          var focusable = modal.querySelectorAll(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          );
+          if (focusable.length === 0) return;
+          var first = focusable[0];
+          var last = focusable[focusable.length - 1];
+          if (e.shiftKey) {
+            if (!modal.contains(document.activeElement) || document.activeElement === first) { e.preventDefault(); last.focus(); }
+          } else {
+            if (!modal.contains(document.activeElement) || document.activeElement === last) { e.preventDefault(); first.focus(); }
+          }
+        }
       }
 
       // -- Degradation Alerts -------------------------------------------------

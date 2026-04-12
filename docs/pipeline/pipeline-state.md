@@ -1,94 +1,154 @@
 # Pipeline State
 
 ## Active Pipeline
-**Feature:** ADR-0034 Gauntlet remediation — fix all register findings
-**Phase:** review
-<!-- PIPELINE_STATUS: {"phase": "review", "sizing": "medium", "roz_qa": "PASS", "telemetry_captured": true, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": true, "robert_reviewed": true, "brain_available": true} -->
-**Sizing:** Medium
-**Started:** 2026-04-11
+**Feature:** ADR-0035 + ADR-0036 + ADR-0037 — Waves 4, 5, 6 (parallel launch)
+**Phase:** build
+**Sizing:** Medium (each ADR independently)
+**Started:** 2026-04-12
+<!-- PIPELINE_STATUS: {"phase": "build", "sizing": "medium", "roz_qa": "PASS", "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": true, "robert_reviewed": false, "brain_available": true} -->
 
-## Wave Progress
-- [x] Wave 1 — brain enum extension + ADR-0032 + enforcement fixes → commit `ebda3af`
-- [x] Wave 2 — hook-lib.sh extraction + migration runner refactor + session-hydrate shim + Poirot fix round → commit `f3c0090`
-- [ ] Wave 3 — brain correctness (M8 CORS, M10 dashboard XSS, S5 gracefulShutdown drain, S10 LLM null guards, M4 red test greening)
-  - [x] Step 3.1 Roz triage: 8 test drift fixes applied, T-0034-046→T-0034-060 authored (RED pre-build), pytest 7→1 failure
-  - [x] Steps 3.2–3.5 Colby build: rest-api.mjs CORS fix, dashboard.html XSS escaping, crash-guards.mjs async drain, llm-response.mjs null guards — 5 production files + 1 new module
-  - [x] Roz test authoring: crash-guards.test.mjs, dashboard-xss.test.mjs, llm-response.test.mjs, rest-api.test.mjs appended — T-0034-049/050/051–060
-  - [x] Roz hardening test update: T-0017-003/006/007/008/009/010 made async (ADR-0034 Step 3.4 drift) — 186 tests, 0 fail
-  - [x] Wave 3 QA: Roz sweep PASS (186 tests, 0 fail) + Poirot blind diff (7 findings, all resolved) + Roz targeted re-check PASS (39/39)
-  - [x] Wave 3 Ellis commit → 5b627cc (21 files)
-- [x] Agatha docs: brain-hardening.md + technical-reference.md + CHANGELOG.md updated, all Robert N/A findings documented
-- [ ] Ellis final push to remote (hard pause — trunk-based)
-- [ ] Waves 4–6 — separate ADRs (ADR-0035, ADR-0036, ADR-0037)
+## Session Recovery — READ THIS FIRST
 
-## Context
-Full review of source/claude/hooks/, source/shared/hooks/, source/claude/agents/, and
-skills/pipeline-setup/SKILL.md revealed bugs and gaps. Constraint: Colby edits source/
-only. .claude/ is not touched.
+Three independent ADRs are launching in parallel. All 3 Cal invocations go out
+simultaneously in a single message. Do NOT sequence them — they are designed to
+run concurrently. After all 3 Cal ADRs are written, Colby+Roz for Wave 4 and
+Agatha for Wave 5 also run in parallel. Wave 6 Cursor parity gates on Wave 4
+completing first; all other Wave 6 work is independent.
+
+## Wave Plan
+
+### ADR-0035 — Wave 4: Remaining Brain Hardening + ADR-0032 Steps 2–3
+**Theme:** Brain code correctness continuation.
+**Owner:** Cal → Colby → Roz
+**Files touched:**
+- `brain/scripts/hydrate-telemetry.mjs` — rewire to use `session_state_dir()` helper
+  (ADR-0032 Step 2: stop hardcoding `docs/pipeline/`, read from env signal set by
+  `pipeline-state-path.sh`)
+- `source/shared/hooks/session-boot.sh` — Eva hard-pause behavior on state isolation
+  failure (ADR-0032 Step 3)
+- `source/claude/hooks/enforce-ellis-paths.sh` — resolve contradiction with ADR-0022
+  Rule 20 (S4: currently blocked, needs its own ADR decision)
+- `docs/architecture/ADR-0035-*.md` — Cal writes this ADR
+
+**Why these were deferred from Wave 3:** hydrate-telemetry.mjs is 1029 lines and
+needs its own focused Colby session. S4 requires a new architectural decision, not
+just a fix.
+
+**Key constraint:** Do NOT touch `brain/lib/` files — those were Wave 3 territory
+and are now correct. Scope is strictly hydrate-telemetry.mjs + session-boot ADR-0032
+Steps 2–3.
+
+---
+
+### ADR-0036 — Wave 5: Documentation Sweep (Agatha-led, no Colby)
+**Theme:** Close the documentation gap — 17 undocumented architectural decisions
++ migration runner prose + behavioral coverage.
+**Owner:** Cal (retroactive ADR writing) → Agatha (prose docs)
+**No Colby invocation — pure documentation wave.**
+
+**Specific deliverables from the gauntlet register (M11, M15):**
+- M11: Migration runner documentation — document the new generic file-loop runner
+  (`brain/lib/db.mjs` `runMigrations()`), `schema_migrations` table, idempotency
+  guarantees. Write to `docs/guide/technical-reference.md` (Agatha).
+- M15: ADR index — Cal writes retrospective ADRs for the 17 undocumented
+  architectural decisions identified in the gauntlet. These live in
+  `docs/architecture/`. Cal should identify them by reading the codebase and
+  existing ADRs to find decisions made in code with no ADR.
+- Behavioral coverage: any significant areas where code exists but no prose
+  explanation does. Agatha identifies gaps and writes.
+
+**Key constraint:** No source code changes. All output is `docs/` only.
+
+---
+
+### ADR-0037 — Wave 6: Dashboard A11y + Cursor Parity + Product Spec Additions
+**Theme:** UX surface hardening and spec completeness.
+**Owner:** Sable (a11y spec) → Colby → Roz (for a11y); Cal (ADR-0037) → Colby
+(Cursor parity, spec additions)
+
+**Workstreams:**
+1. **Dashboard a11y** (independent of Wave 4):
+   - M12: Loading states in `brain/ui/dashboard.html` — skeleton/spinner for
+     async data fetching
+   - S2: Modal accessibility — ARIA roles, focus trap, keyboard dismiss
+   - S18: Keyboard navigation — all interactive elements reachable via Tab/Enter
+
+2. **Product spec additions** (independent):
+   - Formalise specs for areas Robert flagged as "code exists, no spec" during
+     prior gauntlet review. Robert-spec writes to `docs/product/`.
+
+3. **Cursor parity** (GATES on Wave 4 completing first):
+   - Mirror any `session-boot.sh` changes from Wave 4 to
+     `source/cursor/hooks/session-boot.sh` and `.cursor-plugin/`.
+   - DO NOT start this workstream until ADR-0035 (Wave 4) Ellis commit is done.
+
+---
+
+## Agent Receipts
+
+### Wave 4 (ADR-0035)
+- Cal: ADR at docs/architecture/ADR-0035-wave4-consumer-wiring-and-s4-resolution.md, 3 steps, 24 tests
+- Roz pre-build: DONE — 24 tests (tests/hooks/test_adr0035_consumer_wiring.py ×14, tests/brain/hydrate-telemetry-statedir.test.mjs ×8, tests/hooks/test_enforce_eva_paths.py +2). 10 FAIL expected pre-build, 14 PASS.
+- Colby Steps 1-3: scouts running (a5cced39f71000339, a78c160fd7f651273, a8b6abef2caa78fd7)
+
+### Wave 5 (ADR-0036)
+- Cal: ADR at docs/architecture/ADR-0036-wave5-documentation-sweep.md, 8 steps, 30 tests. Step 6 has 2-line source fix (not pure docs).
+- Colby Step 6: DONE, 2 files changed (brain/server.mjs:9, brain/schema.sql:2), dead link fix
+- Roz Step 6 scoped: PASS, 0 blockers
+- Agatha Steps 1-5, 7-8: PENDING (blocked by build phase; runs after W4+W6 code builds complete and phase=review)
+
+### Wave 6 (ADR-0037)
+- Cal: ADR at docs/architecture/ADR-0037-wave6-dashboard-a11y-cursor-parity-specs.md, 7 steps (A1-A3, B1, C1), 41 tests. Workstream C [REQUIRES ADR-0035].
+- Robert-spec B1: DONE, 5 specs written (docs/product/observation-masking.md, token-budget-estimate-gate.md, named-stop-reason-taxonomy.md, agent-discovery.md, team-collaboration-enhancements-addendum.md)
+- Roz pre-build: DONE, tests/test_adr0037_wave6.py written, 35 tests
+- Robert-spec B1 AC fix: DONE (observation-masking.md AC-17 + token-budget-estimate-gate.md AC-18 updated)
+- Colby A1-A3: DONE, brain/ui/dashboard.html (modal ARIA+focus trap, agent card keyboard nav, loading skeletons), 35/35 tests PASS
+- Roz W6 QA sweep: IN PROGRESS (a4691ae569432296b)
+- Poirot W6: IN PROGRESS (a1863e619fd12ab7c)
+
+## Parallel Launch Protocol (next session)
+
+Eva reads this file at session start and executes the following:
+
+**Step 1 — Launch all 3 Cal invocations simultaneously (single message, 3 Agent calls):**
+```
+Cal 1: Author ADR-0035 (Wave 4 — brain hardening + ADR-0032 Steps 2–3)
+Cal 2: Author ADR-0036 (Wave 5 — documentation sweep, retroactive ADRs)
+Cal 3: Author ADR-0037 (Wave 6 — dashboard a11y + Cursor parity + spec additions)
+```
+All 3 are background agents. Wait for all 3 to complete before Step 2.
+
+**Step 2 — After all 3 ADRs written:**
+- Wave 4: Roz test authoring → Colby build → Roz QA → Poirot → Ellis
+- Wave 5: Agatha docs (no Colby) → Robert-subagent verifies → Ellis
+- Wave 6 a11y + specs: Colby → Roz → Poirot → Ellis
+- Wave 6 Cursor parity: START ONLY AFTER Wave 4 Ellis commit
+
+**Step 3 — Final:**
+- Robert reviews Wave 4 (if spec exists) and Wave 6
+- T3 telemetry capture per ADR
+- Ellis final push per ADR
+- Version bump after all 3 ship (3.29.0)
+
+---
+
+## Dependency Map
+
+```
+Cal-0035 ──→ Roz (test spec) ──→ Colby (build) ──→ Roz QA ──→ Ellis ──→ Wave 6 Cursor parity
+                                                                    ↑
+Cal-0036 ──────────────────────────────────────→ Agatha (docs only) ──→ Ellis (independent)
+
+Cal-0037 ──→ Colby (a11y) ──→ Roz QA ──→ Ellis (independent of W4 except Cursor parity step)
+         └──→ Robert-spec (product specs) ──→ Ellis
+```
+
+---
 
 ## Prior Pipeline (closed)
-**Feature:** Fix marketplace.json version mismatch (3.27.0 → 3.27.1)
-**Stop Reason:** user_cancelled (stale — new pipeline directive received 2026-04-11)
-
-## All Findings
-
-### Critical (must fix)
-- C1: source/shared/hooks/session-boot.sh — PIPELINE_STATUS pattern `{.*}` (no space) vs
-  canonical format `PIPELINE_STATUS: {` (with space) — boot always reports pipeline_active=false
-- C2: skills/pipeline-setup/SKILL.md — enforce-scout-swarm.sh missing from file manifest
-  AND settings.json template — fresh installs have zero scout swarm enforcement
-
-### Major (must fix)
-- M1: source/claude/hooks/enforcement-config.json — missing .github/ in colby_blocked_paths
-  (Colby can overwrite CI workflows on fresh installs)
-- M2: source/shared/hooks/session-boot.sh — CORE_AGENTS list missing 6 agents
-  (sentinel, darwin, deps, brain-extractor, robert-spec, sable-ux)
-- M3: source/claude/hooks/enforce-scout-swarm.sh — Roz evidence block not validated
-  for content (empty <debug-evidence> tag passes)
-- M4: skills/pipeline-setup/SKILL.md — session-hydrate.sh description wrong ("Runs
-  telemetry hydration") and should be updated; source comment says no-op
-
-### Minor (should fix)
-- m1: source/claude/hooks/enforce-roz-paths.sh — header comment says "Write|Edit", should be "Write"
-- m2: source/claude/hooks/enforce-cal-paths.sh — dead MultiEdit case branch (unreachable code)
-- m3: source/claude/hooks/post-compact-reinject.sh — brain reminder says "injects" but only reminds
-- m4: source/claude/hooks/prompt-brain-prefetch.sh — scope includes agatha but scout enforcement doesn't
-- m5: source/claude/agents/brain-extractor.frontmatter.yml — full model ID instead of shorthand "haiku"
-
-### Design Gaps (in scope — user confirmed)
-- G1: skills/pipeline-setup/SKILL.md — brain-extractor if: condition missing robert, robert-spec,
-  sable, sable-ux, ellis (same Haiku extractor pattern, extend existing hook)
-- G2: source/claude/hooks/prompt-brain-prefetch.sh scope mismatch (same file as m4)
-
-## Files to Modify
-- source/shared/hooks/session-boot.sh (C1 + M2)
-- source/claude/hooks/enforce-scout-swarm.sh (M3)
-- source/claude/hooks/enforcement-config.json (M1)
-- source/claude/hooks/enforce-roz-paths.sh (m1)
-- source/claude/hooks/enforce-cal-paths.sh (m2)
-- source/claude/hooks/post-compact-reinject.sh (m3)
-- source/claude/hooks/prompt-brain-prefetch.sh (m4/G2)
-- source/claude/agents/brain-extractor.frontmatter.yml (m5)
-- skills/pipeline-setup/SKILL.md (C2 + M4 + G1)
-
-## Progress
-- [x] Cal → ADR-0033 at docs/architecture/ADR-0033-hook-enforcement-audit-fixes.md, 10 steps, 2 waves, 30 test IDs
-- [x] Roz → test spec review (PASS — 30 specs sound, 0 gaps)
-- [x] Roz → test authoring (30 tests across 10 files; 23 red pre-build, 7 green)
-- [x] Colby → implement (wave 1: 12 source files; Poirot F2+F6 fixed post-review)
-- [x] Roz QA Wave 1: 26/26 PASS. Poirot: 2 MUST-FIX resolved, 6 NIT accepted.
-- [x] Ellis → Wave 1 commit: 460381f (23 files, 1382 insertions)
-- [x] Colby → implement (wave 2: SKILL.md, Steps 8-10, 5/5 tests PASS)
-- [x] Roz QA Wave 2: 5/5 PASS. Poirot: 3 MUST-FIX resolved, 3 accepted.
-- [x] Ellis → Wave 2 commit: 9b73eec (2 files)
-- [x] Robert → skipped (no spec/UI — ADR-0033 is infrastructure only, N/A per ADR)
-- [x] Agatha → docs/guide/technical-reference.md + docs/product/mechanical-brain-writes.md updated (11 locations, 9-agent scope + Agatha source_phase correction)
-- [ ] Ellis → final commit + push (includes source/shared/references/gauntlet.md — added post-Wave 2)
-<!-- COMPACTION: 2026-04-11T20:55:08Z -->
-<!-- COMPACTION: 2026-04-11T22:10:49Z -->
-<!-- COMPACTION: 2026-04-11T22:42:32Z -->
-<!-- COMPACTION: 2026-04-11T23:17:47Z -->
-<!-- COMPACTION: 2026-04-12T00:46:05Z -->
-<!-- COMPACTION: 2026-04-12T02:07:11Z -->
-<!-- COMPACTION: 2026-04-12T03:35:53Z -->
-<!-- COMPACTION: 2026-04-12T04:04:44Z -->
+**Feature:** ADR-0034 Gauntlet remediation — brain correctness fixes
+**Stop Reason:** completed_clean
+**Closed:** 2026-04-12
+**Release:** v3.28.0 (commit 6e50c0b)
+<!-- COMPACTION: 2026-04-12T12:50:17Z -->
+<!-- COMPACTION: 2026-04-12T13:42:43Z -->
