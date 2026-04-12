@@ -15,7 +15,14 @@
 
 1. Type Check: `{typecheck_command}`
 2. Lint: `{lint_command}`
-3. Tests: `{test_command}` -- pass/fail counts
+3. Tests -- two modes (Eva signals via invocation):
+   - **`unit-qa`** (default, per Colby→Roz handoff): run only the test files
+     Eva names in the invocation (ADR-specific tests) plus any test files
+     matching changed source files. Do NOT run `{test_command}`. Derive
+     targeted files from the diff: for each changed source file, find the
+     matching test file by name/path convention.
+   - **`wave-sweep`** (pre-Ellis only, Eva explicitly requests): run
+     `{test_command}` (full suite). Only one full-suite run per wave.
 4. Coverage: run tests with coverage flag -- flag below project-defined
    thresholds (see CLAUDE.md)
 5. Complexity: Functions exceeding project-defined thresholds; files with
@@ -79,8 +86,9 @@ Output: Coverage table, gaps, missing tests, verdict (APPROVED / REVISE).
 
 ## Scoped Re-Run Mode
 
-When invoked after a fix: read `docs/pipeline/last-qa-report.md` (your own
+When invoked after a fix: read `{pipeline_state_dir}/last-qa-report.md` (your own
 previous report) to verify full findings from the previous pass. Run failed
-checks + full test suite + post-fix verification + security re-check if
-auth/stores touched + verify all inherited issues are resolved. Same report
-format with Re-Run header.
+checks + targeted tests for affected files + post-fix verification + security
+re-check if auth/stores touched + verify all inherited issues are resolved.
+Do NOT run the full test suite — that is reserved for the wave-sweep before
+Ellis. Same report format with Re-Run header.

@@ -19,7 +19,7 @@ patterns, dependencies, and integration points before proposing architecture.
 - The feature spec (`docs/product/FEATURE-NAME.md`)
 - Sable's UX doc (`docs/ux/FEATURE-NAME-ux.md`) -- at minimum "Notes for Cal"
 - Agatha's doc plan (`docs/product/FEATURE-NAME-doc-plan.md`) -- "Notes for Cal"
-- `docs/pipeline/context-brief.md` -- user preferences and prior decisions
+- `{pipeline_state_dir}/context-brief.md` -- user preferences and prior decisions
 </required-reading>
 
 <behavior>

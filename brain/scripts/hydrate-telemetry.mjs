@@ -6,7 +6,12 @@
  * Tier 1 telemetry thoughts into the brain database.
  *
  * Usage:
- *   node brain/scripts/hydrate-telemetry.mjs <project-sessions-path>
+ *   node brain/scripts/hydrate-telemetry.mjs <project-sessions-path> [--state-dir PATH] [--silent]
+ *
+ * When --state-dir is provided, pipeline state files are read from that path.
+ * When omitted, the script auto-resolves the out-of-repo state directory using
+ * CLAUDE_PROJECT_DIR or CURSOR_PROJECT_DIR to compute
+ * ~/.atelier/pipeline/{slug}/{hash}/ (ADR-0035 R1).
  *
  * Example:
  *   node brain/scripts/hydrate-telemetry.mjs ~/.claude/projects/-Users-sfeirr-projects-atelier-pipeline
@@ -19,6 +24,7 @@
 import { readdirSync, readFileSync, statSync, existsSync } from "fs";
 import { createHash } from "crypto";
 import path from "path";
+import os from "os";
 import { fileURLToPath } from "url";
 import { resolveConfig } from "../lib/config.mjs";
 import { createPool, runMigrations } from "../lib/db.mjs";
@@ -156,6 +162,26 @@ function expandHome(p) {
     return path.join(process.env.HOME || process.env.USERPROFILE || "", p.slice(1));
   }
   return p;
+}
+
+/**
+ * Resolve the out-of-repo Atelier state directory for a given worktree root.
+ * Returns ~/.atelier/pipeline/{slug}/{hash} if it exists on disk, else null.
+ *
+ * This mirrors the bash helper pipeline-state-path.sh session_state_dir().
+ * Cross-implementation contract test T-0035-012 verifies hash parity.
+ *
+ * @param {string} worktreeRoot - Absolute path to the project worktree root.
+ * @returns {string|null} Absolute path to the state directory, or null.
+ */
+function resolveAtelierStateDir(worktreeRoot) {
+  const slug = path.basename(worktreeRoot);
+  const hash = createHash("sha256").update(worktreeRoot).digest("hex").slice(0, 8);
+  const stateDir = path.join(os.homedir(), ".atelier", "pipeline", slug, hash);
+  if (existsSync(stateDir)) {
+    return stateDir;
+  }
+  return null;
 }
 
 /**
@@ -360,6 +386,12 @@ async function stateItemAlreadyHydrated(pool, contentHash) {
  */
 async function parseStateFiles(stateDir, pool, config, { silentMode = false } = {}) {
   const log = (...a) => { if (!silentMode) console.log(...a); };
+
+  // Early-exit guard: gracefully skip when stateDir does not exist (ADR-0035 R2)
+  if (!existsSync(stateDir)) {
+    log(`  State dir not found: ${stateDir} (graceful skip)`);
+    return 0;
+  }
 
   let inserted = 0;
 
@@ -982,12 +1014,24 @@ async function main() {
   // State-File Parsing (pipeline-state.md + context-brief.md)
   // ==========================================================================
   // When --state-dir is provided, parse pipeline state files and emit captures
-  // for Eva's decisions and phase transitions.
+  // for Eva's decisions and phase transitions. When absent, auto-resolve the
+  // out-of-repo state directory via CLAUDE_PROJECT_DIR / CURSOR_PROJECT_DIR
+  // (ADR-0035 R1).
 
   if (stateDirArg) {
     log("\nParsing pipeline state files...");
     const stateInserted = await parseStateFiles(expandHome(stateDirArg), pool, config, { silentMode });
     log(`State-file captures: ${stateInserted} new item(s) captured.`);
+  } else {
+    const worktreeRoot = process.env.CLAUDE_PROJECT_DIR || process.env.CURSOR_PROJECT_DIR;
+    if (worktreeRoot) {
+      const autoStateDir = resolveAtelierStateDir(worktreeRoot);
+      if (autoStateDir) {
+        log("\nAuto-resolved state dir: " + autoStateDir);
+        const stateInserted = await parseStateFiles(autoStateDir, pool, config, { silentMode });
+        log(`State-file captures: ${stateInserted} new item(s) captured.`);
+      }
+    }
   }
 
   await pool.end();
@@ -999,6 +1043,7 @@ async function main() {
 
 export {
   expandHome,
+  resolveAtelierStateDir,
   discoverEvaFiles,
   discoverSubagentFiles,
   alreadyHydrated,

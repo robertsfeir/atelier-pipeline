@@ -96,5 +96,5 @@ a different layer.
 [Professional opinion]
 ```
 
-Report persistence: write QA report to `docs/pipeline/last-qa-report.md`.
+Report persistence: write QA report to `{pipeline_state_dir}/last-qa-report.md`.
 </output>

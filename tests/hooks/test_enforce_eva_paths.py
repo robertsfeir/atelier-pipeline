@@ -2,9 +2,10 @@
 
 Eva can only write to docs/pipeline/ within the project root.
 Exceptions: $HOME/.claude/projects/.../memory/ paths (auto-memory system).
+Exception: $HOME/.atelier/pipeline/*/*/*  paths (out-of-repo state dirs, ADR-0032/0035).
 Path traversal is always blocked regardless of exception status.
 
-Covers: T-EVA-001 through T-EVA-010
+Covers: T-EVA-001 through T-EVA-010, T-0035-020, T-0035-021
 """
 
 import os
@@ -115,3 +116,45 @@ def test_T_EVA_010_edit_tool_blocked_outside_pipeline(hook_env):
     r = run_hook_with_project_dir(HOOK, inp, hook_env)
     assert r.returncode == 2
     assert "BLOCKED" in r.stdout
+
+
+# ── ADR-0035 Step 3: Out-of-repo state dir whitelist ─────────────────────
+
+
+def test_T_0035_020_atelier_pipeline_state_dir_allowed(hook_env):
+    """Eva writing to $HOME/.atelier/pipeline/my-project/a1b2c3d4/pipeline-state.md is allowed.
+
+    The enforce-eva-paths.sh whitelist pattern $HOME/.atelier/pipeline/*/*/*
+    must match the three-level path: {slug}/{hash}/{filename}.
+
+    Expected: PASS currently (whitelist already exists at line 46-48 of the hook).
+    """
+    home = os.environ.get("HOME", "/tmp")
+    atelier_path = f"{home}/.atelier/pipeline/my-project/a1b2c3d4/pipeline-state.md"
+    inp = build_tool_input("Write", atelier_path)
+    r = run_hook_with_project_dir(HOOK, inp, hook_env)
+    assert r.returncode == 0, (
+        f"Eva should be allowed to write to the out-of-repo state dir "
+        f"({atelier_path}). Got exit {r.returncode}: {r.stdout}"
+    )
+
+
+def test_T_0035_021_atelier_pipeline_traversal_blocked(hook_env):
+    """Eva writing to $HOME/.atelier/pipeline/../../etc/passwd is blocked (traversal).
+
+    The traversal check must fire before the .atelier whitelist exception.
+    This prevents an attacker from using the whitelist as an escape hatch.
+
+    Expected: PASS currently (traversal check already fires first).
+    """
+    home = os.environ.get("HOME", "/tmp")
+    crafted_path = f"{home}/.atelier/pipeline/../../etc/passwd"
+    inp = build_tool_input("Write", crafted_path)
+    r = run_hook_with_project_dir(HOOK, inp, hook_env)
+    assert r.returncode == 2, (
+        f"Traversal in .atelier/pipeline path should be blocked. "
+        f"Got exit {r.returncode}: {r.stdout}"
+    )
+    assert "BLOCKED" in r.stdout, (
+        f"Expected BLOCKED message for traversal attempt. Got: {r.stdout}"
+    )

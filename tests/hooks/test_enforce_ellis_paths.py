@@ -4,21 +4,19 @@ Covers T-0034-037, T-0034-038, T-0034-039.
 
 Follows the template established by test_enforce_colby_paths.py.
 
-IMPORTANT: S4 CONTRADICTION CONTEXT (ADR-0034 Notes for Colby #8):
+S4 RESOLUTION (ADR-0035): ADR-0022 R20 originally stated "no path hooks
+for Ellis." ADR-0035 supersedes that decision. The hook is kept as a
+safety net for commit-related paths. Layer 3 sequencing (Eva invokes
+Ellis only after QA) is the primary control. The allowlist covers every
+path Ellis legitimately needs.
+
 ADR-0022 R20 established Ellis as a commit-only agent. The current
 enforce-ellis-paths.sh allows writes to CHANGELOG.md, git config files
 (.gitignore, .gitattributes, .gitmodules), AND all CI/CD paths (.github/,
 .gitlab-ci*, .gitlab/, .circleci/, Jenkinsfile*, Dockerfile*, docker-compose*,
 deploy/, infra/, terraform/, pulumi/, k8s/, kubernetes/).
 
-The contradiction (S4) is: ADR-0022 R20 says Ellis writes only to
-CHANGELOG.md and git config files, but the hook ALSO allows CI/CD paths.
-This is not yet resolved. Wave 2 tests lock TODAY's hook behavior.
-Resolution happens in Wave 4 via a new ADR.
-
-These tests document what the hook currently does, not what the post-S4
-resolution behavior will be. Do not change these tests when resolving S4 --
-supersede them with new tests in the Wave 4 ADR.
+These tests lock the hook's allowlist behavior per ADR-0035 Option C.
 
 Colby MUST NOT modify these assertions.
 """

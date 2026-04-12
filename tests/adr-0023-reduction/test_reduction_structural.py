@@ -1137,11 +1137,16 @@ def test_T_0023_121_default_persona_md_boot_sequence_still_contains_steps_4_6_br
 
 
 def test_T_0023_130_pipeline_orchestration_md_650_lines():
-    """T-0023-130: pipeline-orchestration.md <=650 lines."""
+    """T-0023-130: pipeline-orchestration.md <=680 lines.
+
+    Threshold updated from 650 to 680: ADR-0035 Step 3 intentionally added
+    the <protocol id="concurrent-session-hard-pause"> section (~26 lines).
+    The upper bound is kept meaningful to prevent unbounded growth.
+    """
     f = SHARED_RULES / "pipeline-orchestration.md"
     assert f.is_file()
     lines = len(f.read_text().splitlines())
-    assert lines <= 650, f"{lines} lines (expected <= 650)"
+    assert lines <= 680, f"{lines} lines (expected <= 680)"
 
 
 def test_T_0023_131_All_12_mandatory_gates_preserved_verbatim_count_numbered_items_under_Eva_NEVER_Skips():

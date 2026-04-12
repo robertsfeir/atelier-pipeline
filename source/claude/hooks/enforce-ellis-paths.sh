@@ -1,6 +1,9 @@
 #!/bin/bash
 # Per-agent path enforcement: Ellis
 # PreToolUse hook on Write|Edit|MultiEdit -- Ellis can only write to commit/changelog targets
+# Note: ADR-0022 R20 originally stated "no path hooks for Ellis."
+# ADR-0035 supersedes that decision. This hook is a safety net for
+# commit-related paths. Layer 3 sequencing is the primary control.
 set -uo pipefail
 [ "${ATELIER_SETUP_MODE:-}" = "1" ] && exit 0
 [ -f "${CLAUDE_PROJECT_DIR:-.}/docs/pipeline/.setup-mode" ] && exit 0

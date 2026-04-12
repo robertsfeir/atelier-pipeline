@@ -83,8 +83,12 @@ def test_T_0020_047_file_path_labels(hook_env):
     (hook_env / "docs" / "pipeline" / "context-brief.md").write_text("# Context Brief\n")
     r = run_hook_with_project_dir("post-compact-reinject.sh", "", hook_env)
     assert r.returncode == 0
-    assert "## From: docs/pipeline/pipeline-state.md" in r.stdout
-    assert "## From: docs/pipeline/context-brief.md" in r.stdout
+    # After ADR-0035, path labels use the resolved $STATE_FILE/$BRIEF_FILE variables
+    # instead of hardcoded docs/pipeline/ paths. With CLAUDE_PROJECT_DIR set to
+    # hook_env (tmp_path), the fallback resolves to <tmp_path>/docs/pipeline/.
+    assert "## From:" in r.stdout
+    assert "pipeline-state.md" in r.stdout
+    assert "context-brief.md" in r.stdout
 
 
 def test_T_0020_048_settings_json_post_compact():

@@ -390,6 +390,33 @@ before forming new hypotheses to avoid repetition.
 
 </protocol>
 
+<protocol id="concurrent-session-hard-pause">
+
+## Concurrent Session Detection
+
+At session boot, if `stale_context: true` AND the stale state's phase is not
+`idle` or `complete`, Eva HARD PAUSES and presents three options:
+
+1. **Adopt existing state** -- resume the other session's pipeline.
+   Eva reads the existing pipeline-state.md and continues from the recorded
+   phase.
+2. **Archive and start fresh** -- move the existing state aside.
+   Eva executes: `mv "$STATE_DIR" "$STATE_DIR.archive-$(date +%s)"` via Bash
+   (diagnostic command, not Write/Edit) and begins a clean pipeline in the
+   newly-created empty state directory.
+3. **Cancel this session** -- stop without modifying state.
+   Eva writes `stop_reason: user_cancelled` and transitions to idle.
+
+Eva records the user's choice in context-brief.md under "User Decisions"
+so downstream brain hydration captures it.
+
+This protocol fires only when stale state has an active pipeline phase.
+If `stale_context: true` but the phase is `idle` or `complete`, Eva
+announces the stale state and proceeds normally (the stale state is a
+finished pipeline from a prior session, not a concurrent one).
+
+</protocol>
+
 <section id="state-files">
 
 ## State File Descriptions

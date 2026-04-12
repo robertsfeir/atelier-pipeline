@@ -122,16 +122,20 @@ def test_T_0024_002_brain_extractor_excluded_from_if_condition():
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# T-0024-003: if: condition includes exactly cal/colby/roz/agatha, no others
+# T-0024-003: if: condition includes all ADR-0034 expanded agents (9 total)
 # ═══════════════════════════════════════════════════════════════════════
 
 
 def test_T_0024_003_if_condition_includes_exactly_four_agents():
-    """The agent hook if: condition must reference exactly cal, colby, roz, agatha.
+    """The agent hook if: condition must include all 9 domain agents.
 
-    No other agent types (ellis, poirot, robert, sable, sentinel, etc.) should appear.
-    Exact expected form:
-      agent_type == 'cal' || agent_type == 'colby' || agent_type == 'roz' || agent_type == 'agatha'
+    ADR-0034 Wave 3 expanded the brain-extractor scope from the original
+    4 core agents (cal, colby, roz, agatha) to all 9 domain agents:
+      cal, colby, roz, agatha  (original four)
+      robert, robert-spec, sable, sable-ux, ellis  (ADR-0034 additions)
+
+    The function name is preserved for history; the assertion now reflects
+    the approved ADR-0034 expanded list.
     """
     settings = load_settings()
     hooks = get_subagent_stop_hooks(settings)
@@ -139,19 +143,27 @@ def test_T_0024_003_if_condition_includes_exactly_four_agents():
     assert agent_hook is not None, "No agent hook found -- T-0024-001 must pass first"
     condition = agent_hook.get("if", "")
 
-    # All four must be present
+    # Original four must still be present
     for expected_agent in ["cal", "colby", "roz", "agatha"]:
         assert expected_agent in condition, (
-            f"Expected agent '{expected_agent}' not found in if: condition '{condition}'"
+            f"Original agent '{expected_agent}' not found in if: condition '{condition}'"
         )
 
-    # No unintended agents
-    unintended = ["ellis", "poirot", "robert", "sable", "sentinel", "darwin", "deps",
+    # ADR-0034 additions must also be present
+    for expected_agent in ["robert", "robert-spec", "sable", "sable-ux", "ellis"]:
+        assert expected_agent in condition, (
+            f"ADR-0034 expansion agent '{expected_agent}' not found in if: condition '{condition}'. "
+            "ADR-0034 Wave 3 expanded the if: condition to all 9 domain agents."
+        )
+
+    # Sentinel/infrastructure agents must NOT appear (still unintended)
+    unintended = ["poirot", "sentinel", "darwin", "deps",
                   "investigator", "distillator", "brain-extractor"]
     for agent in unintended:
         assert agent not in condition, (
             f"Unintended agent '{agent}' found in if: condition '{condition}'. "
-            "Only cal/colby/roz/agatha should appear."
+            "Only the 9 domain agents (cal, colby, roz, agatha, robert, robert-spec, "
+            "sable, sable-ux, ellis) should appear."
         )
 
 

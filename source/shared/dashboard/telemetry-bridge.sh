@@ -2,7 +2,7 @@
 # telemetry-bridge.sh -- Atelier Pipeline dashboard bridge
 #
 # Reads brain telemetry via the brain REST API (if configured and reachable),
-# falls back to parsing docs/pipeline/pipeline-state.md, and writes
+# falls back to parsing {pipeline_state_dir}/pipeline-state.md, and writes
 # PIPELINE_PLAN.md in PlanVisualizer's expected format.
 #
 # Usage:
@@ -17,7 +17,7 @@ set -uo pipefail
 # Defaults
 # ---------------------------------------------------------------------------
 BRAIN_URL=""
-PIPELINE_STATE_PATH="docs/pipeline/pipeline-state.md"
+PIPELINE_STATE_PATH="{pipeline_state_dir}/pipeline-state.md"
 OUTPUT_PATH="./PIPELINE_PLAN.md"
 SKIP_GENERATE=false
 BRAIN_TIMEOUT=5  # seconds
