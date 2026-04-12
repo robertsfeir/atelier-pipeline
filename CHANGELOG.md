@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.30.4] - 2026-04-12
+
+### Fixed
+
+- **rest-api.mjs:** Guard `rework_rate` and `first_pass_qa_rate` casts against non-numeric legacy values. Historical T3 captures stored non-numeric strings ("low", "1.0 cycles/unit") that caused PostgreSQL cast errors blanking the entire dashboard `/api/telemetry/agents` endpoint. Replaced bare `::numeric` casts with `CASE WHEN ~ regex ELSE NULL END` guards to safely skip non-numeric rows.
+
 ## [3.30.3] - 2026-04-12
 
 ### Fixed
