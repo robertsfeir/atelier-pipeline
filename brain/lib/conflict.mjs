@@ -4,6 +4,7 @@
  */
 
 import pgvector from "pgvector/pg";
+import { assertLlmContent } from "./llm-response.mjs";
 
 // =============================================================================
 // Brain Config Cache
@@ -57,7 +58,7 @@ Respond in JSON format:
     });
     if (!res.ok) throw new Error(`LLM API error: ${res.status}`);
     const data = await res.json();
-    return JSON.parse(data.choices[0].message.content);
+    return JSON.parse(assertLlmContent(data, 'conflict'));
   } catch (err) {
     console.error("Conflict classification failed:", err.message);
     return null;

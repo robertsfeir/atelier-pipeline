@@ -37,13 +37,19 @@ export function installCrashGuards(deps) {
     // never complete), force exit after 3 seconds to prevent zombie processes.
     // unref() so the timer does not prevent the event loop from exiting on
     // its own if everything else completes cleanly.
-    const deadman = setTimeout(() => exitFn(0), 3000);
-    if (deadman.unref) deadman.unref();
-    // Best-effort cleanup: let pool drain, clear the deadman if it completes.
-    // In production, exitFn is process.exit(0) which terminates before the
-    // .then() runs -- the deadman is purely a fallback for hung cleanup.
-    poolEnd().catch(() => {}).then(() => clearTimeout(deadman));
-    exitFn(0);
+    //
+    // ADR-0034 Step 3.4 fix: race the pool drain against the deadman so
+    // exitFn(0) is only called AFTER one of them resolves. The previous
+    // version called exitFn(0) synchronously after starting the race, which
+    // terminated the process before pool.end() had a chance to flush
+    // in-flight queries -- corrupting writes mid-shutdown.
+    const deadmanPromise = new Promise((resolve) => {
+      const t = setTimeout(resolve, 3000);
+      if (t.unref) t.unref();
+    });
+    Promise.race([poolEnd().catch(() => {}), deadmanPromise])
+      .then(() => exitFn(0))
+      .catch(() => exitFn(1));
   }
 
   // --- Crash vector #1: uncaughtException ---

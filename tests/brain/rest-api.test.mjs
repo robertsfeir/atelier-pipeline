@@ -452,3 +452,168 @@ describe('rest-api.mjs', () => {
     });
   });
 });
+
+// =============================================================================
+// ADR-0034 Wave 3 Step 3.2 — CORS wildcard override removal (T-0034-049, T-0034-050)
+//
+// These tests define correct behavior BEFORE Colby builds Step 3.2.
+// They are expected to FAIL until Colby removes the 4 per-handler
+// "Access-Control-Allow-Origin": "*" overrides from rest-api.mjs.
+//
+// After the fix, all CORS headers must originate from the server-level
+// middleware in server.mjs (line 114), not from individual handlers.
+//
+// T-0034-049: grep-level assertion — zero wildcard CORS matches in rest-api.mjs
+// T-0034-050: runtime assertion — each of the 4 formerly-wildcarded handlers
+//             does NOT return "Access-Control-Allow-Origin: *"
+// =============================================================================
+
+// T-0034-049: grep-level — no Access-Control-Allow-Origin in rest-api.mjs
+// (structural/file-content assertion)
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { join, dirname } from 'node:path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const REST_API_SOURCE = readFileSync(
+  join(__dirname, '../../brain/lib/rest-api.mjs'),
+  'utf8'
+);
+
+describe('ADR-0034 T-0034-049: CORS wildcard removal — file content', () => {
+  // T-0034-049: zero Access-Control-Allow-Origin occurrences in rest-api.mjs
+  it('T-0034-049: rest-api.mjs contains no Access-Control-Allow-Origin header', () => {
+    // After Step 3.2, all CORS is handled by server.mjs server-level middleware.
+    // Individual handlers must not set this header at all.
+    const matches = REST_API_SOURCE.match(/Access-Control-Allow-Origin/g);
+    assert.strictEqual(
+      matches,
+      null,
+      `rest-api.mjs still contains ${matches ? matches.length : 0} Access-Control-Allow-Origin ` +
+      `occurrence(s). ADR-0034 Step 3.2 requires removing all per-handler CORS overrides. ` +
+      `CORS must be set only at the server.mjs level (server.mjs:114).`
+    );
+  });
+});
+
+describe('ADR-0034 T-0034-050: CORS behavior — formerly-wildcarded handlers', () => {
+  // These tests verify that after the fix each of the 4 telemetry handlers
+  // does NOT return "Access-Control-Allow-Origin: *" in its response.
+  // The server-level CORS in server.mjs sets the origin to the request host,
+  // e.g. "http://localhost:8788". The handlers themselves set no CORS at all.
+
+  let pool;
+
+  beforeEach(() => {
+    pool = createMockPool();
+    resetBrainConfigCache();
+  });
+
+  afterEach(() => {
+    resetBrainConfigCache();
+  });
+
+  // Helper: assert no wildcard CORS on a response
+  function assertNoWildcardCors(res, handlerName) {
+    const corsHeader = res.headers['Access-Control-Allow-Origin'];
+    assert.strictEqual(
+      corsHeader,
+      undefined,
+      `${handlerName} set "Access-Control-Allow-Origin: ${corsHeader}". ` +
+      `ADR-0034 Step 3.2: per-handler CORS overrides must be removed entirely. ` +
+      `CORS is the sole responsibility of server.mjs middleware, not individual handlers.`
+    );
+  }
+
+  // T-0034-050a: GET /api/telemetry/scopes — no wildcard CORS
+  it('T-0034-050a: handleTelemetryScopes does not set Access-Control-Allow-Origin: *', async () => {
+    pool.setQueryResult("source_phase = 'telemetry'", {
+      rows: [{ scope: 'project.atelier' }],
+      rowCount: 1,
+    });
+
+    const cfg = { apiToken: null, _source: 'env' };
+    const handler = createRestHandler(pool, cfg);
+
+    const req = createMockReq({ method: 'GET', url: '/api/telemetry/scopes' });
+    const res = createMockRes();
+
+    await handler(req, res);
+
+    assert.strictEqual(res.statusCode, 200,
+      'handleTelemetryScopes should return 200');
+    assertNoWildcardCors(res, 'handleTelemetryScopes (/api/telemetry/scopes)');
+  });
+
+  // T-0034-050b: GET /api/telemetry/summary — no wildcard CORS
+  it('T-0034-050b: handleTelemetrySummary does not set Access-Control-Allow-Origin: *', async () => {
+    pool.setQueryResult("telemetry_tier' = '3'", {
+      rows: [{ content: 'summary content', metadata: {}, created_at: new Date() }],
+      rowCount: 1,
+    });
+
+    const cfg = { apiToken: null, _source: 'env' };
+    const handler = createRestHandler(pool, cfg);
+
+    const req = createMockReq({ method: 'GET', url: '/api/telemetry/summary' });
+    const res = createMockRes();
+
+    await handler(req, res);
+
+    assert.strictEqual(res.statusCode, 200,
+      'handleTelemetrySummary should return 200');
+    assertNoWildcardCors(res, 'handleTelemetrySummary (/api/telemetry/summary)');
+  });
+
+  // T-0034-050c: GET /api/telemetry/agents — no wildcard CORS
+  it('T-0034-050c: handleTelemetryAgents does not set Access-Control-Allow-Origin: *', async () => {
+    pool.setQueryResult("telemetry_tier' = '1'", {
+      rows: [{ agent: 'colby', invocations: 5, avg_duration_ms: 1000, total_cost: '0.0500', avg_input_tokens: 1000, avg_output_tokens: 500 }],
+      rowCount: 1,
+    });
+    pool.setQueryResult("telemetry_tier' = '3'", {
+      rows: [{ rework_rate: '0.10', first_pass_qa_rate: '0.90' }],
+      rowCount: 1,
+    });
+
+    const cfg = { apiToken: null, _source: 'env' };
+    const handler = createRestHandler(pool, cfg);
+
+    const req = createMockReq({ method: 'GET', url: '/api/telemetry/agents' });
+    const res = createMockRes();
+
+    await handler(req, res);
+
+    assert.strictEqual(res.statusCode, 200,
+      'handleTelemetryAgents should return 200');
+    assertNoWildcardCors(res, 'handleTelemetryAgents (/api/telemetry/agents)');
+  });
+
+  // T-0034-050d: GET /api/telemetry/agent-detail?name=colby — no wildcard CORS
+  it('T-0034-050d: handleTelemetryAgentDetail does not set Access-Control-Allow-Origin: *', async () => {
+    pool.setQueryResult("agent_name' = $1", {
+      rows: [{
+        description: 'Build feature X',
+        duration_ms: 5000,
+        cost_usd: '0.0250',
+        input_tokens: 2000,
+        output_tokens: 800,
+        model: 'claude-sonnet-4-6',
+        created_at: new Date(),
+      }],
+      rowCount: 1,
+    });
+
+    const cfg = { apiToken: null, _source: 'env' };
+    const handler = createRestHandler(pool, cfg);
+
+    const req = createMockReq({ method: 'GET', url: '/api/telemetry/agent-detail?name=colby' });
+    const res = createMockRes();
+
+    await handler(req, res);
+
+    assert.strictEqual(res.statusCode, 200,
+      'handleTelemetryAgentDetail should return 200');
+    assertNoWildcardCors(res, 'handleTelemetryAgentDetail (/api/telemetry/agent-detail)');
+  });
+});

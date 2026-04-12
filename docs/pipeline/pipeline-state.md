@@ -1,12 +1,23 @@
 # Pipeline State
 
 ## Active Pipeline
-**Feature:** Source hook enforcement audit — fix all review findings
+**Feature:** ADR-0034 Gauntlet remediation — fix all register findings
 **Phase:** review
 <!-- PIPELINE_STATUS: {"phase": "review", "sizing": "medium", "roz_qa": "PASS", "telemetry_captured": true, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": true, "robert_reviewed": true, "brain_available": true} -->
-<!-- Robert: skipped — ADR-0033 is infrastructure-only with no user-facing surface (ADR §UX Coverage: N/A). No product spec exists or is required. Smart context detection: no spec in docs/product/ for this feature. -->
 **Sizing:** Medium
 **Started:** 2026-04-11
+
+## Wave Progress
+- [x] Wave 1 — brain enum extension + ADR-0032 + enforcement fixes → commit `ebda3af`
+- [x] Wave 2 — hook-lib.sh extraction + migration runner refactor + session-hydrate shim + Poirot fix round → commit `f3c0090`
+- [ ] Wave 3 — brain correctness (M8 CORS, M10 dashboard XSS, S5 gracefulShutdown drain, S10 LLM null guards, M4 red test greening)
+  - [x] Step 3.1 Roz triage: 8 test drift fixes applied, T-0034-046→T-0034-060 authored (RED pre-build), pytest 7→1 failure
+  - [x] Steps 3.2–3.5 Colby build: rest-api.mjs CORS fix, dashboard.html XSS escaping, crash-guards.mjs async drain, llm-response.mjs null guards — 5 production files + 1 new module
+  - [x] Roz test authoring: crash-guards.test.mjs, dashboard-xss.test.mjs, llm-response.test.mjs, rest-api.test.mjs appended — T-0034-049/050/051–060
+  - [x] Roz hardening test update: T-0017-003/006/007/008/009/010 made async (ADR-0034 Step 3.4 drift) — 186 tests, 0 fail
+  - [x] Wave 3 QA: Roz sweep PASS (186 tests, 0 fail) + Poirot blind diff (7 findings, all resolved) + Roz targeted re-check PASS (39/39)
+  - [ ] Wave 3 Ellis commit (next step)
+- [ ] Waves 4–6 — separate ADRs (ADR-0035, ADR-0036, ADR-0037)
 
 ## Context
 Full review of source/claude/hooks/, source/shared/hooks/, source/claude/agents/, and
@@ -77,3 +88,5 @@ only. .claude/ is not touched.
 <!-- COMPACTION: 2026-04-11T23:17:47Z -->
 <!-- COMPACTION: 2026-04-12T00:46:05Z -->
 <!-- COMPACTION: 2026-04-12T02:07:11Z -->
+<!-- COMPACTION: 2026-04-12T03:35:53Z -->
+<!-- COMPACTION: 2026-04-12T04:04:44Z -->

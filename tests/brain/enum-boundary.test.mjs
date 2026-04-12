@@ -190,24 +190,26 @@ describe('ADR-0034 Wave 1 — enum boundary', () => {
     );
   });
 
-  // T-0034-006: Migration 008 idempotency — second run skips (sentinel already exists)
+  // T-0034-006: Migration 008 idempotency — second run skips (already recorded in schema_migrations)
   it('T-0034-006: migration 008 skips on second run when sentinel already in pg_enum', async () => {
     if (!runMigrations) return;
 
     const pool = createMockPool();
-    // Simulate ALL checks passing (everything already exists)
-    pool.setQueryResult('information_schema.columns', { rows: [{ '1': 1 }], rowCount: 1 });
-    pool.setQueryResult('pg_enum', { rows: [{ '1': 1 }], rowCount: 1 });
+    // ADR-0034 Wave 2 replaced the pg_enum sentinel check with schema_migrations tracking.
+    // Simulate migration 008 already applied: schema_migrations returns a row for it.
+    // The mock-pool matches params, so setting the migration filename as a pattern works
+    // because the query uses $1 = '008-extend-agent-and-phase-enums.sql'.
+    pool.setQueryResult('008-extend-agent-and-phase-enums.sql', { rows: [{ '1': 1 }], rowCount: 1 });
 
     await runMigrations(pool);
 
-    // The sentinel check is the trigger for migration 008.
-    // With rows: [{1:1}] returned, migration 008 DDL should NOT be executed.
+    // New runner checks schema_migrations before running each file.
+    // With a row returned for 008-..., migration 008 DDL should NOT be executed.
     const alterQueries = pool.queries.filter(q => q.sql.includes('ALTER TYPE source_agent'));
     assert.strictEqual(
       alterQueries.length,
       0,
-      'Migration 008 should not issue ALTER TYPE when sentinel already exists in pg_enum'
+      'Migration 008 should not issue ALTER TYPE when schema_migrations shows it already applied'
     );
   });
 

@@ -885,6 +885,14 @@
   </div>
 
   <script>
+    /**
+     * XSS guard policy (ADR-0034 Step 3.3):
+     * All `innerHTML =` assignments MUST wrap interpolated strings in
+     * `escapeHtml()`. Exceptions require an inline `/* trusted: <reason> */`
+     * comment within ~200 chars of the assignment explaining why the source
+     * is trusted (e.g. literal markup with no interpolation, or data already
+     * escaped via escapeHtml() inside the templated callback).
+     */
     (function () {
       "use strict";
 
@@ -973,7 +981,7 @@
           container.classList.remove("hidden");
           // Preserve current selection if still valid
           var prevValue = select.value;
-          select.innerHTML = '<option value="all">All Projects</option>';
+          select.innerHTML = /* trusted: static literal markup */ '<option value="all">All Projects</option>';
           scopes.forEach(function (s) {
             var opt = document.createElement("option");
             opt.value = s;
@@ -1106,7 +1114,7 @@
                       reworkCount > 0 || evoCount > 0 || qaCount > 0;
 
         if (!hasData) {
-          grid.innerHTML = '<div class="stat-block" style="grid-column: 1 / -1; text-align: center;">' +
+          grid.innerHTML = /* trusted: static literal markup, no interpolation */ '<div class="stat-block" style="grid-column: 1 / -1; text-align: center;">' +
             '<div class="stat-label">Pipeline Overview</div>' +
             '<div class="stat-value" style="font-size: 1.1rem; color: var(--text-mid);">Awaiting pipeline data</div>' +
             '<div class="stat-sub">Metrics will populate after your first pipeline run with full telemetry.</div>' +
@@ -1160,7 +1168,7 @@
             '<div class="stat-label">' + escapeHtml(s.label) + '</div>' +
             '<div class="stat-value">' + escapeHtml(s.value) + '</div>' +
             (s.sub ? '<div class="stat-sub">' + escapeHtml(s.sub) + '</div>' : '') +
-            (s.sub2 ? '<div class="stat-sub" style="color: var(--text-light); font-size: 0.75rem; margin-top: 2px;">' + s.sub2 + '</div>' : '') +
+            (s["sub2"] ? '<div class="stat-sub" style="color: var(--text-light); font-size: 0.75rem; margin-top: 2px;">' + escapeHtml(s.sub2) + '</div>' : '') +
             '</div>';
         }).join("");
       }
@@ -1173,7 +1181,7 @@
         if (existing) existing.remove();
         var div = document.createElement("div");
         div.className = "chart-empty-state";
-        div.innerHTML = html;
+        div.innerHTML = /* trusted: html arg is a static literal at every call site */ html;
         canvas.parentElement.appendChild(div);
       }
 
@@ -1405,14 +1413,14 @@
           return;
         }
 
-        grid.innerHTML = agentData.map(function (agent) {
+        grid.innerHTML = /* trusted: every interpolation in the map callback below is wrapped in escapeHtml() */ agentData.map(function (agent) {
           var isEva = (agent.agent || "").toLowerCase() === "eva";
           var badgeHtml;
           if (isEva) {
             badgeHtml = '<span class="agent-badge" style="color:var(--text-light);background:transparent;border:none;font-weight:600;letter-spacing:0.08em;">ORCHESTRATOR</span>';
           } else {
             var badge = getAgentBadge(agent);
-            badgeHtml = '<span class="agent-badge ' + badge.cls + '">' + escapeHtml(badge.label) + '</span>';
+            badgeHtml = '<span class="agent-badge ' + escapeHtml(badge.cls) + '">' + escapeHtml(badge.label) + '</span>';
           }
           return '<div class="agent-card' + (isEva ? ' agent-card--orchestrator' : '') + '" data-agent="' + escapeHtml(agent.agent || "") + '">' +
             '<div class="agent-card-header">' +
@@ -1420,10 +1428,10 @@
               badgeHtml +
             '</div>' +
             '<div class="agent-stats">' +
-              '<div><div class="agent-stat-label">Invocations</div><div class="agent-stat-value">' + (agent.invocations || 0) + '</div></div>' +
-              '<div><div class="agent-stat-label">Avg Duration</div><div class="agent-stat-value">' + fmtDuration(agent.avg_duration_ms) + '</div></div>' +
-              '<div><div class="agent-stat-label">Total Cost</div><div class="agent-stat-value">' + fmtCost(agent.total_cost) + '</div></div>' +
-              '<div><div class="agent-stat-label">Avg Tokens</div><div class="agent-stat-value">' + fmt(agent.avg_input_tokens, 0) + ' / ' + fmt(agent.avg_output_tokens, 0) + '</div></div>' +
+              '<div><div class="agent-stat-label">Invocations</div><div class="agent-stat-value">' + escapeHtml(String(agent.invocations || 0)) + '</div></div>' +
+              '<div><div class="agent-stat-label">Avg Duration</div><div class="agent-stat-value">' + escapeHtml(fmtDuration(agent.avg_duration_ms)) + '</div></div>' +
+              '<div><div class="agent-stat-label">Total Cost</div><div class="agent-stat-value">' + escapeHtml(fmtCost(agent.total_cost)) + '</div></div>' +
+              '<div><div class="agent-stat-label">Avg Tokens</div><div class="agent-stat-value">' + escapeHtml(fmt(agent.avg_input_tokens, 0)) + ' / ' + escapeHtml(fmt(agent.avg_output_tokens, 0)) + '</div></div>' +
             '</div>' +
           '</div>';
         }).join("");
@@ -1491,7 +1499,7 @@
           badgeEl.style.cssText = "";
           badgeEl.textContent = badge.label;
         }
-        bodyEl.innerHTML = '<div class="modal-loading">Loading agent detail...</div>';
+        bodyEl.innerHTML = /* trusted: static literal markup */ '<div class="modal-loading">Loading agent detail...</div>';
 
         overlay.classList.add("visible");
 
@@ -1499,12 +1507,12 @@
 
         api(url).then(function (rows) {
           if (!rows || rows.length === 0) {
-            bodyEl.innerHTML = '<div class="modal-loading">No invocation data found for this agent.</div>';
+            bodyEl.innerHTML = /* trusted: static literal markup */ '<div class="modal-loading">No invocation data found for this agent.</div>';
             return;
           }
           renderModalBody(bodyEl, rows);
         }).catch(function () {
-          bodyEl.innerHTML = '<div class="modal-loading" style="color:var(--red)">Failed to load agent detail.</div>';
+          bodyEl.innerHTML = /* trusted: static literal markup */ '<div class="modal-loading" style="color:var(--red)">Failed to load agent detail.</div>';
         });
       }
 
@@ -1554,7 +1562,7 @@
         html += '</tbody></table>';
         html += '</div>';
 
-        container.innerHTML = html;
+        container.innerHTML = /* trusted: built above with escapeHtml() on user fields */ html;
       }
 
       function renderModalBodyWithQuality(container, rows) {
@@ -1580,7 +1588,7 @@
         html += buildModalTable(thrives.map(function (x) { return x; }));
         html += '</div>';
 
-        container.innerHTML = html;
+        container.innerHTML = /* trusted: built via buildModalTable() which escapes user fields */ html;
       }
 
       function buildModalTable(items) {
@@ -1612,7 +1620,7 @@
         var list = document.getElementById("alert-list");
 
         if (summaryData.length < 3) {
-          list.innerHTML = '<div class="card"><div class="empty-state" style="padding:24px">' +
+          list.innerHTML = /* trusted: static literal markup, no interpolation */ '<div class="card"><div class="empty-state" style="padding:24px">' +
             '<p>Alerts require at least 3 pipeline runs to detect trends.</p></div></div>';
           return;
         }
@@ -1674,7 +1682,7 @@
         }
 
         if (alerts.length === 0) {
-          list.innerHTML = '<div class="card"><div class="empty-state" style="padding:24px">' +
+          list.innerHTML = /* trusted: static literal markup, no interpolation */ '<div class="card"><div class="empty-state" style="padding:24px">' +
             '<svg class="empty-state-icon" viewBox="0 0 48 48" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:32px;height:32px;margin-bottom:8px">' +
             '<circle cx="24" cy="24" r="20"/><path d="M16 24l5 5 11-11"/></svg>' +
             '<p style="color:#059669;font-weight:500">All clear. No degradation thresholds breached.</p></div></div>';
@@ -1706,16 +1714,17 @@
           var sizing = meta.sizing || "unknown";
           var sizingCls = "sizing-" + sizing;
           return '<tr>' +
-            '<td>' + fmtDate(r.created_at) + '</td>' +
-            '<td><span class="sizing-badge ' + sizingCls + '">' + escapeHtml(sizing) + '</span></td>' +
-            '<td class="num">' + fmtCost(meta.total_cost_usd) + '</td>' +
-            '<td class="num">' + fmtDuration(meta.total_duration_ms) + '</td>' +
-            '<td class="num">' + fmt(meta.rework_rate, 1) + '</td>' +
-            '<td class="num">' + fmtPercent(meta.first_pass_qa_rate) + '</td>' +
-            '<td class="num">' + fmt(meta.evoscore, 2) + '</td>' +
+            '<td>' + escapeHtml(fmtDate(r.created_at)) + '</td>' +
+            '<td><span class="sizing-badge ' + escapeHtml(sizingCls) + '">' + escapeHtml(sizing) + '</span></td>' +
+            '<td class="num">' + escapeHtml(fmtCost(meta.total_cost_usd)) + '</td>' +
+            '<td class="num">' + escapeHtml(fmtDuration(meta.total_duration_ms)) + '</td>' +
+            '<td class="num">' + escapeHtml(fmt(meta.rework_rate, 1)) + '</td>' +
+            '<td class="num">' + escapeHtml(fmtPercent(meta.first_pass_qa_rate)) + '</td>' +
+            '<td class="num">' + escapeHtml(fmt(meta.evoscore, 2)) + '</td>' +
           '</tr>';
         });
 
+        // trusted: rows array built above with all interpolations wrapped in escapeHtml()
         wrap.innerHTML = '<table class="pipeline-table">' +
           '<thead><tr>' +
             '<th>Date</th><th>Size</th><th>Cost</th><th>Duration</th><th>Rework</th><th>QA Rate</th><th>EvoScore</th>' +

@@ -7,6 +7,7 @@
 import pgvector from "pgvector/pg";
 import { getEmbedding } from "./embed.mjs";
 import { getBrainConfig } from "./conflict.mjs";
+import { assertLlmContent } from "./llm-response.mjs";
 
 // =============================================================================
 // Union-Find for Cluster Formation
@@ -166,14 +167,15 @@ async function synthesizeCluster(client, cluster, apiKey) {
     }
 
     const llmData = await llmRes.json();
-    const synthesis = llmData.choices[0].message.content;
-    if (!synthesis) return;
+    const synthesis = assertLlmContent(llmData, 'consolidation');
 
     const reflectionEmbedding = await getEmbedding(synthesis, apiKey);
     const maxImportance = Math.max(...cluster.map(t => t.importance ?? 0));
     const reflectionImportance = Math.min(1.0, maxImportance + 0.05);
 
+    let txStarted = false;
     await client.query("BEGIN");
+    txStarted = true;
     const reflResult = await client.query(
       `INSERT INTO thoughts (content, embedding, thought_type, source_agent, source_phase, importance, scope)
        VALUES ($1, $2, 'reflection', 'eva', 'reconciliation', $3, ARRAY['default']::ltree[])
@@ -194,7 +196,7 @@ async function synthesizeCluster(client, cluster, apiKey) {
     await client.query("COMMIT");
     console.log(`Consolidation: Created reflection from ${cluster.length} thoughts`);
   } catch (clusterErr) {
-    await client.query("ROLLBACK").catch(() => {});
+    if (txStarted) await client.query("ROLLBACK").catch(() => {});
     console.error(`Consolidation cluster error: ${clusterErr.message}`);
   }
 }

@@ -207,7 +207,7 @@ describe('Step 1: Process-Level Crash Guards', () => {
 
   // T-0017-003: EPIPE on stdout triggers graceful shutdown
   // TDD: will fail until Step 1 is implemented
-  it('T-0017-003: EPIPE on stdout triggers graceful shutdown', (t) => {
+  it('T-0017-003: EPIPE on stdout triggers graceful shutdown', async (t) => {
     if (!requireCrashGuards(t)) return;
 
     installCrashGuards(deps);
@@ -215,6 +215,9 @@ describe('Step 1: Process-Level Crash Guards', () => {
     const epipeError = new Error('write EPIPE');
     epipeError.code = 'EPIPE';
     process.stdout.emit('error', epipeError);
+
+    // gracefulShutdown is async (ADR-0034 Step 3.4) -- await microtask queue flush
+    await new Promise(resolve => setTimeout(resolve, 50));
 
     // gracefulShutdown should have been triggered -- verified via exit mock
     assert.strictEqual(exitMock.mock.callCount(), 1,
@@ -258,12 +261,15 @@ describe('Step 1: Process-Level Crash Guards', () => {
 
   // T-0017-006: stdin EOF triggers graceful shutdown
   // TDD: will fail until Step 1 is implemented
-  it('T-0017-006: stdin end triggers graceful shutdown', (t) => {
+  it('T-0017-006: stdin end triggers graceful shutdown', async (t) => {
     if (!requireCrashGuards(t)) return;
 
     installCrashGuards(deps);
 
     process.stdin.emit('end');
+
+    // gracefulShutdown is async (ADR-0034 Step 3.4) -- await microtask queue flush
+    await new Promise(resolve => setTimeout(resolve, 50));
 
     assert.strictEqual(exitMock.mock.callCount(), 1,
       'stdin EOF should trigger graceful shutdown');
@@ -273,12 +279,15 @@ describe('Step 1: Process-Level Crash Guards', () => {
 
   // T-0017-007: SIGHUP triggers graceful shutdown
   // TDD: will fail until Step 1 is implemented
-  it('T-0017-007: SIGHUP triggers graceful shutdown', (t) => {
+  it('T-0017-007: SIGHUP triggers graceful shutdown', async (t) => {
     if (!requireCrashGuards(t)) return;
 
     installCrashGuards(deps);
 
     process.emit('SIGHUP');
+
+    // gracefulShutdown is async (ADR-0034 Step 3.4) -- await microtask queue flush
+    await new Promise(resolve => setTimeout(resolve, 50));
 
     assert.strictEqual(exitMock.mock.callCount(), 1,
       'SIGHUP should trigger graceful shutdown');
@@ -288,7 +297,7 @@ describe('Step 1: Process-Level Crash Guards', () => {
 
   // T-0017-008: gracefulShutdown is idempotent (re-entry guard)
   // TDD: will fail until Step 1 is implemented
-  it('T-0017-008: gracefulShutdown called twice only exits once', (t) => {
+  it('T-0017-008: gracefulShutdown called twice only exits once', async (t) => {
     if (!requireCrashGuards(t)) return;
 
     installCrashGuards(deps);
@@ -296,6 +305,9 @@ describe('Step 1: Process-Level Crash Guards', () => {
     // Trigger shutdown twice via two different paths
     process.stdin.emit('end');
     process.emit('SIGHUP');
+
+    // gracefulShutdown is async (ADR-0034 Step 3.4) -- await microtask queue flush
+    await new Promise(resolve => setTimeout(resolve, 50));
 
     assert.strictEqual(exitMock.mock.callCount(), 1,
       'Second shutdown call should be a no-op (re-entry guard)');
@@ -307,12 +319,15 @@ describe('Step 1: Process-Level Crash Guards', () => {
 
   // T-0017-009: SIGTERM still triggers graceful shutdown (existing behavior)
   // TDD: will fail until Step 1 is implemented (requires extracted function)
-  it('T-0017-009: SIGTERM triggers graceful shutdown (regression)', (t) => {
+  it('T-0017-009: SIGTERM triggers graceful shutdown (regression)', async (t) => {
     if (!requireCrashGuards(t)) return;
 
     installCrashGuards(deps);
 
     process.emit('SIGTERM');
+
+    // gracefulShutdown is async (ADR-0034 Step 3.4) -- await microtask queue flush
+    await new Promise(resolve => setTimeout(resolve, 50));
 
     assert.strictEqual(exitMock.mock.callCount(), 1,
       'SIGTERM should trigger graceful shutdown (existing behavior preserved)');
@@ -322,12 +337,15 @@ describe('Step 1: Process-Level Crash Guards', () => {
 
   // T-0017-010: SIGINT still triggers graceful shutdown (existing behavior)
   // TDD: will fail until Step 1 is implemented (requires extracted function)
-  it('T-0017-010: SIGINT triggers graceful shutdown (regression)', (t) => {
+  it('T-0017-010: SIGINT triggers graceful shutdown (regression)', async (t) => {
     if (!requireCrashGuards(t)) return;
 
     installCrashGuards(deps);
 
     process.emit('SIGINT');
+
+    // gracefulShutdown is async (ADR-0034 Step 3.4) -- await microtask queue flush
+    await new Promise(resolve => setTimeout(resolve, 50));
 
     assert.strictEqual(exitMock.mock.callCount(), 1,
       'SIGINT should trigger graceful shutdown (existing behavior preserved)');

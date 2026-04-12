@@ -47,27 +47,27 @@ describe('db.mjs', () => {
     assert.strictEqual(typeof dbModule.createPool, 'function');
   });
 
-  // T-0003-073: runMigrations() with fresh schema is idempotent (no errors)
-  it('T-0003-073: runMigrations with fresh schema completes without errors', async () => {
+  // T-0003-073: new file-loop runner uses schema_migrations, not information_schema.columns
+  it('T-0003-073: runMigrations checks schema_migrations table not information_schema', async () => {
     if (!runMigrations) return;
 
-    // Simulate fresh schema: captured_by column exists, handoff enum exists
-    pool.setQueryResult('information_schema.columns', {
-      rows: [{ '1': 1 }], // column exists
-      rowCount: 1,
-    });
-    pool.setQueryResult('pg_enum', {
-      rows: [{ '1': 1 }], // enum value exists
-      rowCount: 1,
-    });
+    // ADR-0034 Wave 2 replaced the old inline runner with a file-loop runner.
+    // The new runner tracks applied migrations in schema_migrations, not by
+    // querying information_schema.columns for individual column presence.
 
     await runMigrations(pool);
 
-    // Should have connected and run at least the column check query
-    const columnCheckQueries = pool.queries.filter(q =>
+    // New runner must NOT query information_schema.columns
+    const legacyQueries = pool.queries.filter(q =>
       q.sql.includes('information_schema.columns')
     );
-    assert.ok(columnCheckQueries.length >= 1, 'Should check for captured_by column');
+    assert.strictEqual(legacyQueries.length, 0, 'New runner must not query information_schema.columns');
+
+    // New runner MUST query schema_migrations table (to create it and check applied migrations)
+    const schemaQueries = pool.queries.filter(q =>
+      q.sql.includes('schema_migrations')
+    );
+    assert.ok(schemaQueries.length >= 1, 'New runner must query schema_migrations table');
   });
 
   // T-0003-074: runMigrations() adds captured_by column if missing

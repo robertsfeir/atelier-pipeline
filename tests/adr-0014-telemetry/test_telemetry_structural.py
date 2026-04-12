@@ -175,7 +175,7 @@ def test_T_0014_017_brain_unavailable_skips():
 def test_T_0014_018_micro_tier_1_only():
     protocol = extract_protocol_section(INSTALLED_RULES / "pipeline-orchestration.md", "telemetry-capture")
     assert protocol
-    assert re.search(r"micro.*tier 1|micro.*skip.*tier 2|micro.*skip.*tier 3", protocol, re.IGNORECASE)
+    assert re.search(r"Micro.*T1|micro.*tier 1|Skipped on Micro|micro.*T1 only", protocol, re.IGNORECASE)
 
 
 def test_T_0014_019_tier_1_failure_not_blocking():

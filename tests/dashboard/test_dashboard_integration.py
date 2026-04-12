@@ -514,7 +514,7 @@ def test_T_0018_067_Existing_pipeline_orchestration_md_sections_telemetry_Darwin
     """T-0018-067: Existing pipeline-orchestration.md sections (telemetry, Darwin, Pattern Staleness) are unchanged."""
     f = SOURCE_RULES / "pipeline-orchestration.md"
     c = f.read_text()
-    assert "Pattern Staleness Check" in c
+    assert "Pattern Staleness" in c
     assert re.search(r"Darwin Auto-Trigger", c, re.IGNORECASE)
     assert re.search(r"telemetry|brain capture|Tier 1|Tier 2|Tier 3", c, re.IGNORECASE)
 

@@ -273,10 +273,7 @@ async function handleTelemetryScopes(res, pool) {
      ORDER BY scope`
   );
   const scopes = result.rows.map(r => r.scope);
-  res.writeHead(200, {
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
-  });
+  res.writeHead(200, { "Content-Type": "application/json" });
   res.end(JSON.stringify(scopes));
   return true;
 }
@@ -307,10 +304,7 @@ async function handleTelemetrySummary(req, res, pool) {
      LIMIT 100`,
     params
   );
-  res.writeHead(200, {
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
-  });
+  res.writeHead(200, { "Content-Type": "application/json" });
   res.end(JSON.stringify(result.rows));
   return true;
 }
@@ -392,10 +386,7 @@ async function handleTelemetryAgents(req, res, pool) {
     };
   });
 
-  res.writeHead(200, {
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
-  });
+  res.writeHead(200, { "Content-Type": "application/json" });
   res.end(JSON.stringify(rows));
   return true;
 }
@@ -435,10 +426,7 @@ async function handleTelemetryAgentDetail(req, res, pool) {
      LIMIT 20`,
     params
   );
-  res.writeHead(200, {
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
-  });
+  res.writeHead(200, { "Content-Type": "application/json" });
   res.end(JSON.stringify(result.rows));
   return true;
 }
