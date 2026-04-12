@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.29.1] - 2026-04-12
+
+### Fixed
+
+- **pipeline-setup Step 3a install table:** Added `hook-lib.sh` and `pipeline-state-path.sh` to hook dependency copy list. Both files existed in `source/shared/hooks/` but were absent from the install table, causing 11 dependent hooks to silently degrade on fresh installs.
+
 ## [3.29.0] - 2026-04-12
 
 ### Added

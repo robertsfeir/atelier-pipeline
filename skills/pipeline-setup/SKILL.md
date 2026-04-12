@@ -331,6 +331,8 @@ optional and must be installed for the pipeline to function correctly.
 | `source/claude/agents/brain-extractor.frontmatter.yml` | (assembled with above into `.claude/agents/brain-extractor.md`) | Claude Code frontmatter for brain-extractor agent |
 | `source/cursor/agents/brain-extractor.frontmatter.yml` | `.cursor-plugin/agents/brain-extractor.md` | Cursor frontmatter for brain-extractor agent |
 | `source/shared/hooks/session-boot.sh` | `.claude/hooks/session-boot.sh` | Session boot data collector (SessionStart) -- reads pipeline state and config |
+| `source/shared/hooks/hook-lib.sh` | `.claude/hooks/hook-lib.sh` | Shared hook utility library — JSON parsers, agent type extraction, deny/allow emitters (sourced by enforcement and telemetry hooks) |
+| `source/shared/hooks/pipeline-state-path.sh` | `.claude/hooks/pipeline-state-path.sh` | Per-worktree session state path resolver — session_state_dir() and error_patterns_path() (sourced by session-boot, post-compact-reinject, prompt-compact-advisory) |
 | `source/claude/hooks/enforcement-config.json` | `.claude/hooks/enforcement-config.json` | Project-specific paths and agent rules |
 
 After copying, make the `.sh` files executable: `chmod +x .claude/hooks/*.sh`
