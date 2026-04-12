@@ -4,6 +4,10 @@
       "event": "PreToolUse",
       "matcher": "Write|Edit|MultiEdit",
       "command": "enforce-paths.sh"
+    },
+    {
+      "event": "SessionStart",
+      "command": "session-boot.sh"
     }
   ]
 }

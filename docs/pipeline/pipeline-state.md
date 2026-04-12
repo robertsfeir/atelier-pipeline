@@ -2,10 +2,10 @@
 
 ## Active Pipeline
 **Feature:** ADR-0035 + ADR-0036 + ADR-0037 — Waves 4, 5, 6 (parallel launch)
-**Phase:** build
+**Phase:** review
 **Sizing:** Medium (each ADR independently)
 **Started:** 2026-04-12
-<!-- PIPELINE_STATUS: {"phase": "build", "sizing": "medium", "roz_qa": "PASS", "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": true, "robert_reviewed": false, "brain_available": true} -->
+<!-- PIPELINE_STATUS: {"phase": "review", "sizing": "medium", "roz_qa": "PASS", "telemetry_captured": true, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": true, "robert_reviewed": true, "brain_available": true} -->
 
 ## Session Recovery — READ THIS FIRST
 
@@ -103,8 +103,14 @@ Steps 2–3.
 - Roz pre-build: DONE, tests/test_adr0037_wave6.py written, 35 tests
 - Robert-spec B1 AC fix: DONE (observation-masking.md AC-17 + token-budget-estimate-gate.md AC-18 updated)
 - Colby A1-A3: DONE, brain/ui/dashboard.html (modal ARIA+focus trap, agent card keyboard nav, loading skeletons), 35/35 tests PASS
-- Roz W6 QA sweep: IN PROGRESS (a4691ae569432296b)
-- Poirot W6: IN PROGRESS (a1863e619fd12ab7c)
+- Roz W6 QA sweep: PASS (41/41 tests, T-0037-036 to T-0037-041 added and passing)
+- Colby W6-C: DONE — source/cursor/hooks/session-boot.sh NEW, hooks.json UPDATED
+- Roz W6-C unit-qa: PASS (T-0037-036 to T-0037-041)
+- Agatha W5 Steps 1-5, 7-8: DONE — technical-reference.md, user-guide.md, docs/architecture/README.md
+- Robert review W6-B1: DONE — 14 PASS, 3 DRIFT accepted (heading names; tests all pass)
+- Robert-spec DRIFT fix: DONE — named-stop-reason-taxonomy.md + agent-discovery.md Personas heading
+- Roz wave-sweep: PASS — 1500/1501 pytest, 193/194 node (2 pre-existing EACCES, not regressions)
+- Poirot W6: PASS (a1863e619fd12ab7c)
 
 ## Parallel Launch Protocol (next session)
 
@@ -152,3 +158,4 @@ Cal-0037 ──→ Colby (a11y) ──→ Roz QA ──→ Ellis (independent of
 **Release:** v3.28.0 (commit 6e50c0b)
 <!-- COMPACTION: 2026-04-12T12:50:17Z -->
 <!-- COMPACTION: 2026-04-12T13:42:43Z -->
+<!-- COMPACTION: 2026-04-12T14:20:40Z -->

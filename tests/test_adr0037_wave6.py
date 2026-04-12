@@ -2,8 +2,8 @@
 
 Workstream A: Dashboard A11y (T-0037-001 through T-0037-026)
 Workstream B: Product Spec Additions (T-0037-027 through T-0037-035)
-Workstream C: Cursor Parity -- BLOCKED pending ADR-0035. Tests T-0037-036 through
-T-0037-041 are NOT written here.
+Workstream C: Cursor Parity (T-0037-036 through T-0037-041)
+  Unblocked after ADR-0035 merged. Step C1 implemented. Tests added post-build.
 
 Test authoring contract (Retro Lesson #002):
   Tests assert what code SHOULD do per the ADR, not what it currently does.
@@ -11,6 +11,7 @@ Test authoring contract (Retro Lesson #002):
   T-0037-023 through T-0037-026 are regression guards: they PASS now against the
   current file and must continue to pass after Colby's changes.
   T-0037-027 through T-0037-035 are pre-build: they FAIL until Robert-spec writes.
+  T-0037-036 through T-0037-041 are post-build (Workstream C, Step C1): they PASS now.
 
 Pre-existing const count baseline (T-0037-023):
   brain/ui/dashboard.html has exactly 3 existing `const` declarations at lines
@@ -848,4 +849,206 @@ def test_T_0037_035_all_spec_acceptance_criteria_are_verifiable():
     assert not failures, (
         "Acceptance criteria testability violations:\n" +
         "\n".join(f"  - {f}" for f in failures)
+    )
+
+
+# =============================================================================
+# Workstream C: Cursor Parity (T-0037-036 through T-0037-041)
+# Unblocked after ADR-0035 merged. Step C1 implemented by Colby.
+# =============================================================================
+
+_CURSOR_HOOKS_DIR = PROJECT_ROOT / "source" / "cursor" / "hooks"
+_CURSOR_SESSION_BOOT = _CURSOR_HOOKS_DIR / "session-boot.sh"
+_CURSOR_HOOKS_JSON = _CURSOR_HOOKS_DIR / "hooks.json"
+_CLAUDE_SESSION_BOOT = PROJECT_ROOT / "source" / "claude" / "hooks" / "session-boot.sh"
+_SHARED_PIPELINE_STATE_PATH = PROJECT_ROOT / "source" / "shared" / "hooks" / "pipeline-state-path.sh"
+
+# ── T-0037-036: Cursor session-boot.sh exists and is executable ───────────────
+
+
+def test_T_0037_036_cursor_session_boot_exists_and_is_executable():
+    """T-0037-036: source/cursor/hooks/session-boot.sh exists and is executable.
+
+    Colby created this file as Step C1 of ADR-0037 Workstream C.
+    A missing or non-executable file means the Cursor SessionStart hook
+    cannot fire and session isolation parity is broken.
+    """
+    assert _CURSOR_SESSION_BOOT.exists(), (
+        f"source/cursor/hooks/session-boot.sh does not exist at {_CURSOR_SESSION_BOOT}. "
+        "ADR-0037 Step C1 requires Colby to create this file."
+    )
+    import stat
+    mode = _CURSOR_SESSION_BOOT.stat().st_mode
+    is_executable = bool(mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
+    assert is_executable, (
+        f"source/cursor/hooks/session-boot.sh exists but is not executable "
+        f"(mode: {oct(mode)}). Cursor hooks require executable permission to fire."
+    )
+
+
+# ── T-0037-037: Cursor session-boot.sh sources the shared helper ─────────────
+
+
+def test_T_0037_037_cursor_session_boot_sources_pipeline_state_path():
+    """T-0037-037: source/cursor/hooks/session-boot.sh sources pipeline-state-path.sh.
+
+    The shared helper (source/shared/hooks/pipeline-state-path.sh) resolves
+    both CLAUDE_PROJECT_DIR and CURSOR_PROJECT_DIR so the Cursor script requires
+    no platform-specific branching. Grep asserts `source.*pipeline-state-path.sh`
+    appears in the file.
+    """
+    assert _CURSOR_SESSION_BOOT.exists(), (
+        f"Missing file: {_CURSOR_SESSION_BOOT}"
+    )
+    content = _CURSOR_SESSION_BOOT.read_text()
+    assert re.search(r'source\s+.*pipeline-state-path\.sh', content), (
+        "source/cursor/hooks/session-boot.sh does not source pipeline-state-path.sh. "
+        "The shared helper is required to resolve CURSOR_PROJECT_DIR for session "
+        "isolation parity (ADR-0037 Step C1, ADR-0032)."
+    )
+
+
+# ── T-0037-038: hooks.json includes session-boot entry ───────────────────────
+
+
+def test_T_0037_038_cursor_hooks_json_includes_session_boot():
+    """T-0037-038: source/cursor/hooks/hooks.json includes a session-boot entry.
+
+    Without the SessionStart registration in hooks.json, Cursor never fires
+    session-boot.sh at session start and the boot sequence data is never
+    collected. The hooks.json must contain both event=SessionStart and
+    command referencing session-boot.sh.
+    """
+    assert _CURSOR_HOOKS_JSON.exists(), (
+        f"Missing file: {_CURSOR_HOOKS_JSON}"
+    )
+    import json
+    data = json.loads(_CURSOR_HOOKS_JSON.read_text())
+    hooks = data.get("hooks", [])
+    session_start_hooks = [
+        h for h in hooks
+        if h.get("event") == "SessionStart"
+        and "session-boot" in h.get("command", "")
+    ]
+    assert session_start_hooks, (
+        "source/cursor/hooks/hooks.json has no SessionStart hook for session-boot.sh. "
+        f"Current hooks: {hooks}. "
+        "ADR-0037 Step C1 requires a SessionStart entry pointing to session-boot.sh."
+    )
+
+
+# ── T-0037-039: Cursor session-boot.sh references CURSOR_PROJECT_DIR ─────────
+
+
+def test_T_0037_039_cursor_session_boot_references_cursor_project_dir():
+    """T-0037-039: source/cursor/hooks/session-boot.sh references CURSOR_PROJECT_DIR
+    (not only CLAUDE_PROJECT_DIR).
+
+    The file must acknowledge the Cursor env var -- either directly or via a
+    header comment documenting that the shared helper (which it sources) handles
+    CURSOR_PROJECT_DIR. A file that only names CLAUDE_PROJECT_DIR would silently
+    break Cursor session isolation.
+
+    Failure path: file references CLAUDE_PROJECT_DIR but not CURSOR_PROJECT_DIR
+    in any form (comment or source delegation).
+    """
+    assert _CURSOR_SESSION_BOOT.exists(), (
+        f"Missing file: {_CURSOR_SESSION_BOOT}"
+    )
+    content = _CURSOR_SESSION_BOOT.read_text()
+    # Must mention CURSOR_PROJECT_DIR at least once (comment, source delegation,
+    # or direct use). The design delegates to pipeline-state-path.sh but the
+    # header comment MUST document the delegation.
+    assert "CURSOR_PROJECT_DIR" in content, (
+        "source/cursor/hooks/session-boot.sh does not reference CURSOR_PROJECT_DIR "
+        "anywhere (not even in a comment). The file must acknowledge the Cursor env "
+        "var to document that it delegates CURSOR_PROJECT_DIR resolution to the "
+        "shared pipeline-state-path.sh helper (ADR-0037 Step C1, ADR-0032)."
+    )
+
+
+# ── T-0037-040: Path parity -- both session-boots use the same shared helper ─
+
+
+def test_T_0037_040_cursor_and_claude_session_boot_share_same_path_resolver():
+    """T-0037-040: Running Cursor session-boot with CURSOR_PROJECT_DIR=/tmp/testProject
+    and Claude session-boot with CLAUDE_PROJECT_DIR=/tmp/testProject produce the
+    same state directory path.
+
+    Verified structurally (file/grep assertion, not a live subprocess): both
+    source/cursor/hooks/session-boot.sh and source/claude/hooks/session-boot.sh
+    must source the same shared pipeline-state-path.sh helper. That helper
+    applies identical logic for both env vars, guaranteeing path parity without
+    requiring a live shell execution.
+    """
+    assert _CURSOR_SESSION_BOOT.exists(), (
+        f"Missing file: {_CURSOR_SESSION_BOOT}"
+    )
+    assert _CLAUDE_SESSION_BOOT.exists(), (
+        f"Missing file: {_CLAUDE_SESSION_BOOT}"
+    )
+    cursor_content = _CURSOR_SESSION_BOOT.read_text()
+    claude_content = _CLAUDE_SESSION_BOOT.read_text()
+    # Both scripts must source pipeline-state-path.sh
+    cursor_sources_helper = bool(
+        re.search(r'source\s+.*pipeline-state-path\.sh', cursor_content)
+    )
+    claude_sources_helper = bool(
+        re.search(r'source\s+.*pipeline-state-path\.sh', claude_content)
+    )
+    assert cursor_sources_helper, (
+        "source/cursor/hooks/session-boot.sh does not source pipeline-state-path.sh. "
+        "Path parity requires both scripts to use the same shared resolver."
+    )
+    assert claude_sources_helper, (
+        "source/claude/hooks/session-boot.sh does not source pipeline-state-path.sh. "
+        "Path parity requires both scripts to use the same shared resolver."
+    )
+    # The shared helper must exist and reference both env vars
+    assert _SHARED_PIPELINE_STATE_PATH.exists(), (
+        f"Shared helper missing: {_SHARED_PIPELINE_STATE_PATH}"
+    )
+    helper_content = _SHARED_PIPELINE_STATE_PATH.read_text()
+    assert "CURSOR_PROJECT_DIR" in helper_content, (
+        "source/shared/hooks/pipeline-state-path.sh does not reference CURSOR_PROJECT_DIR. "
+        "The shared helper must resolve both CLAUDE_PROJECT_DIR and CURSOR_PROJECT_DIR "
+        "to guarantee path parity (ADR-0032)."
+    )
+    assert "CLAUDE_PROJECT_DIR" in helper_content, (
+        "source/shared/hooks/pipeline-state-path.sh does not reference CLAUDE_PROJECT_DIR. "
+        "The shared helper must resolve both env vars (ADR-0032)."
+    )
+
+
+# ── T-0037-041: Scope boundary -- exactly 4 files in cursor hooks dir ─────────
+
+
+def test_T_0037_041_cursor_hooks_dir_contains_exactly_four_files():
+    """T-0037-041: source/cursor/hooks/ contains exactly 4 files after Step C1:
+    enforce-paths.sh, enforcement-config.json, hooks.json, session-boot.sh.
+    No additional enforcement hooks were added (scope creep guard).
+
+    Failure path: additional files were introduced, indicating scope creep
+    beyond what ADR-0037 Step C1 authorised.
+    """
+    assert _CURSOR_HOOKS_DIR.exists(), (
+        f"Cursor hooks directory does not exist: {_CURSOR_HOOKS_DIR}"
+    )
+    expected_files = {
+        "enforce-paths.sh",
+        "enforcement-config.json",
+        "hooks.json",
+        "session-boot.sh",
+    }
+    actual_files = {f.name for f in _CURSOR_HOOKS_DIR.iterdir() if f.is_file()}
+    unexpected = actual_files - expected_files
+    missing = expected_files - actual_files
+    assert not missing, (
+        f"source/cursor/hooks/ is missing expected files: {sorted(missing)}. "
+        "All 4 C1 files must be present."
+    )
+    assert not unexpected, (
+        f"source/cursor/hooks/ contains unexpected files: {sorted(unexpected)}. "
+        "ADR-0037 Step C1 authorised exactly 4 files. Extra files indicate scope "
+        "creep (T-0037-041 scope boundary guard)."
     )
