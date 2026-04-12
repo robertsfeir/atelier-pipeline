@@ -85,6 +85,7 @@ DEFAULT_CONFIG = {
         "pulumi/",
         "k8s/",
         "kubernetes/",
+        ".claude/",
     ],
     "test_command": "",
     "test_patterns": [
@@ -115,6 +116,7 @@ SIMPLIFIED_CONFIG = {
         "pulumi/",
         "k8s/",
         "kubernetes/",
+        ".claude/",
     ],
     "test_command": "",
     "test_patterns": [

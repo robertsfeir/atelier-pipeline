@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.30.1] - 2026-04-12
+
+### Fixed
+
+- Consolidated hotfix: Applied 3.29.1 hook dependency corrections and prepared release pipeline.
+
 ## [3.29.1] - 2026-04-12
 
 ### Fixed
