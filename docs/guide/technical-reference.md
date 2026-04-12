@@ -32,6 +32,7 @@ Throughout this document, paths like `.claude/` refer to `.cursor/` on Cursor, a
 ## Table of Contents
 
 1. [Plugin Architecture](#plugin-architecture)
+    - [Triple-Source Assembly Model](#triple-source-assembly-model)
 2. [File Tree -- What Lives Where](#file-tree----what-lives-where)
 3. [Loading Mechanics -- What Loads When](#loading-mechanics----what-loads-when)
 4. [Agent System Design](#agent-system-design)
@@ -49,6 +50,7 @@ Throughout this document, paths like `.claude/` refer to `.cursor/` on Cursor, a
 16. [Branching Strategy Variants](#branching-strategy-variants)
 17. [Enforcement Hooks](#enforcement-hooks)
     - [Enforcement Audit Trail](#enforcement-audit-trail)
+    - [Adding a New Enforcement Hook](#adding-a-new-enforcement-hook)
 18. [Sentinel Security Agent](#sentinel-security-agent)
 19. [Agent Teams](#agent-teams)
 20. [CI Watch](#ci-watch)
@@ -56,6 +58,7 @@ Throughout this document, paths like `.claude/` refer to `.cursor/` on Cursor, a
 22. [Darwin Agent](#darwin-agent)
 23. [Agent Telemetry](#agent-telemetry)
 24. [Dashboard](#dashboard)
+    - [REST Authentication](#rest-authentication)
 25. [Telemetry Hydration](#telemetry-hydration)
 26. [Agent Discovery](#agent-discovery)
 27. [Observation Masking and Context Hygiene](#observation-masking-and-context-hygiene)
@@ -153,6 +156,34 @@ The plugin registers a `SessionStart` hook in `plugin.json` that runs three comm
 1. **Dependency install** -- runs `npm install` in the `brain/` directory if `node_modules` does not exist.
 2. **Update check** -- runs `scripts/check-updates.sh` to compare the installed template version (`.claude/.atelier-version` or `.cursor/.atelier-version`) against the current plugin version. If they differ, it notifies the user that pipeline files may be outdated.
 3. **Telemetry hydration** -- runs `brain/scripts/hydrate-telemetry.mjs` in `--silent` mode to capture per-agent telemetry from any new session JSONL files into the brain. Uses `$CLAUDE_PROJECT_DIR` (Claude Code) or `$CURSOR_PROJECT_DIR` (Cursor) to locate the project. Errors are suppressed (`2>/dev/null || true`) so hydration never blocks session startup.
+
+### Triple-Source Assembly Model
+
+Agent persona files, slash commands, rules, and references are assembled at install time from three source directories:
+
+| Directory | Contains | YAML frontmatter? |
+|-----------|----------|--------------------|
+| `source/shared/` | Platform-agnostic content bodies (agent prose, command logic, reference text) | No |
+| `source/claude/` | Claude Code frontmatter overlays (tool restrictions, hooks, model assignment) | Yes (pure YAML) |
+| `source/cursor/` | Cursor frontmatter overlays (tool restrictions, model assignment -- no per-agent hooks field) | Yes (pure YAML) |
+
+**How assembly works.** When you run `/pipeline-setup`, the skill reads each frontmatter overlay from the target platform directory (e.g., `source/claude/agents/cal.frontmatter.yml`), reads the corresponding shared content body (e.g., `source/shared/agents/cal.md`), and writes the combined output to the installed location (e.g., `.claude/agents/cal.md`). The frontmatter YAML becomes the file header; the shared content body becomes everything below the `---` separator.
+
+**Concrete example:**
+
+```
+source/claude/agents/cal.frontmatter.yml   (YAML: name, model, tools, hooks, maxTurns)
+  +
+source/shared/agents/cal.md               (prose: identity, workflow, constraints, output)
+  =
+.claude/agents/cal.md                      (installed agent persona: frontmatter + content)
+```
+
+**Why three directories?** Agents share the same behavioral content (identity, constraints, workflow) across platforms, but each platform has different frontmatter fields. Claude Code agents declare `hooks:` for per-agent enforcement scripts; Cursor agents do not (Cursor uses a separate `hooks.json` model). Splitting the overlay from the content body avoids duplicating 14 agent files when only the frontmatter differs.
+
+**Hooks are platform-specific.** Enforcement hook scripts live in `source/claude/hooks/` and `source/cursor/hooks/`, not in `source/shared/`, because hook implementations differ between platforms. Claude Code uses per-file shell scripts registered in frontmatter; Cursor uses a centralized `hooks.json` file.
+
+**Important for contributors:** Editing files in `.claude/` (or `.cursor/`) directly is overwritten the next time `/pipeline-setup` runs. To make permanent changes, edit the source files in `source/shared/` (for content) or `source/claude/` / `source/cursor/` (for frontmatter), then re-run `/pipeline-setup` to install.
 
 ---
 
@@ -968,18 +999,47 @@ The value is stored on the `thoughts` table and included in the return type of `
 
 ### Auto-Migration System
 
-The brain server runs migrations automatically on startup. Each migration is an idempotent SQL file in `brain/migrations/`. The server checks whether a migration has already been applied by inspecting the schema state (column existence, enum value presence) and runs it only if needed.
+The brain server runs migrations automatically on every startup via the generic file-loop runner in `brain/lib/db.mjs`. The runner is idempotent and safe to run repeatedly.
 
-**Migration files:**
+#### Migration runner design
 
-| File | What It Does |
-|------|-------------|
-| `brain/migrations/001-add-captured-by.sql` | Adds the `captured_by TEXT` column to the `thoughts` table. Replaces the `match_thoughts_scored` function to include `captured_by` in the return type. |
-| `brain/migrations/002-add-handoff-enums.sql` | Adds `'handoff'` to the `thought_type` and `source_phase` PostgreSQL enums. Inserts a `thought_type_config` row for `handoff` (NULL TTL, 0.9 importance). |
+The `runMigrations()` function executes on startup:
 
-Migration 001 is triggered when the `captured_by` column does not exist on the `thoughts` table. Migration 002 is triggered when the `handoff` value is not present in the `thought_type` enum. Both use `IF NOT EXISTS` or equivalent idempotent patterns and are safe to run multiple times.
+1. **Creates the tracking table** if it does not exist: `schema_migrations` with columns `version TEXT PRIMARY KEY`, `applied_at TIMESTAMPTZ`, and `checksum TEXT`.
+2. **Scans** `brain/migrations/*.sql` sorted alphabetically by filename.
+3. **Checks** `schema_migrations` for each filename. If a row exists with that filename as `version`, the migration is skipped.
+4. **Executes** new migration files in order, then records each in `schema_migrations` with the filename as `version` and a truncated SHA-256 hash of the file contents as `checksum`.
 
-For fresh installs, `brain/schema.sql` is the canonical schema and already includes all columns, enum values, and config rows. Migrations exist solely for upgrading existing databases.
+The checksum column is informational only -- the runner does not re-run a migration if its checksum changes. It only checks whether the `version` string (filename) is already present.
+
+**Fail-soft behavior.** Each migration file is wrapped in its own try/catch. A failed migration logs an error but does not prevent subsequent migrations from running. This ensures a single broken migration does not block the entire startup sequence.
+
+**Idempotency guarantee.** Every migration file uses idempotent SQL patterns: `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `ADD VALUE IF NOT EXISTS` for enum extensions. A migration that is not idempotent is a blocker -- it would cause errors on re-runs.
+
+**Fresh installs vs. upgrades.** For fresh databases, `brain/schema.sql` is the canonical schema and already includes all columns, enum values, and config rows. Migrations exist solely for upgrading existing databases that were created from an earlier version of the schema.
+
+#### Migration files
+
+| File | What It Does | ADR |
+|------|-------------|-----|
+| `001-add-captured-by.sql` | Adds `captured_by TEXT` column to `thoughts`. Replaces `match_thoughts_scored` to include `captured_by` in return type. | -- |
+| `002-add-handoff-enums.sql` | Adds `'handoff'` to `thought_type` and `source_phase` enums. Inserts `thought_type_config` row for handoff. | ADR-0002 |
+| `003-add-devops-phase.sql` | Adds `'devops'` to `source_phase` enum. | -- |
+| `004-add-pattern-and-seed-types.sql` | Adds `'pattern'` and `'seed'` to `thought_type` enum. Inserts `thought_type_config` rows for each. | ADR-0004 |
+| `005-add-telemetry-phases.sql` | Adds `'telemetry'` and `'ci-watch'` to `source_phase` enum. | ADR-0014, ADR-0013 |
+| `006-add-pipeline-phase.sql` | Adds `'pipeline'` to `source_phase` enum. | -- |
+| `007-beads-provenance-noop.sql` | No-op documentation file. Beads provenance uses existing `metadata` JSONB -- no schema change needed. | ADR-0026 |
+| `008-extend-agent-and-phase-enums.sql` | Adds `sentinel`, `darwin`, `deps`, `brain-extractor`, `robert-spec`, `sable-ux` to `source_agent`. Adds `product`, `ux`, `commit` to `source_phase`. | ADR-0034 |
+| `009-schema-migrations-table.sql` | Creates `schema_migrations` table. Backfills version rows for migrations 001-008 that were applied before tracking existed. | ADR-0034 |
+
+#### Adding a new migration
+
+1. **Pick the next sequence number.** Migration files are sorted lexicographically, so use a 3-digit zero-padded number (current highest: `009`, so next is `010`).
+2. **Create the file** in `brain/migrations/` with the naming pattern `NNN-description.sql`.
+3. **Write idempotent SQL.** Use `IF NOT EXISTS` guards for all DDL. Wrap DDL in a transaction where possible so partial failures roll back cleanly.
+4. **No registration step needed.** The runner discovers files automatically at the next brain server startup.
+
+To apply immediately without waiting for a restart, restart the brain server process. There is no separate migration CLI.
 
 ### State-File Hydration (Eva's Pipeline Decisions)
 
@@ -1537,6 +1597,65 @@ Captures are idempotent. Each blocked event is hashed; re-running hydration on t
 - Any hydration error: exit 0, never blocks session startup
 - No retry logic (Retro lesson #004: hung process retry loop)
 
+### Adding a New Enforcement Hook
+
+Follow this procedure when you need a new mechanical enforcement rule. Hooks are organized into a three-layer pyramid; start by choosing the right layer.
+
+**Step 1 -- Decide which layer.**
+
+| Layer | Mechanism | When to use | Example |
+|-------|-----------|-------------|---------|
+| Layer 1 | Frontmatter `tools` / `disallowedTools` | Tool-level restrictions on a specific agent | Prevent Roz from using `Write` except on test files |
+| Layer 2 | Per-agent frontmatter hook | Path-based enforcement on a specific agent | Block Colby from writing to `docs/pipeline/` |
+| Layer 3 | Global hook in `settings.json` | Cross-cutting enforcement on the main thread (Eva) or all agents | Pipeline sequencing gates, git write guards |
+
+Layer 1 is the lightest (no script needed). Layer 2 fires only for the named agent. Layer 3 fires on every tool invocation in the main thread.
+
+**Step 2 -- Write the hook script.** Create the script in `source/claude/hooks/` (and optionally `source/cursor/hooks/` for Cursor parity). Source `hook-lib.sh` for shared parsing functions. Follow the standard pattern:
+
+```bash
+#!/bin/bash
+# Per-agent path enforcement: {agent_name}
+# PreToolUse hook on {tools} -- {description}
+set -uo pipefail
+[ "${ATELIER_SETUP_MODE:-}" = "1" ] && exit 0
+
+INPUT=$(cat)
+if ! command -v jq &>/dev/null; then exit 0; fi
+
+# Source shared hook library
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)" || SCRIPT_DIR=""
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/hook-lib.sh" ]; then
+  source "$SCRIPT_DIR/hook-lib.sh" 2>/dev/null || true
+fi
+
+TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
+# Filter for relevant tools only -- exit 0 for everything else
+case "$TOOL_NAME" in Write|Edit|MultiEdit) ;; *) exit 0 ;; esac
+
+# Your enforcement logic here
+FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
+[ -z "$FILE_PATH" ] && exit 0
+
+# Block or allow
+echo "BLOCKED: {reason}" >&2
+exit 2
+```
+
+Key conventions:
+- Exit 0 when `jq` is missing, when config is missing, or when the tool call is irrelevant to the hook's concern. Hooks must never block unrelated operations.
+- Exit 2 with a reason message on stderr to block an action. The reason is shown to the agent.
+- Use `hook_lib_get_agent_type` to detect the current agent from the JSON input.
+- Use `hook_lib_pipeline_status_field` to read pipeline state fields when decisions depend on pipeline phase.
+
+**Step 3 -- Register the hook.** For Layer 2: add a `hooks:` entry in the agent's frontmatter overlay (`source/claude/agents/{agent}.frontmatter.yml`) specifying the hook event (`PreToolUse`), the `if` conditional (matching tool names), and the command path. For Layer 3: add an entry to the `settings.json` template in `skills/pipeline-setup/SKILL.md`.
+
+**Step 4 -- Write a pytest.** Create `tests/hooks/test_{hook_name}.py` following the patterns in `tests/hooks/conftest.py`. Test at minimum: one blocked path, one allowed path, and config parity with `enforcement-config.json`.
+
+**Step 5 -- Run /pipeline-setup.** The hook is installed to `.claude/hooks/` (or `.cursor/hooks/`) only after `/pipeline-setup` re-runs. Editing `.claude/hooks/` directly is overwritten on the next setup.
+
+**Step 6 -- Document the hook.** Add a row to the Hook Scripts table and a description subsection in this section of technical-reference.md.
+
 ---
 
 ## Sentinel Security Agent
@@ -2080,16 +2199,43 @@ The Atelier Dashboard (`/dashboard` skill) is a browser-based telemetry visualiz
 
 ### REST API Endpoints
 
-The dashboard fetches data from four REST API endpoints on the brain HTTP server (`brain/lib/rest-api.mjs`):
+The brain HTTP server exposes 11 REST API endpoints (`brain/lib/rest-api.mjs`). The dashboard uses the telemetry endpoints; the settings UI uses the config and thought-type endpoints; the remaining endpoints support operations and diagnostics.
 
-| Endpoint | Method | Purpose | Response |
-|----------|--------|---------|----------|
-| `/api/telemetry/scopes` | GET | Lists distinct project scopes with telemetry data | `string[]` -- array of scope values |
-| `/api/telemetry/summary` | GET | Fetches Tier 3 (per-pipeline) telemetry summaries | `{content, metadata, created_at}[]` -- up to 100 most recent T3 thoughts |
-| `/api/telemetry/agents` | GET | Aggregates Tier 1 data per agent (invocations, avg duration, total cost, avg tokens) | `{agent, invocations, avg_duration_ms, total_cost, avg_input_tokens, avg_output_tokens}[]` |
-| `/api/telemetry/agent-detail` | GET | Fetches individual invocations for one agent (up to 20 most recent) | `{description, duration_ms, cost_usd, input_tokens, output_tokens, model, created_at}[]` |
+| Endpoint | Method | Auth | Purpose | Response |
+|----------|--------|------|---------|----------|
+| `/api/health` | GET | Exempt | Server health check | `{connected, brain_enabled, brain_name, config_source, thought_count, consolidation_interval_minutes, last_consolidation, next_consolidation_at}` |
+| `/api/config` | GET | Required | Read brain configuration | brain_config row (all columns from `brain_config` table) |
+| `/api/config` | PUT | Required | Update brain configuration | `{updated: true}` |
+| `/api/thought-types` | GET | Required | List thought type configurations | `{thought_type, default_ttl_days, default_importance, description}[]` -- all rows from `thought_type_config` |
+| `/api/thought-types/:type` | PUT | Required | Update a thought type's TTL, importance, or description | `{updated: true, type: "<name>"}` |
+| `/api/purge-expired` | POST | Required | Delete expired thoughts and orphaned relations | `{purged_thoughts: <count>, purged_relations: <count>}` |
+| `/api/stats` | GET | Required | Brain statistics summary | `{by_type, by_status, by_agent, by_human}` -- each is an object mapping names to counts |
+| `/api/telemetry/scopes` | GET | Required | List distinct project scopes with telemetry data | `string[]` -- array of scope values |
+| `/api/telemetry/summary` | GET | Required | Fetch Tier 3 (per-pipeline) telemetry summaries | `{content, metadata, created_at}[]` -- up to 100 most recent T3 thoughts |
+| `/api/telemetry/agents` | GET | Required | Aggregate Tier 1 data per agent (invocations, duration, cost, tokens) | `{agent, invocations, avg_duration_ms, total_cost, avg_input_tokens, avg_output_tokens, metadata}[]` |
+| `/api/telemetry/agent-detail` | GET | Required | Per-agent invocation detail (up to 20 most recent) | `{description, duration_ms, cost_usd, input_tokens, output_tokens, model, created_at}[]` |
 
-All endpoints accept an optional `?scope=<scope>` query parameter to filter by project. When `scope` is absent or `all`, no filter is applied. The scope filter uses PostgreSQL's `@>` array containment operator on the `scope` ltree column.
+The four telemetry endpoints accept an optional `?scope=<scope>` query parameter to filter by project. When `scope` is absent or `all`, no filter is applied. The scope filter uses PostgreSQL's `@>` array containment operator on the `scope` ltree column. The `/api/telemetry/agent-detail` endpoint also requires a `?name=<agent>` query parameter.
+
+The `/api/config` PUT endpoint accepts a JSON body with any subset of these fields: `brain_enabled`, `consolidation_interval_minutes`, `consolidation_min_thoughts`, `consolidation_max_thoughts`, `conflict_detection_enabled`, `conflict_duplicate_threshold`, `conflict_candidate_threshold`, `conflict_llm_enabled`, `default_scope`. Numeric fields must be non-negative; threshold fields must be between 0 and 1.
+
+### REST Authentication
+
+All REST API endpoints except `/api/health` require an `Authorization: Bearer {token}` header.
+
+**Token source.** The token is set via the `apiToken` field in the brain configuration (typically configured during `/brain-setup` or manually in the brain config file). The brain server reads this value at startup from the config resolution chain (environment variable, config file, or database row).
+
+**Auth bypass.** When `apiToken` is `null` or unset, authentication is bypassed entirely -- all endpoints are open without a token. This is the default for local development.
+
+**Auth enforcement.** When `apiToken` is set to a non-null string, every request to an auth-required endpoint must include the header `Authorization: Bearer {token}`. Requests with a missing or incorrect token receive a `401 Unauthorized` response:
+
+```json
+{"error": "Unauthorized"}
+```
+
+**Dashboard auth.** The dashboard HTML page stores the API token in the browser's `localStorage` and includes it in all fetch requests to the REST API. The settings UI provides a field to enter or update the token.
+
+**`/api/health` exemption.** The health endpoint is always open regardless of auth configuration. This allows external monitoring tools to check server status without credentials.
 
 ### Dashboard Sections
 
@@ -2585,17 +2731,35 @@ This enables post-hoc calibration: `actual_cost / budget_estimate_high > 2.0` in
 
 ## Cross-References
 
+### Installed files
+
 - **User guide:** [docs/guide/user-guide.md](user-guide.md)
-- **Agent system rules (installed):** `.claude/rules/agent-system.md`
-- **Default persona (installed):** `.claude/rules/default-persona.md`
-- **Quality framework (installed):** `.claude/references/dor-dod.md`
-- **Operational procedures (installed):** `.claude/references/pipeline-operations.md`
-- **Invocation templates (installed):** `.claude/references/invocation-templates.md`
-- **Shared agent preamble (installed):** `.claude/references/agent-preamble.md`
-- **QA check procedures (installed):** `.claude/references/qa-checks.md`
-- **Branch/MR procedures (installed):** `.claude/references/branch-mr-mode.md`
-- **Sentinel persona (installed, opt-in):** `.claude/agents/sentinel.md`
+- **Agent system rules:** `.claude/rules/agent-system.md`
+- **Default persona:** `.claude/rules/default-persona.md`
+- **Quality framework:** `.claude/references/dor-dod.md`
+- **Operational procedures:** `.claude/references/pipeline-operations.md`
+- **Invocation templates:** `.claude/references/invocation-templates.md`
+- **Shared agent preamble:** `.claude/references/agent-preamble.md`
+- **QA check procedures:** `.claude/references/qa-checks.md`
+- **Branch/MR procedures:** `.claude/references/branch-mr-mode.md`
+- **Sentinel persona (opt-in):** `.claude/agents/sentinel.md`
 - **Brain schema:** `brain/schema.sql` (in plugin directory)
 - **Plugin metadata:** `.claude-plugin/plugin.json`
-- **ADR-0009:** Sentinel security agent design
-- **ADR-0010:** Agent Teams parallel execution design
+
+### Architecture Decision Records
+
+Full ADR index: [docs/architecture/README.md](../architecture/README.md)
+
+**Brain:** ADR-0001 (Atelier Brain), ADR-0017 (Brain Hardening), ADR-0021 (Mechanical Brain Wiring), ADR-0024 (Mechanical Brain Writes), ADR-0026 (Beads Provenance Records), ADR-0027 (Brain-Hydrate Scout Fan-Out)
+
+**Agents and Personas:** ADR-0005 (XML-Based Prompt Structure), ADR-0006 (XML Tag Migration), ADR-0008 (Agent Discovery), ADR-0023 (Agent Specification Reduction)
+
+**Enforcement and Hooks:** ADR-0007 (DoR/DoD Warning Hook), ADR-0020 (Wave 2 Hook Modernization), ADR-0022 (Wave 3 Native Enforcement Redesign), ADR-0031 (Permission Audit Trail), ADR-0033 (Hook Enforcement Audit Fixes)
+
+**Telemetry and Dashboard:** ADR-0014 (Agent Telemetry Dashboard), ADR-0018 (Dashboard Integration), ADR-0025 (Mechanical Telemetry Extraction), ADR-0030 (Token Exposure Probe and Accumulator)
+
+**Pipeline Features:** ADR-0002 (Team Collaboration), ADR-0009 (Sentinel Security Agent), ADR-0010 (Agent Teams), ADR-0013 (CI Watch), ADR-0015 (Deps Agent), ADR-0016 (Darwin Self-Evolving Pipeline), ADR-0028 (Named Stop Reason Taxonomy), ADR-0029 (Token Budget Estimate Gate), ADR-0032 (Pipeline State Session Isolation)
+
+**Codebase:** ADR-0003 (Code Quality Overhaul), ADR-0004 (Pipeline Evolution), ADR-0011 (Observation Masking), ADR-0012 (Compaction API), ADR-0019 (Cursor Port)
+
+**Remediation:** ADR-0034 (Gauntlet Remediation), ADR-0035 (Wave 4 Consumer Wiring), ADR-0036 (Wave 5 Documentation Sweep), ADR-0037 (Wave 6 Dashboard A11y and Cursor Parity)

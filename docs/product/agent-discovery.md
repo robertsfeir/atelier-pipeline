@@ -29,7 +29,7 @@ The pipeline currently supports exactly 9 hardcoded agents defined in `source/sh
 
 Additionally, users who want to bring an existing agent definition into the pipeline must hand-convert it to the pipeline's XML persona format, understand YAML frontmatter conventions, and manually add it to the agents directory.
 
-## Who Is This For
+## Personas
 
 **Project teams** who want to extend the pipeline with domain-specific agents (e.g., a security reviewer for a fintech project, a localization agent, a project-specific documentation specialist).
 

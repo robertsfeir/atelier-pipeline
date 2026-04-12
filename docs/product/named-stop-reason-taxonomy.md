@@ -34,7 +34,7 @@ This gap has three consequences:
 
 3. **Pattern detection gaps.** If 3 of the last 5 pipelines ended with `roz_blocked`, that is a signal Darwin should surface. Today that signal is invisible.
 
-## Who Is This For
+## Personas
 
 **Eva (orchestrator):** Writes `stop_reason` at every terminal pipeline transition.
 

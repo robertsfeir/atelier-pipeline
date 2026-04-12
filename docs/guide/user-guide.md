@@ -26,6 +26,7 @@ A structured, multi-agent development workflow for Claude Code and Cursor. Twelv
 - [Deps Agent](#deps-agent)
 - [Darwin Agent](#darwin-agent)
 - [Agent Telemetry](#agent-telemetry)
+- [Gauntlet Audit](#gauntlet-audit)
 - [Dashboard](#dashboard)
 - [Telemetry Hydration](#telemetry-hydration)
 - [Agent Discovery](#agent-discovery)
@@ -789,6 +790,60 @@ Micro pipelines (2 or fewer files, mechanical changes) capture per-invocation me
 
 ---
 
+## Gauntlet Audit
+
+A gauntlet is a multi-agent, full-codebase audit that produces a combined finding register. It is the most thorough quality assessment the pipeline can perform, examining architecture, code quality, test coverage, security, documentation, spec compliance, and UX compliance in a single coordinated review.
+
+### When to run a gauntlet
+
+- Before major releases, to catch accumulated issues
+- After extended development periods with many incremental changes
+- When you suspect accumulated technical debt across multiple subsystems
+- Periodically as a health check (recommended: once per quarter on active projects)
+
+### How it works
+
+Eva invokes each agent type against the full codebase in sequence. Each agent reviews from its own perspective using its specialized expertise:
+
+1. **Cal** -- architecture review (structural patterns, ADR compliance, design consistency)
+2. **Colby** -- code quality review (implementation patterns, dead code, inconsistencies)
+3. **Roz** -- test coverage review (untested paths, assertion quality, test gaps)
+4. **Sentinel** -- security audit (Semgrep-backed SAST, dependency vulnerabilities)
+5. **Robert** -- spec compliance review (feature specs vs. implemented behavior)
+6. **Sable** -- UX compliance review (user flows vs. implemented interfaces)
+7. **Poirot** -- blind code investigation (diff-only review without spec context)
+8. **Agatha** -- documentation review (doc coverage, accuracy, staleness)
+
+### What it produces
+
+The gauntlet outputs a directory of findings at `docs/reviews/gauntlet-{date}/`:
+
+- Per-agent finding files (one per agent that participated)
+- A combined register (`gauntlet-combined.md`) that merges all findings, deduplicates, and assigns severity
+
+**Severity classification:**
+
+| Severity | Meaning | Action |
+|----------|---------|--------|
+| Critical | Blocks release -- correctness, security, or data integrity risk | Fix before shipping |
+| High | Should fix before release -- significant quality or maintainability concern | Prioritize for current cycle |
+| Medium | Next sprint -- moderate impact, not urgent | Schedule in near-term backlog |
+| Low | Backlog -- minor improvement opportunity | Address when convenient |
+
+**Multi-agent consensus.** When two or more agents independently flag the same issue from different perspectives, the finding is elevated in the combined register. Consensus findings carry higher confidence than single-agent findings.
+
+### From findings to fixes
+
+Gauntlet findings do not automatically become code changes. The typical flow:
+
+1. Review the combined register with your team
+2. Create a remediation ADR (like ADR-0034) that organizes findings into prioritized waves
+3. Execute each wave through the normal pipeline flow (Cal designs, Colby builds, Roz verifies)
+
+This separation ensures that the audit is thorough and independent, while fixes go through the same quality process as any other change.
+
+---
+
 ## Dashboard
 
 The Atelier Dashboard is a browser-based telemetry visualization page. It shows pipeline cost, quality trends, agent fitness, and degradation alerts in one view.
@@ -1161,6 +1216,16 @@ The pipeline files live in your project and are plain Markdown. You can edit the
 - **Retro lessons** (`references/retro-lessons.md`) -- add manual lessons for agents to reference
 - **Shared agent actions** (`references/agent-preamble.md`) -- customize the shared DoR/DoD and retro lesson protocols
 - **QA check procedures** (`references/qa-checks.md`) -- add or modify Roz's quality checks
+
+### Contributing: Source file structure
+
+Files in `.claude/` (or `.cursor/`) are **generated** by `/pipeline-setup` -- do not edit them directly. Your edits will be overwritten the next time setup runs. Instead, edit the source templates:
+
+- **Agent content** (identity, constraints, workflow): edit `source/shared/agents/{name}.md`
+- **Agent frontmatter** (model, tools, hooks): edit `source/claude/agents/{name}.frontmatter.yml` (Claude Code) or `source/cursor/agents/{name}.frontmatter.yml` (Cursor)
+- **Commands, rules, references**: same pattern -- shared content in `source/shared/`, platform frontmatter in `source/claude/` or `source/cursor/`
+
+After editing source files, run `/pipeline-setup` to re-install. See the [Triple-Source Assembly Model](technical-reference.md#triple-source-assembly-model) section in the technical reference for full details.
 
 ### What is stack-agnostic
 
