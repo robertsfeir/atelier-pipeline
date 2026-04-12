@@ -1,9 +1,13 @@
 # Pipeline State
 
 ## Active Pipeline
-**Feature:** —
+**Feature:** fix/hook-lib-skill-table — add missing hook-lib.sh and pipeline-state-path.sh rows to SKILL.md Step 3a copy table
 **Phase:** idle
-<!-- PIPELINE_STATUS: {"phase": "idle", "sizing": null, "roz_qa": null, "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": false, "robert_reviewed": false, "brain_available": true} -->
+**Stop Reason:** completed_clean
+**Sizing:** Micro
+- Colby: skills/pipeline-setup/SKILL.md — 2 rows added to Step 3a copy table
+- Roz: PASS (1663 pytest, 185 skill tests, 21 hook wiring tests — pre-existing EACCES unrelated)
+<!-- PIPELINE_STATUS: {"phase": "idle", "sizing": null, "roz_qa": null, "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": false, "robert_reviewed": false, "brain_available": true, "stop_reason": "completed_clean"} -->
 
 ## Session Recovery — READ THIS FIRST
 
