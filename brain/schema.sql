@@ -1,5 +1,5 @@
 -- Atelier Brain Schema (Option D)
--- ADR: docs/architecture/ADR-0001-atelier-brain.md
+-- ADR: docs/brain/ADR-0001-atelier-brain.md
 -- Steps 1 + 2: Schema + Three-Axis Scoring Function
 
 -- =============================================================================

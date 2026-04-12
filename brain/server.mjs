@@ -6,7 +6,7 @@
  *   config.mjs, db.mjs, embed.mjs, conflict.mjs, tools.mjs,
  *   rest-api.mjs, consolidation.mjs, ttl.mjs, static.mjs
  *
- * ADR: docs/architecture/ADR-0001-atelier-brain.md
+ * ADR: docs/brain/ADR-0001-atelier-brain.md
  * Modularization: docs/architecture/ADR-0003-code-quality-overhaul.md (Step 5)
  */
 
