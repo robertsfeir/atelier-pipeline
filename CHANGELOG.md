@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.30.3] - 2026-04-12
+
+### Fixed
+
+- **telemetry-hydrate.md:** Always use `${CLAUDE_PLUGIN_ROOT}/brain/scripts/hydrate-telemetry.mjs` for script path. Removed broken relative-path fallback that resolved to target project directory (which has no brain/ subdirectory), causing "Cannot find module" crashes. Added clear error message when `CLAUDE_PLUGIN_ROOT` is unset. Removed stale `session-hydrate.sh` reference (no-op since ADR-0034).
+
 ## [3.30.2] - 2026-04-12
 
 ### Fixed
