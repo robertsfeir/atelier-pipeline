@@ -12,7 +12,7 @@ if ! command -v jq &>/dev/null; then
 fi
 
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
-case "$TOOL_NAME" in Write|Edit|MultiEdit) ;; *) exit 0 ;; esac
+case "$TOOL_NAME" in Write|Edit) ;; *) exit 0 ;; esac
 
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 [ -z "$FILE_PATH" ] && exit 0

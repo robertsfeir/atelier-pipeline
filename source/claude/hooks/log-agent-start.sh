@@ -27,6 +27,12 @@ JSONL_FILE="$TELEMETRY_DIR/session-hooks.jsonl"
 # Read stdin
 INPUT=$(cat)
 
+# Source shared hook library (ADR-0034 Wave 2 Step 2.1)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)" || SCRIPT_DIR=""
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/hook-lib.sh" ]; then
+  source "$SCRIPT_DIR/hook-lib.sh" 2>/dev/null || true
+fi
+
 # Create telemetry directory if needed
 if ! mkdir -p "$TELEMETRY_DIR" 2>/dev/null; then
   echo "WARNING: log-agent-start.sh: Cannot create telemetry directory." >&2
@@ -38,7 +44,7 @@ TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
 # Parse fields -- try jq first, fall back to grep/sed
 if command -v jq &>/dev/null; then
-  AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // empty' 2>/dev/null || true)
+  AGENT_TYPE=$(echo "$INPUT" | hook_lib_get_agent_type 2>/dev/null || true)
   AGENT_ID=$(echo "$INPUT" | jq -r '.agent_id // empty' 2>/dev/null || true)
   SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null || true)
 else

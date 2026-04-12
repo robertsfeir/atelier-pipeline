@@ -26,10 +26,16 @@ function createMockPool() {
     defaultResult = result;
   }
 
-  function findResult(sql) {
+  function findResult(sql, params) {
     for (const [pattern, result] of queryResults.entries()) {
-      if (typeof pattern === 'string' && sql.includes(pattern)) {
-        return typeof result === 'function' ? result(sql) : result;
+      if (typeof pattern === 'string') {
+        // Match against SQL string first; also check params array for parameterized queries
+        const paramsMatch = Array.isArray(params) && params.some(
+          p => typeof p === 'string' && p.includes(pattern)
+        );
+        if (sql.includes(pattern) || paramsMatch) {
+          return typeof result === 'function' ? result(sql) : result;
+        }
       }
       if (pattern instanceof RegExp && pattern.test(sql)) {
         return typeof result === 'function' ? result(sql) : result;
@@ -40,7 +46,7 @@ function createMockPool() {
 
   async function query(sql, params) {
     queries.push({ sql, params });
-    const result = findResult(sql);
+    const result = findResult(sql, params);
     if (result instanceof Error) throw result;
     return result;
   }
@@ -51,7 +57,7 @@ function createMockPool() {
     async function clientQuery(sql, params) {
       clientQueries.push({ sql, params });
       queries.push({ sql, params });
-      const result = findResult(sql);
+      const result = findResult(sql, params);
       if (result instanceof Error) throw result;
       return result;
     }

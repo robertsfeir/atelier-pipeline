@@ -25,8 +25,8 @@ const SOURCE_AGENTS = [
   // # non-extracted: distillator compresses but does not capture decisions
   "distillator",
   "robert-spec", "sable-ux",
-  // # non-extracted: sentinel, darwin, deps, brain-extractor fire SubagentStop
-  // but are not in the brain-extractor mapping table (they capture themselves)
+  // # non-extracted: sentinel, darwin, deps, brain-extractor have no automatic
+  // capture path; included in SOURCE_AGENTS for Zod validation of any future captures
   "sentinel",
   "darwin",
   "deps",

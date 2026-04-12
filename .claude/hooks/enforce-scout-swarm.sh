@@ -178,6 +178,15 @@ case "$SUBAGENT_TYPE" in
       echo "BLOCKED: Cannot invoke Roz without a <debug-evidence> or <qa-evidence> block. Run scout fan-out first to populate QA evidence (pipeline-orchestration.md §Scout Fan-out Protocol)." >&2
       exit 2
     fi
+    # At least one block must have >= 50 chars of content.
+    debug_ok=false
+    qa_ok=false
+    check_block_content "debug-evidence" && debug_ok=true || true
+    check_block_content "qa-evidence" && qa_ok=true || true
+    if [ "$debug_ok" = "false" ] && [ "$qa_ok" = "false" ]; then
+      echo "BLOCKED: <debug-evidence> and <qa-evidence> blocks are empty or too short (< 50 chars). Run the scout fan-out to generate real search results before invoking Roz." >&2
+      exit 2
+    fi
     ;;
   colby)
     if ! check_block_present "colby-context"; then

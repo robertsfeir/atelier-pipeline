@@ -11,7 +11,13 @@ if ! command -v jq &>/dev/null; then
   exit 2
 fi
 
-AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // empty')
+# Source shared hook library (ADR-0034 Wave 2 Step 2.1)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)" || SCRIPT_DIR=""
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/hook-lib.sh" ]; then
+  source "$SCRIPT_DIR/hook-lib.sh" 2>/dev/null || true
+fi
+
+AGENT_TYPE=$(echo "$INPUT" | hook_lib_get_agent_type 2>/dev/null || echo "$INPUT" | jq -r '.agent_type // .tool_input.subagent_type // empty' 2>/dev/null || true)
 [ -n "$AGENT_TYPE" ] && exit 0
 
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')

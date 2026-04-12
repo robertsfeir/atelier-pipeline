@@ -13,6 +13,17 @@ import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 HOOKS_DIR = PROJECT_ROOT / "source" / "claude" / "hooks"
+SHARED_HOOKS_DIR = PROJECT_ROOT / "source" / "shared" / "hooks"
+
+# Shared library files that must be present alongside any hook that sources them.
+# NOTE: pipeline-state-path.sh is intentionally omitted here. When it is present,
+# session_state_dir() resolves to ~/.atelier/pipeline/{slug}/{hash}/ — an
+# out-of-repo path that test fixtures do not populate. Hooks that source this
+# library (post-compact-reinject.sh, session-boot.sh) have a built-in fallback:
+#   session_state_dir() { echo "$PROJECT_DIR/docs/pipeline"; }
+# which is what test fixtures rely on. Tests for pipeline-state-path.sh itself
+# (test_pipeline_state_path.py) source the file directly and do not use prepare_hook.
+HOOK_LIB_FILES = ["hook-lib.sh"]
 
 # ADR-0022 directories
 SOURCE_DIR = PROJECT_ROOT / "source"
@@ -202,6 +213,9 @@ def build_per_agent_input(tool_name: str = "Write", file_path: str = "") -> str:
 def prepare_hook(hook_name: str, tmp_path: Path) -> Path:
     """Copy a hook script to tmp_path/.claude/hooks/ and set up config alongside it.
 
+    Also copies hook-lib.sh and pipeline-state-path.sh so hooks that source
+    them via SCRIPT_DIR resolve correctly in the isolated temp directory.
+
     Returns the path to the hook in tmp_path/.claude/hooks/.
     """
     hooks_dir = tmp_path / ".claude" / "hooks"
@@ -211,6 +225,12 @@ def prepare_hook(hook_name: str, tmp_path: Path) -> Path:
     shutil.copy2(src, dst)
     # Also copy directly to root for backward compat
     shutil.copy2(src, tmp_path / hook_name)
+    # Copy shared library files so SCRIPT_DIR-relative sourcing works
+    for lib_name in HOOK_LIB_FILES:
+        lib_src = SHARED_HOOKS_DIR / lib_name
+        if lib_src.exists():
+            shutil.copy2(lib_src, hooks_dir / lib_name)
+            shutil.copy2(lib_src, tmp_path / lib_name)
     # Copy enforcement-config.json if present
     config_src = tmp_path / "enforcement-config.json"
     if config_src.exists():
@@ -224,9 +244,17 @@ def run_hook(hook_name: str, input_json: str, tmp_path: Path, env_override: dict
     Copies the hook to tmp_path/.claude/hooks/ and runs it.
     Returns CompletedProcess with returncode. stdout contains combined
     stdout+stderr (matching bats `run` behavior where $output has both).
+
+    Strips CLAUDE_PROJECT_DIR and CURSOR_PROJECT_DIR from the base environment
+    to prevent ambient env-var leakage from the developer's shell from causing
+    session_state_dir() to resolve to an out-of-repo ~/.atelier path where
+    test fixture files do not exist.  Tests that explicitly need one of those
+    vars set must use run_hook_with_project_dir() or pass env_override directly.
     """
     hook_path = prepare_hook(hook_name, tmp_path)
     env = os.environ.copy()
+    env.pop("CLAUDE_PROJECT_DIR", None)
+    env.pop("CURSOR_PROJECT_DIR", None)
     if env_override:
         env.update(env_override)
     r = subprocess.run(
@@ -267,7 +295,11 @@ def run_hook_without_project_dir(hook_name: str, input_json: str, tmp_path: Path
 
 
 def prepare_per_agent_hook(hook_name: str, tmp_path: Path) -> Path:
-    """Prepare a per-agent hook script from source/claude/hooks/."""
+    """Prepare a per-agent hook script from source/claude/hooks/.
+
+    Also copies hook-lib.sh and pipeline-state-path.sh so hooks that source
+    them via SCRIPT_DIR resolve correctly in the isolated temp directory.
+    """
     hooks_dir = tmp_path / ".claude" / "hooks"
     hooks_dir.mkdir(parents=True, exist_ok=True)
     hook_source = CLAUDE_DIR / "hooks" / hook_name
@@ -280,6 +312,12 @@ def prepare_per_agent_hook(hook_name: str, tmp_path: Path) -> Path:
         # Script does not exist yet (pre-implementation). Create placeholder.
         dst.write_text('#!/bin/bash\necho "ERROR: Hook script not yet implemented" >&2\nexit 99\n')
         dst.chmod(dst.stat().st_mode | stat.S_IEXEC)
+
+    # Copy shared library files so SCRIPT_DIR-relative sourcing works
+    for lib_name in HOOK_LIB_FILES:
+        lib_src = SHARED_HOOKS_DIR / lib_name
+        if lib_src.exists():
+            shutil.copy2(lib_src, hooks_dir / lib_name)
 
     # Copy enforcement-config.json to the hook dir
     config_src = tmp_path / "enforcement-config.json"
@@ -308,7 +346,17 @@ def run_per_agent_hook(hook_name: str, input_json: str, tmp_path: Path) -> subpr
 
 
 def prepare_compact_advisory_hook(tmp_path: Path) -> Path:
-    """Prepare the prompt-compact-advisory.sh hook for testing."""
+    """Prepare the prompt-compact-advisory.sh hook for testing.
+
+    Copies hook-lib.sh and pipeline-state-path.sh so SCRIPT_DIR-relative
+    sourcing works. pipeline-state-path.sh provides session_state_dir() which
+    the hook uses to locate the pipeline state file (ADR-0034 Wave 2).
+
+    When run without CLAUDE_PROJECT_DIR/CURSOR_PROJECT_DIR set and with
+    cwd=tmp_path, session_state_dir() returns the relative path "docs/pipeline",
+    which resolves to tmp_path/docs/pipeline/ -- exactly where write_pipeline_status
+    places the state file.
+    """
     hooks_dir = tmp_path / ".claude" / "hooks"
     hooks_dir.mkdir(parents=True, exist_ok=True)
     hook_source = CLAUDE_DIR / "hooks" / "prompt-compact-advisory.sh"
@@ -320,14 +368,34 @@ def prepare_compact_advisory_hook(tmp_path: Path) -> Path:
     else:
         dst.write_text('#!/bin/bash\necho "ERROR: Hook script not yet implemented" >&2\nexit 99\n')
         dst.chmod(dst.stat().st_mode | stat.S_IEXEC)
+
+    # Copy hook-lib.sh so hook_lib_pipeline_status_field and hook_lib_get_agent_type
+    # are available (ADR-0034 Wave 2 Step 2.1)
+    lib_src = SHARED_HOOKS_DIR / "hook-lib.sh"
+    if lib_src.exists():
+        shutil.copy2(lib_src, hooks_dir / "hook-lib.sh")
+
+    # Copy pipeline-state-path.sh so session_state_dir() resolves correctly
+    # (ADR-0034 Wave 2 Fix 4: hook migrated from CLAUDE_PROJECT_DIR to session_state_dir)
+    path_src = SHARED_HOOKS_DIR / "pipeline-state-path.sh"
+    if path_src.exists():
+        shutil.copy2(path_src, hooks_dir / "pipeline-state-path.sh")
+
     return dst
 
 
 def run_compact_advisory(input_json: str, tmp_path: Path) -> subprocess.CompletedProcess:
-    """Run the compact advisory hook. Combines stdout+stderr."""
+    """Run the compact advisory hook. Combines stdout+stderr.
+
+    Strips CLAUDE_PROJECT_DIR and CURSOR_PROJECT_DIR so session_state_dir()
+    falls back to the relative path "docs/pipeline". With cwd=tmp_path, that
+    resolves to tmp_path/docs/pipeline/ -- where write_pipeline_status writes
+    the state file.
+    """
     hook_path = prepare_compact_advisory_hook(tmp_path)
     env = os.environ.copy()
-    env["CLAUDE_PROJECT_DIR"] = str(tmp_path)
+    env.pop("CLAUDE_PROJECT_DIR", None)
+    env.pop("CURSOR_PROJECT_DIR", None)
     return subprocess.run(
         ["bash", str(hook_path)],
         input=input_json,
@@ -335,6 +403,7 @@ def run_compact_advisory(input_json: str, tmp_path: Path) -> subprocess.Complete
         stderr=subprocess.STDOUT,
         text=True,
         env=env,
+        cwd=str(tmp_path),
         timeout=30,
     )
 

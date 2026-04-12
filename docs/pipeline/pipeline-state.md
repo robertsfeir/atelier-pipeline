@@ -70,5 +70,10 @@ only. .claude/ is not touched.
 - [x] Ellis → Wave 2 commit: 9b73eec (2 files)
 - [x] Robert → skipped (no spec/UI — ADR-0033 is infrastructure only, N/A per ADR)
 - [x] Agatha → docs/guide/technical-reference.md + docs/product/mechanical-brain-writes.md updated (11 locations, 9-agent scope + Agatha source_phase correction)
-- [ ] Ellis → final commit + push
+- [ ] Ellis → final commit + push (includes source/shared/references/gauntlet.md — added post-Wave 2)
 <!-- COMPACTION: 2026-04-11T20:55:08Z -->
+<!-- COMPACTION: 2026-04-11T22:10:49Z -->
+<!-- COMPACTION: 2026-04-11T22:42:32Z -->
+<!-- COMPACTION: 2026-04-11T23:17:47Z -->
+<!-- COMPACTION: 2026-04-12T00:46:05Z -->
+<!-- COMPACTION: 2026-04-12T02:07:11Z -->

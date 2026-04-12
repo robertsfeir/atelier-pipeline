@@ -67,7 +67,7 @@ After the decisions/patterns/lessons/seeds extraction above, perform a second
 best-effort pass to capture structured quality signals. This second pass does
 not replace or gate the first -- both run independently.
 
-For each of the four target agents, attempt to parse structured fields from
+For each of the four core quality agents (roz, colby, agatha, cal), attempt to parse structured fields from
 `last_assistant_message` using the per-agent schema below. If the brain MCP
 server is unavailable, skip this second pass entirely.
 

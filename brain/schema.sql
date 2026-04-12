@@ -232,3 +232,13 @@ BEGIN
   LIMIT max_results;
 END;
 $$ LANGUAGE plpgsql;
+
+-- =============================================================================
+-- Migration Tracking (ADR-0034 Wave 2 Step 2.3)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS schema_migrations (
+  version    TEXT PRIMARY KEY,
+  applied_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  checksum   TEXT
+);

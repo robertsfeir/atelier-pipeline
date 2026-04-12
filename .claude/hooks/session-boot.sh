@@ -40,7 +40,7 @@ fi
 # --- Read pipeline-state.md ---
 PIPELINE_STATE_FILE="docs/pipeline/pipeline-state.md"
 if [ -f "$PIPELINE_STATE_FILE" ]; then
-  STATUS_JSON=$(grep -o 'PIPELINE_STATUS:{.*}' "$PIPELINE_STATE_FILE" 2>/dev/null | head -1 | sed 's/PIPELINE_STATUS://' || true)
+  STATUS_JSON=$(grep -o 'PIPELINE_STATUS: {[^}]*}' "$PIPELINE_STATE_FILE" 2>/dev/null | head -1 | sed 's/PIPELINE_STATUS: //' || true)
   if [ -n "$STATUS_JSON" ] && command -v jq &>/dev/null; then
     PHASE=$(echo "$STATUS_JSON" | jq -r '.phase // "idle"' 2>/dev/null || echo "idle")
     FEATURE=$(echo "$STATUS_JSON" | jq -r '.feature // ""' 2>/dev/null || echo "")
@@ -104,7 +104,7 @@ fi
 
 # --- Count custom agents ---
 if [ -n "$CONFIG_DIR" ] && [ -d "$CONFIG_DIR/agents" ]; then
-  CORE_AGENTS="cal colby roz ellis agatha robert sable investigator distillator"
+  CORE_AGENTS="cal colby roz ellis agatha robert sable investigator distillator sentinel darwin deps brain-extractor robert-spec sable-ux"
   for agent_file in "$CONFIG_DIR/agents/"*.md; do
     [ -f "$agent_file" ] || continue
     AGENT_NAME=$(grep -m1 "^name:" "$agent_file" 2>/dev/null | sed 's/name:[[:space:]]*//' | tr -d '"' | tr -d "'" || true)

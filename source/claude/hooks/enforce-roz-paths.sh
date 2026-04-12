@@ -22,6 +22,9 @@ FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 PROJECT_ROOT="${CURSOR_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-.}}"
 FILE_PATH="${FILE_PATH#"$PROJECT_ROOT"/}"
 
+# Reject path traversal before any exception checks — must run on all paths
+[[ "$FILE_PATH" == *..* ]] && { echo "BLOCKED: Path traversal detected in $FILE_PATH" >&2; exit 2; }
+
 # If still absolute after normalization, it's outside the project root.
 # Exception: ADR-0032 out-of-repo session state lives at ~/.atelier/pipeline/{slug}/{hash}/.
 # Roz does not write pipeline state, but the architectural intent is that both enforcement
@@ -34,9 +37,6 @@ if [[ "$FILE_PATH" == /* ]]; then
   echo "BLOCKED: File is outside the project root. Attempted: $FILE_PATH" >&2
   exit 2
 fi
-
-# Reject path traversal
-[[ "$FILE_PATH" == *..* ]] && { echo "BLOCKED: Path traversal detected in $FILE_PATH" >&2; exit 2; }
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG="$SCRIPT_DIR/enforcement-config.json"

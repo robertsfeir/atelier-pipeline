@@ -5,7 +5,8 @@
 
 import pg from "pg";
 import pgvector from "pgvector/pg";
-import { readFileSync, existsSync } from "fs";
+import { readFileSync, existsSync, readdirSync } from "fs";
+import { createHash } from "crypto";
 import { fileURLToPath } from "url";
 import path from "path";
 
@@ -36,176 +37,46 @@ function createPool(databaseUrl) {
 // Auto-Migration (idempotent -- safe to run on every startup)
 // =============================================================================
 
-// Migrations are idempotent by design -- each checks whether its change
-// has already been applied before running.  Individual migrations are
-// wrapped in try/catch so a failure in one does not prevent the others
-// from being evaluated.
+// Generic file-loop migration runner (ADR-0034 Wave 2 Step 2.3).
+// Reads brain/migrations/*.sql sorted by filename, tracks applied migrations
+// in schema_migrations table, applies unapplied files. Fail-soft per file.
 async function runMigrations(pool) {
   const client = await pool.connect();
   try {
     const brainDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-
-    // Migration 001: captured_by column
-    try {
-      const colCheck = await client.query(
-        `SELECT 1 FROM information_schema.columns
-         WHERE table_name = 'thoughts' AND column_name = 'captured_by'`
-      );
-      if (colCheck.rows.length === 0) {
-        console.log("Migration 001: adding captured_by column...");
-        await client.query(`ALTER TABLE thoughts ADD COLUMN captured_by TEXT`);
-
-        const migrationPath = path.join(brainDir, "migrations", "001-add-captured-by.sql");
-        if (existsSync(migrationPath)) {
-          const sql = readFileSync(migrationPath, "utf-8");
-          await client.query(sql);
+    const migrationsDir = path.join(brainDir, "migrations");
+    await client.query(
+      `CREATE TABLE IF NOT EXISTS schema_migrations ` +
+      `(version TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now(), checksum TEXT)`
+    );
+    const files = existsSync(migrationsDir)
+      ? readdirSync(migrationsDir).filter(f => f.endsWith(".sql")).sort()
+      : [];
+    for (const filename of files) {
+      try {
+        const check = await client.query(
+          `SELECT 1 FROM schema_migrations WHERE version = $1`, [filename]
+        );
+        if (check.rows.length > 0) {
+          console.log(`Migration ${filename}: skipped (already applied)`);
+          continue;
         }
-        console.log("Migration 001: captured_by column added.");
+        const filePath = path.join(migrationsDir, filename);
+        const sql = readFileSync(filePath, "utf-8");
+        const checksum = createHash("sha256").update(sql).digest("hex").slice(0, 16);
+        console.log(`Migration ${filename}: applying...`);
+        await client.query(sql);
+        await client.query(
+          `INSERT INTO schema_migrations (version, applied_at, checksum) ` +
+          `VALUES ($1, now(), $2)`, [filename, checksum]
+        );
+        console.log(`Migration ${filename}: applied.`);
+      } catch (err) {
+        console.error(`Migration ${filename} failed (non-fatal):`, err.message);
       }
-    } catch (err) {
-      console.error("Migration 001 failed (non-fatal):", err.message);
-    }
-
-    // Migration 001b: Ensure match_thoughts_scored returns captured_by
-    try {
-      const funcCheck = await client.query(`
-        SELECT pg_get_function_result(oid) AS result_type
-        FROM pg_proc WHERE proname = 'match_thoughts_scored'
-      `);
-      const resultType = funcCheck.rows[0]?.result_type || '';
-      if (!resultType.includes('captured_by')) {
-        console.log("Migration 001b: updating match_thoughts_scored to include captured_by...");
-        const migrationPath = path.join(brainDir, "migrations", "001-add-captured-by.sql");
-        if (existsSync(migrationPath)) {
-          const sql = readFileSync(migrationPath, "utf-8");
-          await client.query(sql);
-        }
-        console.log("Migration 001b: function updated.");
-      }
-    } catch (err) {
-      console.error("Migration 001b failed (non-fatal):", err.message);
-    }
-
-    // Migration 002: handoff enum values
-    try {
-      const handoffCheck = await client.query(
-        `SELECT 1 FROM pg_enum WHERE enumlabel = 'handoff' AND enumtypid = 'thought_type'::regtype`
-      );
-      if (handoffCheck.rows.length === 0) {
-        console.log("Migration 002: adding handoff enum values...");
-        const migrationPath = path.join(brainDir, "migrations", "002-add-handoff-enums.sql");
-        if (existsSync(migrationPath)) {
-          const sql = readFileSync(migrationPath, "utf-8");
-          await client.query(sql);
-        }
-        console.log("Migration 002: handoff enum values added.");
-      }
-    } catch (err) {
-      console.error("Migration 002 failed (non-fatal):", err.message);
-    }
-
-    // Migration 003: devops source_phase enum value
-    try {
-      const devopsCheck = await client.query(
-        `SELECT 1 FROM pg_enum WHERE enumlabel = 'devops' AND enumtypid = 'source_phase'::regtype`
-      );
-      if (devopsCheck.rows.length === 0) {
-        console.log("Migration 003: adding devops phase...");
-        const migrationPath = path.join(brainDir, "migrations", "003-add-devops-phase.sql");
-        if (existsSync(migrationPath)) {
-          const sql = readFileSync(migrationPath, "utf-8");
-          await client.query(sql);
-        }
-        console.log("Migration 003: devops phase added.");
-      }
-    } catch (err) {
-      console.error("Migration 003 failed (non-fatal):", err.message);
-    }
-
-    // Migration 004: pattern and seed thought_type enum values
-    try {
-      const patternCheck = await client.query(
-        `SELECT 1 FROM pg_enum WHERE enumlabel = 'pattern' AND enumtypid = 'thought_type'::regtype`
-      );
-      if (patternCheck.rows.length === 0) {
-        console.log("Migration 004: adding pattern and seed thought types...");
-        const migrationPath = path.join(brainDir, "migrations", "004-add-pattern-and-seed-types.sql");
-        if (existsSync(migrationPath)) {
-          const sql = readFileSync(migrationPath, "utf-8");
-          await client.query(sql);
-        }
-        console.log("Migration 004: pattern and seed thought types added.");
-      }
-    } catch (err) {
-      console.error("Migration 004 failed (non-fatal):", err.message);
-    }
-
-    // Migration 005: telemetry and ci-watch source_phase enum values
-    try {
-      const telemetryCheck = await client.query(
-        `SELECT 1 FROM pg_enum WHERE enumlabel = 'telemetry' AND enumtypid = 'source_phase'::regtype`
-      );
-      if (telemetryCheck.rows.length === 0) {
-        console.log("Migration 005: adding telemetry and ci-watch phases...");
-        const migrationPath = path.join(brainDir, "migrations", "005-add-telemetry-phases.sql");
-        if (existsSync(migrationPath)) {
-          const sql = readFileSync(migrationPath, "utf-8");
-          await client.query(sql);
-        }
-        console.log("Migration 005: telemetry and ci-watch phases added.");
-      }
-    } catch (err) {
-      console.error("Migration 005 failed (non-fatal):", err.message);
-    }
-
-    // Migration 006: pipeline source_phase enum value
-    try {
-      const pipelineCheck = await client.query(
-        `SELECT 1 FROM pg_enum WHERE enumlabel = 'pipeline' AND enumtypid = 'source_phase'::regtype`
-      );
-      if (pipelineCheck.rows.length === 0) {
-        console.log("Migration 006: adding pipeline phase...");
-        const migrationPath = path.join(brainDir, "migrations", "006-add-pipeline-phase.sql");
-        if (existsSync(migrationPath)) {
-          const sql = readFileSync(migrationPath, "utf-8");
-          await client.query(sql);
-        }
-        console.log("Migration 006: pipeline phase added.");
-      }
-    } catch (err) {
-      console.error("Migration 006 failed (non-fatal):", err.message);
-    }
-
-    // Migration 007: Beads provenance (ADR-0026) -- no DDL changes
-    console.log("Migration 007: Beads provenance -- no DDL changes needed (metadata JSONB).");
-
-    // Migration 008: Extend source_agent and source_phase enums (ADR-0034 M1+M9)
-    // JS probe uses 'brain-extractor' — the LAST value the migration adds — as the
-    // completion sentinel. Probing 'sentinel' (the first value) was unsafe: a partial
-    // prior run could have added only 'sentinel' while leaving subsequent values
-    // (brain-extractor, product, ux, commit) missing, causing this block to be
-    // skipped forever. Using the last value guarantees the migration only short-circuits
-    // when all values have been successfully added.
-    try {
-      const agentCheck = await client.query(
-        `SELECT 1 FROM pg_enum WHERE enumlabel = 'brain-extractor' AND enumtypid = 'source_agent'::regtype`
-      );
-      if (agentCheck.rows.length === 0) {
-        console.log("Migration 008: extending source_agent and source_phase enums...");
-        const migrationPath = path.join(brainDir, "migrations", "008-extend-agent-and-phase-enums.sql");
-        if (existsSync(migrationPath)) {
-          const sql = readFileSync(migrationPath, "utf-8");
-          await client.query(sql);
-          console.log("Migration 008: enum values added.");
-        } else {
-          console.warn("Migration 008: SQL file not found at", migrationPath, "-- enum values NOT added.");
-        }
-      }
-    } catch (err) {
-      console.error("Migration 008 failed (non-fatal):", err.message);
     }
   } catch (err) {
-    console.error("Migration check failed (non-fatal):", err.message);
+    console.error("Migration runner failed (non-fatal):", err.message);
   } finally {
     client.release();
   }

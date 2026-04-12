@@ -1,4 +1,5 @@
 #!/bin/bash
+# DELETE BEFORE: 2026-07-01 — see ADR-0034 Wave 2 (backward-compat shim, one-quarter retention period)
 # NOT REGISTERED in settings.json — intentional no-op. See comment below.
 # session-hydrate.sh -- SessionStart hook
 #

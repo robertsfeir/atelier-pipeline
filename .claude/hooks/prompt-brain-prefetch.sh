@@ -4,7 +4,7 @@
 #
 # Outputs advisory text reminding Eva to call agent_search before
 # constructing the invocation. Only fires for capture-capable agents
-# (cal, colby, roz, agatha). Exits 0 always.
+# (cal, colby, roz — matches scout swarm enforcement scope). Exits 0 always.
 #
 # Non-blocking prompt hook: exits 0 always. No brain calls, no blocking.
 # Retro lesson #003 compliant.
@@ -28,7 +28,7 @@ SUBAGENT_TYPE=$(echo "$INPUT" | jq -r '.tool_input.subagent_type // empty' 2>/de
 
 # Only output advisory for capture-capable agents
 case "$SUBAGENT_TYPE" in
-  cal|colby|roz|agatha) ;;
+  cal|colby|roz) ;;
   *) exit 0 ;;
 esac
 

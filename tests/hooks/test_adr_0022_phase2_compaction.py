@@ -104,15 +104,17 @@ def test_T_0022_178_always_exits_0(hook_env):
     hook_path = prepare_compact_advisory_hook(hook_env)
     import os
     env = os.environ.copy()
-    env["CLAUDE_PROJECT_DIR"] = str(hook_env)
-    r = subprocess.run(["bash", str(hook_path)], input="", stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env, timeout=30)
+    env.pop("CLAUDE_PROJECT_DIR", None)
+    env.pop("CURSOR_PROJECT_DIR", None)
+    r = subprocess.run(["bash", str(hook_path)], input="", stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env, cwd=str(hook_env), timeout=30)
     assert r.returncode == 0
 
     # jq missing
     write_pipeline_status(hook_env, '{"phase":"build"}')
     env2 = hide_jq_env(hook_env)
-    env2["CLAUDE_PROJECT_DIR"] = str(hook_env)
-    r = subprocess.run(["bash", str(hook_path)], input=inp, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env2, timeout=30)
+    env2.pop("CLAUDE_PROJECT_DIR", None)
+    env2.pop("CURSOR_PROJECT_DIR", None)
+    r = subprocess.run(["bash", str(hook_path)], input=inp, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env2, cwd=str(hook_env), timeout=30)
     assert r.returncode == 0
 
 
@@ -121,8 +123,9 @@ def test_T_0022_179_empty_stdin(hook_env):
     hook_path = prepare_compact_advisory_hook(hook_env)
     import os
     env = os.environ.copy()
-    env["CLAUDE_PROJECT_DIR"] = str(hook_env)
-    r = subprocess.run(["bash", str(hook_path)], input="", stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env, timeout=30)
+    env.pop("CLAUDE_PROJECT_DIR", None)
+    env.pop("CURSOR_PROJECT_DIR", None)
+    r = subprocess.run(["bash", str(hook_path)], input="", stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env, cwd=str(hook_env), timeout=30)
     assert r.returncode == 0
     assert r.stdout.strip() == ""
 
@@ -130,10 +133,11 @@ def test_T_0022_179_empty_stdin(hook_env):
 def test_T_0022_180_jq_missing(hook_env):
     write_pipeline_status(hook_env, '{"phase":"build"}')
     env = hide_jq_env(hook_env)
-    env["CLAUDE_PROJECT_DIR"] = str(hook_env)
+    env.pop("CLAUDE_PROJECT_DIR", None)
+    env.pop("CURSOR_PROJECT_DIR", None)
     hook_path = prepare_compact_advisory_hook(hook_env)
     inp = build_subagent_stop_input("ellis", "agent-123", "session-xyz", "Done")
-    r = subprocess.run(["bash", str(hook_path)], input=inp, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env, timeout=30)
+    r = subprocess.run(["bash", str(hook_path)], input=inp, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env, cwd=str(hook_env), timeout=30)
     assert r.returncode == 0
     assert r.stdout.strip() == ""
 
@@ -216,9 +220,12 @@ def test_T_0022_189_user_decision_language(hook_env):
 
 
 def test_T_0022_190_project_dir_fallback():
+    # The hook uses session_state_dir() from pipeline-state-path.sh (ADR-0034 Wave 2 Fix 4).
+    # When no project env var is set, session_state_dir() returns the legacy relative path
+    # "docs/pipeline", which resolves to the cwd-relative in-repo path.
     text = (CLAUDE_DIR / "hooks" / "prompt-compact-advisory.sh").read_text()
-    assert "CLAUDE_PROJECT_DIR" in text
-    assert "CURSOR_PROJECT_DIR" in text
+    assert "pipeline-state-path.sh" in text
+    assert "session_state_dir" in text
 
 
 def test_T_0022_191_unrecognized_phase(hook_env):

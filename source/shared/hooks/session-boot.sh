@@ -19,6 +19,11 @@ if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/pipeline-state-path.sh" ]; then
   source "$SCRIPT_DIR/pipeline-state-path.sh" 2>/dev/null || true
 fi
 
+# Source shared hook library (ADR-0034 Wave 2 Step 2.1)
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/hook-lib.sh" ]; then
+  source "$SCRIPT_DIR/hook-lib.sh" 2>/dev/null || true
+fi
+
 # Define fallback if helper did not load
 if ! command -v session_state_dir &>/dev/null; then
   session_state_dir() { echo "docs/pipeline"; }
@@ -58,10 +63,10 @@ STATE_DIR=$(session_state_dir)
 # --- Read pipeline-state.md ---
 PIPELINE_STATE_FILE="$STATE_DIR/pipeline-state.md"
 if [ -f "$PIPELINE_STATE_FILE" ]; then
-  STATUS_JSON=$(grep -o 'PIPELINE_STATUS: {[^}]*}' "$PIPELINE_STATE_FILE" 2>/dev/null | head -1 | sed 's/PIPELINE_STATUS: //' || true)
-  if [ -n "$STATUS_JSON" ] && command -v jq &>/dev/null; then
-    PHASE=$(echo "$STATUS_JSON" | jq -r '.phase // "idle"' 2>/dev/null || echo "idle")
-    FEATURE=$(echo "$STATUS_JSON" | jq -r '.feature // ""' 2>/dev/null || echo "")
+  if command -v jq &>/dev/null; then
+    PHASE=$(cat "$PIPELINE_STATE_FILE" | hook_lib_pipeline_status_field phase 2>/dev/null || echo "idle")
+    [ -z "$PHASE" ] && PHASE="idle"
+    FEATURE=$(cat "$PIPELINE_STATE_FILE" | hook_lib_pipeline_status_field feature 2>/dev/null || echo "")
     if [ "$PHASE" != "idle" ] && [ "$PHASE" != "complete" ] && [ -n "$FEATURE" ]; then
       PIPELINE_ACTIVE=true
     fi
@@ -150,8 +155,21 @@ fi
 
 # --- Output JSON ---
 # Escape string values to prevent JSON injection from double quotes/backslashes
+# Delegates to hook_lib_json_escape (jq -Rs based, fixes S22 regression)
+# Falls back to sed-based escaping if hook-lib was not loaded
 json_escape() {
-  printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g; s/\t/\\t/g; s/\n/\\n/g'
+  if command -v hook_lib_json_escape &>/dev/null 2>&1; then
+    # hook_lib_json_escape reads stdin and returns a full JSON string literal (with quotes)
+    # Strip the surrounding quotes so the output matches the original interface
+    local escaped
+    escaped=$(printf '%s' "$1" | hook_lib_json_escape 2>/dev/null) || true
+    # Remove surrounding double-quotes added by jq -Rs
+    escaped="${escaped#\"}"
+    escaped="${escaped%\"}"
+    printf '%s' "$escaped"
+  else
+    printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g; s/	/\\t/g'
+  fi
 }
 
 cat <<EOF

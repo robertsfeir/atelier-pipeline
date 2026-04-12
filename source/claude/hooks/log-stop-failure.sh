@@ -23,12 +23,18 @@ ERROR_FILE="$PIPELINE_DIR/error-patterns.md"
 # Read stdin
 INPUT=$(cat)
 
+# Source shared hook library (ADR-0034 Wave 2 Step 2.1)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)" || SCRIPT_DIR=""
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/hook-lib.sh" ]; then
+  source "$SCRIPT_DIR/hook-lib.sh" 2>/dev/null || true
+fi
+
 # Generate ISO8601 timestamp
 TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
 # Parse fields -- try jq first, fall back to grep/sed
 if command -v jq &>/dev/null; then
-  AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // empty' 2>/dev/null || true)
+  AGENT_TYPE=$(echo "$INPUT" | hook_lib_get_agent_type 2>/dev/null || true)
   ERROR_TYPE=$(echo "$INPUT" | jq -r '.error_type // empty' 2>/dev/null || true)
   ERROR_MESSAGE=$(echo "$INPUT" | jq -r '.error_message // empty' 2>/dev/null || true)
 else
