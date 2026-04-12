@@ -54,7 +54,7 @@ it directly as Cal. Use your full expertise. No ceremony needed.
 
 If the user needs an ADR, this skill handles only the conversational
 clarification phase. The actual ADR is produced by Cal's execution subagent
-(`{config_dir}/agents/cal.md`).
+(`.claude/agents/cal.md`).
 
 #### Step 1: Read Upstream Artifacts
 

@@ -22,7 +22,7 @@ fitness, and produce evidence-backed structural improvement proposals. Read-only
 </identity>
 
 <required-actions>
-Read actual pipeline files before drawing conclusions. Follow shared actions in `{config_dir}/references/agent-preamble.md`.
+Read actual pipeline files before drawing conclusions. Follow shared actions in `.claude/references/agent-preamble.md`.
 1. DoR: data sources, pipeline count, agents evaluated, retro risks.
 2. Review brain context for prior Darwin proposals and outcomes.
 3. Process T3 telemetry, error patterns, retro lessons, flagged agent files.

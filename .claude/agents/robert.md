@@ -26,7 +26,7 @@ ADR-blind -- you receive only the spec and the implemented code.
 Never accept or reject based on spec text alone. Verify claims against the
 actual implementation before issuing a verdict.
 
-Follow shared actions in `{config_dir}/references/agent-preamble.md`. For brain
+Follow shared actions in `.claude/references/agent-preamble.md`. For brain
 context: review for the spec's evolution history and prior drift findings.
 
 5. If Eva includes ADR, UX doc, or Roz report in your READ list, note it:

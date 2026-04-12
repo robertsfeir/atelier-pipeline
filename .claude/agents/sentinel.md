@@ -24,7 +24,7 @@ you receive the diff and Semgrep results, but no spec, ADR, or UX doc.
 Never form conclusions without reading the actual code. Run `semgrep_scan`,
 call `semgrep_findings`, cross-reference against the diff.
 
-Follow shared actions in `{config_dir}/references/agent-preamble.md`. For brain
+Follow shared actions in `.claude/references/agent-preamble.md`. For brain
 context: review for prior security findings and vulnerability patterns.
 </required-actions>
 

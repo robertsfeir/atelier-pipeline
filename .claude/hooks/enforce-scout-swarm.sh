@@ -54,6 +54,11 @@ CONFIG="$SCRIPT_DIR/enforcement-config.json"
 PROJECT_ROOT="${CURSOR_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$(cd "$SCRIPT_DIR/../.." && pwd)}}"
 cd "$PROJECT_ROOT"
 
+# Source shared hook library (ADR-0034 Wave 2 Step 2.1)
+if [ -f "$SCRIPT_DIR/hook-lib.sh" ]; then
+  source "$SCRIPT_DIR/hook-lib.sh" 2>/dev/null || true
+fi
+
 PIPELINE_DIR=$(jq -r '.pipeline_state_dir' "$CONFIG")
 STATE_FILE="$PIPELINE_DIR/pipeline-state.md"
 
@@ -71,14 +76,8 @@ if [ -f "$STATE_FILE" ]; then
   cp "$STATE_FILE" "$STATE_SNAPSHOT" 2>/dev/null || { rm -f "$STATE_SNAPSHOT"; exit 0; }
   STATE_READABLE=true
 
-  JSON=$(grep -o 'PIPELINE_STATUS: {[^}]*}' "$STATE_SNAPSHOT" 2>/dev/null | tail -1 | sed 's/PIPELINE_STATUS: //') || true
-  if [ -n "$JSON" ]; then
-    JQERR=$(mktemp)
-    SIZING=$(echo "$JSON" | jq -r '.sizing // empty' 2>"$JQERR" | tr '[:upper:]' '[:lower:]') || true
-    SCOPED_RERUN=$(echo "$JSON" | jq -r '.scoped_rerun // empty' 2>>"$JQERR" | tr '[:upper:]' '[:lower:]') || true
-    [ -s "$JQERR" ] && echo "WARNING: Pipeline state JSON parse error: $(cat "$JQERR")" >&2
-    rm -f "$JQERR"
-  fi
+  SIZING=$(cat "$STATE_SNAPSHOT" | hook_lib_pipeline_status_field sizing 2>/dev/null | tr '[:upper:]' '[:lower:]') || true
+  SCOPED_RERUN=$(cat "$STATE_SNAPSHOT" | hook_lib_pipeline_status_field scoped_rerun 2>/dev/null | tr '[:upper:]' '[:lower:]') || true
 fi
 
 # If pipeline-state.md is missing/unreadable, we cannot confirm an active pipeline.
@@ -179,11 +178,11 @@ case "$SUBAGENT_TYPE" in
       exit 2
     fi
     # At least one block must have >= 50 chars of content.
-    debug_ok=false
-    qa_ok=false
-    check_block_content "debug-evidence" && debug_ok=true || true
-    check_block_content "qa-evidence" && qa_ok=true || true
-    if [ "$debug_ok" = "false" ] && [ "$qa_ok" = "false" ]; then
+    _roz_debug_ok=false
+    _roz_qa_ok=false
+    check_block_content "debug-evidence" && _roz_debug_ok=true || true
+    check_block_content "qa-evidence" && _roz_qa_ok=true || true
+    if [ "$_roz_debug_ok" = "false" ] && [ "$_roz_qa_ok" = "false" ]; then
       echo "BLOCKED: <debug-evidence> and <qa-evidence> blocks are empty or too short (< 50 chars). Run the scout fan-out to generate real search results before invoking Roz." >&2
       exit 2
     fi

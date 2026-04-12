@@ -50,6 +50,11 @@ CONFIG="$SCRIPT_DIR/enforcement-config.json"
 PROJECT_ROOT="${CURSOR_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$(cd "$SCRIPT_DIR/../.." && pwd)}}"
 cd "$PROJECT_ROOT"
 
+# Source shared hook library (ADR-0034 Wave 2 Step 2.1)
+if [ -f "$SCRIPT_DIR/hook-lib.sh" ]; then
+  source "$SCRIPT_DIR/hook-lib.sh" 2>/dev/null || true
+fi
+
 PIPELINE_DIR=$(jq -r '.pipeline_state_dir' "$CONFIG")
 STATE_FILE="$PIPELINE_DIR/pipeline-state.md"
 
@@ -68,19 +73,10 @@ cp "$STATE_FILE" "$STATE_SNAPSHOT" 2>/dev/null || {
   exit 2
 }
 
-# Extract phase from PIPELINE_STATUS JSON marker
-PHASE_JSON=$(grep -o 'PIPELINE_STATUS: {[^}]*}' "$STATE_SNAPSHOT" 2>/dev/null | tail -1 | sed 's/PIPELINE_STATUS: //') || true
+# Extract phase from PIPELINE_STATUS marker via hook-lib
+PHASE=$(cat "$STATE_SNAPSHOT" | hook_lib_pipeline_status_field phase 2>/dev/null) || true
 
-# No PIPELINE_STATUS marker -> no active pipeline -> block
-if [ -z "$PHASE_JSON" ]; then
-  echo "BLOCKED: Invoking $SUBAGENT_TYPE without an active pipeline. No telemetry will be captured. Size the work (Micro/Small/Medium/Large) and activate with /pipeline first." >&2
-  exit 2
-fi
-
-# Parse phase field from JSON
-PHASE=$(echo "$PHASE_JSON" | jq -r '.phase // empty' 2>/dev/null) || true
-
-# No phase or empty phase -> no active pipeline -> block
+# No PIPELINE_STATUS marker or no phase -> no active pipeline -> block
 if [ -z "$PHASE" ]; then
   echo "BLOCKED: Invoking $SUBAGENT_TYPE without an active pipeline. No telemetry will be captured. Size the work (Micro/Small/Medium/Large) and activate with /pipeline first." >&2
   exit 2

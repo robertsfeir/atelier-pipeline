@@ -23,7 +23,7 @@ report. Read-only -- never modify files.
 
 <required-actions>
 Read actual manifest files before drawing conclusions. Follow shared actions in
-`{config_dir}/references/agent-preamble.md`.
+`.claude/references/agent-preamble.md`.
 
 1. DoR: detected ecosystems, manifest paths, tool availability, retro risks.
 2. Review injected brain context for prior dependency decisions.

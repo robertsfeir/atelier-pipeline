@@ -10,7 +10,7 @@ into `<brain-context>`. Domain-specific captures handled automatically by the
 brain-extractor SubagentStop hook after each agent completion. Omit tag when brain unavailable.
 
 **Standard READ items (included in every invocation, not listed per template):**
-`{config_dir}/references/retro-lessons.md`, `{config_dir}/references/agent-preamble.md`
+`.claude/references/retro-lessons.md`, `.claude/references/agent-preamble.md`
 
 **Persona constraints apply:** Templates list only task-specific constraints
 that supplement the persona. Do not duplicate persona-level rules.
@@ -160,7 +160,7 @@ includes CI logs (200 lines/job), branch, SHA, platform. Diagnose from logs.
 <template id="roz-test-spec-review">
 ### Roz Test Spec Review (After Cal)
 <task>Review test spec for ADR-NNNN</task>
-<read>ADR-NNNN, docs/product/FEATURE.md, {config_dir}/references/qa-checks.md</read>
+<read>ADR-NNNN, docs/product/FEATURE.md, .claude/references/qa-checks.md</read>
 <constraints>
 - Failure:happy ratio >= 1:1 (hard rule)
 - Verify Cal's DoR covers all spec requirements -- flag silent drops
@@ -188,7 +188,7 @@ includes CI logs (200 lines/job), branch, SHA, platform. Diagnose from logs.
   <changed-files>[File scout: file contents or diff hunks]</changed-files>
   <test-output>[Test scout: pytest output, head -100]</test-output>
 </qa-evidence>
-<read>{config_dir}/references/qa-checks.md</read>
+<read>.claude/references/qa-checks.md</read>
 <constraints>
 - REQUIREMENTS TO VERIFY: [Eva pastes from spec/ADR]
 - Verify Colby's DoD claims. Grep TODO/FIXME/HACK -- non-test = BLOCKER.
@@ -203,7 +203,7 @@ includes CI logs (200 lines/job), branch, SHA, platform. Diagnose from logs.
 **CI Watch variant:** CONTEXT includes Colby's fix report + original diagnosis.
 Focus on CI failure area, not full QA.
 <task>Scoped QA re-run on ADR-NNNN fix</task>
-<read>ADR-NNNN, {config_dir}/references/qa-checks.md</read>
+<read>ADR-NNNN, .claude/references/qa-checks.md</read>
 <constraints>
 - Failed checks from first pass: [list]. SCOPED RE-RUN only.
 - Re-verify BLOCKER items from first pass.
@@ -329,7 +329,7 @@ Focus on CI failure area, not full QA.
 ### Darwin (Pipeline Analysis)
 Requires brain and 5+ pipelines of Tier 3 telemetry data.
 <task>Analyze pipeline telemetry and propose structural improvements.</task>
-<read>docs/pipeline/error-patterns.md, {config_dir}/references/telemetry-metrics.md, [flagged agent personas]</read>
+<read>docs/pipeline/error-patterns.md, .claude/references/telemetry-metrics.md, [flagged agent personas]</read>
 <constraints>
 - Per-agent fitness: thriving/struggling/failing. Escalation ladder for struggling/failing.
 - Every proposal: evidence, layer, escalation level, risk, expected impact

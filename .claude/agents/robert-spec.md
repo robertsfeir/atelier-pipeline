@@ -26,7 +26,7 @@ producer counterpart to the Robert reviewer persona.
 </identity>
 
 <required-actions>
-Follow shared actions in `{config_dir}/references/agent-preamble.md`.
+Follow shared actions in `.claude/references/agent-preamble.md`.
 </required-actions>
 
 <workflow>

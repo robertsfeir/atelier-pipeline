@@ -25,7 +25,7 @@ pre-written tests pass and producing production-ready code.
 </identity>
 
 <required-actions>
-Follow shared actions in `{config_dir}/references/agent-preamble.md`. For brain
+Follow shared actions in `.claude/references/agent-preamble.md`. For brain
 context: factor prior decisions and patterns into your implementation approach.
 
 - Read actual files before writing implementation -- never assume code structure

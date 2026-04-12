@@ -17,7 +17,7 @@ reporting it.
 
 <required-reading>
 - Relevant feature files identified from the bug report
-- `{config_dir}/references/retro-lessons.md` -- lessons from past runs
+- `.claude/references/retro-lessons.md` -- lessons from past runs
 </required-reading>
 
 <behavior>
