@@ -759,6 +759,57 @@ The brain server is launched via `brain/start.sh`, a shell wrapper that installs
 
 The plugin's `.mcp.json` supports HTTP transport only. The brain server uses stdio transport, which requires registration in the project-level `.mcp.json` with absolute paths (tilde `~` does not expand in `.mcp.json`). The `/brain-setup` skill handles this automatically: it locates the plugin install path, resolves absolute paths, and adds an `atelier-brain` entry to the project's `.mcp.json` using `sh` as the command with `start.sh` as the argument. Environment variables for config paths, database credentials, and the OpenRouter API key are passed through the `env` block. Existing entries in the project `.mcp.json` are preserved during this merge.
 
+### HTTP Transport, CORS, and Server Robustness
+
+The brain server implements a dual-transport architecture: stdio for MCP communication and HTTP for dashboard/REST API access.
+
+**HTTP Server Behavior:**
+- Listens on `http://localhost:PORT` (configured via `ATELIER_BRAIN_PORT`, default 8877)
+- Routes:
+  - `/ui` -- static HTML dashboard
+  - `/api/health` -- server status and thought count
+  - `/api/config`, `/api/config` (PUT) -- brain configuration
+  - `/api/stats` -- telemetry statistics and agent fitness
+  - `/api/telemetry/*` -- scoped agent and pipeline metrics
+  - All other paths -- MCP request relay
+
+**CORS Headers:** All HTTP responses include CORS headers to permit localhost tools to make cross-origin requests:
+- `Access-Control-Allow-Origin: http://localhost:PORT` (localhost-only)
+- `Access-Control-Allow-Headers: Content-Type, Authorization, mcp-session-id`
+- `Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS`
+
+OPTIONS requests return 204 No Content for preflight handling.
+
+**Process-Level Crash Guards (ADR-0034):**
+The brain server installs handlers for all 6 process-level crash vectors to ensure it remains available for the full session duration:
+1. `uncaughtException` -- logs and survives
+2. `unhandledRejection` -- logs and survives
+3. EPIPE on stdout (Claude Code disconnects) -- graceful shutdown
+4. stderr errors -- swallowed silently (can't log to broken stderr)
+5. stdin EOF (MCP SDK #1814 workaround) -- graceful shutdown
+6. SIGHUP / SIGTERM / SIGINT -- graceful shutdown
+
+Graceful shutdown stops timers, closes the DB pool with async drain, and enforces a 3-second deadman timeout (using `Promise.race()`) to prevent zombie processes if the pool stalls. See `brain/lib/crash-guards.mjs` for implementation details.
+
+### Brain Server Modules
+
+The brain server is composed of several hardened modules:
+
+| Module | Purpose |
+|--------|---------|
+| `server.mjs` | Main entry point. HTTP server, MCP transport relay, startup orchestration. Installs crash guards. |
+| `db.mjs` | PostgreSQL connection pool with explicit configuration (5 max connections, 5s timeout, 30s idle timeout). Auto-migration on startup. |
+| `rest-api.mjs` | HTTP route handlers for dashboard settings UI and telemetry API endpoints. Authentication via `Authorization: Bearer {token}`. |
+| `config.mjs` | Enums and Zod schemas for thought types, source agents, and source phases. Single source of truth for valid values. |
+| `conflict.mjs` | Detects duplicate or conflicting thoughts at write time using semantic search + optional LLM classification. Uses `llm-response.mjs` for safe LLM response parsing. |
+| `consolidation.mjs` | Periodic synthesis task: groups similar active thoughts and generates reflection summaries using OpenRouter API. Uses `llm-response.mjs` for safe parsing. |
+| `llm-response.mjs` | Null-guard helper for safely extracting content from OpenRouter / OpenAI chat-completion responses. Prevents crashes on malformed responses. Exported `assertLlmContent(data, context)` validates response shape and throws named Error if invalid. |
+| `ttl.mjs` | Periodic TTL enforcement: marks thoughts past their type's TTL as expired, excludes them from searches. |
+| `crash-guards.mjs` | Process-level error handlers, graceful shutdown, deadman timeout logic. Injected into `server.mjs` for testability. |
+
+**LLM Response Parsing Safety:**
+Both `conflict.mjs` and `consolidation.mjs` use the `llm-response.mjs` module's `assertLlmContent()` function to safely extract synthesis results from OpenRouter responses. This ensures that malformed responses (null `data`, empty `choices` array, missing `message` or `content` field) throw a named Error with context and a truncated payload dump, rather than crashing the process with an unhandled TypeError.
+
 ### Database Schema
 
 **Required extensions:** `vector` (pgvector), `ltree`
@@ -2068,6 +2119,28 @@ When the brain contains telemetry from multiple projects, the `/api/telemetry/sc
 ### Auto-Refresh
 
 The dashboard auto-refreshes every 10 minutes. A green dot in the header indicates auto-refresh is active. The "Updated" timestamp shows the last data load time.
+
+### Security: XSS Prevention and Input Escaping
+
+The dashboard dynamically renders user-controlled data (agent names, metadata fields, metrics). All interpolations into `innerHTML` are wrapped in the `escapeHtml()` function to prevent XSS attacks.
+
+**Implementation:**
+- `escapeHtml(s)` (line 952 of `brain/ui/dashboard.html`) safely escapes text by setting a temporary DOM element's `textContent` and reading back the escaped `innerHTML`
+- Every `innerHTML =` assignment is marked with an inline comment indicating whether the content is static (`/* trusted: ... */`) or escaped (`escapeHtml()` wraps all user fields)
+- ~40+ call sites throughout the dashboard apply this pattern to agent names, labels, timestamps, cost/duration metrics, and other dynamic content
+
+**Example pattern:**
+```javascript
+// Trusted static markup (no interpolation)
+grid.innerHTML = /* trusted: static literal markup */ '<div class="card">...';
+
+// Escaped user fields
+grid.innerHTML = stats.map((s) =>
+  '<div>' + escapeHtml(s.label) + '</div>'
+).join('');
+```
+
+This ensures that if brain metadata contains HTML or JavaScript payloads, they are rendered as text rather than executed.
 
 ---
 

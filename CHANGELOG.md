@@ -3,6 +3,40 @@
 All notable changes to Atelier Pipeline are documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
+## [Unreleased]
+
+## [3.28.0] - 2026-04-12
+
+### Added
+
+#### ADR-0033: Hook Enforcement Audit Fixes (Waves 1–2)
+
+- **Wave 1 — Enforcement Gap Closure (5 critical fixes):** Resolved C1 (brain-extractor tool allowlisting), M1 (scout-swarm reactivation), M2 (session-boot sync), M3 (post-compact reinject), and m1–m5 mechanical fixes (cal/roz path validation, prompt-brain-prefetch retry logic, enforce-eva-paths subagent bypass). 
+- **Comprehensive Test Suite:** 30 test cases across 7 new test files covering enforcement config parsing, hook path validation, retro-lesson injection, and brain-extractor tool lifecycle.
+  - tests/hooks/test_session_boot.py (7 cases)
+  - tests/hooks/test_session_boot_sync.py (2 cases)
+  - tests/hooks/test_enforce_colby_paths.py (5 cases)
+  - tests/hooks/test_enforce_cal_paths.py (4 cases)
+  - tests/hooks/test_pipeline_setup_skill.py (8 cases)
+  - Expanded test_enforce_scout_swarm.py with 5 additional cases
+  - Poirot blind review validation tests
+- **Wave 2 — SKILL.md Surgical Edits:** C2 enforcement-scout-swarm hook added to manifest and Agent hook configuration. M4 session-hydrate.sh documented as intentional no-op with cleanup tasks. Expanded brain-extractor if-condition to cover 9 agent types, unlocking capture for Agatha/Colby/Roz/Poirot/Distillator/Sentinel/Deps/Darwin. All 30 tests passing.
+
+#### ADR-0034: Brain Correctness Hardening (Waves 1–3)
+
+- **Wave 1 — Brain Enum Extension:** Fixed critical M1+M9 enum drift — SOURCE_AGENTS and SOURCE_PHASES enums extended to include 6 missing agents (brain-extractor, investigator, sentinel, deps, darwin, distillator) and 3 missing phases (ci-watch, devops, telemetry). Previously these agent captures were silently dropped. Migration 008 patches existing database schema.
+- **Wave 1 — ADR-0032 Implementation:** Introduced `pipeline-state-path.sh` helper to replace hardcoded session-boot.sh path logic, enabling per-project pipeline state isolation and recovery. Updated enforce-eva-paths.sh and enforce-roz-paths.sh to allow ~/.atelier/pipeline writes (brain config directory).
+- **Wave 2 — Hook Library Extraction:** Extracted 6 reusable functions into `source/shared/hooks/hook-lib.sh` (hook_lib_pipeline_status_field, hook_lib_json_escape, hook_lib_get_agent_type, hook_lib_assert_agent_type, hook_lib_emit_deny, hook_lib_emit_allow). Rewired all 11 Claude hooks to source this library, reducing duplication.
+- **Wave 2 — Migration Infrastructure:** Replaced 144-line hardcoded migration runner with generic file-loop runner in brain/lib/db.mjs. Introduced schema_migrations tracking table to persist applied migration IDs, enabling idempotent re-runs and safe schema evolution.
+- **Wave 2 — Poirot Code Review Fixes:** enforce-roz-paths.sh traversal check moved before exception glob. Parameterized all SQL queries in brain/lib/db.mjs. brain-extractor.md agent documentation corrected. prompt-compact-advisory.sh migrated to session_state_dir() pattern.
+- **Wave 3 — Brain Correctness Fixes (4 features):**
+  1. **Graceful pool shutdown with async drain:** Database pool closes cleanly on shutdown (EPIPE, SIGTERM, stdin EOF) with 3-second deadman timeout via `Promise.race([poolEnd(), deadmanPromise])` in `brain/lib/crash-guards.mjs`.
+  2. **LLM response null-guard module:** New `brain/lib/llm-response.mjs` provides `assertLlmContent(data, context)` for safe extraction of chat-completion responses, preventing TypeErrors from malformed data (null data, empty choices, missing message/content).
+  3. **XSS escaping in dashboard:** All dynamic content in `brain/ui/dashboard.html` now HTML-escaped before `innerHTML` insertion using `escapeHtml()`, covering ~40+ call sites (agent names, metrics, timestamps, metadata). Prevents script injection through brain metadata.
+  4. **CORS headers for HTTP REST API:** Brain server sets `Access-Control-Allow-Origin: http://localhost:PORT`, `Access-Control-Allow-Headers: Content-Type, Authorization, mcp-session-id`, `Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS`. Enables localhost dashboard and tools to make cross-origin REST requests.
+
+- **Test Coverage:** ADR-0034 adds 29 new hook tests (hook-lib, path enforcement, session-hydrate, migration runner) and 3 new brain test suites (crash-guards.test.mjs, dashboard-xss.test.mjs, llm-response.test.mjs). Total: 186 tests across brain + hooks, 0 failures. Updated mock-pool.mjs for parameterized query support; conftest.py enhanced for hook-lib isolation testing.
+
 ## [3.27.5] - 2026-04-10
 
 ### Fixed

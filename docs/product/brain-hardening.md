@@ -78,13 +78,81 @@ No user flow changes. The hardening is invisible — the server continues to beh
 - Safe timer wrappers in consolidation.mjs and ttl.mjs
 - stdin EOF detection in server.mjs
 - Comprehensive test suite for all crash vectors
+- Graceful pool shutdown with async drain and deadman timeout (ADR-0034 Wave 3 Step 3.4)
+- LLM response null-guard wrappers (ADR-0034 Wave 3 Step 3.5)
+- XSS escaping in dashboard.html (ADR-0034 Wave 3 Step 3.6)
+- CORS headers for HTTP REST API (ADR-0034 Wave 3 Step 3.7)
 
 **Out of scope:**
-- HTTP transport changes (existing HTTP mode untouched)
 - Tool handler modifications (already have proper error handling)
 - Structured logging (nice-to-have, separate initiative)
 - DB health probe / watchdog (separate initiative if needed)
 - Process supervisor / restart mechanism (useless for stdio — Claude Code can't reconnect)
+
+## Implemented Additions (ADR-0034 Wave 3)
+
+These subsections document the four scope additions implemented in Wave 3 that were not explicitly listed in the original spec.
+
+### Graceful Pool Shutdown with Async Drain (Step 3.4)
+
+**Context:** When EPIPE, stdin EOF, or a signal triggers `gracefulShutdown()`, the database pool must close cleanly. If in-flight queries stall indefinitely, the process can hang as a zombie.
+
+**Implementation:**
+- `pool.end()` returns a Promise that resolves when all active connections have drained
+- A 3-second deadman timeout (using `Promise.race()`) forces exit if the pool drain stalls
+- The deadman timer calls `.unref()` to prevent it from keeping the event loop alive if pool drain completes first
+- Exit code 0 on success; code 1 if the deadman fires
+
+**Code location:** `brain/lib/crash-guards.mjs`, lines 46-52
+
+**Behavior:** `gracefulShutdown()` now awaits `Promise.race([poolEnd().catch(() => {}), deadmanPromise])` before calling `exitFn(0)` or `exitFn(1)`. This ensures the process does not terminate while queries are still in flight, avoiding data corruption on shutdown.
+
+### LLM Response Null-Guard Wrapper (Step 3.5)
+
+**Context:** Both `conflict.mjs` and `consolidation.mjs` parse LLM (OpenRouter / OpenAI) chat-completion responses to extract synthesis or conflict classification results. Before this fix, they accessed `.choices[0].message.content` directly, risking crashes if the response shape was malformed (null `data`, empty `choices` array, missing `message` or `content`).
+
+**Implementation:**
+- New module: `brain/lib/llm-response.mjs` exports `assertLlmContent(data, context)`
+- Validates response shape: confirms `data` is not null, `choices` is a non-empty array, `message` exists, and `content` is non-empty
+- Throws a named `Error` with the text "malformed" (for log pattern-matching) and a truncated 200-char JSON dump of the payload for debugging
+- Both `conflict.mjs` and `consolidation.mjs` import and use this function instead of direct property access
+
+**Code locations:**
+- `brain/lib/llm-response.mjs` (entire module, 57 lines)
+- `brain/lib/conflict.mjs`, line 7 (import), line 61 (usage)
+- `brain/lib/consolidation.mjs`, line 10 (import), line 170 (usage)
+
+**Behavior:** Any malformed LLM response now logs an error and returns `isError: true` to the tool caller, rather than crashing the consolidation or conflict cycle.
+
+### XSS Escaping in Dashboard UI (Step 3.6)
+
+**Context:** The Atelier Dashboard renders dynamic data (agent names, metrics, pipeline descriptions) into HTML via `innerHTML` assignments. User-controlled metadata fields could contain HTML tags or JavaScript, creating an XSS vulnerability.
+
+**Implementation:**
+- New function in `dashboard.html` (line 952): `escapeHtml(s)` — safely escapes text by setting a DOM element's `textContent` and reading back the escaped `innerHTML`
+- All interpolations into `innerHTML` are wrapped in `escapeHtml()` with inline `/* trusted: <reason> */` comments for static literals
+- Pattern enforced: every `innerHTML =` assignment either uses static markup marked with a trust comment or concatenates escaped strings
+- ~40+ call sites in the dashboard now use `escapeHtml()` for agent names, labels, metrics, timestamps, and other user-facing text
+
+**Code location:** `brain/ui/dashboard.html`, lines 952-1722+
+
+**Behavior:** Agent names, thought descriptions, cost/duration values, and any other dynamic text is HTML-escaped before insertion, preventing script injection through malformed metadata.
+
+### CORS Headers for HTTP REST API (Step 3.7)
+
+**Context:** The brain server provides an HTTP REST API for the dashboard (`/api/health`, `/api/config`, `/api/stats`, `/api/telemetry/*`) and a settings UI (`/ui`). CORS headers are required for the dashboard to make cross-origin requests when served from `http://localhost:PORT/ui`.
+
+**Implementation:**
+- `brain/server.mjs` HTTP handler (lines 114-116) sets three CORS headers on all requests:
+  - `Access-Control-Allow-Origin: http://localhost:PORT` (scoped to localhost only)
+  - `Access-Control-Allow-Headers: Content-Type, Authorization, mcp-session-id`
+  - `Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS`
+- OPTIONS requests return 204 No Content, allowing preflight requests to succeed
+- All other requests proceed normally with the headers attached
+
+**Code location:** `brain/server.mjs`, lines 114-118
+
+**Behavior:** The dashboard and any localhost tools can make XMLHttpRequest/fetch calls to the REST API without CORS preflight blocking. Remote origins are rejected (localhost-only restriction).
 
 ## Non-Functional Requirements
 - **Performance:** Zero overhead on happy path — crash guards only fire on errors

@@ -16,7 +16,9 @@
   - [x] Roz test authoring: crash-guards.test.mjs, dashboard-xss.test.mjs, llm-response.test.mjs, rest-api.test.mjs appended — T-0034-049/050/051–060
   - [x] Roz hardening test update: T-0017-003/006/007/008/009/010 made async (ADR-0034 Step 3.4 drift) — 186 tests, 0 fail
   - [x] Wave 3 QA: Roz sweep PASS (186 tests, 0 fail) + Poirot blind diff (7 findings, all resolved) + Roz targeted re-check PASS (39/39)
-  - [ ] Wave 3 Ellis commit (next step)
+  - [x] Wave 3 Ellis commit → 5b627cc (21 files)
+- [x] Agatha docs: brain-hardening.md + technical-reference.md + CHANGELOG.md updated, all Robert N/A findings documented
+- [ ] Ellis final push to remote (hard pause — trunk-based)
 - [ ] Waves 4–6 — separate ADRs (ADR-0035, ADR-0036, ADR-0037)
 
 ## Context
