@@ -5,6 +5,34 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.29.0] - 2026-04-12
+
+### Added
+
+#### ADR-0035: Session State Isolation Wiring (Wave 4)
+
+- **Hydrate-telemetry auto-resolve:** Decoupled session boot from active telemetry collection. `hydrate-telemetry.mjs` now auto-resolves brain URL from `~/.atelier/config.json` when started without parameters. SessionStart hook no longer requires explicit `CLAUDE_BRAIN_URL` propagation; enables background hydration on fresh checkouts and concurrent session recovery.
+- **Consumer path placeholders:** Cal/Colby/Roz consumer agents now resolve `{session_state_dir}` and `{claude_project_dir}` placeholders in read-list invocations, enabling session-isolated pipeline state reads. Eliminates per-project path hardcoding.
+- **Concurrent-session protocol:** Multiple Claude Code instances on the same project can now run independent pipelines without state collision. Each session gets its own `pipeline-state.md` via `$CLAUDE_SESSION_ID` environment variable. Pipeline files are session-scoped; no merge conflicts. Session recovery handler reads only the current session's state on boot.
+- **S4 Ellis hook resolution:** Ellis commit and push operations now resolve through session state directory helpers. Enables multi-session parallel commits without race conditions.
+
+#### ADR-0036: Documentation Sweep (Wave 5)
+
+- **7 gauntlet R14 gaps closed:**
+  1. **Triple-source assembly:** Clarified `source/shared/` → `source/claude/` → `.claude/` template assembly pipeline in CLAUDE.md, with per-layer responsibility breakdown.
+  2. **REST auth + endpoints:** Brain HTTP API authentication documented; endpoint signatures (GET /search, POST /capture, GET /hydrate-status) formalized in `technical-reference.md`.
+  3. **Migration runner:** Brain schema migration execution flow (file-loop runner, idempotent `schema_migrations` tracking) formally specified in ADR-0034 trace.
+  4. **Hook procedure:** All 20 hook lifecycle events (SessionStart, PreToolUse, AgentStart, AgentStop, etc.) cross-referenced with `.claude/hooks/` implementations. Behavior matrix added to `hook-procedure.md`.
+  5. **Gauntlet audit:** Complete ADR index (ADR-0001 through ADR-0037) with summaries, status (accepted/superseded), and cross-references added to `docs/architecture/adr/`.
+  6. **ADR index expansion:** 13 → 37 ADRs tracked; all prior ADRs indexed and backlinked.
+  7. **Cross-references:** Agent personas now reference ADRs that ground their behavior (e.g., Colby references ADR-0018 for Wave-based build; Roz references ADR-0016 for Wave-based QA).
+
+#### ADR-0037: Dashboard a11y + Product Specs (Wave 6)
+
+- **Dashboard WCAG 2.1 AA:** Modal dialogs now trap focus, escape-to-close handlers, keyboard-navigable search/filter, loading spinners announce to screen readers via `aria-label`, table column headers have `scope="col"`, agent-selector button has `aria-expanded`. Tested with axe-core against 16 UI patterns.
+- **5 product specs:** Cursor plugin integration (session-boot parity), brain persistence mode selection (in-memory vs. database), agent-teams feature (parallel Colby builds), model assignment per-pipeline (cost optimization), token-budget gates for Large pipelines.
+- **Cursor session-boot parity:** `.cursor-plugin/hooks/session-boot.sh` now matches Claude Code's flow: brain dependency check, Atelier Hydrate MCP call, settings.json permissions pre-approval. Cursor plugin automatically synced with Claude plugin at release.
+
 ## [3.28.0] - 2026-04-12
 
 ### Added
