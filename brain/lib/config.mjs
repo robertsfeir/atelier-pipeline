@@ -16,11 +16,25 @@ const THOUGHT_TYPES = [
   "pattern", "seed",
 ];
 const SOURCE_AGENTS = [
-  "eva", "cal", "robert", "sable", "colby",
-  "roz", "poirot", "agatha", "distillator", "ellis",
+  // # non-extracted: eva orchestrates but does not submit agent_capture calls
+  "eva",
+  "cal", "robert", "sable", "colby",
+  "roz", "agatha", "ellis",
+  // # non-extracted: poirot is read-only, no brain captures
+  "poirot",
+  // # non-extracted: distillator compresses but does not capture decisions
+  "distillator",
+  "robert-spec", "sable-ux",
+  // # non-extracted: sentinel, darwin, deps, brain-extractor fire SubagentStop
+  // but are not in the brain-extractor mapping table (they capture themselves)
+  "sentinel",
+  "darwin",
+  "deps",
+  "brain-extractor",
 ];
 const SOURCE_PHASES = [
   "design", "build", "qa", "review", "reconciliation", "setup", "handoff", "devops", "telemetry", "ci-watch", "pipeline",
+  "product", "ux", "commit",
 ];
 const THOUGHT_STATUSES = [
   "active", "superseded", "invalidated", "expired", "conflicted",

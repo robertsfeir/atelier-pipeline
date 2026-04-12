@@ -21,11 +21,14 @@ CREATE TYPE thought_type AS ENUM (
 
 CREATE TYPE source_agent AS ENUM (
   'eva', 'cal', 'robert', 'sable', 'colby',
-  'roz', 'poirot', 'agatha', 'distillator', 'ellis'
+  'roz', 'poirot', 'agatha', 'distillator', 'ellis',
+  'robert-spec', 'sable-ux',
+  'sentinel', 'darwin', 'deps', 'brain-extractor'
 );
 
 CREATE TYPE source_phase AS ENUM (
-  'design', 'build', 'qa', 'review', 'reconciliation', 'setup', 'handoff', 'devops', 'telemetry', 'ci-watch', 'pipeline'
+  'design', 'build', 'qa', 'review', 'reconciliation', 'setup', 'handoff', 'devops', 'telemetry', 'ci-watch', 'pipeline',
+  'product', 'ux', 'commit'
 );
 
 CREATE TYPE thought_status AS ENUM (

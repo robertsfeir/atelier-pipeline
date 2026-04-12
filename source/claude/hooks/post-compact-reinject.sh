@@ -20,9 +20,24 @@ if [ -z "$PROJECT_DIR" ]; then
   exit 0
 fi
 
-PIPELINE_DIR="$PROJECT_DIR/docs/pipeline"
-STATE_FILE="$PIPELINE_DIR/pipeline-state.md"
-BRIEF_FILE="$PIPELINE_DIR/context-brief.md"
+# Source the pipeline-state-path helper (ADR-0032 implementation)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)" || SCRIPT_DIR=""
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/pipeline-state-path.sh" ]; then
+  # shellcheck source=pipeline-state-path.sh
+  source "$SCRIPT_DIR/pipeline-state-path.sh" 2>/dev/null || true
+fi
+
+# Define fallback if helper did not load
+# Fallback uses PROJECT_DIR to produce an absolute path so the hook resolves
+# correctly regardless of the current working directory.
+if ! command -v session_state_dir &>/dev/null; then
+  session_state_dir() { echo "$PROJECT_DIR/docs/pipeline"; }
+fi
+
+# Resolve per-worktree state directory (ADR-0032)
+STATE_DIR=$(session_state_dir)
+STATE_FILE="$STATE_DIR/pipeline-state.md"
+BRIEF_FILE="$STATE_DIR/context-brief.md"
 
 # If pipeline-state.md does not exist, output nothing
 if [ ! -f "$STATE_FILE" ]; then

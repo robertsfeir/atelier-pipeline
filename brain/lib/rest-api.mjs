@@ -4,7 +4,7 @@
  * Depends on: db.mjs (pool), conflict.mjs (getBrainConfig), config.mjs (enums).
  */
 
-import { THOUGHT_TYPES } from "./config.mjs";
+import { THOUGHT_TYPES, SOURCE_AGENTS } from "./config.mjs";
 import { getBrainConfig, resetBrainConfigCache } from "./conflict.mjs";
 
 // =============================================================================
@@ -325,6 +325,14 @@ async function handleTelemetryAgents(req, res, pool) {
   }
 
   // T1 query: per-agent invocation metrics (cost, tokens, duration)
+  // Build parameterized IN clause from SOURCE_AGENTS (closes M9: no hardcoded literals)
+  //
+  // IMPORTANT: agentParams = [...params, ...SOURCE_AGENTS] — scope param (if present) is
+  // at index 0 ($1). Agent params start at index params.length+1. Any new param added
+  // before this block MUST update agentParamOffset accordingly.
+  const agentParamOffset = params.length;
+  const agentPlaceholders = SOURCE_AGENTS.map((_, i) => `$${agentParamOffset + i + 1}`).join(',');
+  const agentParams = [...params, ...SOURCE_AGENTS];
   const result = await pool.query(
     `SELECT
        metadata->>'agent_name' as agent,
@@ -337,10 +345,13 @@ async function handleTelemetryAgents(req, res, pool) {
      WHERE thought_type = 'insight'
        AND source_phase = 'telemetry'
        AND metadata->>'telemetry_tier' = '1'
-       AND metadata->>'agent_name' IN ('eva','colby','roz','cal','ellis','agatha','robert','sable','investigator','distillator','sentinel','deps','darwin')${scopeClause}
+       -- SOURCE_AGENTS includes non-telemetry agents (eva, poirot, distillator) — these
+       -- never match T1 rows but the over-inclusion is harmless; use SOURCE_AGENTS for
+       -- single-source-of-truth.
+       AND metadata->>'agent_name' IN (${agentPlaceholders})${scopeClause}
      GROUP BY metadata->>'agent_name'
      ORDER BY total_cost DESC`,
-    params
+    agentParams
   );
 
   // T3 query: pipeline-level quality metrics (rework_rate, first_pass_qa_rate)

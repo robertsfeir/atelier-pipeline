@@ -12,6 +12,21 @@ set -uo pipefail
 
 INPUT=$(cat 2>/dev/null) || true
 
+# Source the pipeline-state-path helper (ADR-0032 implementation)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)" || SCRIPT_DIR=""
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/pipeline-state-path.sh" ]; then
+  # shellcheck source=pipeline-state-path.sh
+  source "$SCRIPT_DIR/pipeline-state-path.sh" 2>/dev/null || true
+fi
+
+# Define fallback if helper did not load
+if ! command -v session_state_dir &>/dev/null; then
+  session_state_dir() { echo "docs/pipeline"; }
+fi
+if ! command -v error_patterns_path &>/dev/null; then
+  error_patterns_path() { echo "docs/pipeline/error-patterns.md"; }
+fi
+
 # Defaults
 PIPELINE_ACTIVE=false
 PHASE="idle"
@@ -37,8 +52,11 @@ elif [ -d ".cursor" ]; then
   CONFIG_DIR=".cursor"
 fi
 
+# --- Resolve per-worktree state directory (ADR-0032) ---
+STATE_DIR=$(session_state_dir)
+
 # --- Read pipeline-state.md ---
-PIPELINE_STATE_FILE="docs/pipeline/pipeline-state.md"
+PIPELINE_STATE_FILE="$STATE_DIR/pipeline-state.md"
 if [ -f "$PIPELINE_STATE_FILE" ]; then
   STATUS_JSON=$(grep -o 'PIPELINE_STATUS: {[^}]*}' "$PIPELINE_STATE_FILE" 2>/dev/null | head -1 | sed 's/PIPELINE_STATUS: //' || true)
   if [ -n "$STATUS_JSON" ] && command -v jq &>/dev/null; then
@@ -51,7 +69,7 @@ if [ -f "$PIPELINE_STATE_FILE" ]; then
 fi
 
 # --- Read context-brief.md (check for stale context) ---
-CONTEXT_BRIEF="docs/pipeline/context-brief.md"
+CONTEXT_BRIEF="$STATE_DIR/context-brief.md"
 if [ -f "$CONTEXT_BRIEF" ] && [ -n "$FEATURE" ]; then
   BRIEF_FEATURE=$(grep -i "feature" "$CONTEXT_BRIEF" 2>/dev/null | head -1 || true)
   if [ -n "$BRIEF_FEATURE" ] && [ -n "$FEATURE" ]; then
@@ -62,7 +80,8 @@ if [ -f "$CONTEXT_BRIEF" ] && [ -n "$FEATURE" ]; then
 fi
 
 # --- Read error-patterns.md (warn agents with Recurrence >= 3) ---
-ERROR_PATTERNS="docs/pipeline/error-patterns.md"
+# error-patterns.md stays in-repo per ADR-0032 (shared with team via git)
+ERROR_PATTERNS=$(error_patterns_path)
 if [ -f "$ERROR_PATTERNS" ] && command -v grep &>/dev/null; then
   WARN_LIST=$(grep -i "recurrence.*[3-9]\|recurrence.*[1-9][0-9]" "$ERROR_PATTERNS" 2>/dev/null | \
     grep -oi "agent[s]*[: ]*[a-z,]*" 2>/dev/null | \

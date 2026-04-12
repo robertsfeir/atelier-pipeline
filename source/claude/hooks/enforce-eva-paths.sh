@@ -28,10 +28,16 @@ FILE_PATH="${FILE_PATH#"$PROJECT_ROOT"/}"
 [[ "$FILE_PATH" == *..* ]] && { echo "BLOCKED: Path traversal detected in $FILE_PATH" >&2; exit 2; }
 
 # If still absolute after normalization, it's outside the project root.
-# Exception: Eva's auto-memory system writes to $HOME/.claude/projects/.../memory/.
+# Exception 1: Eva's auto-memory system writes to $HOME/.claude/projects/.../memory/.
 # Allow writes only to the memory subdirectory path pattern — not arbitrary .claude/ paths.
+# Exception 2: ADR-0032 out-of-repo session state lives at ~/.atelier/pipeline/{slug}/{hash}/.
+# The pattern {slug}/{hash} means exactly two additional path components after the base.
+# Format: $HOME/.atelier/pipeline/<one-component>/<one-component>/<file>
 if [[ "$FILE_PATH" == /* ]]; then
   if [[ "$FILE_PATH" == ${HOME}/.claude/projects/*/memory/* ]]; then
+    exit 0
+  fi
+  if [[ "$FILE_PATH" == ${HOME}/.atelier/pipeline/*/*/* ]]; then
     exit 0
   fi
   echo "BLOCKED: File is outside the project root. Attempted: $FILE_PATH" >&2

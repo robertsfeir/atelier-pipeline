@@ -178,6 +178,32 @@ async function runMigrations(pool) {
 
     // Migration 007: Beads provenance (ADR-0026) -- no DDL changes
     console.log("Migration 007: Beads provenance -- no DDL changes needed (metadata JSONB).");
+
+    // Migration 008: Extend source_agent and source_phase enums (ADR-0034 M1+M9)
+    // JS probe uses 'brain-extractor' — the LAST value the migration adds — as the
+    // completion sentinel. Probing 'sentinel' (the first value) was unsafe: a partial
+    // prior run could have added only 'sentinel' while leaving subsequent values
+    // (brain-extractor, product, ux, commit) missing, causing this block to be
+    // skipped forever. Using the last value guarantees the migration only short-circuits
+    // when all values have been successfully added.
+    try {
+      const agentCheck = await client.query(
+        `SELECT 1 FROM pg_enum WHERE enumlabel = 'brain-extractor' AND enumtypid = 'source_agent'::regtype`
+      );
+      if (agentCheck.rows.length === 0) {
+        console.log("Migration 008: extending source_agent and source_phase enums...");
+        const migrationPath = path.join(brainDir, "migrations", "008-extend-agent-and-phase-enums.sql");
+        if (existsSync(migrationPath)) {
+          const sql = readFileSync(migrationPath, "utf-8");
+          await client.query(sql);
+          console.log("Migration 008: enum values added.");
+        } else {
+          console.warn("Migration 008: SQL file not found at", migrationPath, "-- enum values NOT added.");
+        }
+      }
+    } catch (err) {
+      console.error("Migration 008 failed (non-fatal):", err.message);
+    }
   } catch (err) {
     console.error("Migration check failed (non-fatal):", err.message);
   } finally {

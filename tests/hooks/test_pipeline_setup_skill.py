@@ -285,3 +285,60 @@ def test_T_0033_024_session_hydrate_manifest_description_updated():
         f"session-hydrate.sh manifest description missing 'NOT registered' language. "
         f"Current row: {row!r}."
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# T-0034-062: SKILL.md SubagentStop template has 9-agent condition (ADR-0034)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def test_T_0034_062_skill_md_brain_extractor_has_9_agents():
+    """SKILL.md SubagentStop brain-extractor `if:` condition contains all 9
+    brain-extractor target agents as literal strings.
+
+    ADR-0034 Wave 1 Step 1.2: this locks the template state and prevents
+    silent drift between the template and the installed .claude/settings.json.
+
+    The 9 agents are: cal, colby, roz, agatha, robert, robert-spec, sable,
+    sable-ux, ellis (matching the brain-extractor.md mapping table).
+
+    Note: brain-extractor itself must NOT appear in the condition
+    (infinite-loop prevention, ADR-0024).
+    """
+    parsed = json.loads(extract_json_block(read_skill_md()))
+    hooks = flatten_hook_commands(parsed["hooks"])
+
+    extractor_hooks = [
+        h for h in hooks
+        if h.get("type") == "agent" and h.get("agent") == "brain-extractor"
+    ]
+    assert extractor_hooks, (
+        "SKILL.md settings.json template missing brain-extractor agent hook "
+        "(type='agent', agent='brain-extractor'). ADR-0034 Step 1.2 requires "
+        "this hook to fire for 9 target agents."
+    )
+
+    nine_agents = [
+        "cal", "colby", "roz", "agatha",
+        "robert", "robert-spec", "sable", "sable-ux", "ellis",
+    ]
+    for h in extractor_hooks:
+        cond = h.get("if", "")
+        for agent in nine_agents:
+            assert f"'{agent}'" in cond or f'"{agent}"' in cond, (
+                f"brain-extractor if: condition missing agent '{agent}'. "
+                f"ADR-0034 Step 1.2 requires all 9 mapping-table agents. "
+                f"Current condition: {cond!r}"
+            )
+        # brain-extractor must NOT appear (infinite-loop prevention)
+        assert "brain-extractor" not in cond, (
+            f"brain-extractor if: condition must NOT include 'brain-extractor' "
+            f"(infinite-loop prevention, ADR-0024). Current: {cond!r}"
+        )
+        # Exactly 9 agent_type comparisons
+        import re
+        occurrences = re.findall(r"agent_type\s*==", cond)
+        assert len(occurrences) == 9, (
+            f"brain-extractor if: condition should have exactly 9 agent_type "
+            f"comparisons, found {len(occurrences)}. Condition: {cond!r}"
+        )
