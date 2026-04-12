@@ -38,7 +38,7 @@ check_platform() {
     # Build list of changed template files (skip pipeline state files — those are user data)
     local changed=""
     for dir in agents commands rules references; do
-      local src_dir="${PLUGIN_ROOT}/source/${dir}"
+      local src_dir="${PLUGIN_ROOT}/source/shared/${dir}"
       local dst_dir="${platform_dir}/${dir}"
       [ -d "$src_dir" ] && [ -d "$dst_dir" ] || continue
       for src_file in "$src_dir"/*.md; do
@@ -49,6 +49,22 @@ check_platform() {
         [ -f "$dst_file" ] || { changed="${changed:+$changed, }${dir}/${filename} (new)"; continue; }
       done
     done
+
+    # Check hooks directory — only for Claude Code (.claude/), not Cursor
+    # Hooks come from two source dirs: source/shared/hooks/ and source/claude/hooks/
+    if [ "$(basename "$platform_dir")" = ".claude" ]; then
+      local dst_hooks="${platform_dir}/hooks"
+      for hooks_src_dir in "${PLUGIN_ROOT}/source/shared/hooks" "${PLUGIN_ROOT}/source/claude/hooks"; do
+        [ -d "$hooks_src_dir" ] && [ -d "$dst_hooks" ] || continue
+        for src_file in "$hooks_src_dir"/*; do
+          [ -f "$src_file" ] || continue
+          local filename
+          filename=$(basename "$src_file")
+          local dst_file="${dst_hooks}/${filename}"
+          [ -f "$dst_file" ] || { changed="${changed:+$changed, }hooks/${filename} (new)"; continue; }
+        done
+      done
+    fi
 
     # Detect stale files that have been removed from the plugin
     local stale=""

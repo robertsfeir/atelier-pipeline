@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.30.2] - 2026-04-12
+
+### Fixed
+
+- **check-updates.sh:** Fixed three bugs in update detection. (1) Source path was `source/{dir}/` instead of `source/shared/{dir}/` — update detection has been broken since the source directory restructure. (2) Hooks directory was never checked — hook-lib.sh shipped broken to users silently. (3) Glob was `*.md` only, excluding .sh and .json hook files. Future hook updates will now be properly detected and users will be prompted to re-run /pipeline-setup.
+
 ## [3.30.1] - 2026-04-12
 
 ### Fixed
