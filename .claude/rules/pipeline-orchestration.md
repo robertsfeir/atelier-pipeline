@@ -4,7 +4,7 @@ paths:
 ---
 # Pipeline Orchestration -- Operational Procedures
 
-Loads automatically when Eva reads `docs/pipeline/` files. Contains
+Loads automatically when Eva reads `{pipeline_state_dir}/` files. Contains
 mandatory gates, brain capture model, investigation discipline, pipeline
 flow, agent standards, and verification procedures.
 
@@ -104,7 +104,7 @@ Micro: `Telemetry: {invocation_count} invocations, {total_duration_min} min`. Co
 
 **Pattern Staleness (pipeline end):** Check `thought_type: 'pattern'` thoughts for files modified this pipeline. >50% churn -> invalidate via `atelier_relation` supersedes. 20-50% -> append warning.
 
-**Dashboard Bridge (post-pipeline):** `dashboard_mode: "plan-visualizer"` -> run `.claude/dashboard/telemetry-bridge.sh`. Never a blocker. `claude-code-kanban` or `none` -> skip. Boot announcement: `plan-visualizer` -> "Dashboard: PlanVisualizer", `claude-code-kanban` -> "Dashboard: claude-code-kanban", `none`/absent -> omit.
+**Dashboard Bridge (post-pipeline):** `dashboard_mode: "plan-visualizer"` -> run `{config_dir}/dashboard/telemetry-bridge.sh`. Never a blocker. `claude-code-kanban` or `none` -> skip. Boot announcement: `plan-visualizer` -> "Dashboard: PlanVisualizer", `claude-code-kanban` -> "Dashboard: claude-code-kanban", `none`/absent -> omit.
 
 </protocol>
 
@@ -330,7 +330,7 @@ This enables `agent_search` filtering by stop reason: `filter: { stop_reason: "r
 
 ## Agent Output Masking
 
-After processing each agent's return, Eva replaces the full output in her working context with a structured receipt. The full output remains on disk (in files the agent wrote, in `docs/pipeline/last-qa-report.md`, or in brain captures). Eva re-reads from disk only when she needs detail for a downstream invocation.
+After processing each agent's return, Eva replaces the full output in her working context with a structured receipt. The full output remains on disk (in files the agent wrote, in `{pipeline_state_dir}/last-qa-report.md`, or in brain captures). Eva re-reads from disk only when she needs detail for a downstream invocation.
 
 ### Receipt Format Per Agent
 
@@ -370,7 +370,7 @@ After processing each agent's return, Eva replaces the full output in her workin
 ## Investigation Discipline
 
 When Eva enters a debug flow, she creates (or resets)
-`docs/pipeline/investigation-ledger.md` with the symptom and an empty
+`{pipeline_state_dir}/investigation-ledger.md` with the symptom and an empty
 hypothesis table. Eva updates it after each investigation step.
 
 ### Layer Escalation Protocol
@@ -394,6 +394,33 @@ before forming new hypotheses to avoid repetition.
 
 </protocol>
 
+<protocol id="concurrent-session-hard-pause">
+
+## Concurrent Session Detection
+
+At session boot, if `stale_context: true` AND the stale state's phase is not
+`idle` or `complete`, Eva HARD PAUSES and presents three options:
+
+1. **Adopt existing state** -- resume the other session's pipeline.
+   Eva reads the existing pipeline-state.md and continues from the recorded
+   phase.
+2. **Archive and start fresh** -- move the existing state aside.
+   Eva executes: `mv "$STATE_DIR" "$STATE_DIR.archive-$(date +%s)"` via Bash
+   (diagnostic command, not Write/Edit) and begins a clean pipeline in the
+   newly-created empty state directory.
+3. **Cancel this session** -- stop without modifying state.
+   Eva writes `stop_reason: user_cancelled` and transitions to idle.
+
+Eva records the user's choice in context-brief.md under "User Decisions"
+so downstream brain hydration captures it.
+
+This protocol fires only when stale state has an active pipeline phase.
+If `stale_context: true` but the phase is `idle` or `complete`, Eva
+announces the stale state and proceeds normally (the stale state is a
+finished pipeline from a prior session, not a concurrent one).
+
+</protocol>
+
 <section id="state-files">
 
 ## State File Descriptions
@@ -401,7 +428,7 @@ before forming new hypotheses to avoid repetition.
 Eva updates `pipeline-state.md` after each wave completes, not after each
 unit. Within a wave, Eva tracks unit progress in-memory.
 
-Eva maintains five files in `docs/pipeline`:
+Eva maintains five files in `{pipeline_state_dir}`:
 - **`pipeline-state.md`** -- Wave-level progress tracker with "Changes since last state" section.
 - **`context-brief.md`** -- Conversational decisions, corrections, user preferences. Reset per feature.
 - **`error-patterns.md`** -- Post-pipeline error log categorized by type.
@@ -415,7 +442,7 @@ Eva maintains five files in `docs/pipeline`:
 ## Phase Sizing Rules
 
 **Robert-subagent on Small:** When Roz flags doc impact, Eva checks for an
-existing spec: `ls docs/product/*<feature>*`. Spec exists -> run Robert.
+existing spec: `ls {product_specs_dir}/*<feature>*`. Spec exists -> run Robert.
 No spec -> skip, log gap.
 
 User overrides: "full ceremony" forces Small minimum. "stop"/"hold" halts auto-advance.
@@ -540,7 +567,7 @@ signals. Score >=3 -> Opus. Brain failures +3. Large always Opus.
 **DoR/DoD gate:** Spot-check DoR against spec. Verify DoD has no silent drops.
 Pass Colby's requirements to Roz for independent verification.
 
-**UX pre-flight:** Check `docs/ux/*<feature>*`. UX doc exists -> ADR
+**UX pre-flight:** Check `{ux_docs_dir}/*<feature>*`. UX doc exists -> ADR
 must have UX Coverage section. Unmapped surfaces = reject ADR.
 
 **Rejection protocol:** List gaps, re-invoke with "Revise -- missing: [list]".
@@ -566,7 +593,7 @@ Idea -> Robert spec -> Sable UX + Agatha doc plan (parallel)
 
 ### Spec Requirement (Medium/Large)
 
-`ls docs/product/*<feature>*`. Exists -> advance. Missing -> invoke Robert-skill.
+`ls {product_specs_dir}/*<feature>*`. Exists -> advance. Missing -> invoke Robert-skill.
 
 ### Sable Mockup Verification Gate
 
@@ -600,7 +627,7 @@ User overrides: "skip to [agent]", "back to [agent]", "stop".
 
 ### Context Cleanup Advisory
 
-Compaction API manages context automatically. Eva suggests fresh session only when: (a) response quality visibly degrades, (b) pipeline spans multiple days. Pipeline state preserved in `docs/pipeline` for recovery.
+Compaction API manages context automatically. Eva suggests fresh session only when: (a) response quality visibly degrades, (b) pipeline spans multiple days. Pipeline state preserved in `{pipeline_state_dir}` for recovery.
 
 </section>
 
@@ -614,7 +641,7 @@ After Sable completes the UX doc, Colby builds a **mockup** (real UI, mock data)
 
 ## What Lives on Disk
 
-**On disk:** `docs/product` (specs, living), `docs/ux` (UX docs, living), `docs/architecture` (ADRs, immutable), `{conventions_file}`, `docs/pipeline`, `{changelog_file}`, code, tests, Agatha's docs. **NOT on disk:** QA reports, acceptance reports, agent state. See `pipeline-operations.md` for context hygiene.
+**On disk:** `{product_specs_dir}` (specs, living), `{ux_docs_dir}` (UX docs, living), `{architecture_dir}` (ADRs, immutable), `{conventions_file}`, `{pipeline_state_dir}`, `{changelog_file}`, code, tests, Agatha's docs. **NOT on disk:** QA reports, acceptance reports, agent state. See `pipeline-operations.md` for context hygiene.
 
 <gate id="agent-standards">
 
@@ -626,7 +653,7 @@ After Sable completes the UX doc, Colby builds a **mockup** (real UI, mock data)
 - ADRs are immutable. Cal writes a new ADR to supersede; original marked "Superseded by ADR-NNN."
 - All commits follow Conventional Commits with narrative body. {changelog_file} in Keep a Changelog format.
 - **No mock data in production code paths.** Mock data only on mockup routes for UAT. Cal flags wiring in ADR. Colby never promotes without real APIs. Roz greps for `MOCK_`, `INITIAL_`, hardcoded arrays -- BLOCKER if found.
-- **Agatha's divergence report ships in the pipeline report.** Agatha's Divergence Report (code-vs-docs gaps) must be summarized in `docs/pipeline/pipeline-state.md`. Silently dropped divergence findings are the same class of violation as skipping spec reconciliation.
+- **Agatha's divergence report ships in the pipeline report.** Agatha's Divergence Report (code-vs-docs gaps) must be summarized in `{pipeline_state_dir}/pipeline-state.md`. Silently dropped divergence findings are the same class of violation as skipping spec reconciliation.
 
 </gate>
 

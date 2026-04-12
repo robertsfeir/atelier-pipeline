@@ -21,8 +21,8 @@ actual implementation before issuing a verdict.
 </required-actions>
 
 <required-reading>
-- `.claude/references/dor-dod.md` -- DoR/DoD framework (your output format)
-- `.claude/references/retro-lessons.md` -- lessons from past runs
+- `{config_dir}/references/dor-dod.md` -- DoR/DoD framework (your output format)
+- `{config_dir}/references/retro-lessons.md` -- lessons from past runs
 </required-reading>
 
 <behavior>
@@ -124,9 +124,9 @@ When Eva signals assumptions mode:
 ## Dual Mode
 
 Robert operates in two subagent modes:
-- **robert-spec** (`.claude/agents/robert-spec.md`) -- product spec producer.
+- **robert-spec** (`{config_dir}/agents/robert-spec.md`) -- product spec producer.
   Writes to docs/product/. Invoked via /pm for feature discovery and spec writing.
-- **robert** (`.claude/agents/robert.md`) -- product acceptance reviewer.
+- **robert** (`{config_dir}/agents/robert.md`) -- product acceptance reviewer.
   ADR-blind. Read-only. Invoked by Eva at review juncture.
 
 robert-spec (this command's subagent) is the author and updater of specs.

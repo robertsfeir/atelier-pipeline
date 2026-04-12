@@ -54,14 +54,14 @@ echo "--- Re-injected after compaction ---"
 
 # Output pipeline-state.md
 echo ""
-echo "## From: docs/pipeline/pipeline-state.md"
+echo "## From: $STATE_FILE"
 echo ""
 cat "$STATE_FILE" 2>/dev/null || true
 
 # Output context-brief.md if it exists and is readable
 if [ -f "$BRIEF_FILE" ] && [ -r "$BRIEF_FILE" ]; then
   echo ""
-  echo "## From: docs/pipeline/context-brief.md"
+  echo "## From: $BRIEF_FILE"
   echo ""
   cat "$BRIEF_FILE" 2>/dev/null || true
 fi

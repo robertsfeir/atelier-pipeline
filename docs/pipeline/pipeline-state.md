@@ -1,11 +1,9 @@
 # Pipeline State
 
 ## Active Pipeline
-**Feature:** ADR-0035 + ADR-0036 + ADR-0037 — Waves 4, 5, 6 (parallel launch)
-**Phase:** review
-**Sizing:** Medium (each ADR independently)
-**Started:** 2026-04-12
-<!-- PIPELINE_STATUS: {"phase": "review", "sizing": "medium", "roz_qa": "PASS", "telemetry_captured": true, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": true, "robert_reviewed": true, "brain_available": true} -->
+**Feature:** —
+**Phase:** idle
+<!-- PIPELINE_STATUS: {"phase": "idle", "sizing": null, "roz_qa": null, "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": false, "robert_reviewed": false, "brain_available": true} -->
 
 ## Session Recovery — READ THIS FIRST
 
@@ -152,6 +150,11 @@ Cal-0037 ──→ Colby (a11y) ──→ Roz QA ──→ Ellis (independent of
 ---
 
 ## Prior Pipeline (closed)
+**Feature:** ADR-0035 + ADR-0036 + ADR-0037 — Waves 4, 5, 6 (parallel launch)
+**Stop Reason:** completed_clean
+**Closed:** 2026-04-12
+**Release:** v3.29.0 (commits 36889e5, 18bbf58, 4955d09)
+
 **Feature:** ADR-0034 Gauntlet remediation — brain correctness fixes
 **Stop Reason:** completed_clean
 **Closed:** 2026-04-12
@@ -159,3 +162,4 @@ Cal-0037 ──→ Colby (a11y) ──→ Roz QA ──→ Ellis (independent of
 <!-- COMPACTION: 2026-04-12T12:50:17Z -->
 <!-- COMPACTION: 2026-04-12T13:42:43Z -->
 <!-- COMPACTION: 2026-04-12T14:20:40Z -->
+<!-- COMPACTION: 2026-04-12T14:58:48Z -->

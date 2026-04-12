@@ -188,7 +188,8 @@ cat <<EOF
   "dashboard_mode": "$(json_escape "$DASHBOARD_MODE")",
   "project_name": "$(json_escape "$PROJECT_NAME")",
   "sentinel_enabled": $SENTINEL_ENABLED,
-  "deps_agent_enabled": $DEPS_AGENT_ENABLED
+  "deps_agent_enabled": $DEPS_AGENT_ENABLED,
+  "state_dir": "$(json_escape "$STATE_DIR")"
 }
 EOF
 

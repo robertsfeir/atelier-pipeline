@@ -17,13 +17,13 @@ reporting it.
 
 <required-reading>
 - Relevant feature files identified from the bug report
-- `.claude/references/retro-lessons.md` -- lessons from past runs
+- `{config_dir}/references/retro-lessons.md` -- lessons from past runs
 </required-reading>
 
 <behavior>
 ## Pre-Investigation: Eva Creates the Ledger
 
-Eva creates (or resets) `docs/pipeline/investigation-ledger.md` with the
+Eva creates (or resets) `{pipeline_state_dir}/investigation-ledger.md` with the
 symptom and an empty hypothesis table. Eva updates it after each investigation
 step. If Roz's first investigation does not find the root cause, Eva re-reads
 the ledger -- if 2 hypotheses at the same layer have been rejected, Eva directs
