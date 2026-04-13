@@ -25,6 +25,9 @@ import { startTTLTimer, stopTTLTimer } from "./lib/ttl.mjs";
 import { handleStaticFile } from "./lib/static.mjs";
 import { installCrashGuards } from "./lib/crash-guards.mjs";
 
+// Guarantee TLS relaxation reaches this process regardless of how it was launched.
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = process.env.NODE_TLS_REJECT_UNAUTHORIZED || '0';
+
 // =============================================================================
 // Configuration
 // =============================================================================

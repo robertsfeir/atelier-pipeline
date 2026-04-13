@@ -5,6 +5,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.30.6] - 2026-04-13
+
+### Fixed
+
+- **brain-setup SKILL.md:** Step 0 migration protocol removes stale `atelier-brain` entries from project `.mcp.json` files, fixing `ERR_MODULE_NOT_FOUND` crashes on fresh checkouts.
+- **brain MCP server self-locating:** `start.sh` now self-locates with environment fallbacks; `server.mjs` sets `NODE_TLS_REJECT_UNAUTHORIZED` at module level; `.mcp.json` delegates to start.sh for zero-config operation.
+
 ## [3.30.5] - 2026-04-12
 
 ### Fixed
