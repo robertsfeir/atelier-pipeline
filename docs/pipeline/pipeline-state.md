@@ -1,12 +1,22 @@
 # Pipeline State
 
 ## Active Pipeline
-**Feature:** fix/hook-lib-skill-table — add missing hook-lib.sh and pipeline-state-path.sh rows to SKILL.md Step 3a copy table
+**Feature:** fix/rest-api-rework-rate — coerce non-numeric rework_rate values to NULL in agents quality query to prevent cast crash on legacy string values
 **Phase:** idle
 **Stop Reason:** completed_clean
 **Sizing:** Micro
-- Colby: skills/pipeline-setup/SKILL.md — 2 rows added to Step 3a copy table
-- Roz: PASS (1663 pytest, 185 skill tests, 21 hook wiring tests — pre-existing EACCES unrelated)
+- Colby: brain/lib/rest-api.mjs (CASE WHEN guard on rework_rate + first_pass_qa_rate), tests/brain/rest-api.test.mjs (4 new tests)
+- Roz: PASS (1672 pytest, 197 node — pre-existing EACCES unrelated)
+- Live endpoint: /api/telemetry/agents returns 200 post-server-restart
+**Sizing:** Micro
+- Colby: source/shared/commands/telemetry-hydrate.md
+- Roz: PASS (1672 pytest — pre-existing EACCES unrelated)
+**Sizing:** Small
+- Colby: scripts/check-updates.sh (path fix + hooks block), tests/hooks/test_check_updates.py (9 new tests)
+- Roz: PASS (1672 pytest — pre-existing EACCES unrelated)
+**Sizing:** Micro
+- Colby: source/claude/hooks/enforcement-config.json + .claude/hooks/enforcement-config.json + tests/hooks/conftest.py
+- Roz: PASS (1663 pytest — pre-existing EACCES unrelated)
 <!-- PIPELINE_STATUS: {"phase": "idle", "sizing": null, "roz_qa": null, "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": false, "robert_reviewed": false, "brain_available": true, "stop_reason": "completed_clean"} -->
 
 ## Session Recovery — READ THIS FIRST
@@ -167,3 +177,4 @@ Cal-0037 ──→ Colby (a11y) ──→ Roz QA ──→ Ellis (independent of
 <!-- COMPACTION: 2026-04-12T13:42:43Z -->
 <!-- COMPACTION: 2026-04-12T14:20:40Z -->
 <!-- COMPACTION: 2026-04-12T14:58:48Z -->
+<!-- COMPACTION: 2026-04-12T22:15:05Z -->

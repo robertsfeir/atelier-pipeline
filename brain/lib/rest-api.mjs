@@ -358,8 +358,8 @@ async function handleTelemetryAgents(req, res, pool) {
   }
   const qualityResult = await pool.query(
     `SELECT
-       avg((metadata->>'rework_rate')::numeric) as rework_rate,
-       avg((metadata->>'first_pass_qa_rate')::numeric) as first_pass_qa_rate
+       avg(CASE WHEN metadata->>'rework_rate' ~ '^[0-9]*\\.?[0-9]+$' THEN (metadata->>'rework_rate')::numeric ELSE NULL END) as rework_rate,
+       avg(CASE WHEN metadata->>'first_pass_qa_rate' ~ '^[0-9]*\\.?[0-9]+$' THEN (metadata->>'first_pass_qa_rate')::numeric ELSE NULL END) as first_pass_qa_rate
      FROM thoughts
      WHERE thought_type = 'insight'
        AND source_phase = 'telemetry'

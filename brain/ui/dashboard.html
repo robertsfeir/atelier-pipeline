@@ -917,7 +917,7 @@
     /**
      * XSS guard policy (ADR-0034 Step 3.3):
      * All `innerHTML =` assignments MUST wrap interpolated strings in
-     * `escapeHtml()`. Exceptions require an inline `/* trusted: <reason> */`
+     * `escapeHtml()`. Exceptions require an inline `/* trusted: <reason> * /`
      * comment within ~200 chars of the assignment explaining why the source
      * is trusted (e.g. literal markup with no interpolation, or data already
      * escaped via escapeHtml() inside the templated callback).

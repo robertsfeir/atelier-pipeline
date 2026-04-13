@@ -617,3 +617,137 @@ describe('ADR-0034 T-0034-050: CORS behavior — formerly-wildcarded handlers', 
     assertNoWildcardCors(res, 'handleTelemetryAgentDetail (/api/telemetry/agent-detail)');
   });
 });
+
+// =============================================================================
+// Quality query numeric cast guard (rework_rate / first_pass_qa_rate)
+//
+// Historical T3 brain captures store non-numeric strings like "low" and
+// "1.0 cycles/unit" in metadata->>'rework_rate' / metadata->>'first_pass_qa_rate'.
+// Bare ::numeric casts crash the entire /api/telemetry/agents endpoint.
+// The fix wraps each cast in a CASE guard using the regex '^[0-9]*\.?[0-9]+$'
+// so non-numeric values are silently NULLed rather than thrown.
+// =============================================================================
+
+describe('quality query numeric cast guard', () => {
+  let pool;
+
+  beforeEach(() => {
+    pool = createMockPool();
+    resetBrainConfigCache();
+  });
+
+  afterEach(() => {
+    resetBrainConfigCache();
+  });
+
+  // T-QUALITY-001: non-numeric rework_rate "low" must not crash the endpoint
+  it('T-QUALITY-001: non-numeric rework_rate "low" returns 200 without crashing', async () => {
+    // T1 row required so the agent list is non-empty
+    pool.setQueryResult("telemetry_tier' = '1'", {
+      rows: [{ agent: 'colby', invocations: 3, avg_duration_ms: 800, total_cost: '0.0300', avg_input_tokens: 900, avg_output_tokens: 400 }],
+      rowCount: 1,
+    });
+    // T3 quality row with a non-numeric rework_rate — the DB CASE guard returns NULL avg
+    pool.setQueryResult("telemetry_tier' = '3'", {
+      rows: [{ rework_rate: null, first_pass_qa_rate: null }],
+      rowCount: 1,
+    });
+
+    const cfg = { apiToken: null, _source: 'env' };
+    const handler = createRestHandler(pool, cfg);
+
+    const req = createMockReq({ method: 'GET', url: '/api/telemetry/agents' });
+    const res = createMockRes();
+
+    await handler(req, res);
+
+    assert.strictEqual(res.statusCode, 200, 'endpoint must return 200 when rework_rate is "low"');
+    const body = res.json;
+    assert.ok(Array.isArray(body), 'response body must be an array');
+    // Colby row should have null quality metrics (non-numeric skipped)
+    const colby = body.find(r => r.agent === 'colby');
+    assert.ok(colby, 'colby row must be present');
+    assert.strictEqual(colby.metadata.rework_rate, null, 'rework_rate must be null when only "low" is stored');
+  });
+
+  // T-QUALITY-002: mixed rework_rate — "low" ignored, "0.5" averages correctly
+  it('T-QUALITY-002: mixed rework_rate "low"+"0.5" — numeric row averages to 0.5', async () => {
+    pool.setQueryResult("telemetry_tier' = '1'", {
+      rows: [{ agent: 'colby', invocations: 2, avg_duration_ms: 700, total_cost: '0.0200', avg_input_tokens: 800, avg_output_tokens: 300 }],
+      rowCount: 1,
+    });
+    // DB-side CASE guard already skipped "low"; avg of the single valid 0.5 row = 0.5
+    pool.setQueryResult("telemetry_tier' = '3'", {
+      rows: [{ rework_rate: '0.5', first_pass_qa_rate: null }],
+      rowCount: 1,
+    });
+
+    const cfg = { apiToken: null, _source: 'env' };
+    const handler = createRestHandler(pool, cfg);
+
+    const req = createMockReq({ method: 'GET', url: '/api/telemetry/agents' });
+    const res = createMockRes();
+
+    await handler(req, res);
+
+    assert.strictEqual(res.statusCode, 200);
+    const body = res.json;
+    const colby = body.find(r => r.agent === 'colby');
+    assert.ok(colby, 'colby row must be present');
+    assert.strictEqual(colby.metadata.rework_rate, 0.5, 'rework_rate must be 0.5 — non-numeric row silently skipped');
+  });
+
+  // T-QUALITY-003: "1.0 cycles/unit" silently skipped — rework_rate is null
+  it('T-QUALITY-003: rework_rate "1.0 cycles/unit" is silently skipped — result is null', async () => {
+    pool.setQueryResult("telemetry_tier' = '1'", {
+      rows: [{ agent: 'colby', invocations: 1, avg_duration_ms: 600, total_cost: '0.0100', avg_input_tokens: 700, avg_output_tokens: 200 }],
+      rowCount: 1,
+    });
+    // DB CASE guard rejects "1.0 cycles/unit"; avg of zero valid rows = NULL
+    pool.setQueryResult("telemetry_tier' = '3'", {
+      rows: [{ rework_rate: null, first_pass_qa_rate: null }],
+      rowCount: 1,
+    });
+
+    const cfg = { apiToken: null, _source: 'env' };
+    const handler = createRestHandler(pool, cfg);
+
+    const req = createMockReq({ method: 'GET', url: '/api/telemetry/agents' });
+    const res = createMockRes();
+
+    await handler(req, res);
+
+    assert.strictEqual(res.statusCode, 200);
+    const body = res.json;
+    const colby = body.find(r => r.agent === 'colby');
+    assert.ok(colby, 'colby row must be present');
+    assert.strictEqual(colby.metadata.rework_rate, null, 'rework_rate must be null when only "1.0 cycles/unit" is stored');
+  });
+
+  // T-QUALITY-004: regression — valid numeric "0.29" still computes correctly
+  it('T-QUALITY-004: regression — numeric rework_rate "0.29" returns 0.29', async () => {
+    pool.setQueryResult("telemetry_tier' = '1'", {
+      rows: [{ agent: 'colby', invocations: 4, avg_duration_ms: 900, total_cost: '0.0400', avg_input_tokens: 1100, avg_output_tokens: 600 }],
+      rowCount: 1,
+    });
+    pool.setQueryResult("telemetry_tier' = '3'", {
+      rows: [{ rework_rate: '0.29', first_pass_qa_rate: '0.95' }],
+      rowCount: 1,
+    });
+
+    const cfg = { apiToken: null, _source: 'env' };
+    const handler = createRestHandler(pool, cfg);
+
+    const req = createMockReq({ method: 'GET', url: '/api/telemetry/agents' });
+    const res = createMockRes();
+
+    await handler(req, res);
+
+    assert.strictEqual(res.statusCode, 200);
+    const body = res.json;
+    const colby = body.find(r => r.agent === 'colby');
+    assert.ok(colby, 'colby row must be present');
+    assert.strictEqual(colby.metadata.rework_rate, 0.29, 'numeric rework_rate must still compute correctly after guard is applied');
+    assert.strictEqual(colby.metadata.first_pass_qa_rate, 0.95, 'numeric first_pass_qa_rate must still compute correctly after guard is applied');
+  });
+});

@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.30.5] - 2026-04-12
+
+### Fixed
+
+- **dashboard.html:** Fix SyntaxError that caused the dashboard to show blank. A `*/` inside a JSDoc block comment example (`/* trusted: <reason> */`) prematurely closed the outer `/**` comment; the trailing backtick then opened an unterminated template literal that silently consumed the entire 900-line script. Fixed by adding a space: `* /`.
+
 ## [3.30.4] - 2026-04-12
 
 ### Fixed

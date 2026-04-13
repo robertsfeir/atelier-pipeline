@@ -21,10 +21,9 @@ When the user runs /telemetry-hydrate:
 
 3. Run the hydration script via Bash:
    ```
-   node brain/scripts/hydrate-telemetry.mjs <constructed-path>
+   node ${CLAUDE_PLUGIN_ROOT}/brain/scripts/hydrate-telemetry.mjs <constructed-path>
    ```
-   Use `${CLAUDE_PLUGIN_ROOT}/brain/scripts/hydrate-telemetry.mjs` if the plugin root
-   is available; otherwise use the relative path `brain/scripts/hydrate-telemetry.mjs`.
+   If CLAUDE_PLUGIN_ROOT is not set, respond: "Cannot locate hydrate-telemetry.mjs — CLAUDE_PLUGIN_ROOT is not set. Try restarting the IDE." and stop.
 
 4. Report the summary output to the user verbatim.
 
@@ -45,7 +44,4 @@ If already up to date: "Telemetry is up to date -- no new data to hydrate."
 <constraints>
 - Never block on hydration errors -- this is an advisory operation.
 - Do not re-run if the script completes successfully, even if 0 agents were hydrated.
-- The SessionStart hook (`session-hydrate.sh`) runs this automatically with `--silent`
-  and `--state-dir` on each new session, hydrating both JSONL telemetry and pipeline
-  state files. `/telemetry-hydrate` is the manual, verbose equivalent.
 </constraints>
