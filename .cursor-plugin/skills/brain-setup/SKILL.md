@@ -1,6 +1,6 @@
 ---
 name: brain-setup
-description: Use when users want to set up or connect to the Atelier Brain -- the persistent memory layer for the pipeline. Handles first-time setup (personal or shared), colleague onboarding from existing config, database provisioning, and connection verification.
+description: Use when users want to set up or connect to the Atelier Brain -- the persistent memory layer for the pipeline. Auto-fixes existing config silently; guides new users through first-time setup.
 ---
 
 # Atelier Brain -- Setup
@@ -18,7 +18,22 @@ Before asking anything, check for and clean up a stale `atelier-brain` entry in 
 3. If found: remove it with `jq 'del(.mcpServers["atelier-brain"])' .mcp.json > .mcp.json.tmp && mv .mcp.json.tmp .mcp.json`
 4. If the resulting `.mcpServers` object is empty (`{}`), delete `.mcp.json` entirely.
 5. Print: "Removed stale atelier-brain entry from .mcp.json — the plugin now handles MCP registration automatically."
-6. If jq is unavailable: use Read/Write tools to reconstruct the JSON manually without the `atelier-brain` key.
+6. If jq is unavailable: run via Bash:
+
+   ```bash
+   python3 -c "
+   import json, os
+   if not os.path.exists('.mcp.json'): exit(0)
+   d = json.load(open('.mcp.json'))
+   d.get('mcpServers', {}).pop('atelier-brain', None)
+   if 'mcpServers' in d and not d.get('mcpServers'):
+       os.remove('.mcp.json')
+   else:
+       json.dump(d, open('.mcp.json', 'w'), indent=2)
+   "
+   ```
+
+   Node fallback: `node -e "const fs=require('fs');if(!fs.existsSync('.mcp.json'))process.exit(0);const d=JSON.parse(fs.readFileSync('.mcp.json'));if(d.mcpServers){delete d.mcpServers['atelier-brain'];}if(d.mcpServers&&Object.keys(d.mcpServers).length===0){fs.unlinkSync('.mcp.json');}else{fs.writeFileSync('.mcp.json',JSON.stringify(d,null,2));}"`
 
 </protocol>
 
@@ -28,19 +43,140 @@ Before asking anything, check for and clean up a stale `atelier-brain` entry in 
 
 ## Detection: Choose Path
 
-Before asking anything, check whether a project-level brain config already exists:
+Before asking anything, check whether a brain config already exists in either of the two possible locations:
 
-1. Check if `.cursor/brain-config.json` exists in the project root.
-2. If it exists, go to **Path B -- Colleague Onboarding**.
-3. If it does not exist, go to **Path A -- First-Time Setup**.
+1. Run via Bash:
+
+   ```bash
+   python3 -c "
+   import os
+   shared = '.cursor/brain-config.json'
+   personal = os.path.expandvars('\${CURSOR_PLUGIN_DATA}/brain-config.json')
+   print('shared' if os.path.exists(shared) else ('personal' if os.path.exists(personal) else 'absent'))
+   "
+   ```
+
+2. If **shared** (`shared`) → resolved config path is `.cursor/brain-config.json` → go to **Path A: Auto-Fix**.
+3. If **personal** → resolved config path is `${CURSOR_PLUGIN_DATA}/brain-config.json` → go to **Path A: Auto-Fix**.
+4. If **absent** → ask the user once:
+
+   > "Would you like to add the Atelier Brain to this project? (yes/no)"
+
+   - **Yes** → go to **Path B: First-Time Setup**.
+   - **No** → print: "OK — run /brain-setup anytime to add it." Exit.
+
+In Path A, pass the **resolved config path** (whichever was found) into all subsequent steps. Do not hardcode `.cursor/brain-config.json`.
 
 </protocol>
 
 ---
 
+<procedure id="auto-fix">
+
+## Path A: Auto-Fix
+
+This path runs silently when a brain config was found during path-detection. Do not ask questions. Diagnose and print results. Use the **resolved config path** from path-detection throughout this procedure.
+
+### Step 1: Read Existing Config
+
+Read the config using Bash, substituting the resolved config path:
+
+```bash
+python3 -c "import json; print(json.dumps(json.load(open('RESOLVED_CONFIG_PATH')), indent=2))"
+```
+
+Node fallback: `node -e "const fs=require('fs'); console.log(fs.readFileSync('RESOLVED_CONFIG_PATH','utf8'))"`
+
+(Replace `RESOLVED_CONFIG_PATH` with the actual path determined in path-detection: either `.cursor/brain-config.json` for shared or the expanded `${CURSOR_PLUGIN_DATA}/brain-config.json` for personal.)
+
+### Step 2: Scan for Placeholders
+
+Scan all string values in the config for `${ENV_VAR}` patterns. Build a list of referenced environment variable names (e.g., `ATELIER_BRAIN_DB_PASSWORD`, `OPENROUTER_API_KEY`, any others).
+
+### Step 3: Check Environment Variables
+
+For each referenced variable, check whether it is set in the current environment:
+
+```bash
+python3 -c "
+import json, os, re
+config = json.load(open('RESOLVED_CONFIG_PATH'))
+env_vars = re.findall(r'\$\{([^}]+)\}', json.dumps(config))
+missing = [v for v in env_vars if not os.environ.get(v)]
+for v in env_vars:
+    print(v, 'SET' if os.environ.get(v) else 'MISSING')
+"
+```
+
+Or use `printenv VAR_NAME` for individual checks.
+
+If **any variable is missing**, skip Step 4 entirely. Go directly to Step 5 Case 2. Print: "Skipping connectivity check until environment variables are configured."
+
+### Step 4: Test Connectivity
+
+(Only reached when all environment variables from Step 3 are SET.)
+
+Run `atelier_stats` to test brain connectivity.
+
+### Step 4b: Tool Pre-Approval Note
+
+> Cursor manages tool permissions differently from Claude Code — there is no `settings.json`-based pre-approval mechanism. If brain tools prompt for approval on each call, check your Cursor plugin settings and ensure the `atelier-pipeline` plugin is trusted. This is a one-time action in Cursor's UI.
+
+### Step 5: Evaluate and Report
+
+**Case 1 — All env vars present AND `atelier_stats` succeeds:**
+
+Print:
+
+```
+Brain connected. [scope from config] — [N] tools available.
+```
+
+Done. No further action.
+
+**Case 2 — Env vars missing (Step 4 was skipped):**
+
+List every missing variable by name. Print:
+
+```
+Brain config found at [resolved config path from path-detection].
+
+The following environment variables are not set:
+  - ATELIER_BRAIN_DB_PASSWORD    (not set)
+  - OPENROUTER_API_KEY    (not set)
+
+Connectivity check skipped — environment variables must be set first.
+The pipeline will run in baseline mode until these are configured.
+Add them to your shell profile (e.g., ~/.zshrc or ~/.bash_profile):
+  export ATELIER_BRAIN_DB_PASSWORD="..."
+  export OPENROUTER_API_KEY="sk-or-..."
+```
+
+Done. No further action.
+
+**Case 3 — All env vars present BUT `atelier_stats` fails:**
+
+Print the specific error from `atelier_stats`. Then check database status:
+
+- Docker setups: run `docker ps | grep atelier` to check container status. If container is stopped, print: "Run `docker compose -f ${CURSOR_PLUGIN_ROOT}/brain/docker-compose.yml up -d` to restart the brain database."
+- Local PostgreSQL: run `pg_isready` to check if PostgreSQL is running. If not: "PostgreSQL is not running. Start it with `brew services start postgresql` (macOS) or `sudo systemctl start postgresql` (Linux)."
+- Remote: check if the host is reachable with the command below. If not: "Cannot reach the remote database. Check your network and firewall rules."
+
+  > Replace `HOST` and `PORT` with the actual host and port extracted from `database_url` in the config before running this command.
+
+  `python3 -c "import socket; s=socket.create_connection(('HOST', PORT), timeout=5); s.close(); print('reachable')"`
+
+Print targeted remediation based on what was found. Do not ask questions.
+
+Done. No further action.
+
+</procedure>
+
+---
+
 <procedure id="first-time-setup">
 
-## Path A -- First-Time Setup
+## Path B: First-Time Setup
 
 ### Step 1: Personal or Shared
 
@@ -148,7 +284,7 @@ Run the `atelier_stats` tool (or equivalent health check endpoint) to verify the
 
 ### Step 6: Write Config File
 
-Write the config file based on the user's choice in Step 1.
+Write the config file using Bash. Do not use Write or Edit tools.
 
 **Config format:**
 
@@ -174,6 +310,60 @@ For remote PostgreSQL, the URL includes the remote host and SSL parameters:
 }
 ```
 
+**Write using python3:**
+
+```bash
+python3 -c "
+import json, os
+
+# Choose PATH based on setup type from Step 1:
+#   Personal: PATH = os.path.expandvars('\${CURSOR_PLUGIN_DATA}')   # Cursor
+#             PATH = os.path.expandvars('\${CLAUDE_PLUGIN_DATA}')   # Claude
+#   Shared:   PATH = '.cursor'                                      # Cursor
+#             PATH = '.claude'                                      # Claude
+PATH = 'REPLACE_ME'  # set to one of the values above before running
+if not PATH or PATH == 'REPLACE_ME':
+    raise ValueError('PATH must be set before running this snippet — see comments above.')
+
+config = {
+  'database_url': 'COMPUTED_URL',
+  'openrouter_api_key': '\${OPENROUTER_API_KEY}',
+  'scope': 'COMPUTED_SCOPE',
+  # 'brain_name': 'BRAIN_NAME',  # optional -- omit to default to 'Brain'
+}
+config_path = os.path.join(PATH, 'brain-config.json')
+json.dump(config, open(config_path, 'w'), indent=2)
+print(f'Config written to {config_path}.')
+"
+```
+
+**Node fallback:**
+
+```bash
+node -e "
+const fs = require('fs');
+const path = require('path');
+
+// Choose PATH based on setup type from Step 1:
+//   Personal: const PATH = process.env.CURSOR_PLUGIN_DATA;   // Cursor
+//             const PATH = process.env.CLAUDE_PLUGIN_DATA;   // Claude
+//   Shared:   const PATH = '.cursor';                        // Cursor
+//             const PATH = '.claude';                        // Claude
+const PATH = 'REPLACE_ME'; // set to one of the values above before running
+if (!PATH || PATH === 'REPLACE_ME') { console.error('PATH must be set before running this snippet — see comments above.'); process.exit(1); }
+
+const config = {
+  database_url: 'COMPUTED_URL',
+  openrouter_api_key: '\${OPENROUTER_API_KEY}',
+  scope: 'COMPUTED_SCOPE',
+  // brain_name: 'BRAIN_NAME',  // optional -- omit to default to 'Brain'
+};
+const configPath = path.join(PATH, 'brain-config.json');
+fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+console.log(\`Config written to \${configPath}.\`);
+"
+```
+
 - **Personal:** Write to `${CURSOR_PLUGIN_DATA}/brain-config.json`. This path is local to the user and is not tracked by git.
 - **Shared:** Write to `.cursor/brain-config.json` in the project root. This file is committed to the repo. Verify that no bare secret values are present -- only `${ENV_VAR}` placeholders.
 
@@ -197,52 +387,6 @@ Brain is live.
 
 ---
 
-<procedure id="colleague-onboarding">
-
-## Path B -- Colleague Onboarding
-
-This path runs when `.cursor/brain-config.json` already exists in the project. The colleague does not need interactive setup -- they just need the right environment variables.
-
-### Step 1: Read Existing Config
-
-Read `.cursor/brain-config.json` and extract the required environment variable references.
-
-### Step 2: Check Environment Variables
-
-Check which `${ENV_VAR}` references in the config are satisfied by the current environment:
-
-- `OPENROUTER_API_KEY`
-- `ATELIER_BRAIN_DB_PASSWORD` (if referenced in the database URL)
-- Any other `${...}` placeholders found in the config
-
-#### All present:
-
-1. Verify the connection using `atelier_stats`.
-2. Print: "Brain connected. You're using the team brain at [scope]."
-
-#### Some missing:
-
-Print:
-
-```
-Project brain config found at .cursor/brain-config.json.
-
-Set these environment variables to connect:
-  - OPENROUTER_API_KEY    (not set)
-  - ATELIER_BRAIN_DB_PASSWORD    (not set)
-
-The pipeline will run in baseline mode until these are configured.
-Add them to your shell profile or .env file (not committed to git).
-```
-
-### Step 3: No Further Interaction
-
-Path B is non-interactive beyond env var guidance. Do not prompt for database setup, scope, or other configuration -- the shared config already has everything.
-
-</procedure>
-
----
-
 <gate id="security-constraints">
 
 ## Security Constraints
@@ -252,7 +396,7 @@ These rules are mandatory and never skippable:
 1. **Shared config never contains bare secrets.** Only `${ENV_VAR}` placeholders. If you detect a bare API key or password in a shared config file, refuse to write it and ask the user to set an environment variable instead.
 2. **Docker default password triggers a warning for team use.** If the user chose Docker + shared setup, always warn: "Set `ATELIER_BRAIN_DB_PASSWORD` for team use. The Docker default password is not secure for shared environments."
 3. **Personal config is never committed to git.** It is written to `${CURSOR_PLUGIN_DATA}/brain-config.json`, which is outside the project repo.
-4. **Do not write to `.mcp.json`.** The atelier-pipeline plugin registers the brain MCP server automatically via the plugin's own `.mcp.json`. Writing a duplicate `atelier-brain` entry to the project's `.mcp.json` creates a conflict — Claude Code may try to start two instances of the same MCP server. Brain-setup only writes `brain-config.json` (personal or shared). The MCP server registration is the plugin's responsibility, not the setup skill's.
+4. **Use Bash for all file operations.** All file modifications (writing brain-config.json, modifying .mcp.json) must be performed via Bash inline commands (python3 or node) rather than relying on IDE tool calls, which may not have access to the correct working directory or environment context.
 
 </gate>
 
