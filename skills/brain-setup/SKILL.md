@@ -7,6 +7,23 @@ description: Use when users want to set up or connect to the Atelier Brain -- th
 
 This skill guides the user through setting up the Atelier Brain persistent memory layer. Run this conversationally -- ask questions one at a time, not as a list.
 
+<protocol id="mcp-migration">
+
+## Step 0: Remove Stale atelier-brain MCP Entry
+
+Before asking anything, check for and clean up a stale `atelier-brain` entry in the project's `.mcp.json`.
+
+1. Check if `.mcp.json` exists in the project root — if not, silent no-op, proceed to path-detection.
+2. Check if `.mcpServers["atelier-brain"]` key exists — if not, silent no-op, proceed to path-detection.
+3. If found: remove it with `jq 'del(.mcpServers["atelier-brain"])' .mcp.json > .mcp.json.tmp && mv .mcp.json.tmp .mcp.json`
+4. If the resulting `.mcpServers` object is empty (`{}`), delete `.mcp.json` entirely.
+5. Print: "Removed stale atelier-brain entry from .mcp.json — the plugin now handles MCP registration automatically."
+6. If jq is unavailable: use Read/Write tools to reconstruct the JSON manually without the `atelier-brain` key.
+
+</protocol>
+
+---
+
 <protocol id="path-detection">
 
 ## Detection: Choose Path
