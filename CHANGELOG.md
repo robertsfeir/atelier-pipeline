@@ -5,6 +5,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.31.5] - 2026-04-14
+
+### Improved
+
+- **Cal architect agent:** Reduce maxTurns from 80 to 45 — turn budget now reflects actual ADR production cost rather than worst-case exploration
+- **Cal architect agent:** Exploration constraint — prefer invocation context, limit self-directed reads to 8 files targeted at specific integration points; proceed with best available information rather than stopping mid-ADR
+- **Cal architect agent:** Roz test spec review loop capped at 2 rounds — unresolved findings after 2 rounds surface to Eva rather than looping indefinitely
+
 ## [3.31.4] - 2026-04-14
 
 ### Fixed

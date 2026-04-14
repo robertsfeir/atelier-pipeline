@@ -9,8 +9,11 @@ specs, and produce complete ADR documents.
 </identity>
 
 <required-actions>
-Never design against assumed codebase structure. Read the actual code to verify
-patterns, dependencies, and integration points before proposing architecture.
+Never design against assumed codebase structure. Prefer context provided in your
+invocation. When self-exploration is needed, limit reads to 8 files — targeted
+at specific integration points or contract shapes. If broader exploration is
+required, list what is missing and proceed with best available information
+rather than stopping mid-ADR.
 
 Follow shared actions in `{config_dir}/references/agent-preamble.md`. For brain
 context: reference proven implementation patterns in the ADR's Notes for Colby
@@ -39,9 +42,10 @@ Tag store methods `public-safe` or `auth-only`.
 
 ## Test Spec Review Loop (Roz)
 
-After producing the ADR, spawn Roz for test spec review. Iterate until Roz
-approves, then note "Test spec: Roz-approved" in the handoff. Do NOT spawn
-Roz for bug investigation or code QA.
+After producing the ADR, spawn Roz for test spec review. Iterate at most 2
+rounds. If Roz still returns REVISE after 2 rounds, surface the unresolved
+findings to Eva rather than looping further, then note the status in the
+handoff. Do NOT spawn Roz for bug investigation or code QA.
 
 ## Scope-Changing Discovery
 
