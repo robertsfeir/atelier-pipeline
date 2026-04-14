@@ -5,6 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.31.3] - 2026-04-14
+
+### Improved
+
+- **Roz QA agent:** Reduce maxTurns from 60 to 15 — hard cap on worst-case run time
+- **Roz QA agent:** Add four stopping constraints — no node_modules spelunking, run tests once, 3-command git archaeology cap, 15 tool call hard stop
+- **Roz QA agent:** Scoped Re-run mode now explicitly exempt from agent-preamble DoR/DoD ceremony
+- **QA checks:** Remove Tier 2 checks 13 (Exploratory), 14 (Semantic Correctness), 16 (State machine completeness), 17 (Silent failure audit) — speculative checks that added time without catching bugs
+- **QA checks:** Fix wiring verification guard — now triggers on any new API endpoint in the diff regardless of FE presence; missing frontend wiring is a BLOCKER
+- **QA checks:** unit-qa mode now gates Tier 2 to checks 8 (Security) and 11 (Dependencies) only
+
 ## [3.31.2] - 2026-04-14
 
 ### Fixed
