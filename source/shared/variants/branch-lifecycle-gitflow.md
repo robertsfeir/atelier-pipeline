@@ -4,8 +4,11 @@ Two long-lived branches: main (production-ready) and develop (integration).
 
 ## Branch Creation
 
-Colby creates feature branches from develop (not main):
-`git checkout -b feature/<name> develop`
+Eva creates feature branches from develop via worktree, before any agent
+invocation:
+`git worktree add -b feature/<adr-slug>-<8-hex> ../<slug>-<8-hex> develop`
+
+See the `worktree-per-session` protocol in `pipeline-orchestration.md`.
 
 ## Branch Naming
 
