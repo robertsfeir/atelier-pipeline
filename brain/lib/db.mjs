@@ -58,19 +58,19 @@ async function runMigrations(pool) {
           `SELECT 1 FROM schema_migrations WHERE version = $1`, [filename]
         );
         if (check.rows.length > 0) {
-          console.log(`Migration ${filename}: skipped (already applied)`);
+          console.error(`Migration ${filename}: skipped (already applied)`);
           continue;
         }
         const filePath = path.join(migrationsDir, filename);
         const sql = readFileSync(filePath, "utf-8");
         const checksum = createHash("sha256").update(sql).digest("hex").slice(0, 16);
-        console.log(`Migration ${filename}: applying...`);
+        console.error(`Migration ${filename}: applying...`);
         await client.query(sql);
         await client.query(
           `INSERT INTO schema_migrations (version, applied_at, checksum) ` +
           `VALUES ($1, now(), $2)`, [filename, checksum]
         );
-        console.log(`Migration ${filename}: applied.`);
+        console.error(`Migration ${filename}: applied.`);
       } catch (err) {
         console.error(`Migration ${filename} failed (non-fatal):`, err.message);
       }

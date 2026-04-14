@@ -194,7 +194,7 @@ async function synthesizeCluster(client, cluster, apiKey) {
     }
 
     await client.query("COMMIT");
-    console.log(`Consolidation: Created reflection from ${cluster.length} thoughts`);
+    console.error(`Consolidation: Created reflection from ${cluster.length} thoughts`);
   } catch (clusterErr) {
     if (txStarted) await client.query("ROLLBACK").catch(() => {});
     console.error(`Consolidation cluster error: ${clusterErr.message}`);
@@ -218,7 +218,7 @@ async function startConsolidationTimer(pool, apiKey) {
       catch { /* stderr may be broken */ }
     }
   }, intervalMs);
-  console.log(`Consolidation timer: every ${brainConfig.consolidation_interval_minutes} min`);
+  console.error(`Consolidation timer: every ${brainConfig.consolidation_interval_minutes} min`);
 }
 
 function stopConsolidationTimer() {

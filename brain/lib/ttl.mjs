@@ -22,7 +22,7 @@ async function runTTLEnforcement(pool) {
       RETURNING t.id
     `);
     if (result.rowCount > 0) {
-      console.log(`TTL: Expired ${result.rowCount} thoughts`);
+      console.error(`TTL: Expired ${result.rowCount} thoughts`);
     }
   } catch (err) {
     console.error("TTL enforcement error:", err.message);

@@ -34,7 +34,7 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = process.env.NODE_TLS_REJECT_UNAUTHORI
 
 const config = resolveConfig();
 if (!config) {
-  console.log("No brain config found. Brain disabled.");
+  console.error("No brain config found. Brain disabled.");
   process.exit(0);
 }
 
@@ -140,7 +140,7 @@ function startHttpMode(pool, cfg) {
   });
 
   httpServer.listen(PORT, async () => {
-    console.log(`Atelier Brain MCP server running on http://localhost:${PORT} (config: ${cfg._source})`);
+    console.error(`Atelier Brain MCP server running on http://localhost:${PORT} (config: ${cfg._source})`);
     if (!cfg.apiToken) {
       console.warn("WARNING: ATELIER_BRAIN_API_TOKEN not set — REST API running without authentication (dev mode)");
     }
