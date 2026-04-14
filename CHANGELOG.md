@@ -5,6 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.31.6] - 2026-04-14
+
+### Fixed
+
+- **error-patterns.md capture:** StopFailure hook now tries multiple field name candidates (stop_reason, reason, error) before falling back to raw payload capture — eliminates "unknown/unknown" entries that made Eva's WARN injection loop non-functional
+
+### Improved
+
+- **Colby engineer:** Four stopping constraints added — run tests once, 50 tool call hard stop, no node_modules spelunking, 3-command git archaeology cap
+- **Roz invocation template:** unit-qa and wave-sweep mode signals documented in roz-code-qa template so Eva correctly gates Tier 2 checks per mode
+
 ## [3.31.5] - 2026-04-14
 
 ### Improved
