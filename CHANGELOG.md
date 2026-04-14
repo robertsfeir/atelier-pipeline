@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.31.2] - 2026-04-14
+
+### Fixed
+
+- **brain MCP server:** Restore missing `.mcp.json` at plugin root — accidentally deleted in 3.31.1 cleanup, causing brain MCP server to never register on user installs
+
 ## [3.31.1] - 2026-04-13
 
 ### Fixed
