@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "atelier-brain": {
+      "command": "sh",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/brain/start.sh"],
+      "env": {
+        "CLAUDE_PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}",
+        "CLAUDE_PLUGIN_DATA": "${CLAUDE_PLUGIN_DATA}",
+        "BRAIN_CONFIG_USER": "${CLAUDE_PLUGIN_DATA}/brain-config.json",
+        "ATELIER_BRAIN_DB_PASSWORD": "${ATELIER_BRAIN_DB_PASSWORD}",
+        "ATELIER_BRAIN_DATABASE_URL": "${ATELIER_BRAIN_DATABASE_URL}",
+        "OPENROUTER_API_KEY": "${OPENROUTER_API_KEY}",
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
+      }
+    }
+  }
+}
