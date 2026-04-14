@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.31.0] - 2026-04-13
+
+### Fixed
+
+- **brain MCP server:** Changed 8 `console.log` calls to `console.error` in `server.mjs` to prevent stdout corruption of JSON-RPC stdio transport. Logs now properly route to stderr, preserving JSON-RPC message integrity on stdout.
+
 ## [3.30.7] - 2026-04-13
 
 ### Fixed
