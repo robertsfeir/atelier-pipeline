@@ -83,6 +83,23 @@ Unconditionally run this cleanup on every /pipeline-setup invocation. Silent unl
 
 This cleanup targets only session-hydrate.sh registrations. Other hook entries are not affected.
 
+### Step 0d: Clean Up Orphan atelier-brain .mcp.json Entry
+
+Unconditionally run this cleanup on every /pipeline-setup invocation. Silent unless it finds something to remove.
+
+The Atelier Brain MCP server is now registered and managed entirely by the plugin. Older installs may have a stale project-level `.mcp.json` entry that must be removed.
+
+1. **Check .mcp.json:** Check if `.mcp.json` exists in the project root and contains an "atelier-brain" key under the `mcpServers` object. If found:
+   - Parse the JSON. If the JSON is malformed or invalid, log a warning ("Warning: .mcp.json is malformed JSON -- skipping atelier-brain entry removal. Does not block setup.") and continue to Step 1 (Gather Project Information).
+   - Remove the "atelier-brain" entry from `mcpServers`.
+   - If removing that entry leaves `mcpServers` empty, delete the `.mcp.json` file entirely with `rm -f .mcp.json`.
+   - If `mcpServers` still has other entries, write the updated JSON back to `.mcp.json`.
+   - Note that removal occurred.
+2. **Print notice (conditional):** If the entry was found and removed: print exactly `Removed stale atelier-brain .mcp.json entry (now managed by plugin).`
+3. **Silent no-op:** If not found: do nothing. No output.
+
+This cleanup targets only atelier-brain entries. Other MCP server entries in `.mcp.json` are not affected.
+
 ### Step 1: Gather Project Information
 
 Before installing, ask the user about their project. Ask these questions conversationally, one at a time -- do not dump a list.
