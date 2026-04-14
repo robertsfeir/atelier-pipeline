@@ -1,22 +1,6 @@
 # Pipeline State
 
-## Active Pipeline
-**Feature:** feat/brain-setup-auto-fix — redesign brain-setup flow: auto-fix when configured, ask to add when not
-**Phase:** build
-**Sizing:** Small
-- Colby: brain/lib/rest-api.mjs (CASE WHEN guard on rework_rate + first_pass_qa_rate), tests/brain/rest-api.test.mjs (4 new tests)
-- Roz: PASS (1672 pytest, 197 node — pre-existing EACCES unrelated)
-- Live endpoint: /api/telemetry/agents returns 200 post-server-restart
-**Sizing:** Micro
-- Colby: source/shared/commands/telemetry-hydrate.md
-- Roz: PASS (1672 pytest — pre-existing EACCES unrelated)
-**Sizing:** Small
-- Colby: scripts/check-updates.sh (path fix + hooks block), tests/hooks/test_check_updates.py (9 new tests)
-- Roz: PASS (1672 pytest — pre-existing EACCES unrelated)
-**Sizing:** Micro
-- Colby: source/claude/hooks/enforcement-config.json + .claude/hooks/enforcement-config.json + tests/hooks/conftest.py
-- Roz: PASS (1663 pytest — pre-existing EACCES unrelated)
-<!-- PIPELINE_STATUS: {"phase": "build", "sizing": "small", "roz_qa": "PASS", "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": true, "robert_reviewed": false, "brain_available": true, "stop_reason": null} -->
+<!-- PIPELINE_STATUS: {"phase": "review", "sizing": "small", "roz_qa": "PASS", "telemetry_captured": true, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": true, "robert_reviewed": false, "brain_available": true, "stop_reason": null} -->
 
 ## Session Recovery — READ THIS FIRST
 
@@ -163,6 +147,12 @@ Cal-0037 ──→ Colby (a11y) ──→ Roz QA ──→ Ellis (independent of
 ---
 
 ## Prior Pipeline (closed)
+**Feature:** feat/brain-setup-auto-fix — redesign brain-setup flow: auto-fix when configured, ask to add when not
+**Stop Reason:** completed_clean
+**Closed:** 2026-04-13
+**Release:** v3.30.7 (commits 807189b, bb8d24e)
+
+## Prior Pipeline (closed)
 **Feature:** ADR-0035 + ADR-0036 + ADR-0037 — Waves 4, 5, 6 (parallel launch)
 **Stop Reason:** completed_clean
 **Closed:** 2026-04-12
@@ -180,3 +170,4 @@ Cal-0037 ──→ Colby (a11y) ──→ Roz QA ──→ Ellis (independent of
 <!-- COMPACTION: 2026-04-13T19:55:35Z -->
 <!-- COMPACTION: 2026-04-13T21:14:43Z -->
 <!-- COMPACTION: 2026-04-13T21:53:05Z -->
+<!-- COMPACTION: 2026-04-14T03:16:55Z -->

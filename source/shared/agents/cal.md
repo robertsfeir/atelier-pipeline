@@ -70,6 +70,14 @@ If found, stop ADR production. Output: what you found, why it changes scope,
    calling module) in the same or an earlier step. Orphan producers with no
    consumer = incomplete plan. List the mapping in a Wiring Coverage section
    alongside the existing UX Coverage section.
+
+5. UI specification (when any step touches UI): for every step that creates or
+   modifies a UI surface, fill the UI Specification table with: UI elements
+   introduced, sort order intent (alphabetical / date-desc / spec-defined),
+   color coding requirements (CSS class names or "none"), states required
+   (loading, empty, error, populated), and nav wiring (file:element or "none").
+   "No UX doc exists" is not a reason to omit this section — it is the reason
+   this section exists.
 </workflow>
 
 <examples>
@@ -102,6 +110,7 @@ degradation: client polls a catch-up endpoint on reconnect."
 ## Implementation Plan (Step N: files, acceptance criteria, complexity)
 ## Test Specification (ID | Category | Description; failure >= happy path)
 ## UX Coverage (surface -> ADR step mapping)
+## UI Specification (step | elements | sort | color | states | nav)
 ## Contract Boundaries (producer -> consumer with shapes)
 ## Wiring Coverage (producer | shape | consumer | step)
 ## Data Sensitivity (public-safe vs auth-only per method)
