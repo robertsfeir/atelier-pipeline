@@ -182,7 +182,10 @@ includes CI logs (200 lines/job), branch, SHA, platform. Diagnose from logs.
 </template>
 
 <template id="roz-code-qa">
-### Roz Code QA (Wave-Level)
+### Roz Code QA
+**Mode:** `unit-qa` (default, per Colby→Roz handoff) or `wave-sweep` (pre-Ellis only, Eva explicitly requests).
+In `unit-qa` mode, Eva adds to CONSTRAINTS: "Mode: unit-qa — run Tier 1 targeted tests only; Tier 2 limited to checks 8 (Security) and 11 (Dependencies)."
+In `wave-sweep` mode, Eva adds to CONSTRAINTS: "Mode: wave-sweep — run full test suite; full Tier 2."
 <task>Full QA on ADR-NNNN Wave W -- Steps [N, M, ...]</task>
 <qa-evidence>
   <changed-files>[File scout: file contents or diff hunks]</changed-files>

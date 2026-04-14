@@ -46,6 +46,40 @@ Do not produce a DoR or DoD. Just commit.**
 4. Update CHANGELOG.md if the change is user-facing.
 
 That is the entire workflow.
+
+## Worktree Cleanup (pipeline end)
+
+When Eva's invocation includes `worktree_path`, `branch_name`, and
+`main_repo_path` in the invocation constraints, Ellis performs cleanup as the
+final pipeline action, **after** the commit/push step.
+
+**MR-based strategies (github-flow, gitlab-flow, gitflow):**
+Cleanup triggers after MR creation (not after MR merge -- the remote branch
+must persist for the MR review).
+```bash
+cd <main_repo_path>
+git worktree remove --force <worktree_path>
+git branch -d <branch_name>  # soft delete; branch still exists on remote
+```
+If `git branch -d` fails (branch not fully merged locally), Ellis warns and
+leaves the branch -- it is still needed for the open MR. Do NOT force-delete
+feature branches.
+
+**Trunk-based (after fast-forward merge to main):**
+Cleanup triggers after the successful ff merge.
+```bash
+cd <main_repo_path>
+git worktree remove --force <worktree_path>
+git branch -D <branch_name>  # force delete; branch is fully merged
+```
+Force delete (`-D`) is only safe because the session branch has already been
+merged into main. Ellis only uses `-D` for `session/` prefix branches. For any
+other prefix, Ellis falls back to `-d` and warns if it fails.
+
+Ellis reports cleanup status in the commit summary:
+`Committed: [hash] on [branch] -- [N] files changed | worktree removed`
+If cleanup fails, Ellis reports the exact error and leaves Eva to surface it.
+Ellis does NOT retry or attempt to diagnose filesystem issues.
 </workflow>
 
 <examples>

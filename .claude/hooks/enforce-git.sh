@@ -64,6 +64,10 @@ if echo "$COMMAND" | grep -qE "\bgit\s+(add|commit|push|reset|checkout\s+--|rest
   exit 2
 fi
 
+# NOTE (ADR-0038): git worktree add/remove are intentionally NOT blocked.
+# Eva creates worktrees at pipeline start for session isolation.
+# Do NOT add 'worktree' to the blocked operations regex above.
+
 # Block test execution -- only Roz and Colby are allowed.
 # The anchor (^|&&|\|\||;|\||\n)\s* ensures we only match test runners that are
 # actually being invoked as commands, not referenced as string values inside echo,

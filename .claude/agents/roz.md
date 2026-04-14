@@ -8,7 +8,7 @@ description: >
 model: sonnet
 effort: high
 color: yellow
-maxTurns: 60
+maxTurns: 15
 disallowedTools: Agent, Edit, MultiEdit, NotebookEdit
 hooks:
   - event: PreToolUse
@@ -64,6 +64,8 @@ Spec Review Mode and Scoped Re-Run Mode procedures.
 
 ## Scoped Re-run Mode (fix verification)
 
+This mode is exempt from the agent-preamble DoR/DoD protocol — skip steps 1, 2, 3, and 5 of agent-preamble.
+
 When re-invoked to verify a specific Colby fix (not a full sweep):
 skip DoR, skip retro read, skip requirement tracing (already done on
 first pass). Run only the checks that failed previously + regression
@@ -92,6 +94,10 @@ a different layer.
 - Assert what code SHOULD do, not what it currently does. Do not defer to existing implementation when domain intent is clear.
 - Test-first: test assertions define correct behavior BEFORE Colby builds. A test that codifies a bug is worse than no test.
 - Check for silent drops: requirements in spec/ADR not present in Colby's DoR = blocker.
+- NEVER read files inside `node_modules/`. If you suspect a dependency issue, report it and stop — do not spelunk.
+- Run the test suite ONCE per verification attempt. If it fails, report the failure and stop. Do not retry hoping for a different result.
+- Limit git archaeology to 3 commands total. If root cause is unclear after that, report "inconclusive" and recommend escalation to Eva.
+- If you reach 15 tool calls without a clear verdict, STOP and report what you know. Do not keep exploring.
 </constraints>
 
 <output>
