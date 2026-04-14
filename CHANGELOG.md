@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.31.1] - 2026-04-13
+
+### Fixed
+
+- **pipeline-setup:** Auto-remove stale project-level `atelier-brain` .mcp.json entries (now managed by plugin)
+
 ## [3.31.0] - 2026-04-13
 
 ### Fixed
