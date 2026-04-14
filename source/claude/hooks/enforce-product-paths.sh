@@ -17,12 +17,20 @@ case "$TOOL_NAME" in Write|Edit|MultiEdit) ;; *) exit 0 ;; esac
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 [ -z "$FILE_PATH" ] && exit 0
 
-# Normalize absolute paths to project-relative
+# Normalize absolute paths to project-relative (Windows-compatible)
 PROJECT_ROOT="${CURSOR_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-.}}"
-FILE_PATH="${FILE_PATH#"$PROJECT_ROOT"/}"
+# Normalize path separators for Windows compatibility
+FILE_PATH="${FILE_PATH//\\//}"
+PROJECT_ROOT="${PROJECT_ROOT//\\//}"
+# Case-insensitive strip to handle Windows drive letter casing (C: vs c:)
+FILE_PATH_LOWER="${FILE_PATH,,}"
+PROJECT_ROOT_LOWER="${PROJECT_ROOT,,}"
+if [[ "$FILE_PATH_LOWER" == "${PROJECT_ROOT_LOWER}/"* ]]; then
+  FILE_PATH="${FILE_PATH:${#PROJECT_ROOT}+1}"
+fi
 
 # If still absolute after normalization, it's outside the project root
-if [[ "$FILE_PATH" == /* ]]; then
+if [[ "$FILE_PATH" == /* ]] || [[ "$FILE_PATH" =~ ^[A-Za-z]:/ ]]; then
   echo "BLOCKED: File is outside the project root. Attempted: $FILE_PATH" >&2
   exit 2
 fi

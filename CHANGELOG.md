@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.31.4] - 2026-04-14
+
+### Fixed
+
+- **Windows compatibility:** All 8 enforcement hooks now correctly strip Windows absolute paths before enforcing agent write restrictions — drive letter casing mismatches (`C:` vs `c:`) and backslash/forward-slash inconsistencies no longer cause false BLOCKED errors on legitimate writes
+
 ## [3.31.3] - 2026-04-14
 
 ### Improved

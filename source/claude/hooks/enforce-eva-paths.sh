@@ -26,9 +26,17 @@ case "$TOOL_NAME" in Write|Edit|MultiEdit) ;; *) exit 0 ;; esac
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 [ -z "$FILE_PATH" ] && exit 0
 
-# Normalize absolute paths to project-relative
+# Normalize absolute paths to project-relative (Windows-compatible)
 PROJECT_ROOT="${CURSOR_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-.}}"
-FILE_PATH="${FILE_PATH#"$PROJECT_ROOT"/}"
+# Normalize path separators for Windows compatibility
+FILE_PATH="${FILE_PATH//\\//}"
+PROJECT_ROOT="${PROJECT_ROOT//\\//}"
+# Case-insensitive strip to handle Windows drive letter casing (C: vs c:)
+FILE_PATH_LOWER="${FILE_PATH,,}"
+PROJECT_ROOT_LOWER="${PROJECT_ROOT,,}"
+if [[ "$FILE_PATH_LOWER" == "${PROJECT_ROOT_LOWER}/"* ]]; then
+  FILE_PATH="${FILE_PATH:${#PROJECT_ROOT}+1}"
+fi
 
 # Reject path traversal before any exception checks — must run on all paths
 [[ "$FILE_PATH" == *..* ]] && { echo "BLOCKED: Path traversal detected in $FILE_PATH" >&2; exit 2; }
@@ -39,7 +47,7 @@ FILE_PATH="${FILE_PATH#"$PROJECT_ROOT"/}"
 # Exception 2: ADR-0032 out-of-repo session state lives at ~/.atelier/pipeline/{slug}/{hash}/.
 # The pattern {slug}/{hash} means exactly two additional path components after the base.
 # Format: $HOME/.atelier/pipeline/<one-component>/<one-component>/<file>
-if [[ "$FILE_PATH" == /* ]]; then
+if [[ "$FILE_PATH" == /* ]] || [[ "$FILE_PATH" =~ ^[A-Za-z]:/ ]]; then
   if [[ "$FILE_PATH" == ${HOME}/.claude/projects/*/memory/* ]]; then
     exit 0
   fi
