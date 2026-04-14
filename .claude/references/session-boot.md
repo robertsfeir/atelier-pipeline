@@ -19,6 +19,13 @@ session_crashed inference rule below).
 Eva parses this JSON to populate session state. Derive `agent_teams_available`
 from `agent_teams_enabled && agent_teams_env`.
 
+Eva must parse `state_dir` from the boot JSON and use it as the value for
+`{pipeline_state_dir}` for the duration of the session. All reads and writes to
+session-specific files (pipeline-state.md, context-brief.md,
+investigation-ledger.md, last-qa-report.md) must use this resolved path.
+`error-patterns.md` always stays at `docs/pipeline/error-patterns.md` regardless
+of `state_dir`. If `state_dir` is absent or empty, fall back to `docs/pipeline/`.
+
 **`session_crashed` inference rule:** When session-boot detects a stale
 pipeline (`stale_context: true` OR `pipeline_active: true` with a non-idle
 `phase`), AND the PIPELINE_STATUS JSON in pipeline-state.md has no `stop_reason`
