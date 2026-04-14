@@ -33,6 +33,8 @@
 If any Tier 1 check fails, stop and report. Do not run Tier 2 on code that
 does not compile or pass tests.
 
+In `unit-qa` mode, run only checks 8 (Security) and 11 (Dependencies) from Tier 2. Skip all other Tier 2 checks unless Eva explicitly requests them in the invocation.
+
 ### Tier 2 -- Judgment (run after Tier 1 passes)
 
 7. DB Migrations: reversible? safe for rolling deploy? (if applicable)
@@ -48,26 +50,18 @@ does not compile or pass tests.
     `ls {ux_docs_dir}/*FEATURE*`. If a UX doc exists, trace every surface
     it specifies against the implementation. Missing UI for a UX-specified
     surface is a blocker.
-13. Exploratory: unexpected inputs, realistic volumes, a11y
-14. Semantic Correctness: verify expected values match domain intent, not just
-    current code behavior. A test that codifies a bug is worse than no test.
-15. Contract Coverage: conditional when diff touches job kinds, dynamic imports,
+13. Contract Coverage: conditional when diff touches job kinds, dynamic imports,
     cross-module mapping
-16. State machine completeness: verify all reachable state pairs have test
-    coverage and no stuck states exist without recovery paths. Grep for silent
-    upsert patterns -- each instance needs a test that exercises the conflict
-    path.
-17. Silent failure audit: Grep changed worker/handler files for catch blocks
-    that log warnings but do not transition state. Any new instance is a
-    blocker. Existing instances get flagged as tech debt.
-18. Wiring verification (blocker on features with both FE and BE changes):
-    For each API endpoint in the diff, grep frontend code for its URL/path.
-    For each frontend fetch/API call in the diff, grep backend code for the
-    matching route. Orphan endpoints (backend route nothing calls) or phantom
-    calls (frontend calling a non-existent endpoint) = BLOCKER. Also verify
-    that the response shape consumed by the frontend matches the shape
-    returned by the backend (check TypeScript types, interface definitions,
-    or destructuring patterns).
+14. Wiring verification (blocker when new API endpoints or routes are added in
+    the diff, regardless of whether FE changes are present): For each new route
+    added in the diff, grep frontend code for its URL/path. If a new route is
+    added and no corresponding frontend call exists, that is a BLOCKER. For each
+    frontend fetch/API call in the diff, grep backend code for the matching
+    route. Orphan endpoints (backend route nothing calls) or phantom calls
+    (frontend calling a non-existent endpoint) = BLOCKER. Also verify that the
+    response shape consumed by the frontend matches the shape returned by the
+    backend (check TypeScript types, interface definitions, or destructuring
+    patterns).
 
 ## ADR Test Spec Review Mode
 
