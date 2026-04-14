@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.31.7] - 2026-04-14
+
+### Changed
+
+- **pipeline-setup:** On install, existing `CLAUDE.md` is now renamed to `CLAUDE.md.orig` and a fresh `CLAUDE.md` is written — project-specific content (tech stack, test commands, conventions) is carried forward; pipeline-owned sections (agent behavior, commit workflow, QA process) are dropped. User's original file is never lost.
+
 ## [3.31.6] - 2026-04-14
 
 ### Fixed

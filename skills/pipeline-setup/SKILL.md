@@ -542,11 +542,18 @@ The following placeholders in template files must be replaced with project-speci
 
 **Replacement method — IMPORTANT:** Use the Read tool to load each installed file, perform substitutions in memory, then write the result back with the Write tool. Do NOT use `sed` for these replacements. BSD `sed` on macOS does not support multi-line replacement strings — values like `{{TECH_STACK}}` or `{{SOURCE_STRUCTURE}}` may contain newlines, which cause `sed` to misread the characters after the newline as flags and fail with `bad flag in substitute command`.
 
-### Step 5: Update CLAUDE.md
+### Step 5: Write CLAUDE.md
 
-If the project already has a `CLAUDE.md` file, append the pipeline section to it. If no `CLAUDE.md` exists, create one with the full template.
+**If the project already has a `CLAUDE.md` file:**
 
-**Section to add:**
+1. Read the existing `CLAUDE.md`.
+2. Extract any project-specific content that the pipeline does not cover. Content to carry forward includes: tech stack, language/framework versions, test commands, lint/typecheck commands, build commands, file/directory structure, repo conventions, coding style rules, database patterns, CI/CD notes, environment setup, and any other project-specific facts. Do NOT carry forward content the pipeline now owns: agent behavior instructions, commit workflow, pipeline/QA process, or any "how Claude should behave" sections.
+3. Rename the existing file: `mv CLAUDE.md CLAUDE.md.orig` (use the Bash tool).
+4. Write a new `CLAUDE.md` containing: (a) any carried-forward project-specific sections, followed by (b) the pipeline section below.
+
+**If no `CLAUDE.md` exists:** create one with the pipeline section only.
+
+**Pipeline section:**
 
 ```markdown
 ## Pipeline System (Atelier Pipeline)
@@ -591,7 +598,7 @@ Files installed: 40 (mandatory)
   docs/pipeline/       -- 5 files (state tracking for session recovery)
   .claude/pipeline-config.json -- branching strategy configuration
   .claude/settings.json -- updated with hook registration
-  CLAUDE.md            -- updated with pipeline section
+  CLAUDE.md            -- written fresh (project-specific content carried forward from CLAUDE.md.orig)
 
 Branching strategy: [selected strategy]
   [CI template recommendations -- advisory, printed not written to files:
