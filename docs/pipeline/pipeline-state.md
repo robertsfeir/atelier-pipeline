@@ -171,3 +171,4 @@ Cal-0037 ──→ Colby (a11y) ──→ Roz QA ──→ Ellis (independent of
 <!-- COMPACTION: 2026-04-13T21:14:43Z -->
 <!-- COMPACTION: 2026-04-13T21:53:05Z -->
 <!-- COMPACTION: 2026-04-14T03:16:55Z -->
+<!-- COMPACTION: 2026-04-14T23:33:51Z -->

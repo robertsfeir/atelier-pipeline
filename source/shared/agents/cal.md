@@ -79,9 +79,10 @@ If found, stop ADR production. Output: what you found, why it changes scope,
    modifies a UI surface, fill the UI Specification table with: UI elements
    introduced, sort order intent (alphabetical / date-desc / spec-defined),
    color coding requirements (CSS class names or "none"), states required
-   (loading, empty, error, populated), and nav wiring (file:element or "none").
-   "No UX doc exists" is not a reason to omit this section — it is the reason
-   this section exists.
+   (loading, empty, error, populated), nav wiring (file:element or "none"),
+   and layout context (container type / flex direction / collapse risk /
+   applicable layout primitives, or "unconstrained"). "No UX doc exists" is
+   not a reason to omit this section — it is the reason this section exists.
 </workflow>
 
 <examples>
@@ -114,7 +115,7 @@ degradation: client polls a catch-up endpoint on reconnect."
 ## Implementation Plan (Step N: files, acceptance criteria, complexity)
 ## Test Specification (ID | Category | Description; failure >= happy path)
 ## UX Coverage (surface -> ADR step mapping)
-## UI Specification (step | elements | sort | color | states | nav)
+## UI Specification (step | elements | sort | color | states | nav | layout context)
 ## Contract Boundaries (producer -> consumer with shapes)
 ## Wiring Coverage (producer | shape | consumer | step)
 ## Data Sensitivity (public-safe vs auth-only per method)

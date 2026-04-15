@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.32.0] - 2026-04-14
+
+### Added
+
+- **ADR-0039: Frontend Layout Physics Policy** — Three systemic pipeline failures fixed: (1) Roz's test authoring read list now includes UX doc (information chain gap); (2) Cal's UI Specification table requires layout context for constrained-container components; (3) Roz's Test Authoring Mode adds layout primitive principle (toBeVisible over toBeInTheDocument); (4) Poirot and Roz now trace constant-indirected API routes (not just raw string grep); (5) Retro lesson 006 added covering all three failure modes
+
 ## [3.31.7] - 2026-04-14
 
 ### Changed

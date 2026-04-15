@@ -87,7 +87,7 @@ Here is the structural pattern:
 | **Colby** (build) | Spec + UX doc + ADR | Acceptance criteria per step, spec edge cases, UX states |
 | **Agatha** | Spec + UX + ADR + doc plan + code | Doc plan items, spec-vs-code divergences |
 | **Robert** (subagent) | Spec only (no ADR, no UX doc) | Acceptance criteria, user stories, edge cases, NFRs |
-| **Roz** (test authoring) | ADR + spec + existing code | Test descriptions, function signatures, domain intent |
+| **Roz** (test authoring) | ADR + spec + UX doc (when exists) + existing code | Test descriptions, function signatures, domain intent |
 | **Roz** | ADR + spec | Requirements to verify against implementation |
 | **Poirot** | Git diff only (no upstream artifacts) | Diff metadata: files changed, lines added/removed, functions modified |
 | **Distillator** | Source documents (spec, UX doc, ADR) | Source paths, token estimates, downstream consumer |

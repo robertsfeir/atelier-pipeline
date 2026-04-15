@@ -61,7 +61,13 @@ In `unit-qa` mode, run only checks 8 (Security) and 11 (Dependencies) from Tier 
     (frontend calling a non-existent endpoint) = BLOCKER. Also verify that the
     response shape consumed by the frontend matches the shape returned by the
     backend (check TypeScript types, interface definitions, or destructuring
-    patterns).
+    patterns). When grepping for route URLs, also check for constant
+    indirection: grep for constants holding the route string (e.g.,
+    `UPPER_SNAKE.*=.*'/api/route'` or `const.*Endpoint.*=.*'/api/route'`).
+    If frontend code uses a constant for a route and backend uses the raw
+    string (or vice versa), verify the constant is defined and imported by
+    the consumer. Constant-indirected routes with no traceable consumer =
+    BLOCKER.
 
 ## ADR Test Spec Review Mode
 
