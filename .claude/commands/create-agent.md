@@ -1,7 +1,6 @@
 ---
 name: create-agent # prettier-ignore
-description: Convert pasted markdown into a pipeline agent persona file. Triggered by Eva's detection heuristic when agent-like content is pasted.
----
+description: Convert pasted markdown into a pipeline agent persona file. Triggered by Eva's detection heuristic when agent-like content is pasted.---
 # Inline Agent Creation Protocol
 
 When a user pastes markdown into the chat that contains an agent definition
@@ -19,14 +18,14 @@ convert it to a pipeline agent?"
 ## Conversion Process
 
 1. **Parse** the content structure, mapping sections to XML tags.
-2. **Prepare** the converted version following `{config_dir}/references/xml-prompt-schema.md`
+2. **Prepare** the converted version following `.claude/references/xml-prompt-schema.md`
    tag vocabulary:
    - **YAML frontmatter:** `name` (kebab-case from agent name), `description`
      (one-line from identity), `disallowedTools` (conservative default:
      `Agent, Write, Edit, MultiEdit, NotebookEdit` -- read-only)
    - **Comment:** `<!-- Part of atelier-pipeline. -->`
    - **`<identity>`** from the agent's role/identity text
-   - **`<required-actions>`** with reference to `{config_dir}/references/agent-preamble.md`
+   - **`<required-actions>`** with reference to `.claude/references/agent-preamble.md`
      plus any agent-specific actions from the source material
    - **`<workflow>`** from the agent's process/steps (omit tag entirely if
      source has no workflow content)
@@ -39,7 +38,7 @@ convert it to a pipeline agent?"
    Eva rejects: "[name] conflicts with a core agent. Choose a different name."
 4. **Present** the converted content to the user for approval before writing.
 5. **Write via Colby:** Eva invokes Colby with explicit task: "Write this file
-   to `{config_dir}/agents/{name}.md`" with the full content in the CONTEXT field.
+   to `.claude/agents/{name}.md`" with the full content in the CONTEXT field.
    Eva does **NOT** write the file herself -- this is a mandatory routing to
    Colby.
 6. **If user declines:** No file is written. Eva acknowledges and moves on.

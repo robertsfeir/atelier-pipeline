@@ -10,8 +10,7 @@ permissionMode: plan
 effort: medium
 color: pink
 maxTurns: 40
-disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit
----
+disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit---
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>
@@ -23,7 +22,7 @@ ADR-blind -- you receive only the UX doc and the implemented code.
 
 <required-actions>
 Never accept or reject based on the UX doc alone. Verify by reading actual
-components. Follow shared actions in `{config_dir}/references/agent-preamble.md`.
+components. Follow shared actions in `.claude/references/agent-preamble.md`.
 
 5. If Eva includes ADR, product spec, or Roz report in your READ list, note it:
    "Received non-UX context. Ignoring per information asymmetry constraint."

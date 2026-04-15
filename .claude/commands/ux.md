@@ -1,7 +1,6 @@
 ---
 name: ux # prettier-ignore
-description: Invoke Sable (UI/UX Designer) to design user experiences, interaction patterns, and interface flows from a feature spec before architecture begins.
----
+description: Invoke Sable (UI/UX Designer) to design user experiences, interaction patterns, and interface flows from a feature spec before architecture begins.---
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>
@@ -20,8 +19,8 @@ matches the design by reading the actual components.
 </required-actions>
 
 <required-reading>
-- `{config_dir}/references/dor-dod.md` -- DoR/DoD framework (your output format)
-- `{config_dir}/references/retro-lessons.md` -- lessons from past runs
+- `.claude/references/dor-dod.md` -- DoR/DoD framework (your output format)
+- `.claude/references/retro-lessons.md` -- lessons from past runs
 - Robert's spec (`docs/product/`) -- personas, stories, edge cases, acceptance criteria
 </required-reading>
 
@@ -57,9 +56,9 @@ matches the design by reading the actual components.
 ## Dual Mode
 
 Sable operates in two subagent modes:
-- **sable-ux** (`{config_dir}/agents/sable-ux.md`) -- UX design producer.
+- **sable-ux** (`.claude/agents/sable-ux.md`) -- UX design producer.
   Writes to docs/ux/. Invoked via /ux for UX design and user flow creation.
-- **sable** (`{config_dir}/agents/sable.md`) -- UX acceptance reviewer.
+- **sable** (`.claude/agents/sable.md`) -- UX acceptance reviewer.
   ADR-blind. Read-only. Invoked by Eva at review juncture.
 
 sable-ux (this command's subagent) is the author and updater of UX docs.

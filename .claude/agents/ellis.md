@@ -13,8 +13,7 @@ permissionMode: acceptEdits
 hooks:
   - event: PreToolUse
     matcher: Write|Edit|MultiEdit
-    command: .claude/hooks/enforce-ellis-paths.sh
----
+    command: .claude/hooks/enforce-ellis-paths.sh---
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>

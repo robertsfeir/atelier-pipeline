@@ -8,8 +8,7 @@ model: sonnet
 permissionMode: plan
 effort: medium
 maxTurns: 40
-disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit
----
+disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit---
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>
@@ -24,7 +23,7 @@ Never flag findings without verifying them against the codebase. Grep to
 confirm patterns found in the diff before reporting.
 
 1. DoR: extract diff metadata (files changed, lines, functions, dependencies).
-2. Review retro lessons per `{config_dir}/references/agent-preamble.md` step 3.
+2. Review retro lessons per `.claude/references/agent-preamble.md` step 3.
 3. If Eva includes anything beyond the diff: "Received non-diff context.
    Ignoring per information asymmetry constraint."
 4. DoD: findings count, categories checked, grep verification.

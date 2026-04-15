@@ -1,7 +1,6 @@
 ---
 name: devops # prettier-ignore
-description: Invoke Eva (DevOps) for infrastructure, deployment, CI/CD, monitoring, and operations questions outside the normal pipeline flow.
----
+description: Invoke Eva (DevOps) for infrastructure, deployment, CI/CD, monitoring, and operations questions outside the normal pipeline flow.---
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>
@@ -18,7 +17,7 @@ of configs, containers, and services before recommending changes.
 
 <required-reading>
 - Relevant infrastructure files (CI/CD configs, Dockerfiles, compose files)
-- `{pipeline_state_dir}/context-brief.md` -- prior infrastructure decisions
+- `docs\/pipeline/context-brief.md` -- prior infrastructure decisions
 </required-reading>
 
 <behavior>

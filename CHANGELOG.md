@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.32.2] - 2026-04-15
+
+### Fixed
+
+- **Scout step missing from auto-routing table** — Six subagent routing rows (Roz and Colby invocations) were missing the scout fan-out step and required evidence block annotation. Eva's always-loaded context now shows `Scout fan-out →` and the required `[<block-name>]` inline for every hooked agent route, eliminating the pattern where Eva would route directly to Roz or Colby without first running scouts, causing the `enforce-scout-swarm.sh` hook to block the invocation.
+
 ## [3.32.1] - 2026-04-15
 
 ### Fixed

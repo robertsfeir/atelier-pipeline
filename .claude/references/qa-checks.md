@@ -5,8 +5,8 @@
 <!--
   {typecheck_command} = command to run type checker (e.g., npm run typecheck, mypy .)
   {lint_command}      = command to run linter (e.g., npm run lint, ruff check)
-  {test_command}      = command to run full test suite (e.g., npx vitest run, npm test)
-  {ux_docs_dir}       = directory for UX design docs (default: docs/ux/)
+  pytest tests\/ \&\& cd brain \&\& node --test ..\/tests\/brain\/*.test.mjs      = command to run full test suite (e.g., npx vitest run, npm test)
+  docs\/ux       = directory for UX design docs (default: docs/ux/)
 -->
 
 ## Code QA Checks
@@ -18,11 +18,11 @@
 3. Tests -- two modes (Eva signals via invocation):
    - **`unit-qa`** (default, per Colby→Roz handoff): run only the test files
      Eva names in the invocation (ADR-specific tests) plus any test files
-     matching changed source files. Do NOT run `{test_command}`. Derive
+     matching changed source files. Do NOT run `pytest tests\/ \&\& cd brain \&\& node --test ..\/tests\/brain\/*.test.mjs`. Derive
      targeted files from the diff: for each changed source file, find the
      matching test file by name/path convention.
    - **`wave-sweep`** (pre-Ellis only, Eva explicitly requests): run
-     `{test_command}` (full suite). Only one full-suite run per wave.
+     `pytest tests\/ \&\& cd brain \&\& node --test ..\/tests\/brain\/*.test.mjs` (full suite). Only one full-suite run per wave.
 4. Coverage: run tests with coverage flag -- flag below project-defined
    thresholds (see CLAUDE.md)
 5. Complexity: Functions exceeding project-defined thresholds; files with
@@ -47,7 +47,7 @@ In `unit-qa` mode, run only checks 8 (Security) and 11 (Dependencies) from Tier 
     are affected. This triggers Agatha on Small pipelines.
 11. Dependencies: new deps -> publish date, vulns, license, necessity
 12. UX Flow Verification (blocker when UX doc exists): run
-    `ls {ux_docs_dir}/*FEATURE*`. If a UX doc exists, trace every surface
+    `ls docs\/ux/*FEATURE*`. If a UX doc exists, trace every surface
     it specifies against the implementation. Missing UI for a UX-specified
     surface is a blocker.
 13. Contract Coverage: conditional when diff touches job kinds, dynamic imports,
@@ -78,7 +78,7 @@ When reviewing a test spec (no code yet):
 4. Contract boundaries -- all dynamic imports, shape dependencies, status
    consumers identified?
 5. Independently identify cases Cal missed
-6. UX doc completeness gate (blocker): run `ls {ux_docs_dir}/*FEATURE*`. If
+6. UX doc completeness gate (blocker): run `ls docs\/ux/*FEATURE*`. If
    a UX doc exists, verify every surface has a corresponding ADR step with test
    coverage. Missing steps mean the ADR goes back to Cal.
 
@@ -86,7 +86,7 @@ Output: Coverage table, gaps, missing tests, verdict (APPROVED / REVISE).
 
 ## Scoped Re-Run Mode
 
-When invoked after a fix: read `{pipeline_state_dir}/last-qa-report.md` (your own
+When invoked after a fix: read `docs\/pipeline/last-qa-report.md` (your own
 previous report) to verify full findings from the previous pass. Run failed
 checks + targeted tests for affected files + post-fix verification + security
 re-check if auth/stores touched + verify all inherited issues are resolved.

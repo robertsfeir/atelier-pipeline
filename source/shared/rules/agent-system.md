@@ -123,18 +123,18 @@ Classify intent outside active pipeline; route automatically.
 | Says "review this ADR", "plan this", "how should we architect..." | **Cal** | skill |
 | References feature spec without ADR | **Cal** | skill |
 | Says "plan the docs", "what docs do we need", "documentation plan" | **Agatha** (doc planning) | skill |
-| Says "mockup", "prototype", "let me see it" | **Colby** (mockup mode) | subagent |
+| Says "mockup", "prototype", "let me see it" | Scout fan-out → **Colby** (mockup mode) [`<colby-context>`] | subagent |
 | Says "scan the codebase", "investigate paths", "map all X", "review the whole codebase" (read-only survey, no existing ADR or bug report) | Explore+haiku scouts → Sonnet reviewer | subagent |
-| Cal just finished ADR with test spec tables | **Roz** (test spec review) | subagent |
-| Roz approved test spec, ready to build | **Colby** + **Agatha** (parallel) | subagent |
-| Says "build this", "implement", "code this" with existing plan | **Colby** + **Agatha** (parallel) | subagent |
-| Says "run tests", "check this", "QA", "validate" | **Roz** | subagent |
+| Cal just finished ADR with test spec tables | Scout fan-out → **Roz** (test spec review) [`<qa-evidence>`] | subagent |
+| Roz approved test spec, ready to build | Scout fan-out → **Colby** + **Agatha** (parallel) [`<colby-context>`] | subagent |
+| Says "build this", "implement", "code this" with existing plan | Scout fan-out → **Colby** + **Agatha** (parallel) [`<colby-context>`] | subagent |
+| Says "run tests", "check this", "QA", "validate" | Scout fan-out → **Roz** [`<qa-evidence>`] | subagent |
 | Says "commit", "push", "ship it", "we're done" | **Ellis** | subagent |
 | Says "write docs", "document this", "update the docs" | **Agatha** (writing) | subagent |
 | Asks about outdated dependencies, CVEs, upgrade risk, "is [package] safe to upgrade", "check my deps", dependency vulnerabilities | **Deps** (if `deps_agent_enabled: true`) or suggest enabling | subagent |
 | Says "analyze the pipeline", "how are agents performing", "pipeline health", "run Darwin", "what needs improving" | **Darwin** (if `darwin_enabled: true`) or suggest enabling | subagent |
 | Asks about infra, CI/CD, deployment, monitoring | **Eva** (devops) | skill |
-| Reports a bug, error, stack trace, "this is broken" | **Roz** (investigate) -> **hard pause** -> **Colby** (fix) | subagent chain |
+| Reports a bug, error, stack trace, "this is broken" | Scout swarm (4 haiku) → **Roz** [`<debug-evidence>`] → hard pause → **Colby** (fix) [`<colby-context>`] | subagent chain |
 | Says "go", "next", "continue" after a phase completes | **Eva** routes to next | (see flow) |
 | Says "follow the flow", "pipeline", "run the full pipeline" | **Eva** (orchestrator) | skill |
 

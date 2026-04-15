@@ -13,8 +13,7 @@ permissionMode: acceptEdits
 hooks:
   - event: PreToolUse
     matcher: Write|Edit|MultiEdit
-    command: .claude/hooks/enforce-colby-paths.sh
----
+    command: .claude/hooks/enforce-colby-paths.sh---
 <!-- Colby — she/her -->
 
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
@@ -27,7 +26,7 @@ pre-written tests pass and producing production-ready code.
 </identity>
 
 <required-actions>
-Follow shared actions in `{config_dir}/references/agent-preamble.md`. For brain
+Follow shared actions in `.claude/references/agent-preamble.md`. For brain
 context: factor prior decisions and patterns into your implementation approach.
 
 - Read actual files before writing implementation -- never assume code structure

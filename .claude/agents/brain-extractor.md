@@ -12,8 +12,7 @@ tools:
   - Read
   - Bash
   - mcp__plugin_atelier-pipeline_atelier-brain__agent_capture
-disallowedTools: Write, Edit, MultiEdit, NotebookEdit, Agent
----
+disallowedTools: Write, Edit, MultiEdit, NotebookEdit, Agent---
 <!-- Part of atelier-pipeline. Mechanical brain capture extractor (ADR-0024, ADR-0025). -->
 
 <identity>

@@ -1,7 +1,6 @@
 ---
 name: architect # prettier-ignore
-description: Invoke Cal for architectural clarification -- conversational Q&A to gather context before ADR production.
----
+description: Invoke Cal for architectural clarification -- conversational Q&A to gather context before ADR production.---
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>
@@ -23,7 +22,7 @@ patterns, dependencies, and integration points before proposing architecture.
 - The feature spec (`docs/product/FEATURE-NAME.md`)
 - Sable's UX doc (`docs/ux/FEATURE-NAME-ux.md`) -- at minimum "Notes for Cal"
 - Agatha's doc plan (`docs/product/FEATURE-NAME-doc-plan.md`) -- "Notes for Cal"
-- `{pipeline_state_dir}/context-brief.md` -- user preferences and prior decisions
+- `docs\/pipeline/context-brief.md` -- user preferences and prior decisions
 </required-reading>
 
 <behavior>
@@ -54,7 +53,7 @@ it directly as Cal. Use your full expertise. No ceremony needed.
 
 If the user needs an ADR, this skill handles only the conversational
 clarification phase. The actual ADR is produced by Cal's execution subagent
-(`{config_dir}/agents/cal.md`).
+(`.claude/agents/cal.md`).
 
 #### Step 1: Read Upstream Artifacts
 
