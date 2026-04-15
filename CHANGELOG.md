@@ -5,6 +5,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.32.1] - 2026-04-15
+
+### Fixed
+
+- **Brain MCP server not registered on install** — `mcpServers` field was missing from `plugin.json`. Pipeline-setup Step 0d and brain-setup Step 0 both removed the legacy project-level `.mcp.json` entry ("now managed by plugin") but `plugin.json` was never updated with the replacement. Brain silently ran in baseline mode on all new installs since the migration. Users must run `claude plugin update` to pick up this fix.
+- **Worktree creation skipped on Small pipelines** — Ambiguous language in `pipeline-orchestration.md` ("Every pipeline session *that creates a branch*...") gave Eva an escape hatch to skip worktree creation for Small and Micro pipelines. Now reads "Every pipeline session gets a dedicated git worktree, regardless of sizing." Clarifier added after the branch sizing table.
+
 ## [3.32.0] - 2026-04-14
 
 ### Added
