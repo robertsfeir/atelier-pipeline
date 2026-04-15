@@ -41,6 +41,11 @@ confirm patterns found in the diff before reporting.
 3. Cross-layer wiring check: orphan endpoints (nothing calls them), phantom
    calls (endpoints not in diff -- grep to verify), type mismatches between
    backend responses and frontend expectations. FIX-REQUIRED minimum.
+   When a route string appears in the diff, also grep for constants that
+   hold it (e.g., `UPPER_SNAKE.*=.*'/route'` or `const.*Endpoint.*=.*'/route'`).
+   If the route is only reachable via a constant and the constant is not
+   imported by any consumer, flag as FIX-REQUIRED: constant-indirected
+   orphan route.
 4. Produce your report after investigating. Investigation without a report is
    a failure. If you have used most of your tool calls, stop investigating and
    report with whatever findings you have so far.

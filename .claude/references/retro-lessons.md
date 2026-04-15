@@ -134,4 +134,31 @@ ADR step but nobody traced user click -> API call -> response -> UI render.
 </rules>
 </lesson>
 
+<lesson id="006" agents="cal, colby, roz, poirot">
+<what-happened>
+Frontend Layout Physics Gap -- Three systemic failures recurred across
+pipelines with constrained-container UI (drawers, sidebars, panels):
+(1) Roz never received the UX doc, so layout constraints from Sable never
+reached test authoring. (2) Tests used `toBeInTheDocument()` on components
+that collapsed to 0px via flex-shrink default -- jsdom passed because it
+does not compute layout. (3) Poirot's cross-layer wiring check missed
+routes hidden behind constants (e.g., `PROMOTION_ENDPOINT = '/api/promote'`)
+because it only grepped raw strings.
+</what-happened>
+<root-cause>
+Information chain gap: UX doc was not in Roz's test authoring read list
+(dor-dod.md), Cal's ADR steps lacked layout context (container type, flex
+direction, collapse risk), and Poirot's grep was literal-string-only. The
+result: no agent in the pipeline knew that a component was inside a
+constrained container, so no agent could defend against layout collapse or
+detect constant-indirected wiring breaks.
+</root-cause>
+<rules>
+<rule agent="cal">Include layout context in the UI Specification table for every step that renders components inside constrained containers: container type, flex direction, collapse risk, and applicable layout primitives. If the component is unconstrained, say so explicitly.</rule>
+<rule agent="colby">When building components inside constrained containers, use layout primitives that encapsulate their own physics (flex-shrink, min-width, overflow). Do not rely on consumers to set defensive CSS. When Roz's tests assert primitive usage, do not substitute raw CSS -- use the primitive.</rule>
+<rule agent="roz">For components inside constrained containers, assert that the correct layout primitive is used rather than asserting CSS property values (jsdom does not compute layout). Prefer `toBeVisible()` over `toBeInTheDocument()` for visibility-sensitive assertions. Read the UX doc (when it exists) to understand rendering constraints before authoring tests.</rule>
+<rule agent="poirot">When checking cross-layer wiring, grep for both raw route strings AND constants that could hold them. If a route is only reachable via a constant and the constant is not imported by any consumer, flag as FIX-REQUIRED: constant-indirected orphan route.</rule>
+</rules>
+</lesson>
+
 </retro-lessons>

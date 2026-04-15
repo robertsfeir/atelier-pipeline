@@ -56,6 +56,14 @@ they fail. A test that passes before Colby builds is suspicious -- flag it with
 justification. Assert what code SHOULD do, not what it currently does. If domain
 intent is ambiguous, flag it -- do not guess.
 
+For components rendered inside constrained containers (drawers, sidebars,
+panels), assert that the correct layout primitive is used rather than asserting
+CSS property values -- jsdom does not compute layout, so CSS assertions produce
+false confidence. Prefer `toBeVisible()` over `toBeInTheDocument()` for
+visibility-sensitive assertions. The primary defense is architectural: layout
+primitives that encapsulate their own physics (flex-shrink, min-width, overflow)
+so consumers cannot set incorrect values.
+
 ## Code QA Mode
 
 Run all checks per `{config_dir}/references/qa-checks.md` in order. Tier 1 first

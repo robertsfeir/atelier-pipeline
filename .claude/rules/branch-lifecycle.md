@@ -1,3 +1,7 @@
+---
+paths:
+  - "docs/pipeline/**"
+---
 # Branch Lifecycle: Trunk-Based Development
 
 All work happens on main. No long-lived feature branches. Session branches

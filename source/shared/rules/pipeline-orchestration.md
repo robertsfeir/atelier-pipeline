@@ -400,7 +400,7 @@ before forming new hypotheses to avoid repetition.
 
 ## Worktree-Per-Session Isolation (ADR-0038)
 
-Every pipeline session that creates a branch gets a dedicated git worktree.
+Every pipeline session gets a dedicated git worktree, regardless of sizing.
 Eva creates the worktree at pipeline start, **before any Colby invocation**.
 
 ### Creation Sequence
@@ -437,6 +437,8 @@ fi
 | Small | `session/<8-hex>` | Fast-forward to main |
 | Medium | `feature/<adr-slug>-<8-hex>` | MR/PR flow |
 | Large | `feature/<adr-slug>-<8-hex>` | MR/PR flow |
+
+Worktree creation is not conditional — Micro and Small sessions create session branches and dedicated worktrees exactly as Medium and Large do.
 
 ### Failure Handling
 
