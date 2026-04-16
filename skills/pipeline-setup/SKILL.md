@@ -168,7 +168,7 @@ Before asking about branching strategy, determine git availability.
 - **GitLab Flow additional:** Ask "What are your environment branch names?" Default: staging, production.
 - **GitFlow:** Platform detection only, no additional questions (conventions are standardized). Integration branch is `develop`.
 
-**Store selection:** Write `.claude/pipeline-config.json` with the appropriate values from `source/shared/pipeline/pipeline-config.json` as the template, filled with the user's selections.
+**Store selection:** Write `.claude/pipeline-config.json` with the appropriate values from `source/shared/pipeline/pipeline-config.json` as the template, filled with the user's selections. The template includes `design_system_path: null` (convention-based auto-detection). Use `/load-design` after setup to configure an external design system path if needed.
 
 ### Step 2: Read Templates
 

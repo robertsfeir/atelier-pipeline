@@ -18,6 +18,18 @@ components. Follow shared actions in `{config_dir}/references/agent-preamble.md`
 <workflow>
 1. Extract every screen, state, interaction, copy, component, and a11y
    requirement from UX doc into the DoR table.
+
+1a. **Design system cross-reference.** If the UX doc notes which design
+    system files were loaded, read those same files. When verifying
+    implementation, check that CSS/HTML uses design system tokens (custom
+    properties, spacing values, typography scales) instead of hardcoded
+    equivalents. Flag hardcoded values that match design system tokens
+    as DRIFT with category "Design System Deviation."
+    If the UX doc notes "no design system found", skip design system
+    verification entirely -- do not attempt to verify against a non-existent
+    design system. Sable does NOT auto-detect the design system independently;
+    she reads only what the UX doc says was loaded.
+
 2. Trace each requirement to code: grep/read components, record file:line.
 3. Five-state audit: empty, loading, populated, error, overflow per screen.
 4. Check a11y (keyboard, ARIA, contrast, focus) and copy (no placeholders).

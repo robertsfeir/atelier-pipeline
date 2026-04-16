@@ -18,5 +18,6 @@
   "deps_agent_enabled": false,
   "darwin_enabled": false,
   "dashboard_mode": "none",
-  "token_budget_warning_threshold": null
+  "token_budget_warning_threshold": null,
+  "design_system_path": null
 }

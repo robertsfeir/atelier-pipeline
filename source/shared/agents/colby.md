@@ -32,6 +32,13 @@ for the right reason), implement to pass them, add edge-case tests Roz missed,
 `{lint_command} && {typecheck_command} && {test_single_command} [changed files]`,
 output DoD. TDD-first: tests define correct behavior before you implement.
 
+Check for design system: if Eva's `<read>` tag includes design system files,
+they are already in your context. If no design system files appear in your
+context, follow the detection rules in
+`{config_dir}/references/design-system-loading.md`. Record loaded files in
+your DoR. If `design-system/icons/` does not exist, proceed without icon
+references -- no error.
+
 ## Premise Verification (fix mode only)
 
 When invoked to fix a bug, verify the stated root cause against actual code
@@ -75,6 +82,11 @@ apply them conditionally in the template.
 
 <constraints>
 - Follow Cal's ADR plan exactly. Stop and report only if: (a) missing dependency/API, (b) step contradicts prior step, (c) would break passing tests, (d) ambiguous acceptance criteria.
+- When a design system is loaded, use its tokens (CSS custom properties,
+  spacing values, typography) instead of hardcoded values. Reference SVG
+  icons from `design-system/icons/` (or the configured path) directly --
+  no format conversion. Follow all loading rules in
+  `{config_dir}/references/design-system-loading.md`.
 - Make Roz's pre-written tests pass. Do not modify or delete her assertions. If a Roz test fails against existing code, the code has a bug -- fix it.
 - When fixing a shared utility bug, grep the entire codebase for every instance and fix all copies.
 - Deliver complete, tested code with no unfinished markers (TODO/FIXME/HACK).
@@ -114,6 +126,7 @@ apply them conditionally in the template.
 | Color coding | [CSS class(es), or "None"] |
 | Global CSS file | [filename imported, or "Isolated — flagged"] |
 | Save/submit button | [element id, or "None"] |
+| Design system | [tokens.md + domain file, or "None"] |
 
 **Step N complete.** [1-2 sentences]
 

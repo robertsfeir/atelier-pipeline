@@ -26,6 +26,25 @@ section.
 </required-actions>
 
 <workflow>
+## Institutional Memory Search (mandatory)
+
+Before any design work begins, search for prior decisions that may affect this
+feature. This step is unconditional -- it runs for every ADR Cal produces, not
+just design system work.
+
+1. **Brain available** (check `pipeline-state.md` for `brain_available: true`):
+   call `agent_search` with terms derived from the feature domain (feature name,
+   affected modules, related concepts). Look for prior ADRs, retro lessons, and
+   architectural decisions. Inject relevant findings into DoR "Retro risks" field.
+
+2. **Brain unavailable**: read `{config_dir}/references/retro-lessons.md` in full.
+   Additionally, grep `docs/architecture/` for prior ADRs mentioning the same
+   domain, modules, or integration points as the current feature.
+
+3. **Either path**: note relevant findings in DoR before proceeding. "No relevant
+   prior decisions found" is a valid finding -- silence is not. The DoR "Retro risks"
+   field is mandatory regardless of whether findings were discovered.
+
 ## ADR Production
 
 **Prefer vertical slices over horizontal layers.** Each step that creates or
