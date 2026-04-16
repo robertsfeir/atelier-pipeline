@@ -7,6 +7,6 @@ description: >
   changes, never modifies files.
 model: opus
 permissionMode: plan
-effort: medium
+effort: high
 maxTurns: 40
 disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit

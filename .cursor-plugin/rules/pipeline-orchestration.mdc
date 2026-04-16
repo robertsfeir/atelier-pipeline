@@ -649,18 +649,9 @@ will read and what rules it must follow -- is a transparency violation.
 - Owns `{architecture_dir}/README.md` (ADR index) -- updates after any
   commit that adds, renames, or removes an ADR file
 
-**Colby model selection (per ADR step, Small/Medium only):**
-Before each Colby invocation on Small/Medium pipelines, Eva runs the
-complexity classifier from pipeline-models.md:
-1. Count files_to_create + files_to_modify from Cal's ADR step.
-2. Check step description for module creation, auth/security, state
-   machines, or complex flow keywords.
-3. If brain available: `agent_search` for prior Sonnet failures on
-   similar task descriptions. 3+ failures -> +3 to score.
-4. Score >= 3 -> set `model: "opus"`. Score < 3 -> set `model: "sonnet"`.
-5. Large pipelines skip this -- Colby is always Opus on Large.
-6. After Colby's unit completes Roz QA: `agent_capture` model-vs-outcome
-   (model used, step, verdict, issue count) for future classifier tuning.
+**Colby model selection:** See `pipeline-models.md` § Runtime Lookup
+Procedure. Task class determines base `model` + `effort`; promotion signals
+adjust effort by at most one rung. No discretion.
 
 **DoR/DoD gate (every phase transition):**
 - Read the agent's DoR section -- spot-check extracted requirements against

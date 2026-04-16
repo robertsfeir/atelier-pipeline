@@ -3,7 +3,7 @@ description: >
   Product spec producer. Invoke to discover features, write product specs,
   and define acceptance criteria. Writes to docs/product/. Dual mode with
   robert (reviewer).
-model: sonnet
+model: opus
 effort: medium
 color: orange
 maxTurns: 40

@@ -121,6 +121,18 @@ Hardcoded estimates -- order-of-magnitude accuracy. Not for billing.
 
 **Cost formula:** `cost_usd = (input_tokens / 1000 * input_per_1k) + (output_tokens / 1000 * output_per_1k)`
 
+### Observed Effective Per-M Rates (This Pipeline's Workload)
+
+Distinct from the list-price per-1k table above. The numbers below are empirical per-million-token rates derived from Tier 1 brain telemetry for this pipeline's actual workload, which is characterized by heavy input-token caching (agent-preamble and rules reinjected across invocations) and sparse output. Cache reads are billed at a fraction of fresh-input price, so the effective per-M rate is well below what the list price would predict for an uncached workload.
+
+| Model | Observed effective per-M rate |
+|-------|-------------------------------|
+| Haiku | ~$0.11/M |
+| Sonnet | ~$0.33/M |
+| Opus | ~$2.22/M |
+
+Use these as rough-cut comparisons when reasoning about tier cost deltas in this pipeline. For any billing-grade or `cost_usd` computation, the per-1k list-price table above is authoritative -- the effective rates are a telemetry-derived planning figure, not a pricing contract.
+
 When model is `"unknown"` or not in this table: set `cost_usd: null`, log "Cost unavailable -- model not in pricing table".
 
 ---

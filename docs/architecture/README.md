@@ -39,6 +39,7 @@
 | [ADR-0035](ADR-0035-wave4-consumer-wiring-and-s4-resolution.md) | Wave 4 Consumer Wiring and S4 Resolution | Proposed | |
 | [ADR-0036](ADR-0036-wave5-documentation-sweep.md) | Wave 5 Documentation Sweep | Proposed | |
 | [ADR-0037](ADR-0037-wave6-dashboard-a11y-cursor-parity-specs.md) | Wave 6 Dashboard A11y and Cursor Parity Specs | Proposed | |
+| [ADR-0041](ADR-0041-effort-per-agent-map.md) | Effort-Per-Agent Map (Task-Class Tier Model) | Accepted | |
 
 **Convention:** When creating a new ADR, add a row to this table in the same commit. The table is the primary navigation aid for finding ADRs; an ADR not listed here is effectively invisible to contributors browsing the index.
 

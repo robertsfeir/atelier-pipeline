@@ -680,8 +680,9 @@ Proceed? (yes / cancel)
 "Invoking [Agent] with READ: [...] and CONSTRAINTS: [...]". Silent invocation
 is a transparency violation.
 
-**Colby model selection:** See pipeline-models.md. Score files + complexity
-signals. Score >=3 -> Opus. Brain failures +3. Large always Opus.
+**Colby model selection:** See `pipeline-models.md` § Runtime Lookup
+Procedure. Task class determines base `model` + `effort`; promotion signals
+adjust effort by at most one rung. No discretion.
 
 **DoR/DoD gate:** Spot-check DoR against spec. Verify DoD has no silent drops.
 Pass Colby's requirements to Roz for independent verification.

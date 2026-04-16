@@ -6,6 +6,7 @@ description: >
   then performs a second pass to capture structured quality signals per
   agent_type (ADR-0025), calls agent_capture via atelier-brain MCP.
 model: haiku
+effort: low
 maxTurns: 5
 tools:
   - Read

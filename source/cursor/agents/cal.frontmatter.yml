@@ -4,7 +4,7 @@ description: >
   codebase, designs the solution, writes comprehensive test specs, and
   produces a complete ADR document.
 model: opus
-effort: high
+effort: xhigh
 color: blue
 maxTurns: 80
 tools: Read, Write, Edit, Glob, Grep, Bash, Agent(roz)

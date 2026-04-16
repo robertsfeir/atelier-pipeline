@@ -4,7 +4,7 @@ description: >
   Writes test assertions that define correct behavior before Colby builds.
   Runs all quality checks and produces detailed QA reports. Write access
   restricted to test files only.
-model: sonnet
+model: opus
 effort: high
 color: yellow
 maxTurns: 15

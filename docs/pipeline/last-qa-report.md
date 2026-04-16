@@ -1,129 +1,290 @@
-## QA Report -- 2026-04-14
+# QA Report -- ADR-0041 Wave Sweep -- 2026-04-16
 
-### ADR-0032 last-mile + ADR-0038 Worktree-Per-Session
+## Verdict: FAIL (2 MUST-FIX items; not cosmetic)
 
-### Verdict: FAIL (1 FIX-REQUIRED before Ellis)
+Blocker-adjacent: Step 2 (classifier-score removal) and Step 5 (cost-table
+update) are BOTH partially implemented. Verdict criteria state PASS requires
+zero BLOCKERs AND at most 2 cosmetic MUST-FIX items. These two are real
+contract gaps, not cosmetic; both need to be routed to Colby before Ellis.
 
-| Check | Status | Details |
-|-------|--------|---------|
-| Tier 1: Test suite (new file) | PASS | 11/11 pass, 0 new failures |
-| Tier 1: TODO/FIXME/HACK/XXX | PASS | 0 matches across all changed files |
-| Tier 2: ADR-0038 test spec (T-0038-001 to T-0038-030) | PASS | All 30 items verified |
-| Tier 2: ADR-0032 last-mile (state_dir paragraph) | PASS | Present and correct in both source and .claude session-boot.md |
-| Tier 2: Spec drift -- forbidden language | PASS | Zero matches for "Colby creates the feature branch" or "(non-worktree)" in variants/ and branch-mr-mode.md |
-| Tier 2: branch-mr-mode.md preamble | FIX-REQUIRED | Line 7 still says "Colby handles branch creation" -- contradicts corrected body |
+Zero regressions. 59/59 ADR-0041 tests pass. The green test suite under-
+asserts: both MUST-FIX defects slipped through because no test was watching.
 
 ---
 
-### Requirements Verification
+## Summary
 
-| # | Requirement | Colby Claims | Roz Verified | Finding |
+ADR-0041 replaces the size-dependent model table + universal scope classifier
+with a 4-tier task-class model. 37 files changed; Steps 1, 3, 4, 6, 7, and 8
+look clean. Steps 2 (pipeline-orchestration.md cleanup) and 5
+(`telemetry-metrics.md` cost-table) are partially implemented:
+
+- **Step 2 residual:** `source/shared/rules/pipeline-orchestration.md:683-684`
+  still carries the old classifier framing: "Score files + complexity
+  signals. Score >=3 -> Opus. Brain failures +3. Large always Opus." This is
+  exactly the content ADR-0041 Decision-Removed list calls out (classifier
+  score framing). The installed mirror at
+  `.claude/rules/pipeline-orchestration.md` carries the same line.
+- **Step 5 gap:** `telemetry-metrics.md` Cost Estimation Table still lists
+  only `claude-opus-4`, `claude-sonnet-4-5`, `claude-haiku-3-5`. ADR-0041
+  §Step 5 Acceptance requires a `claude-opus-4-7` row and an ADR-0041
+  footnote on the Per-Invocation Cost Estimates table. Neither
+  `claude-opus-4-7` nor `ADR-0041` appears in the file (`grep -c` = 0 for
+  both).
+
+The per-M-token substring hints (0.11, 0.33, 2.22) WERE added at line 124 --
+that is what the test suite checked for, and it passed -- but that is NOT
+the contract ADR §Step 5 Acceptance specified.
+
+Full test suite: 1595 pass / 107 fail. Delta vs. pre-build baseline: +60 new
+passes, 0 new regressions. The 107 remaining failures are all pre-existing
+on main; not introduced by this build.
+
+---
+
+## Findings
+
+### MUST-FIX -- queued before commit
+
+#### 1. `source/shared/rules/pipeline-orchestration.md` -- Step 2 residual classifier text
+
+**File / line:** `source/shared/rules/pipeline-orchestration.md:683-684` (and
+the mirror at `.claude/rules/pipeline-orchestration.md` same offset)
+
+**What:** The file still contains:
+
+```
+**Colby model selection:** See pipeline-models.md. Score files + complexity
+signals. Score >=3 -> Opus. Brain failures +3. Large always Opus.
+```
+
+ADR-0041 §Decision Rule-Table-Replacement-Scope lists "classifier score /
+Score >= 4 references" and "universal scope classifier" as content removed
+from the rule file, and Step 2 Acceptance calls for zero "classifier score"
+/ "Sonnet (classifier)" / "size-dependent model" references. The
+`Score >=3 -> Opus` + `Brain failures +3` block is a direct carry-over of
+the scoring-classifier framing the ADR retires.
+
+**Why:** Eva reads both `pipeline-models.md` AND `pipeline-orchestration.md`
+at pipeline start. When Eva hits this line she will apply the score-based
+lookup, not the tier-table lookup. The rule-file producer is correct (the
+4-tier table is in `pipeline-models.md`) but the consumer protocol in
+`pipeline-orchestration.md` still points at the retired mechanism. Two
+sources of truth = Eva chooses wrong at runtime, exactly the retro lesson
+005 failure mode.
+
+**Suggested resolution:** Colby replaces the paragraph with a pointer to
+`pipeline-models.md` §Per-Agent Assignment Table + §Promotion Signals, no
+score-based language. Something like: "Colby model/effort: see
+`pipeline-models.md` §Per-Agent Assignment Table; effort adjusts by
+promotion signals (Large, auth/security, new module). No discretion." Same
+edit applied to the `.claude/` mirror. ~3 lines in each file.
+
+**Test-gap note:** ADR test-spec IDs T-0041-040/041/042 explicitly asked
+for grep assertions on "classifier score" / "Sonnet (classifier)" /
+`pipeline-models.md` references in this file. The 59-test suite does NOT
+include these assertions in any of the three test files. That is why this
+slipped through.
+
+---
+
+#### 2. `source/shared/references/telemetry-metrics.md` -- Step 5 contract gap
+
+**File / line:** `source/shared/references/telemetry-metrics.md:116-120`
+(Cost Estimation Table) and `:182-186` (Per-Invocation Cost Estimates
+table)
+
+**What:** The Cost Estimation Table still lists only three rows:
+`claude-opus-4`, `claude-sonnet-4-5`, `claude-haiku-3-5`. ADR-0041 §Step 5
+Acceptance requires a fourth row: `claude-opus-4-7` with input/output
+pricing reflecting the 4.7 tokenizer inflation (~$0.0175 / $0.0875 per 1k,
+1.17x midpoint). The Per-Invocation Cost Estimates table does NOT cite
+ADR-0041 in any footnote or annotation. Neither `claude-opus-4-7` nor
+`ADR-0041` appears anywhere in the file (`grep -c` returns 0 for both).
+
+**Why:** ADR-0029's budget-estimate gate consumes this table to compute
+`cost_usd`. With Tier 2/3 work now executing on Opus 4.7 (GA 2026-04-16),
+cost computations silently fall back to the Opus 4.6 row, under-counting by
+the tokenizer-inflation multiplier. This is a living-artifact update Cal
+explicitly scoped to this ADR (§ADR-0029 + telemetry-metrics.md Update).
+Missing it orphans the producer from the Validation-Pipeline consumer: the
+rollback threshold is "cost ratio > 2.0x", which is computed against a
+pricing row that does not yet exist.
+
+The per-M-rate hint at line 124 is useful but is NOT the same contract as
+"Cost Estimation Table row for `claude-opus-4-7`."
+
+**Suggested resolution:** Colby adds `claude-opus-4-7` row to the Cost
+Estimation Table with 1.17x-inflated pricing, adds a footnote on the
+Per-Invocation Cost Estimates table citing ADR-0041 as the tier-epoch,
+optionally annotates the existing Sonnet row as legacy (pre-0041 captures
+stay interpretable). ~10 lines total.
+
+**Test-gap note:** ADR test-spec IDs T-0041-043/044 explicitly asked for
+grep assertions on `claude-opus-4-7` row and ADR-0041 footnote. The docs
+test file asserts only on the per-M-rate substrings (0.11, 0.33, 2.22).
+The `claude-opus-4-7` row assertion is missing.
+
+---
+
+### FIX-REQUIRED -- none
+
+---
+
+### NIT -- cosmetic
+
+#### 3. Sixth promotion signal not in ADR Decision table
+
+**File:** `source/shared/rules/pipeline-models.md:43` and mirrors
+
+**What:** The implemented Promotion Signals table carries 6 rows
+(`auth/security`, `Large`, `Poirot final juncture`, `read-only evidence`,
+`mechanical task`, `new module / service`). The ADR §Decision Promotion
+Signals table has only the first 5 rows. The 6th row
+("new module / service +1 rung") is consistent with Tier 4's
+"Large + new module" header hint but isn't in the ADR's explicit Decision
+table.
+
+**Why this is a NIT, not a defect:** The test suite parametrizes over
+`"new module"` as a required signal phrase
+(`test_adr0041_rule_structure.py:152`), so Roz's test spec clearly expected
+this signal. The ADR's Tier 1/2/3/4 header column ("Effort +1 when") also
+references `Large + new module` in the Tier 4 row. The ADR and the
+implementation agree on intent; the Decision Promotion Signals table just
+didn't enumerate this signal as its own row. ADRs are immutable so this
+can't be patched in place -- future related ADR can codify. No action
+required now.
+
+---
+
+#### 4. Test suite under-asserts 6 spec rows (T-0041-040/041/042/043/044 + T-0041-051 through T-0041-054)
+
+**Files:** `tests/test_adr0041_docs.py`, `tests/test_adr0041_rule_structure.py`
+
+**What:** The 59-test suite green-lighted MUST-FIX #1 and #2 because no
+test watched. Specifically uncovered:
+
+- **T-0041-040/041/042:** pipeline-orchestration.md cleanup (classifier
+  score, Sonnet classifier, pipeline-models.md pointer). No assertions in
+  any of the three test files.
+- **T-0041-043:** `claude-opus-4-7` row presence. Docs test asserts "2.22"
+  per-M substring only.
+- **T-0041-044:** ADR-0041 footnote in telemetry-metrics.md. Not asserted.
+- **T-0041-051 through T-0041-054:** Validation Pipeline protocol content
+  (ADR-0035 baseline, FPQR methodology, 2.0x rollback trigger, telemetry
+  effort-field addition). ADR content is correct (grep confirms 23 hits),
+  but no test asserts presence.
+
+**Suggested resolution:** Roz follow-up pass after MUST-FIX #1 + #2 land:
+add 9 assertions covering the gap. Since these are Roz's own test files,
+the fix is adding `assert "X" in text` lines -- straightforward. Not a
+commit blocker once MUST-FIX #1 + #2 are in -- but without this coverage
+the next rule-file change will slip the same way.
+
+---
+
+## Coverage Confirmation (Cal's 6 Test Spec Categories)
+
+| Category | Assertions in ADR | Assertions in suite | Status |
+|----------|------------------:|--------------------:|--------|
+| Structure (T-0041-001 through 007) | 7 | 14 rule_structure tests cover this | Covered |
+| Supersession (T-0041-008 through 012) | 5 | 5 banned-marker params | Covered |
+| Promotion signals (T-0041-013 through 017) | 5 | 5 signal-phrase params | Covered |
+| Base assignments (T-0041-018 through 024) | 7 | Subsumed by frontmatter test (30 asserts) + rule tier-row proximity check | Covered |
+| Frontmatter consistency (T-0041-025 through 039) | 30 (15 agents x 2 platforms) | 30 asserts parameterized | Covered in full |
+| Orchestration cleanup (T-0041-040 through 042) | 3 | NOT covered by any test; grep reveals real residual content at line 683-684 | **Gap + Defect -- see MUST-FIX 1** |
+| Cost table (T-0041-043 through 045) | 3 | Only per-M-rate substrings covered; `claude-opus-4-7` row + ADR-0041 footnote NOT asserted AND NOT present | **Gap + Defect -- see MUST-FIX 2** |
+| Installed mirrors (T-0041-046, 047) | 2 | Both asserted (byte-identical source; Cursor Tier 1/4 present) | Covered |
+| Compatibility / setup skill (T-0041-048 through 050) | 3 | Covered by "2.1.89 OR effort" disjunctive test | Covered loosely; SKILL.md does contain "2.1.89", "effort", and "still functions" phrasing |
+| Validation protocol (T-0041-051 through 054) | 4 | NOT covered by any test; grep confirms content present in ADR (23 hits for ADR-0035/FPQR/rollback/2.0x) | Content present; test gap (see NIT 4) |
+| Docs (T-0041-055, 056) | 2 | Both asserted | Covered |
+
+**Net:** 8 of 11 categories fully green. 2 categories (orchestration
+cleanup, cost table) are both un-asserted AND reveal real defects on
+inspection. 1 category (validation protocol) is content-verified but
+test-gapped.
+
+---
+
+## Requirements Verification
+
+| # | Requirement | Colby claim | Roz verified | Finding |
 |---|-------------|-------------|-------------|---------|
-| R1 | Every session that creates a branch gets its own worktree | Implemented | `<protocol id="worktree-per-session">` at line 399 in pipeline-orchestration.md | PASS |
-| R2 | Worktree location: sibling `../<slug>-<session-id>/` | Implemented | Line 421: `WORKTREE_PATH="../${PROJECT_SLUG}-${SESSION_ID}"` | PASS |
-| R3 | Session ID: 8 random hex chars (openssl rand -hex 4) | Implemented | Line 412: `SESSION_ID=$(openssl rand -hex 4)` | PASS |
-| R4 | Same session ID for worktree dir, branch name, state | Implemented | Single SESSION_ID var drives both BRANCH_NAME and WORKTREE_PATH in creation sequence | PASS |
-| R5 | Branch naming table: micro/small -> session/, medium/large -> feature/ | Implemented | Table present in protocol (lines 432-439) and all 4 variant files | PASS |
-| R6 | Eva infers branch type from pipeline sizing | Implemented | Table drives inference; no extra ceremony added | PASS |
-| R7 | Trunk-based: session branch + ff merge to main | Implemented | trunk-based.md and protocol Trunk-Based Integration section | PASS |
-| R8 | Eva creates worktree BEFORE any Colby invocation | Implemented | Explicit "before any Colby invocation" language at line 404 | PASS |
-| R9 | Eva copies .claude/brain-config.json to worktree | Implemented | Lines 426-429 in creation sequence | PASS |
-| R10 | Agents receive worktree path via constraints tag | Implemented | Agent Path Constraint section with exact constraint text | PASS |
-| R11 | Ellis removes worktree after successful MR/merge | Implemented | Worktree Cleanup section in ellis.md | PASS |
-| R12 | git worktree add/remove NOT blocked by enforce-git.sh | Implemented | Tests T-0038-018 through T-0038-020 all pass | PASS |
-| R13 | Branch lifecycle files remove Colby branch-creation language | Implemented | grep returns empty on all 4 variant files | PASS |
-| R16 | No sessions.json registry | Implemented | No registry added anywhere in changed files | PASS |
-
-### T-0038 Test Spec -- All 30 Items
-
-| Test ID | Description | Status |
-|---------|-------------|--------|
-| T-0038-001 | protocol section has all 8 subsections (creation, failure, copy, state, constraint, trunk, cleanup, Agent Teams) | PASS |
-| T-0038-002 | protocol specifies creation BEFORE any Colby invocation | PASS |
-| T-0038-003 | branch naming table present (micro/small/medium/large) | PASS |
-| T-0038-004 | failure is pipeline-start blocker; Eva does NOT proceed | PASS |
-| T-0038-005 | brain-config.json copy specified in protocol | PASS |
-| T-0038-006 | pipeline-state.md template has Worktree Path and Session ID fields | PASS |
-| T-0038-007 | PIPELINE_STATUS JSON has worktree_path, session_id, branch_name | PASS |
-| T-0038-008 | github-flow: no "Colby creates the feature branch" or "(non-worktree)" | PASS |
-| T-0038-009 | github-flow: Eva named as branch/worktree creator | PASS |
-| T-0038-010 | gitlab-flow: no forbidden language | PASS |
-| T-0038-011 | gitlab-flow: Eva named as creator | PASS |
-| T-0038-012 | gitflow: no "Colby creates feature branches from develop" | PASS |
-| T-0038-013 | gitflow: develop as base in worktree add command | PASS |
-| T-0038-013b | gitflow: Eva named as creator | PASS |
-| T-0038-014 | trunk-based: session/<8-hex> pattern documented | PASS |
-| T-0038-015 | trunk-based: ff merge to main at pipeline end | PASS |
-| T-0038-016 | branch-mr-mode: branch creation attributed to Eva | PASS (body correct -- see FIX-REQUIRED for preamble) |
-| T-0038-017 | branch-mr-mode: Colby's MR creation responsibility retained | PASS |
-| T-0038-018 | git worktree add exits 0 for main thread (Eva) | PASS (pytest) |
-| T-0038-018b | git worktree add exits 0 for agent_type="colby" | PASS (pytest) |
-| T-0038-019 | git worktree remove exits 0 for ellis | PASS (pytest) |
-| T-0038-020 | git worktree list exits 0 for any agent | PASS (pytest -- 3 agents tested) |
-| T-0038-021 | git add still exits 2 for main thread (regression) | PASS (pytest) |
-| T-0038-022 | git commit still exits 2 for colby (regression) | PASS (pytest) |
-| T-0038-023 | enforce-git.sh contains ADR-0038 intentional-allowance comment | PASS (pytest) |
-| T-0038-024 | ellis.md contains worktree cleanup workflow section | PASS |
-| T-0038-025 | session branch force-delete (-D) allowed | PASS (lines 56-59 in ellis.md) |
-| T-0038-026 | feature branch NOT force-deleted (warns instead) | PASS (lines 48, 60 in ellis.md) |
-| T-0038-027 | pipeline-orchestration.md references Ellis cleanup in Ellis-related section | PASS (lines 129-133 and 501-502) |
-| T-0038-027b | Ellis cleanup distinguishes MR-based from trunk-based trigger | PASS (lines 39-52 in ellis.md: separate MR-based and trunk-based blocks) |
-| T-0038-028 | No "Colby creates the feature branch" in source/shared/variants/ | PASS (grep empty) |
-| T-0038-029 | No "(non-worktree)" in source/shared/variants/ | PASS (grep empty) |
-| T-0038-030 | No "(non-worktree)" in branch-mr-mode.md | PASS (grep empty) |
-
-### ADR-0032 Last-Mile
-
-| File | state_dir paragraph present | error-patterns.md anchor correct | Finding |
-|------|----------------------------|----------------------------------|---------|
-| source/shared/references/session-boot.md | YES (lines 22-27) | YES (line 26: "always stays at docs/pipeline/error-patterns.md regardless of state_dir") | PASS |
-| .claude/references/session-boot.md | YES (same content confirmed) | YES | PASS |
-
-Both copies are consistent. The fix is correctly scoped: state_dir drives pipeline-state.md, context-brief.md, investigation-ledger.md, and last-qa-report.md only. error-patterns.md stays at docs/pipeline/ unconditionally.
+| R1-R10 | ADR + tier model + rules + Sonnet removal | yes | yes | via `pipeline-models.md` rewrite; 0-match grep for `sonnet` in all 30 frontmatters |
+| R11 | Agatha split conceptual/reference | yes | yes | Tier 2 + Tier 1 rows present, reference-mode noted |
+| R12 | 30 frontmatter updates | yes | yes | 15 x 2 files correct |
+| R13 | Source + 2 installed mirrors | yes | yes | `.claude/rules/pipeline-models.md` byte-identical, `.cursor-plugin/rules/pipeline-models.mdc` fully synced with frontmatter wrapper |
+| R14 | `pipeline-orchestration.md` classifier refs removed | **partial** | **partial -- see MUST-FIX 1** | stale "Score >=3 -> Opus" at line 683-684 |
+| R15 | `telemetry-metrics.md` update | **partial** | **partial -- see MUST-FIX 2** | per-M-rates added; Opus 4.7 row + ADR-0041 footnote absent |
+| R16 | Compat + setup warning | yes | yes | SKILL.md:10 carries "2.1.89" + "effort" warning, non-blocking |
+| R17 | Vertical slice | yes | yes | producer->consumer mapping intact (modulo R14/R15 gaps above) |
+| R18 | Validation pipeline design | yes | yes | §Validation Pipeline has baseline, metrics, thresholds, rollback, telemetry addition |
 
 ---
 
-### Unfinished Markers
+## Unfinished Markers
 
-`grep -r "TODO|FIXME|HACK|XXX"` across all changed files: **0 matches**
-
----
-
-### Issues Found
-
-**FIX-REQUIRED** (`source/shared/references/branch-mr-mode.md`, line 7):
-
-The file's introductory paragraph reads:
-
-> "When the pipeline uses an MR-based branching strategy (GitHub Flow, GitLab Flow, GitFlow), Colby handles branch creation and MR creation."
-
-The body of the same file (lines 11-17) directly contradicts this:
-
-> "Eva creates the feature branch and worktree at pipeline start..."
-> "Colby receives the worktree path in her invocation constraints and operates entirely within the worktree. Colby does NOT create or check out branches."
-
-T-0038-016 checks that branch creation is attributed to Eva and passes (the body is correct). However, the stale preamble sentence creates a direct contradiction within the same file. A reader who only reads the summary line gets the wrong mental model before reaching the corrected content.
-
-**Recommended fix (Colby, production file):** Change line 7 from:
-> "Colby handles branch creation and MR creation."
-
-To:
-> "Eva creates the branch and worktree at pipeline start. Colby handles MR creation."
-
-This is a one-line change in a production file. Roz does not touch production files -- route to Colby.
+`grep -r "TODO|FIXME|HACK|XXX"` on all 37 changed files: 0 hits in
+production content. Clean.
 
 ---
 
-### Doc Impact: NO
+## Full-Suite Regression Confirmation
 
-ADR-0038 status field already updated to "Implemented." No further doc changes required.
+Per `<qa-evidence>` block:
+- Pre-build baseline (main): 108 fail / 1535 pass
+- Post-build (worktree): 107 fail / 1595 pass
+- Delta: **+60 new passes, 1 pre-existing fail resolved, 0 new regressions**
+- ADR-0041-specific: 59/59 pass
+
+Regression check: PASS.
 
 ---
 
-### Roz's Assessment
+## Doc Impact: NO
 
-All 11 new hook regression tests pass cleanly. The enforce-git.sh comment is present, the behavior is correct, and regression guards for blocked operations (git add, git commit) still hold. The ADR-0032 last-mile fix is present in both the source template and the installed .claude copy -- the state_dir and error-patterns.md scoping are correctly specified.
+ADR-0041's documentation consumers (`technical-reference.md`,
+`user-guide.md`, SKILL.md, `telemetry-metrics.md` per-M-rates) are updated
+in this build. Agatha does not need a separate doc pass. The MUST-FIX on
+`telemetry-metrics.md` is Colby's scope (Step 5), not a documentation gap.
 
-All 30 ADR-0038 test spec items are satisfied. The four variant files are clean, the pipeline-state.md template has the new fields, pipeline-orchestration.md has the complete protocol, and ellis.md has the correct MR-based vs trunk-based distinction.
+---
 
-The single FIX-REQUIRED is a stale introductory sentence in branch-mr-mode.md that contradicts its own corrected body. It does not affect runtime behavior -- agents read the full file -- but it will mislead anyone skimming the file. One line, Colby fixes, then clear to Ellis.
+## Roz's Assessment
+
+This is a close call but the verdict is FAIL because two MUST-FIX items
+are real contract gaps, not cosmetic noise, and the PASS criteria
+explicitly require "no BLOCKER and <= 2 MUST-FIX items that are cosmetic."
+
+The substance of ADR-0041 is solidly implemented. The 4-tier table reads
+cleanly and is humanly lookup-able. All 30 frontmatter mirrors are
+correct. Cursor `.mdc` is fully synchronized. Technical-reference Model
+Selection section is a proper rewrite, not a stub. The pipeline-models.md
+producer is correct. The frontmatter consumers are correct. The test
+suite is green on what it watches.
+
+What's broken is the wiring:
+- **Step 2**: `pipeline-orchestration.md` consumer still carries the
+  retired score-classifier language. Same file, same Eva context.
+  Producer says "use the tier table", consumer says "score files, >=3 ->
+  Opus, brain failures +3." Eva reads both. Two sources of truth in Eva's
+  always-loaded context = non-deterministic runtime behavior on the next
+  pipeline. Retro lesson 005 territory.
+- **Step 5**: `telemetry-metrics.md` living-artifact update is half-done.
+  Per-M-hint added (good), Opus 4.7 row and ADR-0041 footnote absent
+  (bad). Budget gate now under-counts Tier 2/3 cost by the tokenizer-
+  inflation multiplier until fixed.
+
+Both are 10-line edits. Colby can land MUST-FIX #1 + #2 in a single
+sub-wave. After that the test gap (NIT #4) is worth a follow-up Roz pass
+so the next rule-file change doesn't slip through the same hole -- but
+that's not a commit blocker.
+
+Route MUST-FIX #1 (pipeline-orchestration.md:683-684 + mirror) and
+MUST-FIX #2 (telemetry-metrics.md Cost Estimation Table + footnote) to
+Colby. Re-run scoped verification after.
+
+One rung up on Roz's own discipline: when Cal's §Test Specification lists
+a test ID, every ID gets an assertion, even if parameterization collapses
+rows. The "56 rows -> 59 assertions" count here masked 9 genuinely
+missing assertions. Cal's spec was solid; the test authoring was light.

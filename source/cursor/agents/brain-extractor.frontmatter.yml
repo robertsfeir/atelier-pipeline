@@ -7,7 +7,8 @@ description: >
   roz, or agatha complete. Reads last_assistant_message, extracts decisions,
   patterns, lessons, and seeds, calls agent_capture via atelier-brain MCP.
   (no-op on Cursor)
-model: claude-haiku-4-5-20251001
+model: haiku
+effort: low
 maxTurns: 5
 tools:
   - Read

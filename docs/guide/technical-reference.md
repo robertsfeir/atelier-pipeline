@@ -285,7 +285,7 @@ Eva's rules are split into two categories to stay under Anthropic's recommended 
 
 **Operations files** (path-scoped via YAML frontmatter):
 - `pipeline-orchestration.md` (`.mdc` on Cursor) -- mandatory gates, brain capture model, wave execution, observation masking, investigation discipline, agent standards, review juncture, reconciliation. Uses just-in-time (JIT) section loading: sections marked `[ALWAYS]` load at pipeline activation; sections marked `[JIT]` load only when their trigger condition is met (e.g., investigation discipline loads only when a debug flow is entered). Eva reads section headers to know what exists without loading every section at activation.
-- `pipeline-models.md` (`.mdc` on Cursor) -- universal scope classifier, size-dependent model tables, Agatha doc-type model, enforcement rules
+- `pipeline-models.md` (`.mdc` on Cursor) -- 4-tier task-class model, per-agent base `model`/`effort` assignments, promotion signals, enforcement rules
 - `branch-lifecycle.md` (`.mdc` on Cursor) -- branching strategy lifecycle rules (selected variant only: trunk-based, github-flow, gitlab-flow, or gitflow)
 
 Operations files use a `paths: ["docs/pipeline/**"]` frontmatter declaration (or the Cursor equivalent `globs: ["docs/pipeline/**"]`). The IDE loads them automatically when any file matching that glob is read. Since Eva's boot sequence reads `docs/pipeline/pipeline-state.md` on every session with an active pipeline, the operational rules load exactly when needed.
@@ -346,22 +346,22 @@ Most agent persona files use `disallowedTools` (denylist) in their frontmatter. 
 |-------|------|---------------|-------|-------------|--------------|-------|
 | **Eva** | Pipeline Orchestrator / DevOps | Main thread (always loaded) | Read, Glob, Grep, Bash, TaskCreate, TaskUpdate | `docs/pipeline/` state files ONLY | Reads: `agent_search`, `atelier_stats`. Writes: cross-cutting decisions, phase transitions, Poirot findings. | N/A (orchestrator) |
 | **Robert** (skill) | CPO -- spec authoring | Main thread (`/pm`) | Full conversational | Spec files | Reads: prior specs, corrections. Writes: spec rationale, corrections. | N/A (skill) |
-| **Robert** (subagent) | Product acceptance reviewer | Subagent | Read, Glob, Grep, Bash | **None** (read-only) | Reads: spec evolution, prior drift. Writes: drift findings, pass verdicts. | Sonnet base; Opus on Large (classifier +2) |
+| **Robert** (subagent) | Product acceptance reviewer | Subagent | Read, Glob, Grep, Bash | **None** (read-only) | Reads: spec evolution, prior drift. Writes: drift findings, pass verdicts. | Opus, medium (Tier 2) |
 | **Sable** (skill) | UX Designer -- doc authoring | Main thread (`/ux`) | Full conversational | UX docs | Reads: prior UX decisions, a11y. Writes: UX rationale, corrections. | N/A (skill) |
-| **Sable** (subagent) | UX acceptance reviewer | Subagent | Read, Glob, Grep, Bash | **None** (read-only) | Reads: UX doc evolution. Writes: drift/missing verdicts, five-state audit. | Sonnet base; Opus on Large (classifier +2) |
+| **Sable** (subagent) | UX acceptance reviewer | Subagent | Read, Glob, Grep, Bash | **None** (read-only) | Reads: UX doc evolution. Writes: drift/missing verdicts, five-state audit. | Opus, medium (Tier 2) |
 | **Cal** (skill) | Architect -- conversational | Main thread (`/architect`) | Full conversational | None during conversation | Reads: prior decisions, constraints. | N/A (skill) |
-| **Cal** (subagent) | Architect -- ADR production | Subagent | Read, Write, Edit, Glob, Grep, Bash, Agent(roz) | ADR files | Reads: prior decisions, rejected approaches. Writes: mechanical via brain-extractor (decisions, rejections, insights). | Opus (Medium/Large) |
-| **Colby** | Senior Software Engineer | Subagent | Read, Write, Edit, MultiEdit, Glob, Grep, Bash, Agent(roz, cal) | Source files, test files | Reads: implementation patterns, gotchas. Writes: mechanical via brain-extractor (implementation insights, workarounds). | Haiku (Micro), Sonnet (Small/Medium), Opus (Large) |
-| **Roz** | QA Engineer | Subagent | Read, Write, Glob, Grep, Bash | **Test files ONLY** | Reads: QA patterns, fragile areas. Writes: mechanical via brain-extractor (recurring patterns, investigation findings, doc impact). | Sonnet base; classifier promotes to Opus (+2 full sweep, -1 scoped rerun) |
-| **Poirot** | Blind Code Investigator | Subagent | Read, Glob, Grep, Bash | **None** (read-only) | **None** -- Poirot never touches brain. Eva captures his findings. | Sonnet base; Opus at final review juncture (classifier +2) |
+| **Cal** (subagent) | Architect -- ADR production | Subagent | Read, Write, Edit, Glob, Grep, Bash, Agent(roz) | ADR files | Reads: prior decisions, rejected approaches. Writes: mechanical via brain-extractor (decisions, rejections, insights). | Opus, xhigh (Tier 4) |
+| **Colby** | Senior Software Engineer | Subagent | Read, Write, Edit, MultiEdit, Glob, Grep, Bash, Agent(roz, cal) | Source files, test files | Reads: implementation patterns, gotchas. Writes: mechanical via brain-extractor (implementation insights, workarounds). | Opus, high (Tier 3 build Medium+) / Opus, medium (Tier 2 rework or Small first-build) |
+| **Roz** | QA Engineer | Subagent | Read, Write, Glob, Grep, Bash | **Test files ONLY** | Reads: QA patterns, fragile areas. Writes: mechanical via brain-extractor (recurring patterns, investigation findings, doc impact). | Opus, high (Tier 3 sweep Medium+) / Opus, medium (Tier 2 scoped rerun) |
+| **Poirot** | Blind Code Investigator | Subagent | Read, Glob, Grep, Bash | **None** (read-only) | **None** -- Poirot never touches brain. Eva captures his findings. | Opus, high (Tier 3); xhigh at final juncture |
 | **Agatha** (skill) | Documentation -- planning | Main thread (`/docs`) | Full conversational | None during planning | N/A | N/A (skill) |
-| **Agatha** (subagent) | Documentation -- writing | Subagent | Read, Write, Edit, MultiEdit, Grep, Glob, Bash | Documentation files | Reads: prior doc reasoning, drift patterns. Writes: mechanical via brain-extractor (doc update reasoning, gap findings). | Haiku (reference docs), Sonnet (conceptual docs) |
-| **brain-extractor** | Mechanical brain capture extractor | SubagentStop hook (Haiku) | `agent_capture` (brain MCP only) | **None** | **Writes only** -- two-pass extraction per completion: (1) decisions/patterns/lessons/seeds; (2) structured quality signals per agent type (`metadata.quality_signals`). Never reads files. | Haiku (fixed) |
-| **Ellis** | Commit and Changelog Manager | Subagent | Read, Write, Edit, Glob, Grep, Bash | Git operations, changelog | N/A | Haiku (fixed) |
-| **Distillator** | Lossless Compression Engine | Subagent | Read, Glob, Grep, Bash | **None** (read-only, output returned to Eva) | **None** | Haiku (fixed; classifier exempt) |
-| **Sentinel** | Security Audit (opt-in) | Subagent | Read, Glob, Grep, Bash + Semgrep MCP (`semgrep_scan`, `semgrep_findings`) | **None** (read-only) | **None** -- Eva captures findings post-review. | Sonnet base; Opus when auth/security files change (classifier +2) |
-| **Deps** | Dependency Management (opt-in) | Subagent | Read, Glob, Grep, Bash (read-only), WebSearch, WebFetch | **None** (read-only) | Reads: prior dependency decisions. Writes: scan results, upgrade risk assessments. | Sonnet (fixed) |
-| **Darwin** | Self-Evolving Pipeline Engine (opt-in) | Subagent | Read, Glob, Grep, Bash (read-only) | **None** (read-only) | Reads: Tier 3 telemetry, prior Darwin proposals, error patterns. Eva captures proposals post-review. | Opus (fixed -- cross-metric analysis) |
+| **Agatha** (subagent) | Documentation -- writing | Subagent | Read, Write, Edit, MultiEdit, Grep, Glob, Bash | Documentation files | Reads: prior doc reasoning, drift patterns. Writes: mechanical via brain-extractor (doc update reasoning, gap findings). | Opus, medium (Tier 2 conceptual) / Haiku, low (Tier 1 reference) |
+| **brain-extractor** | Mechanical brain capture extractor | SubagentStop hook (Haiku) | `agent_capture` (brain MCP only) | **None** | **Writes only** -- two-pass extraction per completion: (1) decisions/patterns/lessons/seeds; (2) structured quality signals per agent type (`metadata.quality_signals`). Never reads files. | Haiku, low (Tier 1) |
+| **Ellis** | Commit and Changelog Manager | Subagent | Read, Write, Edit, Glob, Grep, Bash | Git operations, changelog | N/A | Haiku, low (Tier 1) |
+| **Distillator** | Lossless Compression Engine | Subagent | Read, Glob, Grep, Bash | **None** (read-only, output returned to Eva) | **None** | Haiku, low (Tier 1) |
+| **Sentinel** | Security Audit (opt-in) | Subagent | Read, Glob, Grep, Bash + Semgrep MCP (`semgrep_scan`, `semgrep_findings`) | **None** (read-only) | **None** -- Eva captures findings post-review. | Opus, medium (Tier 2); high on auth/crypto |
+| **Deps** | Dependency Management (opt-in) | Subagent | Read, Glob, Grep, Bash (read-only), WebSearch, WebFetch | **None** (read-only) | Reads: prior dependency decisions. Writes: scan results, upgrade risk assessments. | Opus, medium (Tier 2) |
+| **Darwin** | Self-Evolving Pipeline Engine (opt-in) | Subagent | Read, Glob, Grep, Bash (read-only) | **None** (read-only) | Reads: Tier 3 telemetry, prior Darwin proposals, error patterns. Eva captures proposals post-review. | Opus, high (Tier 3) |
 
 ### Forbidden Actions by Agent
 
@@ -411,7 +411,7 @@ Every agent persona file declares four standard fields in its YAML frontmatter. 
 | `maxTurns` | integer | Maximum conversation turns before the subagent is forced to return. Prevents runaway agents. |
 | `color` | string (CSS color name) | Terminal color for agent output display. Present on 6 core agents (Cal, Colby, Roz, Ellis, Robert, Sable). Omitted on agents where visual distinction is less critical. |
 
-**`model` vs `pipeline-models.md`:** The frontmatter `model` field is the base/default. Eva always runs the universal scope classifier from `pipeline-models.md` before every invocation and sets the model parameter explicitly in the Agent tool call. The classifier result can promote an agent from its base model to Opus. On Large pipelines, all agents run at Opus regardless of frontmatter. Eva is required to set the model parameter explicitly in every invocation -- omitting it is a violation even if the frontmatter declares a default.
+**`model` vs `pipeline-models.md`:** The frontmatter `model` and `effort` fields are the base/default. Eva always consults the 4-tier task-class lookup in `pipeline-models.md` before every invocation and sets both `model` and `effort` explicitly in the Agent tool call. The lookup result can promote `effort` by one rung based on promotion signals (auth/security, Large pipeline, new module, final-juncture blind review). Eva is required to set both parameters explicitly in every invocation -- omitting either is a violation even if the frontmatter declares a default.
 
 **Distributed routing (Cal and Colby, Claude Code only):** Instead of `disallowedTools`, Cal and Colby declare an explicit `tools` allowlist with scoped `Agent(...)` entries. All other 10 agents use `disallowedTools: Agent` (or its equivalent denylist) and cannot spawn subagents. Distributed routing is available on Claude Code only. On Cursor, Eva routes all agent invocations centrally.
 
@@ -513,49 +513,35 @@ When no pipeline is active, Eva classifies every user message against the intent
 
 ### Model Selection
 
-Model assignment is mechanical -- determined by the agent identity, pipeline sizing, and the universal scope classifier. Eva looks up the tables in `pipeline-models.md`. There is no discretion.
+Model assignment is mechanical -- determined by the agent's task class on a given run. Eva looks up the 4-tier tables in `pipeline-models.md`. There is no discretion: the task class fixes base `model` + base `effort`, and promotion signals adjust `effort` by at most one rung.
 
-**Size-dependent agents (base models):**
+**4-tier task-class model:**
 
-| Agent | Micro | Small | Medium | Large |
-|-------|-------|-------|--------|-------|
-| Cal | (skipped) | (skipped) | Opus | Opus |
-| Colby | Haiku | Sonnet | Sonnet | Opus |
-| Ellis | Haiku | Haiku | Haiku | Haiku |
-| Agatha | (skipped) | Per doc type | Per doc type | Per doc type |
+| Tier | Task class | Model | Base effort | Typical agents |
+|------|------------|-------|-------------|----------------|
+| Tier 1 | Mechanical -- no reasoning | Haiku | low | Ellis, Explore, Distillator, Agatha (reference), brain-extractor |
+| Tier 2 | Supporting reasoning -- review / acceptance / compliance | Opus | medium | Robert, Sable, Sentinel, Deps, Agatha (conceptual), Colby (rework), Colby (first-build Small), Roz (scoped rerun) |
+| Tier 3 | Critical-path reasoning -- creates / verifies shipped artifact | Opus | high | Colby (first-build Medium+), Roz (full sweep Medium+), Poirot, Darwin |
+| Tier 4 | Architectural design | Opus | xhigh | Cal |
 
-Agatha uses Haiku for reference docs (API, config, changelogs) and Sonnet for conceptual docs (architecture guides, tutorials).
+Model follows task class, not agent identity. A single agent can occupy different tiers on different runs -- Colby first-build Medium is Tier 3; Colby rework is Tier 2. Pipeline sizing is a tier-picker signal, not a model-setter.
 
-**Base-model agents (before classifier runs):**
+**Promotion signals (one rung each, floor `low`, ceiling `xhigh`):**
 
-| Agent | Base Model | Classifier override |
-|-------|------------|---------------------|
-| Roz | Sonnet | +2 full sweep, -1 scoped rerun |
-| Poirot | Sonnet | +2 at final review juncture |
-| Robert (subagent) | Sonnet | +2 on Large pipeline |
-| Sable (subagent) | Sonnet | +2 on Large pipeline |
-| Sentinel | Sonnet | +2 from universal auth/security signal |
-| Distillator | Haiku | Classifier exempt -- always Haiku |
+| Signal | Applies to tier | Effect |
+|--------|-----------------|--------|
+| Auth / security / crypto files touched | 2, 3 | +1 rung |
+| Pipeline sizing = Large | 2, 3 | +1 rung |
+| Poirot at final-juncture blind review | 3 | +1 rung (high -> xhigh) |
+| Read-only evidence collection (no ADR, no code) | 2 | -1 rung |
+| Task is mechanical (format, rename, config-only) | 2, 3 | -1 rung |
 
-**Universal scope classifier** (applies to all non-exempt agents on Small/Medium pipelines; Large skips the classifier and runs every agent at Opus):
-
-| Signal | Score |
-|--------|-------|
-| Wave/unit touches <= 2 files | +0 |
-| Wave/unit touches 3-5 files | +1 |
-| Wave/unit touches 6+ files | +2 |
-| Task involves auth/security/crypto | +2 |
-| Task involves state machine or complex flow | +2 |
-| Task involves new module/service creation | +2 |
-| Task is mechanical (rename, format, config) | -2 |
-| Brain shows Sonnet failures on similar tasks for this agent | +3 |
-
-Score >= 3 promotes to Opus. Score < 3 uses the base model. Agent-specific overrides are applied on top of the universal score.
+Signals are existence-checks, not scores -- multiple signals still move effort by exactly one rung. Tier 1 is immune to effort promotion; Tier 4 is already at ceiling.
 
 **Enforcement rules:**
-- Ambiguous sizing defaults UP (Opus until confirmed; all base-model agents treated as Large)
+- Ambiguous sizing defaults UP (assume Large; use higher tier for multi-tier agents like Colby and Roz until sizing is confirmed)
 - Sizing changes propagate immediately to subsequent invocations
-- Explicit model parameter required in every Agent tool invocation
+- Both `model` and `effort` parameters required explicitly in every Agent tool invocation
 
 ### State Management
 
@@ -1871,7 +1857,7 @@ The Deps agent is an opt-in, read-only dependency management agent that scans de
 
 Design rationale: ADR-0015. The agent is analysis-only -- it never modifies dependency files.
 
-**Model:** Sonnet (fixed). **Pronouns:** they/them.
+**Model:** Opus, medium (Tier 2). **Pronouns:** they/them.
 
 ### Agent Persona
 
@@ -2114,6 +2100,7 @@ Hardcoded estimates for order-of-magnitude accuracy (not for billing):
 | Opus | $0.015 | $0.075 | 200K |
 | Sonnet | $0.003 | $0.015 | 200K |
 | Haiku | $0.001 | $0.005 | 200K |
+| claude-opus-4-7 (Opus 4.7) | $0.015 | $0.075 | 200K |
 
 When model is unknown or not in the table: `cost_usd` is set to `null`.
 
@@ -2344,6 +2331,9 @@ Cost is computed using a built-in pricing table:
 | Opus | $15.00 | $75.00 |
 | Sonnet | $3.00 | $15.00 |
 | Haiku | $0.80 | $4.00 |
+| claude-opus-4-7 (Opus 4.7) | $15.00 | $75.00 |
+
+Observed effective per-M rates for this pipeline's workload (heavy input-token caching, sparse output; from `telemetry-metrics.md`): Haiku ~$0.11/M, Sonnet ~$0.33/M, Opus ~$2.22/M. Use these for rough-cut tier-cost comparisons; the per-1M list-price rows above are authoritative for `cost_usd` computation.
 
 Cache read tokens are priced at 10% of the input rate; cache creation tokens at 25%. When the model is unknown or not in the table, cost is set to `null`.
 
@@ -2676,6 +2666,7 @@ The estimate formula uses three inputs:
 | Opus | 50,000 | 8,000 | ~$1.35 |
 | Sonnet | 40,000 | 6,000 | ~$0.21 |
 | Haiku | 20,000 | 3,000 | ~$0.035 |
+| claude-opus-4-7 (Opus 4.7) | 50,000 | 8,000 | ~$1.35 |
 
 These are order-of-magnitude averages. Actual usage varies by feature complexity, context window fill, tool calls, and rework cycles.
 

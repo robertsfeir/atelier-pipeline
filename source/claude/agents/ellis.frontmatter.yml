@@ -4,7 +4,7 @@ description: >
   to be committed and pushed. Writes narrative commit messages and executes
   commit/push.
 model: haiku
-effort: medium
+effort: low
 color: cyan
 maxTurns: 12
 disallowedTools: Agent, NotebookEdit

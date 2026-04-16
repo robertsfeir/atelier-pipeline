@@ -5,6 +5,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.34.0] - 2026-04-16
+
+### Added
+
+- **ADR-0041: Effort-Per-Agent Map (Task-Class Tier Model)** — Replaces the size-dependent model tables and 13-signal universal scope classifier with a 4-tier task-class model. Tier 1 (mechanical) uses Haiku at `low` effort; Tiers 2-4 use Opus at `medium`/`high`/`xhigh` respectively. Model now follows task class, not agent identity — a single agent can occupy different tiers across runs (Colby first-build Medium is Tier 3; Colby rework is Tier 2). Pipeline sizing becomes a tier-picker signal, not a model-setter. Priority stack is accuracy > speed > cost; Sonnet is eliminated from reasoning tiers. Effort promotion is capped at one rung per invocation (floor `low`, ceiling `xhigh`). Cal defaults to `xhigh` for architectural deliberation; Sentinel, Ellis, and Distillator are effort-demoted because excess thinking tokens reduce accuracy or add no value on pattern-matching / mechanical work.
+
+- **Claude Code >= 2.1.89 compatibility note** — `effort` frontmatter field requires Claude Code 2.1.89 or newer. `pipeline-setup` emits a non-blocking warning on older versions; installation continues but agents run at Claude Code's default effort until the upgrade. Cursor does not consume the `effort` field today but frontmatter values are kept in sync for forward compatibility.
+
+### Changed
+
+- **`source/shared/rules/pipeline-models.md` fully replaced** — three new `<model-table>` blocks (`task-class-tiers`, `promotion-signals`, `agent-assignments`) plus a retained enforcement gate. Size-dependent and base-model tables, Agatha-model table, the universal scope classifier, and the brain-integration scoring bonus are removed. `.claude/rules/pipeline-models.md` and `.cursor-plugin/rules/pipeline-models.mdc` mirrors updated in lockstep.
+- **30 frontmatter files aligned to the new tier table** — 15 Claude + 15 Cursor agent frontmatter overlays now carry `model:` and `effort:` values matching the Per-Agent Assignment Table. `brain-extractor.frontmatter.yml` gains an `effort: low` field (previously absent).
+- **`docs/guide/technical-reference.md` §Model Selection** — rewritten to describe the 4-tier model and promotion signals; stale "universal scope classifier" references removed.
+- **`docs/guide/user-guide.md`** — model-selection passage updated to cite tier + effort framing.
+- **`source/shared/references/telemetry-metrics.md`** — `claude-opus-4-7` pricing row added (1.17x midpoint tokenizer inflation); Per-Invocation Cost Estimates table updated to reflect Opus-default for review/acceptance agents with a legacy annotation on the Sonnet row; ADR-0041 footnote cites the tier epoch.
+
 ## [3.33.0] - 2026-04-16
 
 ### Added
