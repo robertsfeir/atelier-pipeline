@@ -1,6 +1,6 @@
 {
   "name": "atelier-pipeline",
-  "version": "3.32.2",
+  "version": "3.33.0",
   "description": "Multi-agent orchestration for AI-powered IDEs — quality gates, wave-based QA, and persistent institutional memory",
   "license": "Apache-2.0",
   "author": {

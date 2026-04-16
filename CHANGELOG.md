@@ -5,6 +5,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.33.0] - 2026-04-16
+
+### Added
+
+- **ADR-0040: Design System Auto-Loading** — Sable and Colby now auto-detect a `design-system/` directory at the project root and load relevant files before generating UI. `tokens.md` loads always; domain files (components, navigation, data-viz, layouts) load selectively based on what is being built. No config required for the happy path. A `/load-design` skill handles external or shared design systems via an override path in `pipeline-config.json`. SVG icon assets are referenced directly — no format conversion. Design system context propagates from Sable to Colby via Eva's `<read>` tag (not `<constraints>`), consistent with retro lessons 005/006 on cross-agent context boundary failures.
+
+- **Cal mandatory institutional memory search** — Cal now performs a mandatory brain/retro search before designing any ADR. Brain available: calls `agent_search` for prior decisions, lessons, and ADRs on the same domain. Brain unavailable: reads `retro-lessons.md` and greps existing ADRs. Findings populate the DoR "Retro risks" field. Step is unconditional — silence is not a valid finding. Closes the structural gap where Cal designed without the project's own retro history (which produced the correctable `<constraints>` vs `<read>` error in the same session).
+
 ## [3.32.2] - 2026-04-15
 
 ### Fixed
