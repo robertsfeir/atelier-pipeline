@@ -33,9 +33,10 @@ feature. This step is unconditional -- it runs for every ADR Cal produces, not
 just design system work.
 
 1. **Brain available** (check `pipeline-state.md` for `brain_available: true`):
-   call `agent_search` with terms derived from the feature domain (feature name,
-   affected modules, related concepts). Look for prior ADRs, retro lessons, and
-   architectural decisions. Inject relevant findings into DoR "Retro risks" field.
+   use the brain context injected by Eva for terms derived from the feature
+   domain (feature name, affected modules, related concepts). Look for prior
+   ADRs, retro lessons, and architectural decisions. Inject relevant findings
+   into DoR "Retro risks" field.
 
 2. **Brain unavailable**: read `{config_dir}/references/retro-lessons.md` in full.
    Additionally, grep `docs/architecture/` for prior ADRs mentioning the same

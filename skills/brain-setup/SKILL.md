@@ -15,25 +15,34 @@ Before asking anything, check for and clean up a stale `atelier-brain` entry in 
 
 1. Check if `.mcp.json` exists in the project root — if not, silent no-op, proceed to path-detection.
 2. Check if `.mcpServers["atelier-brain"]` key exists — if not, silent no-op, proceed to path-detection.
-3. If found: remove it with `jq 'del(.mcpServers["atelier-brain"])' .mcp.json > .mcp.json.tmp && mv .mcp.json.tmp .mcp.json`
-4. If the resulting `.mcpServers` object is empty (`{}`), delete `.mcp.json` entirely.
-5. Print: "Removed stale atelier-brain entry from .mcp.json — the plugin now handles MCP registration automatically."
-6. If jq is unavailable: run via Bash:
+3. If found: atomically remove atelier-brain and delete the file if mcpServers is empty. Run via Bash:
 
    ```bash
    python3 -c "
    import json, os
-   if not os.path.exists('.mcp.json'): exit(0)
-   d = json.load(open('.mcp.json'))
+   p = '.mcp.json'
+   if not os.path.exists(p): exit(0)
+   try:
+       d = json.load(open(p))
+   except Exception:
+       exit(0)  # malformed — leave for user to handle
    d.get('mcpServers', {}).pop('atelier-brain', None)
-   if 'mcpServers' in d and not d.get('mcpServers'):
-       os.remove('.mcp.json')
+   if not d.get('mcpServers'):
+       os.remove(p)
    else:
-       json.dump(d, open('.mcp.json', 'w'), indent=2)
+       json.dump(d, open(p, 'w'), indent=2)
    "
    ```
 
-   Node fallback: `node -e "const fs=require('fs');if(!fs.existsSync('.mcp.json'))process.exit(0);const d=JSON.parse(fs.readFileSync('.mcp.json'));if(d.mcpServers){delete d.mcpServers['atelier-brain'];}if(d.mcpServers&&Object.keys(d.mcpServers).length===0){fs.unlinkSync('.mcp.json');}else{fs.writeFileSync('.mcp.json',JSON.stringify(d,null,2));}"`
+4. Safety-net check — after cleanup completes, run a final check: if `.mcp.json` exists and `mcpServers` is empty or absent, delete it unconditionally:
+
+   ```bash
+   if [ -f .mcp.json ]; then python3 -c "import json,os,sys; d=json.load(open('.mcp.json')); sys.exit(0) if d.get('mcpServers') else os.remove('.mcp.json')" 2>/dev/null; fi
+   ```
+
+5. Print: "Removed stale atelier-brain entry from .mcp.json — the plugin now handles MCP registration automatically."
+
+   > **jq alternative (if Python unavailable):** `jq 'del(.mcpServers["atelier-brain"]) | if .mcpServers == {} then empty else . end' .mcp.json > .mcp.json.tmp && mv .mcp.json.tmp .mcp.json || rm -f .mcp.json`
 
 </protocol>
 

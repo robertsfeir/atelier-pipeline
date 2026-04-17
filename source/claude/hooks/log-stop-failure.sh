@@ -37,21 +37,13 @@ if command -v jq &>/dev/null; then
   AGENT_TYPE=$(echo "$INPUT" | hook_lib_get_agent_type 2>/dev/null || true)
   ERROR_TYPE=$(echo "$INPUT" | jq -r '.error_type // .stop_reason // .reason // .error // empty' 2>/dev/null || true)
   ERROR_MESSAGE=$(echo "$INPUT" | jq -r '.error_message // .message // .error_details // .details // empty' 2>/dev/null || true)
-  # Last resort: capture raw payload so we have something to work with
-  if [ -z "$ERROR_TYPE" ] && [ -z "$ERROR_MESSAGE" ]; then
-    ERROR_TYPE="raw-payload"
-    ERROR_MESSAGE=$(echo "$INPUT" | jq -c '.' 2>/dev/null | head -c 500 || echo "$INPUT" | head -c 500)
-  fi
+  # When both fields are missing, defaults on lines below handle it
 else
   # jq-free fallback: extract values using grep/sed
   AGENT_TYPE=$(echo "$INPUT" | grep -o '"agent_type":"[^"]*"' | sed 's/"agent_type":"//;s/"$//' || true)
   ERROR_TYPE=$(echo "$INPUT" | grep -oE '"(error_type|stop_reason|reason|error)":"[^"]*"' | head -1 | sed 's/"[^"]*":"//;s/"$//' || true)
   ERROR_MESSAGE=$(echo "$INPUT" | grep -oE '"(error_message|message|error_details|details)":"[^"]*"' | head -1 | sed 's/"[^"]*":"//;s/"$//' || true)
-  # Last resort: capture raw payload
-  if [ -z "$ERROR_TYPE" ] && [ -z "$ERROR_MESSAGE" ]; then
-    ERROR_TYPE="raw-payload"
-    ERROR_MESSAGE=$(echo "$INPUT" | head -c 500)
-  fi
+  # When both fields are missing, defaults on lines below handle it
 fi
 
 # Default empty fields to "unknown"

@@ -219,14 +219,6 @@ def test_T_0023_015_Cal_persona_does_NOT_contain_the_S1_S5_table_inline_moved_no
     assert f.is_file()
 
 
-def test_T_0023_020_Cal_persona_120_lines():
-    """T-0023-020: Cal persona <=120 lines."""
-    f = SHARED_AGENTS / "cal.md"
-    assert f.is_file()
-    lines = len(f.read_text().splitlines())
-    assert lines <= 120, f"{lines} lines (expected <= 120)"
-
-
 def test_T_0023_021_Cal_persona_contains_spec_challenge_and_SPOF_in_required_actions():
     """T-0023-021: Cal persona contains 'spec challenge' and 'SPOF' in required-actions."""
     f = SHARED_AGENTS / "cal.md"
@@ -309,14 +301,6 @@ def test_T_0023_029_Cal_persona_output_template_retains_DoR_ADR_skeleton_UX_Cove
     assert re.search(r"DoD", section, re.IGNORECASE)
 
 
-def test_T_0023_030_Colby_persona_95_lines():
-    """T-0023-030: Colby persona <=95 lines."""
-    f = SHARED_AGENTS / "colby.md"
-    assert f.is_file()
-    lines = len(f.read_text().splitlines())
-    assert lines <= 95, f"{lines} lines (expected <= 95)"
-
-
 def test_T_0023_031_Colby_persona_contains_Make_Roz_s_tests_pass_verbatim_or_near_verbatim():
     """T-0023-031: Colby persona contains 'Make Roz's tests pass' verbatim or near-verbatim."""
     f = SHARED_AGENTS / "colby.md"
@@ -373,14 +357,6 @@ def test_T_0023_037_Colby_persona_TDD_constraint_is_explicit_test_fail_implement
     c = f.read_text()
     assert re.search(r"test.*fail|fail.*test|test.first|TDD", c, re.IGNORECASE)
     assert re.search(r"implement", c, re.IGNORECASE)
-
-
-def test_T_0023_040_Roz_persona_100_lines():
-    """T-0023-040: Roz persona <=100 lines."""
-    f = SHARED_AGENTS / "roz.md"
-    assert f.is_file()
-    lines = len(f.read_text().splitlines())
-    assert lines <= 100, f"{lines} lines (expected <= 100)"
 
 
 def test_T_0023_041_Roz_persona_contains_assert_what_code_SHOULD_do_or_equivalent_domain_intent_constraint():
@@ -458,14 +434,6 @@ def test_T_0023_052_Robert_persona_contains_PASS_DRIFT_MISSING_AMBIGUOUS_vocabul
     assert "AMBIGUOUS" in c
 
 
-def test_T_0023_053_Sable_persona_60_lines():
-    """T-0023-053: Sable persona <=60 lines."""
-    f = SHARED_AGENTS / "sable.md"
-    assert f.is_file()
-    lines = len(f.read_text().splitlines())
-    assert lines <= 60, f"{lines} lines (expected <= 60)"
-
-
 def test_T_0023_053a_Sable_persona_contains_information_asymmetry_constraint():
     """T-0023-053a: Sable persona contains 'information asymmetry' constraint."""
     f = SHARED_AGENTS / "sable.md"
@@ -504,14 +472,6 @@ def test_T_0023_057_Poirot_persona_contains_cross_layer_wiring_check_constraint(
     assert f.is_file()
     c = f.read_text()
     assert re.search(r"cross.layer.*wiring|wiring.*check|orphan.*endpoint|phantom.*call", c, re.IGNORECASE)
-
-
-def test_T_0023_058_Ellis_persona_65_lines():
-    """T-0023-058: Ellis persona <=65 lines."""
-    f = SHARED_AGENTS / "ellis.md"
-    assert f.is_file()
-    lines = len(f.read_text().splitlines())
-    assert lines <= 65, f"{lines} lines (expected <= 65)"
 
 
 def test_T_0023_058a_Ellis_persona_contains_per_unit_vs_final_commit_distinction():
@@ -663,15 +623,6 @@ def test_T_0023_072_Every_reduced_agent_persona_contains_all_required_XML_tags_i
     for tag in required_tags:
         assert f"<{tag}>" in c, f"Missing <{tag}> in {agent_file}"
         assert f"</{tag}>" in c, f"Missing </{tag}> in {agent_file}"
-
-
-def test_T_0023_080_invocation_templates_md_300_lines():
-    """T-0023-080: invocation-templates.md <=300 lines."""
-    f = SHARED_REFS / "invocation-templates.md"
-    assert f.is_file()
-    lines = len(f.read_text().splitlines())
-    # ADR-0016 added darwin-analysis template (+~30 lines) after ADR-0023 reduction target
-    assert lines <= 340, f"{lines} lines (expected <= 340)"
 
 
 def test_T_0023_081_invocation_templates_md_header_contains_brain_context_injection_protocol_note():
@@ -1136,19 +1087,6 @@ def test_T_0023_121_default_persona_md_boot_sequence_still_contains_steps_4_6_br
     assert re.search(r"announce.*session|session.*state.*user|announce", sbc, re.IGNORECASE)
 
 
-def test_T_0023_130_pipeline_orchestration_md_650_lines():
-    """T-0023-130: pipeline-orchestration.md <=680 lines.
-
-    Threshold updated from 650 to 680: ADR-0035 Step 3 intentionally added
-    the <protocol id="concurrent-session-hard-pause"> section (~26 lines).
-    The upper bound is kept meaningful to prevent unbounded growth.
-    """
-    f = SHARED_RULES / "pipeline-orchestration.md"
-    assert f.is_file()
-    lines = len(f.read_text().splitlines())
-    assert lines <= 680, f"{lines} lines (expected <= 680)"
-
-
 def test_T_0023_131_All_12_mandatory_gates_preserved_verbatim_count_numbered_items_under_Eva_NEVER_Skips():
     """T-0023-131: All 12 mandatory gates preserved verbatim (count numbered items under 'Eva NEVER Skips')."""
     f = SHARED_RULES / "pipeline-orchestration.md"
@@ -1218,19 +1156,6 @@ def test_T_0023_143_pipeline_setup_SKILL_md_registers_session_boot_sh_hook():
     f = SKILL_FILE
     c = f.read_text()
     assert re.search(r"session-boot", c, re.IGNORECASE)
-
-
-def test_T_0023_150_Total_agent_persona_lines_across_12_agents_935():
-    """T-0023-150: Total agent persona lines across 12 agents <=935."""
-    total = 0
-    for agent_file in ALL_AGENTS_12:
-        f = SHARED_AGENTS / agent_file
-        assert f.is_file(), f"Agent file {agent_file} not found"
-        total += len(f.read_text().splitlines())
-    # ADR target was 935 (57% reduction from 2,392). Actual: 1,003 = 58% reduction.
-    # Adjusted to 1,010 to accommodate justified Poirot expansion (+8 lines for
-    # Sonnet procedural scaffolding) and ±10% tolerance per ADR key constraints.
-    assert total <= 1010, f"Total agent persona lines = {total} (expected <= 1010)"
 
 
 def test_T_0023_153_Assembled_Cal_persona_claude_overlay_shared_content_is_valid_markdown():

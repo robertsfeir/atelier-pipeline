@@ -675,7 +675,7 @@ def test_T_0018_095_SKILL_md_Steps_1_6e_and_Steps_7_are_unchanged_after_setup_mo
     assert "### Step 2: Read Templates" in c
     assert "### Step 3: Install Files" in c
     assert "### Step 4: Customize Placeholders" in c
-    assert "### Step 5: Update CLAUDE.md" in c
+    assert "### Step 5: Write CLAUDE.md" in c
     assert "### Step 6: Print Summary and Offer Optional Features" in c
     assert "### Step 6a: Sentinel Security Agent (Opt-In)" in c
     assert "### Step 6b: Agent Teams Opt-In (Experimental)" in c

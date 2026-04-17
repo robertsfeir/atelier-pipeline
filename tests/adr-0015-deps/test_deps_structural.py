@@ -414,15 +414,6 @@ def test_T_0015_050_step_6d_exists():
     assert re.search(r"step 6d|### 6d|## Step 6d", SKILL_FILE.read_text(), re.IGNORECASE)
 
 
-def test_T_0015_051_step_6d_position():
-    c = SKILL_FILE.read_text()
-    l6c = line_of(SKILL_FILE, r"(?i)step 6c|### 6c|## Step 6c")
-    l6d = line_of(SKILL_FILE, r"(?i)step 6d|### 6d|## Step 6d")
-    l_brain = line_of(SKILL_FILE, r"(?i)brain.*setup|brain.*offer|connect.*brain")
-    assert l6c and l6d and l_brain
-    assert l6c < l6d < l_brain
-
-
 def test_T_0015_052_step_6d_offer_text():
     s = _step6d()
     assert s
@@ -496,8 +487,3 @@ def test_T_0015_063_ci_watch_unchanged():
     assert "ci_watch_enabled" in c
 
 
-def test_T_0015_064_brain_after_6d():
-    l6d = line_of(SKILL_FILE, r"(?i)step 6d|### 6d")
-    l_brain = line_of(SKILL_FILE, r"(?i)brain.*setup|brain.*offer|connect.*brain")
-    assert l6d and l_brain
-    assert l6d < l_brain

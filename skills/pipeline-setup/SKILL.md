@@ -91,12 +91,33 @@ Unconditionally run this cleanup on every /pipeline-setup invocation. Silent unl
 
 The Atelier Brain MCP server is now registered and managed entirely by the plugin. Older installs may have a stale project-level `.mcp.json` entry that must be removed.
 
-1. **Check .mcp.json:** Check if `.mcp.json` exists in the project root and contains an "atelier-brain" key under the `mcpServers` object. If found:
-   - Parse the JSON. If the JSON is malformed or invalid, log a warning ("Warning: .mcp.json is malformed JSON -- skipping atelier-brain entry removal. Does not block setup.") and continue to Step 1 (Gather Project Information).
-   - Remove the "atelier-brain" entry from `mcpServers`.
-   - If removing that entry leaves `mcpServers` empty, delete the `.mcp.json` file entirely with `rm -f .mcp.json`.
-   - If `mcpServers` still has other entries, write the updated JSON back to `.mcp.json`.
-   - Note that removal occurred.
+1. **Check .mcp.json:** Check if `.mcp.json` exists in the project root and contains an "atelier-brain" key under the `mcpServers` object. If found, atomically remove atelier-brain and delete the file if mcpServers is empty. Run via Bash:
+
+   ```bash
+   python3 -c "
+   import json, os
+   p = '.mcp.json'
+   if not os.path.exists(p): exit(0)
+   try:
+       d = json.load(open(p))
+   except Exception:
+       print('Warning: .mcp.json is malformed JSON -- skipping atelier-brain entry removal. Does not block setup.')
+       exit(0)
+   d.get('mcpServers', {}).pop('atelier-brain', None)
+   if not d.get('mcpServers'):
+       os.remove(p)
+   else:
+       json.dump(d, open(p, 'w'), indent=2)
+   "
+   ```
+
+   Then run the safety-net check — if `.mcp.json` still exists with empty or absent `mcpServers`, delete it unconditionally:
+
+   ```bash
+   if [ -f .mcp.json ]; then python3 -c "import json,os,sys; d=json.load(open('.mcp.json')); sys.exit(0) if d.get('mcpServers') else os.remove('.mcp.json')" 2>/dev/null; fi
+   ```
+
+   Note that removal occurred.
 2. **Print notice (conditional):** If the entry was found and removed: print exactly `Removed stale atelier-brain .mcp.json entry (now managed by plugin).`
 3. **Silent no-op:** If not found: do nothing. No output.
 

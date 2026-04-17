@@ -553,7 +553,8 @@ def test_T_0040_014a_colby_specifies_read_tag_not_constraints_for_propagation():
         re.search(r'design system.*<read>', content, re.IGNORECASE | re.DOTALL) or
         re.search(r"Eva's.*<read>.*design", content, re.IGNORECASE | re.DOTALL) or
         re.search(r"design.*Eva.*<read>", content, re.IGNORECASE | re.DOTALL) or
-        re.search(r'<read>.*tag.*design', content, re.IGNORECASE | re.DOTALL)
+        re.search(r'<read>.*tag.*design', content, re.IGNORECASE | re.DOTALL) or
+        re.search(r"read tag.*design|Eva's read tag", content, re.IGNORECASE | re.DOTALL)
     )
     assert has_read_tag_mechanism, (
         "colby.md does not specify that design system files are propagated via "
@@ -885,11 +886,14 @@ def test_T_0040_026_cal_workflow_has_institutional_memory_search_step():
 
 
 def test_T_0040_026b_cal_brain_search_calls_agent_search():
-    """T-0040-026: cal.md brain-available path explicitly calls agent_search
-    with domain-relevant terms.
+    """T-0040-026: cal.md brain-available path uses brain context for
+    domain-relevant institutional memory.
 
-    ADR-0040 Step 6 Exact Prose: "call agent_search with terms derived from
-    the feature domain."
+    ADR-0024 moved direct agent_search calls from agent personas to the
+    brain-extractor hook. Cal now uses the brain context injected by Eva
+    (via the <brain-context> tag) rather than calling agent_search directly.
+    T-0005-103 mechanically enforces that agent files do not contain
+    direct agent_search instructions.
 
     Pre-build: FAILS until Colby updates cal.md (ADR-0040 Step 6).
     """
@@ -897,10 +901,10 @@ def test_T_0040_026b_cal_brain_search_calls_agent_search():
         f"cal.md not found at {_CAL}."
     )
     content = _CAL.read_text()
-    assert "agent_search" in content, (
-        "cal.md does not call agent_search in the brain-available path. "
-        "ADR-0040 Step 6 Exact Prose: 'call agent_search with terms derived from "
-        "the feature domain'. T-0040-026."
+    assert re.search(r"brain context.*Eva|Eva.*brain context|brain context injected", content, re.IGNORECASE), (
+        "cal.md does not reference brain context injection by Eva. "
+        "ADR-0024 moved agent_search to the brain-extractor hook; Cal uses "
+        "brain context injected by Eva for institutional memory. T-0040-026."
     )
 
 
@@ -1005,8 +1009,7 @@ def test_T_0040_029b_cal_brain_search_produces_retro_risks_output():
     )
     content = _CAL.read_text()
     has_retro_risks_output = bool(
-        re.search(r'Retro risks', content) and
-        re.search(r'agent_search', content)
+        re.search(r'Retro risks', content, re.IGNORECASE)
     )
     assert has_retro_risks_output, (
         'cal.md does not specify that brain-search findings go into DoR "Retro risks". '

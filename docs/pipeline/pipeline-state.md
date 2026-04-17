@@ -1,13 +1,13 @@
 # Pipeline State
 
-<!-- PIPELINE_STATUS: {"phase": "build", "sizing": "micro", "roz_qa": null, "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": false, "robert_reviewed": false, "brain_available": true, "stop_reason": null} -->
+<!-- PIPELINE_STATUS: {"phase": "build", "sizing": "small", "roz_qa": "PASS", "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": true, "robert_reviewed": false, "brain_available": true, "stop_reason": null} -->
 
-## Active Pipeline (Micro)
-**Feature:** ADR-0041 patch — 9 Poirot/Gauntlet findings
+## Active Pipeline (Small)
+**Feature:** Pre-existing test suite failures — 87 hooks + 4 xml-prompt-structure
 **Phase:** build
-**Sizing:** Micro
+**Sizing:** Small
 **Started:** 2026-04-16
-**Scope:** 9 targeted fixes across 8 files; Roz pre-build tests authored (6 RED)
+**Root causes:** bash 3.2 incompatibility in hook scripts (${var,,}), HTML tags in colby.md, cal.md brain instruction
 
 ---
 
@@ -50,4 +50,5 @@
 **Closed:** 2026-04-12
 **Release:** v3.28.0
 </content>
-</invoke>
+</invoke><!-- COMPACTION: 2026-04-17T02:23:07Z -->
+<!-- COMPACTION: 2026-04-17T03:08:07Z -->

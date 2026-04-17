@@ -2,6 +2,7 @@ brain/node_modules/
 .claude/brain-config.json
 .claude/telemetry/
 .DS_Store
+.mcp.json
 __pycache__/
 *.pyc
 .hypothesis/

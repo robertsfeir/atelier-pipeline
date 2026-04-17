@@ -34,7 +34,7 @@ def test_T_0022_001_shared_commands():
 
 def test_T_0022_002_shared_references():
     count = len(list((SHARED_DIR / "references").glob("*.md")))
-    assert count == 14  # gauntlet.md added ADR-0034 Wave 1
+    assert count == 15  # gauntlet.md added ADR-0034 Wave 1; design-system-loading.md added ADR-0040
 
 
 def test_T_0022_003_shared_pipeline():
@@ -73,7 +73,11 @@ def test_T_0022_009_no_frontmatter_in_shared():
     found = []
     for f in SHARED_DIR.rglob("*"):
         if f.is_file():
-            first_line = f.read_text().splitlines()[0] if f.read_text() else ""
+            try:
+                text = f.read_text()
+            except (UnicodeDecodeError, Exception):
+                continue  # skip binary files (e.g. .DS_Store)
+            first_line = text.splitlines()[0] if text else ""
             if first_line.strip() == "---":
                 found.append(str(f))
     assert found == []

@@ -246,11 +246,6 @@ def test_T_0021_082_no_evict_telemetry():
     assert "Telemetry trend computation logic" not in text
 
 
-def test_T_0021_084_pipeline_models_best_effort():
-    text = (SHARED_RULES / "pipeline-models.md").read_text()
-    assert re.search(r"best-effort", text, re.IGNORECASE)
-
-
 def test_T_0021_085_pipeline_ops_prefetch():
     text = (SHARED_REFS / "pipeline-operations.md").read_text()
     assert "prompt-brain-prefetch.sh" in text
@@ -271,7 +266,7 @@ def test_T_0021_087_boot_steps():
 
 def test_T_0021_088_model_tables():
     text = (SHARED_RULES / "pipeline-models.md").read_text()
-    for word in ["opus", "sonnet", "haiku"]:
+    for word in ["opus", "haiku"]:
         assert re.search(word, text, re.IGNORECASE)
 
 

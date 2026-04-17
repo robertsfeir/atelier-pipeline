@@ -758,3 +758,90 @@ def test_T_0019_138_plugin_json_does_not_override_auto_discovery_with_explicit_p
     """T-0019-138: plugin.json does not override auto-discovery with explicit path fields."""
     pass  # Complex bats test
 
+
+# ── .mcp.json cleanup and plugin.json brain registration guards ──────────
+
+
+def _run_mcp_cleanup(directory):
+    """Simulates the brain-setup/pipeline-setup .mcp.json cleanup logic.
+
+    Mirrors the atomic Python one-liner in both SKILL.md files: removes
+    atelier-brain from mcpServers, deletes the file if mcpServers is empty,
+    then runs a safety-net check.
+    """
+    import os
+
+    p = os.path.join(directory, ".mcp.json")
+    if not os.path.exists(p):
+        return
+    try:
+        d = json.load(open(p))
+    except Exception:
+        return
+    d.get("mcpServers", {}).pop("atelier-brain", None)
+    if not d.get("mcpServers"):
+        os.remove(p)
+    else:
+        json.dump(d, open(p, "w"), indent=2)
+    # safety net
+    if os.path.exists(p):
+        try:
+            d2 = json.load(open(p))
+        except Exception:
+            return
+        if not d2.get("mcpServers"):
+            os.remove(p)
+
+
+def test_T_0019_140_claude_plugin_plugin_json_has_atelier_brain_mcp_server():
+    """T-0019-140: .claude-plugin/plugin.json has mcpServers.atelier-brain with required fields."""
+    plugin_json = PROJECT_ROOT / ".claude-plugin" / "plugin.json"
+    assert plugin_json.exists(), ".claude-plugin/plugin.json must exist"
+    data = json.loads(plugin_json.read_text())
+    assert "mcpServers" in data, "plugin.json must have mcpServers field"
+    assert "atelier-brain" in data["mcpServers"], "mcpServers must contain atelier-brain"
+    brain = data["mcpServers"]["atelier-brain"]
+    assert "command" in brain, "atelier-brain must have command"
+    assert "env" in brain, "atelier-brain must have env"
+    assert "NODE_TLS_REJECT_UNAUTHORIZED" in brain["env"], "env must contain NODE_TLS_REJECT_UNAUTHORIZED"
+
+
+def test_T_0019_141_mcp_json_cleanup_deletes_file_when_only_atelier_brain(tmp_path):
+    """T-0019-141: .mcp.json cleanup removes file entirely when atelier-brain is the only entry."""
+    mcp_file = tmp_path / ".mcp.json"
+    mcp_file.write_text(json.dumps({
+        "mcpServers": {
+            "atelier-brain": {
+                "command": "node",
+                "args": ["server.mjs"]
+            }
+        }
+    }))
+    _run_mcp_cleanup(str(tmp_path))
+    assert not mcp_file.exists(), (
+        "cleanup must delete .mcp.json when mcpServers is empty -- "
+        "leaving behind {\"mcpServers\": {}} suppresses plugin brain registration"
+    )
+
+
+def test_T_0019_142_mcp_json_cleanup_preserves_other_entries(tmp_path):
+    """T-0019-142: .mcp.json cleanup preserves non-atelier-brain entries."""
+    mcp_file = tmp_path / ".mcp.json"
+    mcp_file.write_text(json.dumps({
+        "mcpServers": {
+            "atelier-brain": {
+                "command": "node",
+                "args": ["server.mjs"]
+            },
+            "semgrep": {
+                "command": "semgrep",
+                "args": ["mcp"]
+            }
+        }
+    }))
+    _run_mcp_cleanup(str(tmp_path))
+    assert mcp_file.exists(), "cleanup must not delete .mcp.json when other entries remain"
+    data = json.loads(mcp_file.read_text())
+    assert "atelier-brain" not in data.get("mcpServers", {}), "atelier-brain must be removed"
+    assert "semgrep" in data.get("mcpServers", {}), "semgrep entry must be preserved"
+
