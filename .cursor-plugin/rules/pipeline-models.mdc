@@ -47,6 +47,7 @@ signal only; it does not set the model.
 |--------|-----------------|--------|
 | Auth / security / crypto files touched | 2, 3 | +1 rung (medium -> high -> xhigh) |
 | Pipeline sizing = Large | 2, 3 | +1 rung |
+| New module / service creation | 3 | +1 rung |
 | Poirot at final-juncture blind review | 3 only | +1 rung (high -> xhigh) |
 | Task is read-only evidence collection (no ADR, no code) | 2 | -1 rung (floor low) |
 | Task is mechanical (format, rename, config-only) | 2, 3 | -1 rung (floor low) |

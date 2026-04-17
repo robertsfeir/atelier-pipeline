@@ -51,6 +51,25 @@ def _strip_frontmatter(text: str) -> str:
     return text
 
 
+def _extract_promotion_signals_section(text: str) -> str:
+    """Extract the content of the <model-table id="promotion-signals"> block.
+
+    Returns the text between the opening tag and the closing </model-table>
+    tag (exclusive). Returns an empty string if the section is not found.
+    """
+    open_tag = '<model-table id="promotion-signals">'
+    close_tag = "</model-table>"
+    if open_tag not in text:
+        return ""
+    start = text.index(open_tag)
+    # Search for closing tag after the opening tag.
+    rest = text[start:]
+    end = rest.find(close_tag)
+    if end == -1:
+        return rest  # Unclosed tag -- return everything after open tag.
+    return rest[:end + len(close_tag)]
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Tier labels present
 # ─────────────────────────────────────────────────────────────────────────────
@@ -166,7 +185,7 @@ def test_source_rule_does_not_contain_banned_marker(banned_marker):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Promotion signals present
+# Promotion signals present (broad presence check)
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -184,6 +203,77 @@ def test_source_rule_mentions_promotion_signal(signal_phrase):
         f"source/shared/rules/pipeline-models.md does not mention promotion "
         f"signal '{signal_phrase}'. ADR-0041 Decision §Promotion Signals "
         "requires auth/security, Large, Poirot final juncture, and new-module."
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Promotion signals -- new module must be an explicit Tier 3 row
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _new_module_tier3_row_in_section(section: str) -> bool:
+    """Return True if the promotion-signals section contains a table row where
+    both 'new module' (case-insensitive) AND '3' appear on the same line.
+
+    This encodes that 'new module' must be an explicit Tier 3 promotion signal
+    row, not merely mentioned somewhere in the file.
+    """
+    for line in section.splitlines():
+        line_lower = line.lower()
+        if "new module" in line_lower and "3" in line:
+            return True
+    return False
+
+
+def test_promotion_signals_new_module_tier3_row_source():
+    """promotion-signals table in source/shared/rules/pipeline-models.md must
+    have an explicit Tier 3 row for 'new module'.
+
+    The scout swarm found the existing file has exactly 5 rows and 'new module'
+    does NOT appear as a row -- it was only referenced in the Tier 4 task-class
+    table parenthetically. The promotion-signals section requires a dedicated
+    row with explicit Tier 3 scope.
+
+    Finding: F-5 (T-0041 §Promotion Signals).
+    Pre-build: FAILS until Colby adds the row.
+    """
+    text = _read(SOURCE_RULE)
+    section = _extract_promotion_signals_section(text)
+    if not section:
+        pytest.fail(
+            'source/shared/rules/pipeline-models.md is missing the '
+            '<model-table id="promotion-signals"> section entirely.'
+        )
+    assert _new_module_tier3_row_in_section(section), (
+        "promotion-signals table must have an explicit Tier 3 row for "
+        "'new module' (F-5, ADR-0041 §Promotion Signals)"
+    )
+
+
+def test_promotion_signals_new_module_tier3_row_installed():
+    """Installed mirror .claude/rules/pipeline-models.md must also have an
+    explicit Tier 3 'new module' row in the promotion-signals section.
+
+    Same requirement as the source check (F-5) applied to the installed mirror
+    after /pipeline-setup sync. Frontmatter is stripped before inspection.
+
+    Finding: F-5, installed-mirror parity.
+    Pre-build: FAILS until Colby propagates the rewritten file via Step 6.
+    """
+    if not CLAUDE_RULE.exists():
+        pytest.skip(f"Installed mirror not found: {CLAUDE_RULE}")
+    raw = CLAUDE_RULE.read_text()
+    text = _strip_frontmatter(raw)
+    section = _extract_promotion_signals_section(text)
+    if not section:
+        pytest.fail(
+            '.claude/rules/pipeline-models.md is missing the '
+            '<model-table id="promotion-signals"> section entirely.'
+        )
+    assert _new_module_tier3_row_in_section(section), (
+        "promotion-signals table in .claude/rules/pipeline-models.md must "
+        "have an explicit Tier 3 row for 'new module' (F-5, ADR-0041 "
+        "§Promotion Signals)"
     )
 
 

@@ -25,6 +25,7 @@ A structured, multi-agent development workflow for Claude Code and Cursor. Twelv
 - [CI Watch](#ci-watch)
 - [Deps Agent](#deps-agent)
 - [Darwin Agent](#darwin-agent)
+- [Model Selection](#model-selection)
 - [Agent Telemetry](#agent-telemetry)
 - [Gauntlet Audit](#gauntlet-audit)
 - [Dashboard](#dashboard)
@@ -739,6 +740,12 @@ Set `darwin_enabled: true` in `.claude/pipeline-config.json`, or ask Eva to enab
 ### When Darwin is disabled
 
 When `darwin_enabled: false` (the default), Darwin is completely absent. No auto-trigger at pipeline end, no `/darwin` routing. Eva announces "Darwin: disabled" at session boot when `darwin_enabled: true` but the brain is unavailable.
+
+---
+
+## Model Selection
+
+Model selection follows a 4-tier task-class system. Each task class maps to a base model and effort level; see `pipeline-models.md` for the authoritative tier table. The effort field in agent frontmatter reflects this assignment.
 
 ---
 

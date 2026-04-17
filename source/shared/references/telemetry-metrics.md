@@ -118,6 +118,7 @@ Hardcoded estimates -- order-of-magnitude accuracy. Not for billing.
 | claude-opus-4 (Opus) | 0.015 | 0.075 | 200000 |
 | claude-sonnet-4-5 (Sonnet) | 0.003 | 0.015 | 200000 |
 | claude-haiku-3-5 (Haiku) | 0.001 | 0.005 | 200000 |
+| claude-opus-4-7 (Opus 4.7) | 0.0175 | 0.0875 | 200000 |
 
 **Cost formula:** `cost_usd = (input_tokens / 1000 * input_per_1k) + (output_tokens / 1000 * output_per_1k)`
 
@@ -194,6 +195,8 @@ Derived from the Cost Estimation Table above using typical context window utiliz
 | claude-opus-4 (Opus) | 50,000 | 8,000 | ~$1.35 |
 | claude-sonnet-4-5 (Sonnet) | 40,000 | 6,000 | ~$0.21 |
 | claude-haiku-3-5 (Haiku) | 20,000 | 3,000 | ~$0.035 |
+
+> Tier model introduced by ADR-0041. Per-agent effort assignments determine which row applies at invocation time.
 
 These estimates are order-of-magnitude -- not billing. Per-model pricing comes from the Cost Estimation Table above. If that table is updated with new pricing, these per-invocation estimates inherit the change.
 

@@ -1,6 +1,15 @@
 # Pipeline State
 
-<!-- PIPELINE_STATUS: {"phase": "idle", "sizing": null, "roz_qa": null, "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": false, "robert_reviewed": false, "brain_available": true, "stop_reason": null} -->
+<!-- PIPELINE_STATUS: {"phase": "build", "sizing": "micro", "roz_qa": null, "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": false, "robert_reviewed": false, "brain_available": true, "stop_reason": null} -->
+
+## Active Pipeline (Micro)
+**Feature:** ADR-0041 patch — 9 Poirot/Gauntlet findings
+**Phase:** build
+**Sizing:** Micro
+**Started:** 2026-04-16
+**Scope:** 9 targeted fixes across 8 files; Roz pre-build tests authored (6 RED)
+
+---
 
 ## Prior Pipeline (closed)
 **Feature:** ADR-0041 — Effort-per-agent task-class tier model (Opus 4.7 xhigh)
