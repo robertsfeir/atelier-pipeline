@@ -2,9 +2,9 @@
 
 <!-- CONFIGURE: Update the placeholders below to match your project -->
 <!--
-  {lint_command}      = command to run linter (e.g., npm run lint, ruff check)
-  {typecheck_command} = command to run type checker (e.g., npm run typecheck, mypy .)
-  pytest tests\/ \&\& cd brain \&\& node --test ..\/tests\/brain\/*.test.mjs      = command to run tests for changed files (e.g., npm test [path], pytest [path])
+  echo "no linter configured"      = command to run linter (e.g., npm run lint, ruff check)
+  echo "no typecheck configured" = command to run type checker (e.g., npm run typecheck, mypy .)
+  pytest tests/ && cd brain && node --test ../tests/brain/*.test.mjs      = command to run tests for changed files (e.g., npm test [path], pytest [path])
 -->
 
 Shared framework for all agents. Replaces procedural checklists with
@@ -110,7 +110,7 @@ Here is the structural pattern:
 ### Agent-Specific DoD Conditions
 
 **Colby (build):**
-- `{lint_command} && {typecheck_command} && pytest tests\/ \&\& cd brain \&\& node --test ..\/tests\/brain\/*.test.mjs` passes (full suite -- not scoped to changed files)
+- `echo "no linter configured" && echo "no typecheck configured" && pytest tests/ && cd brain && node --test ../tests/brain/*.test.mjs` passes (full suite -- not scoped to changed files)
 - If the full suite reveals failures in code Colby did not touch: fix them. "We didn't write that code" is not an exemption. Green suite before commit, full stop.
 - Grep for TODO/FIXME/HACK across changed files -- show results
 - Every ADR step acceptance criterion listed with pass evidence

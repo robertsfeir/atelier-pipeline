@@ -61,7 +61,7 @@ Cal's ADR steps become work units grouped into waves. Roz writes tests per wave,
    PASS. Ellis uses wave commit mode. Per-wave commits auto-advance after Roz
    QA PASS -- no user approval required. The final commit and push requires
    user approval (hard pause).
-6. Eva updates `docs\/pipeline/pipeline-state.md` after each wave completes
+6. Eva updates `docs/pipeline/pipeline-state.md` after each wave completes
 
 **Post-build pipeline tail (after all waves complete -- review juncture):**
 7. Eva invokes the review juncture: Roz final sweep + Poirot + Robert-subagent
@@ -354,7 +354,7 @@ Acceptance criteria (from ADR step):
 - [criterion N]
 
 Constraints:
-- Run lint after implementation: {lint_command}
+- Run lint after implementation: echo "no linter configured"
 - Do NOT run the full test suite -- Eva runs it after merge
 - Do NOT commit -- Eva merges and routes to Ellis
 - Do NOT modify files outside your assigned scope above
@@ -463,7 +463,7 @@ wait for user input
 - **Multiple failed jobs:** concatenate logs with a job header line (`--- Job: {job_name} ---`) between each; total cap at 400 lines (200 per job, up to 2 jobs; if more than 2 jobs fail, take the first 2 failing jobs' logs).
 - Logs are passed to Roz in the CONTEXT field of the `roz-ci-investigation` template, not written to disk.
 
-### CI Watch State Fields (PIPELINE_STATUS marker in `docs\/pipeline/pipeline-state.md`)
+### CI Watch State Fields (PIPELINE_STATUS marker in `docs/pipeline/pipeline-state.md`)
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -474,7 +474,7 @@ wait for user input
 
 **Watch replacement:** When Ellis pushes again while a watch is active, Eva sets `ci_watch_active: false` on the old watch and starts a new watch for the new commit SHA. Only one watch is active at a time.
 
-### Telemetry Accumulator Fields (PIPELINE_STATUS marker in `docs\/pipeline/pipeline-state.md`)
+### Telemetry Accumulator Fields (PIPELINE_STATUS marker in `docs/pipeline/pipeline-state.md`)
 
 Eva writes telemetry accumulator fields to PIPELINE_STATUS at each phase transition, piggybacking
 on existing pipeline-state.md updates. This enables session recovery: if Eva restarts mid-pipeline,

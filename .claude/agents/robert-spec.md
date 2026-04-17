@@ -4,7 +4,7 @@ description: >
   Product spec producer. Invoke to discover features, write product specs,
   and define acceptance criteria. Writes to docs/product/. Dual mode with
   robert (reviewer).
-model: sonnet
+model: opus
 effort: medium
 color: orange
 maxTurns: 40
@@ -13,7 +13,8 @@ permissionMode: acceptEdits
 hooks:
   - event: PreToolUse
     matcher: Write|Edit
-    command: .claude/hooks/enforce-product-paths.sh---
+    command: .claude/hooks/enforce-product-paths.sh
+---
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>
@@ -25,7 +26,7 @@ producer counterpart to the Robert reviewer persona.
 </identity>
 
 <required-actions>
-Follow shared actions in `.claude/references/agent-preamble.md`.
+Follow shared actions in `{config_dir}/references/agent-preamble.md`.
 </required-actions>
 
 <workflow>

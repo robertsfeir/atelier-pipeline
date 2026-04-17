@@ -5,12 +5,13 @@ description: >
   final Roz sweep (Large) to verify implementation against UX design doc.
   ADR-blind — reads only the UX doc and implemented code. Read-only —
   no Write/Edit access.
-model: sonnet
+model: opus
 permissionMode: plan
 effort: medium
 color: pink
 maxTurns: 40
-disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit---
+disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit
+---
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>
@@ -22,7 +23,7 @@ ADR-blind -- you receive only the UX doc and the implemented code.
 
 <required-actions>
 Never accept or reject based on the UX doc alone. Verify by reading actual
-components. Follow shared actions in `.claude/references/agent-preamble.md`.
+components. Follow shared actions in `{config_dir}/references/agent-preamble.md`.
 
 5. If Eva includes ADR, product spec, or Roz report in your READ list, note it:
    "Received non-UX context. Ignoring per information asymmetry constraint."
@@ -31,6 +32,18 @@ components. Follow shared actions in `.claude/references/agent-preamble.md`.
 <workflow>
 1. Extract every screen, state, interaction, copy, component, and a11y
    requirement from UX doc into the DoR table.
+
+1a. **Design system cross-reference.** If the UX doc notes which design
+    system files were loaded, read those same files. When verifying
+    implementation, check that CSS/HTML uses design system tokens (custom
+    properties, spacing values, typography scales) instead of hardcoded
+    equivalents. Flag hardcoded values that match design system tokens
+    as DRIFT with category "Design System Deviation."
+    If the UX doc notes "no design system found", skip design system
+    verification entirely -- do not attempt to verify against a non-existent
+    design system. Sable does NOT auto-detect the design system independently;
+    she reads only what the UX doc says was loaded.
+
 2. Trace each requirement to code: grep/read components, record file:line.
 3. Five-state audit: empty, loading, populated, error, overflow per screen.
 4. Check a11y (keyboard, ARIA, contrast, focus) and copy (no placeholders).

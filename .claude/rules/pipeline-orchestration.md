@@ -1,9 +1,10 @@
 ---
 paths:
-  - "docs/pipeline/**"---
+  - "docs/pipeline/**"
+---
 # Pipeline Orchestration -- Operational Procedures
 
-Loads automatically when Eva reads `docs\/pipeline/` files. Contains
+Loads automatically when Eva reads `docs/pipeline/` files. Contains
 mandatory gates, brain capture model, investigation discipline, pipeline
 flow, agent standards, and verification procedures.
 
@@ -142,7 +143,7 @@ the same severity as Eva editing source code.
    -> Ellis flow is the same as the existing worktree -> merge -> Ellis flow.
 
 3. **Full test suite between waves.** After merging wave changes, Roz
-   runs the full test suite (`pytest tests\/ \&\& cd brain \&\& node --test ..\/tests\/brain\/*.test.mjs`) on the integrated codebase.
+   runs the full test suite (`pytest tests/ && cd brain && node --test ../tests/brain/*.test.mjs`) on the integrated codebase.
    Individual units within a wave get lint+typecheck only. Roz runs the
    full suite at wave boundaries, not unit boundaries. Eva invokes Roz
    for this verification -- Eva does not run the test suite herself. Eva
@@ -335,7 +336,7 @@ This enables `agent_search` filtering by stop reason: `filter: { stop_reason: "r
 
 ## Agent Output Masking
 
-After processing each agent's return, Eva replaces the full output in her working context with a structured receipt. The full output remains on disk (in files the agent wrote, in `docs\/pipeline/last-qa-report.md`, or in brain captures). Eva re-reads from disk only when she needs detail for a downstream invocation.
+After processing each agent's return, Eva replaces the full output in her working context with a structured receipt. The full output remains on disk (in files the agent wrote, in `docs/pipeline/last-qa-report.md`, or in brain captures). Eva re-reads from disk only when she needs detail for a downstream invocation.
 
 ### Receipt Format Per Agent
 
@@ -375,7 +376,7 @@ After processing each agent's return, Eva replaces the full output in her workin
 ## Investigation Discipline
 
 When Eva enters a debug flow, she creates (or resets)
-`docs\/pipeline/investigation-ledger.md` with the symptom and an empty
+`docs/pipeline/investigation-ledger.md` with the symptom and an empty
 hypothesis table. Eva updates it after each investigation step.
 
 ### Layer Escalation Protocol
@@ -550,7 +551,7 @@ finished pipeline from a prior session, not a concurrent one).
 Eva updates `pipeline-state.md` after each wave completes, not after each
 unit. Within a wave, Eva tracks unit progress in-memory.
 
-Eva maintains five files in `docs\/pipeline`:
+Eva maintains five files in `docs/pipeline`:
 - **`pipeline-state.md`** -- Wave-level progress tracker with "Changes since last state" section.
 - **`context-brief.md`** -- Conversational decisions, corrections, user preferences. Reset per feature.
 - **`error-patterns.md`** -- Post-pipeline error log categorized by type.
@@ -564,7 +565,7 @@ Eva maintains five files in `docs\/pipeline`:
 ## Phase Sizing Rules
 
 **Robert-subagent on Small:** When Roz flags doc impact, Eva checks for an
-existing spec: `ls docs\/product/*<feature>*`. Spec exists -> run Robert.
+existing spec: `ls docs/product/*<feature>*`. Spec exists -> run Robert.
 No spec -> skip, log gap.
 
 User overrides: "full ceremony" forces Small minimum. "stop"/"hold" halts auto-advance.
@@ -690,7 +691,7 @@ adjust effort by at most one rung. No discretion.
 **DoR/DoD gate:** Spot-check DoR against spec. Verify DoD has no silent drops.
 Pass Colby's requirements to Roz for independent verification.
 
-**UX pre-flight:** Check `docs\/ux/*<feature>*`. UX doc exists -> ADR
+**UX pre-flight:** Check `docs/ux/*<feature>*`. UX doc exists -> ADR
 must have UX Coverage section. Unmapped surfaces = reject ADR.
 
 **Rejection protocol:** List gaps, re-invoke with "Revise -- missing: [list]".
@@ -716,7 +717,7 @@ Idea -> Robert spec -> Sable UX + Agatha doc plan (parallel)
 
 ### Spec Requirement (Medium/Large)
 
-`ls docs\/product/*<feature>*`. Exists -> advance. Missing -> invoke Robert-skill.
+`ls docs/product/*<feature>*`. Exists -> advance. Missing -> invoke Robert-skill.
 
 ### Sable Mockup Verification Gate
 
@@ -750,7 +751,7 @@ User overrides: "skip to [agent]", "back to [agent]", "stop".
 
 ### Context Cleanup Advisory
 
-Compaction API manages context automatically. Eva suggests fresh session only when: (a) response quality visibly degrades, (b) pipeline spans multiple days. Pipeline state preserved in `docs\/pipeline` for recovery.
+Compaction API manages context automatically. Eva suggests fresh session only when: (a) response quality visibly degrades, (b) pipeline spans multiple days. Pipeline state preserved in `docs/pipeline` for recovery.
 
 </section>
 
@@ -764,7 +765,7 @@ After Sable completes the UX doc, Colby builds a **mockup** (real UI, mock data)
 
 ## What Lives on Disk
 
-**On disk:** `docs\/product` (specs, living), `docs\/ux` (UX docs, living), `docs\/architecture` (ADRs, immutable), `{conventions_file}`, `docs\/pipeline`, `{changelog_file}`, code, tests, Agatha's docs. **NOT on disk:** QA reports, acceptance reports, agent state. See `pipeline-operations.md` for context hygiene.
+**On disk:** `docs/product` (specs, living), `docs/ux` (UX docs, living), `docs/architecture` (ADRs, immutable), `CONVENTIONS.md`, `docs/pipeline`, `CHANGELOG.md`, code, tests, Agatha's docs. **NOT on disk:** QA reports, acceptance reports, agent state. See `pipeline-operations.md` for context hygiene.
 
 <gate id="agent-standards">
 
@@ -774,9 +775,9 @@ After Sable completes the UX doc, Colby builds a **mockup** (real UI, mock data)
 - DRIFT/AMBIGUOUS from Robert/Sable = hard pause. See Triage Consensus Matrix in pipeline-operations.md.
 - Spec reconciliation is continuous. Updated living artifacts ship in same commit as code.
 - ADRs are immutable. Cal writes a new ADR to supersede; original marked "Superseded by ADR-NNN."
-- All commits follow Conventional Commits with narrative body. {changelog_file} in Keep a Changelog format.
+- All commits follow Conventional Commits with narrative body. CHANGELOG.md in Keep a Changelog format.
 - **No mock data in production code paths.** Mock data only on mockup routes for UAT. Cal flags wiring in ADR. Colby never promotes without real APIs. Roz greps for `MOCK_`, `INITIAL_`, hardcoded arrays -- BLOCKER if found.
-- **Agatha's divergence report ships in the pipeline report.** Agatha's Divergence Report (code-vs-docs gaps) must be summarized in `docs\/pipeline/pipeline-state.md`. Silently dropped divergence findings are the same class of violation as skipping spec reconciliation.
+- **Agatha's divergence report ships in the pipeline report.** Agatha's Divergence Report (code-vs-docs gaps) must be summarized in `docs/pipeline/pipeline-state.md`. Silently dropped divergence findings are the same class of violation as skipping spec reconciliation.
 
 </gate>
 

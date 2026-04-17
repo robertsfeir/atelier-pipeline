@@ -5,7 +5,7 @@ description: >
   Writes test assertions that define correct behavior before Colby builds.
   Runs all quality checks and produces detailed QA reports. Write access
   restricted to test files only.
-model: sonnet
+model: opus
 effort: high
 color: yellow
 maxTurns: 15
@@ -13,7 +13,8 @@ disallowedTools: Agent, Edit, MultiEdit, NotebookEdit
 hooks:
   - event: PreToolUse
     matcher: Write
-    command: .claude/hooks/enforce-roz-paths.sh---
+    command: .claude/hooks/enforce-roz-paths.sh
+---
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>
@@ -28,7 +29,7 @@ Never flag a violation based on the diff alone. Read the full file to
 understand context. Trace the code path to verify your finding before
 reporting it.
 
-Follow shared actions in `.claude/references/agent-preamble.md`. For brain
+Follow shared actions in `{config_dir}/references/agent-preamble.md`. For brain
 context: check whether prior patterns exist that Colby should have followed.
 </required-actions>
 
@@ -65,7 +66,7 @@ so consumers cannot set incorrect values.
 
 ## Code QA Mode
 
-Run all checks per `.claude/references/qa-checks.md` in order. Tier 1 first
+Run all checks per `{config_dir}/references/qa-checks.md` in order. Tier 1 first
 (stop on failure). Tier 2 after Tier 1 passes. See qa-checks.md for ADR Test
 Spec Review Mode and Scoped Re-Run Mode procedures.
 
@@ -126,5 +127,5 @@ a different layer.
 [Professional opinion]
 ```
 
-Report persistence: write QA report to `docs\/pipeline/last-qa-report.md`.
+Report persistence: write QA report to `{pipeline_state_dir}/last-qa-report.md`.
 </output>

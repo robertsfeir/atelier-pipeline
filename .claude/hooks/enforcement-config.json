@@ -17,12 +17,14 @@
     "kubernetes/",
     ".claude/"
   ],
-  "test_command": "pytest tests/ && cd brain && node --test ../tests/brain/*.test.mjs",
+  "test_command": "pytest tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs",
   "test_patterns": [
     ".test.",
     ".spec.",
     "/tests/",
-    "conftest",
-    ".test.mjs"
+    "/__tests__/",
+    "/test_",
+    "_test.",
+    "conftest"
   ]
 }

@@ -1,17 +1,17 @@
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 <!--
-  docs\/pipeline  = directory for pipeline state files (default: docs/pipeline/)
-  docs\/architecture    = directory for ADR files (default: docs/architecture/)
-  docs\/product   = directory for product specs (default: docs/product/)
-  docs\/ux         = directory for UX design docs (default: docs/ux/)
-  {conventions_file}    = path to conventions doc (default: docs/CONVENTIONS.md)
-  {changelog_file}      = path to changelog (default: CHANGELOG.md)
-  {test_command}        = command to run full test suite (e.g., npx vitest run, npm test, pytest)
-  {lint_command}        = command to run linter (e.g., npm run lint, ruff check)
-  {typecheck_command}   = command to run type checker (e.g., npm run typecheck, mypy .)
-  {fast_test_command}   = command for rapid inner-loop tests (e.g., npm run test:fast)
-  source\/          = project source directory (e.g., src/, lib/, app/)
-  source\/shared\/        = feature directory pattern (e.g., src/features/, app/domains/)
+  docs/pipeline  = directory for pipeline state files (default: docs/pipeline/)
+  docs/architecture    = directory for ADR files (default: docs/architecture/)
+  docs/product   = directory for product specs (default: docs/product/)
+  docs/ux         = directory for UX design docs (default: docs/ux/)
+  CONVENTIONS.md    = path to conventions doc (default: docs/CONVENTIONS.md)
+  CHANGELOG.md      = path to changelog (default: CHANGELOG.md)
+  pytest tests/ && cd brain && node --test ../tests/brain/*.test.mjs        = command to run full test suite (e.g., npx vitest run, npm test, pytest)
+  echo "no linter configured"        = command to run linter (e.g., npm run lint, ruff check)
+  echo "no typecheck configured"   = command to run type checker (e.g., npm run typecheck, mypy .)
+  pytest tests/ -q   = command for rapid inner-loop tests (e.g., npm run test:fast)
+  source/          = project source directory (e.g., src/, lib/, app/)
+  source/shared/agents/        = feature directory pattern (e.g., src/features/, app/domains/)
   {mockup_route_prefix} = route prefix for UAT mockups (default: /mock/)
   .claude          = IDE config directory (.claude for Claude Code, .cursor for Cursor)
 -->
@@ -22,7 +22,7 @@
 
 Opt-in, non-blocking persistent institutional memory.
 - **Detection:** Eva calls `atelier_stats` at pipeline start. If unavailable or `brain_enabled: false`, baseline mode. Response includes `brain_name` for announcements (not "Brain").
-- **State:** `brain_available: true|false` and `brain_name` persisted in `docs\/pipeline/pipeline-state.md`.
+- **State:** `brain_available: true|false` and `brain_name` persisted in `docs/pipeline/pipeline-state.md`.
 - **Reads:** Eva prefetches via `agent_search`, injects via `<brain-context>`; hook: `prompt-brain-prefetch.sh`.
 - **Writes:** Captured automatically -- brain-extractor SubagentStop hook captures domain-specific knowledge post-completion; hydrate-telemetry.mjs captures Eva's pipeline decisions and phase transitions at SessionStart from state files.
 - **Tools:** `agent_capture`, `agent_search`, `atelier_browse`, `atelier_stats`, `atelier_relation`, `atelier_trace` (separate from personal mybrain tools).
@@ -75,7 +75,7 @@ Hybrid skill/subagent workflow: Skills run main thread (conversational); subagen
 
 **Tools:** Read, Glob, Grep, Bash, TaskCreate, TaskGet, TaskUpdate (NO Write/Edit/MultiEdit/NotebookEdit).
 **Always-Loaded Context:** default-persona.md + agent-system.md + CLAUDE.md.
-Eva reads only from `docs\/pipeline`: pipeline-state.md, context-brief.md, error-patterns.md. (CONVENTIONS.md, dor-dod.md, retro-lessons.md are subagent concerns.)
+Eva reads only from `docs/pipeline`: pipeline-state.md, context-brief.md, error-patterns.md. (CONVENTIONS.md, dor-dod.md, retro-lessons.md are subagent concerns.)
 
 ### 1. Orchestration & Traffic Control
 - Manages all phase transitions; routes work between agents
@@ -86,7 +86,7 @@ Eva reads only from `docs\/pipeline`: pipeline-state.md, context-brief.md, error
 
 ### 2. State & Context Management
 
-Eva maintains 5 files in `docs\/pipeline`: `pipeline-state.md` (progress tracker), `context-brief.md` (conversational decisions), `error-patterns.md` (post-pipeline error log), `investigation-ledger.md` (hypothesis tracking), `last-qa-report.md` (Roz's most recent QA report). See `pipeline-orchestration.md` for detailed descriptions.
+Eva maintains 5 files in `docs/pipeline`: `pipeline-state.md` (progress tracker), `context-brief.md` (conversational decisions), `error-patterns.md` (post-pipeline error log), `investigation-ledger.md` (hypothesis tracking), `last-qa-report.md` (Roz's most recent QA report). See `pipeline-orchestration.md` for detailed descriptions.
 
 ### 3. Quality & Learning
 - Appends to `error-patterns.md` after each pipeline with Roz's findings
@@ -141,11 +141,11 @@ Classify intent outside active pipeline; route automatically.
 ### Smart Context Detection
 
 Before routing, check for existing artifacts:
-- Feature spec in `docs\/product` → skip Robert
-- UX design doc in `docs\/ux` → skip Sable
+- Feature spec in `docs/product` → skip Robert
+- UX design doc in `docs/ux` → skip Sable
 - Doc plan exists → skip Agatha (planning)
 - Feature components with mock data hooks → mockup done, go to Cal
-- ADR in `docs\/architecture` → skip Cal
+- ADR in `docs/architecture` → skip Cal
 - Code staged and tests pass → skip to Ellis
 
 ### Auto-Routing Confidence

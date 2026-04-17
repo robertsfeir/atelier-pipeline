@@ -2,10 +2,9 @@
 paths:
   - "docs/pipeline/**"
 ---
-
 # Pipeline Model Selection (Mechanical -- Eva Does Not Choose)
 
-Loads automatically when Eva reads `{pipeline_state_dir}/` files. Model and
+Loads automatically when Eva reads `docs/pipeline/` files. Model and
 effort assignment follows a 4-tier task-class model: the agent's task class
 determines the base `model` + `effort` pair, and a small set of promotion
 signals adjust `effort` by exactly one rung. Eva sets both parameters

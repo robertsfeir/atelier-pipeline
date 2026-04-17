@@ -23,8 +23,8 @@ PROJECT_ROOT="${CURSOR_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-.}}"
 FILE_PATH="${FILE_PATH//\\//}"
 PROJECT_ROOT="${PROJECT_ROOT//\\//}"
 # Case-insensitive strip to handle Windows drive letter casing (C: vs c:)
-FILE_PATH_LOWER="${FILE_PATH,,}"
-PROJECT_ROOT_LOWER="${PROJECT_ROOT,,}"
+FILE_PATH_LOWER="$(echo "$FILE_PATH" | tr '[:upper:]' '[:lower:]')"
+PROJECT_ROOT_LOWER="$(echo "$PROJECT_ROOT" | tr '[:upper:]' '[:lower:]')"
 if [[ "$FILE_PATH_LOWER" == "${PROJECT_ROOT_LOWER}/"* ]]; then
   FILE_PATH="${FILE_PATH:${#PROJECT_ROOT}+1}"
 fi
