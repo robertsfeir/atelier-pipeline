@@ -5,6 +5,27 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.35.0] - 2026-04-17
+
+### Fixed
+
+- **`.mcp.json` blank-file regression** — Cleanup steps in `brain-setup` and `pipeline-setup` now use an atomic Python one-liner that removes the `atelier-brain` entry and deletes the file in a single execution block if `mcpServers` becomes empty. Eliminates the recurring `{"mcpServers": {}}` ghost file that suppressed plugin MCP registration on next session start. A safety-net check runs after primary cleanup; destructive `|| rm -f` fallback removed (would delete valid files on Python failure). Added `.mcp.json` to `.gitignore`. New tests T-0019-140/141/142 guard the invariant.
+
+- **Bash 3.2 hook compatibility** — Eight `enforce-*-paths.sh` hook scripts used `${VAR,,}` (bash 4+ lowercase operator) which exits code 1 on macOS's default `/bin/bash` (3.2). With `set -uo pipefail`, this caused hooks to silently fail instead of blocking. Replaced with POSIX-portable `$(echo "$VAR" | tr '[:upper:]' '[:lower:]')`.
+
+- **`log-stop-failure.sh` raw-payload fallback** — Removed a fallback that replaced the `"unknown"` default with the full raw payload string when input was not valid JSON. The `extract_field` function's `"unknown"` default is now authoritative.
+
+- **`cal.md` brain instruction** — Removed a direct `agent_search` call instruction from Cal's brain context section (violates ADR-0005-103 mechanical enforcement). Cal now uses brain context injected by Eva via the `<brain-context>` tag.
+
+- **`colby.md` HTML tags in UI Contract table** — Replaced raw `<select>`, `<input>`, `<button>` HTML tags in colby.md's UI Contract table with backtick notation to prevent XML prompt schema validation failures.
+
+### Tests
+
+- Removed 8 stale line-count limit tests from `test_reduction_structural.py` (T-0023-020/030/040/053/058/080/130/150) — limits set in 2023, legitimately exceeded by subsequent ADRs.
+- Updated `test_brain_wiring.py` T-0021-088: removed Sonnet from approved model tier assertion (eliminated in ADR-0041).
+- Updated `test_adr0040_design_system.py` T-0040-026b: assertion now checks for Eva-injected brain context pattern instead of direct `agent_search` call.
+- Removed 2 stale step-ordering tests from `test_deps_structural.py` (T-0015-051/064) — brain cleanup moved to Step 0 in prior releases.
+
 ## [3.34.0] - 2026-04-16
 
 ### Added

@@ -1,13 +1,23 @@
 # Pipeline State
 
-<!-- PIPELINE_STATUS: {"phase": "build", "sizing": "small", "roz_qa": "PASS", "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": true, "robert_reviewed": false, "brain_available": true, "stop_reason": null} -->
+<!-- PIPELINE_STATUS: {"phase": "idle", "sizing": null, "roz_qa": null, "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": false, "robert_reviewed": false, "brain_available": true, "stop_reason": "completed_clean"} -->
 
-## Active Pipeline (Small)
+## Prior Pipeline (closed)
+**Feature:** v3.35.0 release — version bump + CHANGELOG
+**Phase:** idle
+**Stop Reason:** completed_clean
+**Sizing:** Micro
+**Closed:** 2026-04-17
+
+---
+
+## Prior Pipeline (closed)
 **Feature:** Pre-existing test suite failures — 87 hooks + 4 xml-prompt-structure
-**Phase:** build
+**Phase:** idle
+**Stop Reason:** completed_clean
 **Sizing:** Small
-**Started:** 2026-04-16
-**Root causes:** bash 3.2 incompatibility in hook scripts (${var,,}), HTML tags in colby.md, cal.md brain instruction
+**Closed:** 2026-04-16
+**Commit:** 3c8e7cb
 
 ---
 
