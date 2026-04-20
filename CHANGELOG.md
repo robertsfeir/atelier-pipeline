@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.36.0] - 2026-04-20
+
 ### Added
 
 - **ADR-0042: Scout Synthesis Layer and Model/Effort Tier Corrections** — Adds a Sonnet/low synthesis step between haiku scouts and the primary agent (Cal, Colby, Roz) on Medium+ pipelines. Synthesis filters/ranks/trims raw scout output into a compact per-agent brief (`<research-brief>` for Cal, `<colby-context>` for Colby, `<qa-evidence>` for Roz). Synthesis does NOT form opinions — it emits data, not judgment. Addresses Roz context exhaustion on medium+ waves by preserving `file:line` evidence while dropping full-file dumps. Eva MUST spawn scouts and synthesis as separate parallel subagents; in-thread collection silently bypasses the scout-swarm hook. The existing `enforce-scout-swarm.sh` hook is unchanged — synthesis output populates the same named blocks the hook already guards.
