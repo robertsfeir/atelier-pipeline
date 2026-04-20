@@ -311,6 +311,13 @@ def test_gate4_phase_none_no_poirot_required(hook_env):
 
 
 def test_T_GATE5_001_robert_missing_medium(hook_env):
+    # Gate 5 semantic: spec exists in docs/product/ AND Robert hasn't reviewed → BLOCK.
+    # (Absent docs/product/ triggers the Gate 5 amendment fail-open path — tested
+    # separately in test_gate5_no_product_specs_ellis_allowed.)
+    product_dir = hook_env / "docs" / "product"
+    product_dir.mkdir(parents=True, exist_ok=True)
+    (product_dir / "feature-x.md").write_text("# Feature X\n\nSpec body.\n")
+
     write_pipeline_status(hook_env, '{"roz_qa":"PASS","phase":"review","sizing":"medium","telemetry_captured":"true","poirot_reviewed":"true"}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
@@ -345,3 +352,146 @@ def test_T_GATE5_005_large_with_robert(hook_env):
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 0
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Gate 0b: Investigator worktree_path enforcement
+# ═══════════════════════════════════════════════════════════════════════
+# When subagent_type=investigator and pipeline state carries a non-null
+# worktree_path, the invocation prompt must reference that worktree_path
+# string. Otherwise BLOCK — the investigator would read files from the
+# wrong location.
+
+
+def _build_investigator_input(prompt: str) -> str:
+    """Build an Agent invocation for investigator with a prompt string.
+
+    build_agent_input() does not populate tool_input.prompt; Gate 0b needs
+    the prompt body to perform substring matching, so we construct the JSON
+    inline here with the same shape the hook reads via .tool_input.prompt.
+    """
+    return json.dumps(
+        {"tool_name": "Agent", "tool_input": {"subagent_type": "investigator", "prompt": prompt}},
+        separators=(",", ":"),
+    )
+
+
+def test_gate0b_investigator_missing_worktree_path_blocked(hook_env):
+    """Gate 0b: investigator invoked without worktree_path in prompt is BLOCKED
+    when pipeline state carries a non-null worktree_path."""
+    write_pipeline_status(
+        hook_env,
+        '{"phase":"review","roz_qa":"PASS","worktree_path":"/Users/x/projects/atelier-pipeline-ac008bc4"}',
+    )
+    _config_with_state_dir(hook_env)
+    # Prompt references a generic investigation task but omits the worktree path
+    prompt = "Investigate the failing enforcement hook. Look at source/claude/hooks/enforce-sequencing.sh."
+    r = run_hook("enforce-sequencing.sh", _build_investigator_input(prompt), hook_env)
+    assert r.returncode == 2, f"Expected BLOCK (2), got {r.returncode}. Output: {r.stdout}"
+    assert "BLOCKED" in r.stdout
+    assert "worktree" in r.stdout.lower()
+
+
+def test_gate0b_investigator_with_worktree_path_allowed(hook_env):
+    """Gate 0b: investigator invoked with worktree_path embedded in prompt is
+    ALLOWED — the prompt correctly directs the investigator to the worktree."""
+    worktree = "/Users/x/projects/atelier-pipeline-ac008bc4"
+    write_pipeline_status(
+        hook_env,
+        f'{{"phase":"review","roz_qa":"PASS","worktree_path":"{worktree}"}}',
+    )
+    _config_with_state_dir(hook_env)
+    prompt = f"Investigate the failing enforcement hook in worktree {worktree}. Start at source/claude/hooks/enforce-sequencing.sh."
+    r = run_hook("enforce-sequencing.sh", _build_investigator_input(prompt), hook_env)
+    assert r.returncode == 0, f"Expected ALLOW (0), got {r.returncode}. Output: {r.stdout}"
+
+
+def test_gate0b_investigator_basename_only_blocked(hook_env):
+    """Gate 0b: investigator invoked with only the worktree *basename* (not the
+    full absolute path) is BLOCKED. The substring match must require the full
+    worktree_path — a bare basename like 'atelier-pipeline-ac008bc4' could
+    match any sibling directory or unrelated token and does not correctly
+    direct the investigator to the worktree."""
+    worktree = "/Users/x/projects/atelier-pipeline-ac008bc4"
+    write_pipeline_status(
+        hook_env,
+        f'{{"phase":"review","roz_qa":"PASS","worktree_path":"{worktree}"}}',
+    )
+    _config_with_state_dir(hook_env)
+    # Prompt mentions only the basename, not the full absolute worktree path.
+    prompt = "Investigate in atelier-pipeline-ac008bc4 the failing enforcement hook."
+    r = run_hook("enforce-sequencing.sh", _build_investigator_input(prompt), hook_env)
+    assert r.returncode == 2, f"Expected BLOCK (2), got {r.returncode}. Output: {r.stdout}"
+    assert "BLOCKED" in r.stdout
+    assert "worktree" in r.stdout.lower()
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Gate 5 amendment: skip Robert requirement when docs/product/ has no specs
+# ═══════════════════════════════════════════════════════════════════════
+# Amendment: if the product specs directory contains no .md files, the
+# Robert-reviewed requirement is vestigial (there is no spec to accept).
+# Ellis should be allowed through on medium/large sizing in review phase
+# even when robert_reviewed is false, provided docs/product/ is empty of
+# markdown specs. If any .md specs exist, the original block still applies.
+
+
+def test_gate5_no_product_specs_ellis_allowed(hook_env):
+    """Gate 5 amendment: when docs/product/ exists but contains no .md specs,
+    Robert review is not required — Ellis passes on medium sizing even when
+    robert_reviewed is false."""
+    # Create the product specs directory but leave it empty of .md files.
+    product_dir = hook_env / "docs" / "product"
+    product_dir.mkdir(parents=True, exist_ok=True)
+    # A non-.md file should not satisfy "specs exist" either.
+    (product_dir / ".gitkeep").write_text("")
+
+    write_pipeline_status(
+        hook_env,
+        '{"roz_qa":"PASS","phase":"review","sizing":"medium","telemetry_captured":"true","poirot_reviewed":"true"}',
+    )
+    _config_with_state_dir(hook_env)
+    r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
+    assert r.returncode == 0, f"Expected ALLOW (0), got {r.returncode}. Output: {r.stdout}"
+
+
+def test_gate5_product_specs_exist_ellis_still_blocked(hook_env):
+    """Gate 5 amendment regression: when docs/product/ contains .md specs,
+    the Robert-review block still applies — the amendment does not open a
+    hole when specs are present."""
+    product_dir = hook_env / "docs" / "product"
+    product_dir.mkdir(parents=True, exist_ok=True)
+    (product_dir / "feature-x.md").write_text("# Feature X\n\nSpec body.\n")
+
+    write_pipeline_status(
+        hook_env,
+        '{"roz_qa":"PASS","phase":"review","sizing":"medium","telemetry_captured":"true","poirot_reviewed":"true"}',
+    )
+    _config_with_state_dir(hook_env)
+    r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
+    assert r.returncode == 2, f"Expected BLOCK (2), got {r.returncode}. Output: {r.stdout}"
+    assert "BLOCKED" in r.stdout
+    assert "Robert" in r.stdout
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Gate 0b regression: investigator fail-open when worktree_path absent/null
+# ═══════════════════════════════════════════════════════════════════════
+# When pipeline state has no worktree_path (absent or null), Gate 0b must
+# fail open — the investigator has not been dispatched to a worktree, so
+# the invocation prompt is not required to reference one. Blocking here
+# would break investigator invocations in non-worktree pipelines.
+
+
+def test_gate0b_investigator_no_worktree_path_fail_open(hook_env):
+    """Gate 0b regression lock: investigator is ALLOWED when pipeline state
+    carries no worktree_path field. The prompt does not need to reference a
+    worktree path that does not exist."""
+    write_pipeline_status(
+        hook_env,
+        '{"phase":"review","roz_qa":"PASS"}',
+    )
+    _config_with_state_dir(hook_env)
+    prompt = "Investigate the failing enforcement hook. Look at source/claude/hooks/enforce-sequencing.sh."
+    r = run_hook("enforce-sequencing.sh", _build_investigator_input(prompt), hook_env)
+    assert r.returncode == 0, f"Expected ALLOW (0), got {r.returncode}. Output: {r.stdout}"

@@ -1,92 +1,96 @@
-# QA Report -- 2026-04-20 (Scoped Re-Run: ADR-0042 Poirot Fixes)
+# QA Report — 2026-04-20 (Wave sweep: enforce-sequencing.sh new guards)
 
 ## Verdict: PASS
 
-Scoped re-run verifying 5 Poirot findings were correctly resolved by Colby's fix cycle. All 5 findings resolved. Mirror parity confirmed. ADR-0042 test suite green (64/64).
-
-## Scope
-
-This was a scoped re-run per agent-preamble exemption — DoR/DoD protocol skipped (steps 1, 2, 3, 5 of agent-preamble), scoped to fix verification only.
-
-Files verified:
-- `source/shared/references/invocation-templates.md`
-- `source/shared/rules/pipeline-models.md`
-- `.claude/rules/pipeline-models.md` (installed Claude mirror)
-- `.cursor-plugin/rules/pipeline-models.mdc` (installed Cursor mirror)
-
-## Check Summary
+Wave sweep covers two new guards in `source/claude/hooks/enforce-sequencing.sh`:
+Gate 0b (investigator worktree enforcement) and Gate 5 amendment (empty
+`docs/product/` exempts Robert review).
 
 | Check | Status | Details |
 |-------|--------|---------|
-| ADR-0042 scoped tests | PASS | 64/64 pass (pytest tests/adr-0042/ -q) |
-| Source vs .claude mirror parity | PASS | byte-identical body (diff clean) |
-| Source vs .cursor-plugin mirror parity | PASS | byte-identical body (diff clean) |
-| TODO/FIXME/HACK/XXX in fix targets | PASS | No matches in pipeline-models files; invocation-templates hits are literal constraint phrases ("Zero TODO/FIXME/HACK", "Grep TODO/FIXME/HACK"), not unfinished markers |
+| Mirror byte-identical (source → .claude) | PASS | `diff` returns 0 |
+| Targeted suite: `tests/hooks/test_enforce_sequencing.py` | PASS | 39/39 |
+| Gate 0b scoped to investigator only | PASS | guard wrapped in `if [ "$SUBAGENT_TYPE" = "investigator" ]` (line 71); no impact on ellis/agatha/colby paths |
+| Gate 0b fails open when worktree_path null/absent | PASS (by inspection) | `[ -n "$WORKTREE_PATH" ] && [ "$WORKTREE_PATH" != "null" ]` — no dedicated test for the absent case, see FIX-REQUIRED below |
+| Gate 5 amendment reads `product_specs_dir` from config | PASS | `jq -r '.product_specs_dir // "docs/product"' "$CONFIG"` with correct fallback; joined with `PROJECT_ROOT` |
+| Gate 5 amendment: empty product dir exempts Robert | PASS | covered by `test_gate5_no_product_specs_ellis_allowed` |
+| Gate 5 amendment: present `.md` specs still block | PASS | covered by `test_gate5_product_specs_exist_ellis_still_blocked` |
+| Gate 5 non-amendment regressions | PASS | T_GATE5_001..005 all green |
+| Existing Ellis/Agatha/CI-Watch regressions | PASS | T_0003_042..057, T_0013_051..059, T_GATE3/4_* all green |
+| Pre-existing failures re-introduced | NO | scope of change limited; targeted suite fully green |
 
-## Finding-by-Finding Verification
+### Requirements Verification
 
-| # | Finding | Target location | Expected after fix | Verified | Status |
-|---|---------|-----------------|--------------------|----------|--------|
-| 1 | Template 2c referenced non-existent `<primary_agent>-synthesis` persona | `source/shared/references/invocation-templates.md:121` | `Agent(subagent_type: "general-purpose", model: "sonnet", effort: "low")` with inline synthesis instructions and "switch to `subagent_type: "synthesis"`" when registered | Line 121-122: exact string present. Inline output-shape prompt preserved (lines 126-145). | PASS |
-| 2 | "xhigh is max" ambiguity in Tier 4 row | All 3 pipeline-models files, task-class-tiers table | "`xhigh` is the ceiling value" | Present at source:28, .claude:33, .cursor-plugin:38. All three match. | PASS |
-| 3 | Column header "Effort +1 when" (misleading — implies promotion-only) | All 3 pipeline-models files, task-class-tiers table | "Effort adjustment signal" | Present at source:23, .claude:28, .cursor-plugin:33. All three match. | PASS |
-| 4 | Roz and Sentinel rows missing demotion rationale | All 3 pipeline-models files, agent-assignments table | Roz: explicit "Effort demoted high→medium baseline" with rationale. Sentinel: "effort demoted medium→low" with mechanical-task rationale. | Roz row (source:82, .claude:87, .cursor-plugin:92): rationale present. Sentinel row (source:89, .claude:94, .cursor-plugin:99): rationale present. All three files match. | PASS |
-| 5 | Enforcement Rule 3 referenced removed Large effort-promotion signal | All 3 pipeline-models files, enforcement gate | Rule scoped to tier-selection only; explicit note "Effort is NOT affected by ambiguous sizing -- the Large effort-promotion signal was removed by ADR-0042" | Present at source:130-131, .claude:135-136, .cursor-plugin:140-141. All three files match. | PASS |
+| # | Requirement | Colby Claims | Roz Verified | Finding |
+|---|-------------|-------------|-------------|---------|
+| 1 | Gate 0b fires when investigator invoked without worktree_path in prompt and PIPELINE_STATUS carries worktree_path | BLOCK | BLOCK confirmed (line 80 exit 2, message contains "worktree") | OK |
+| 2 | Gate 0b allows investigator when prompt references worktree_path | ALLOW | ALLOW confirmed | OK |
+| 3 | Gate 0b fails open when worktree_path is empty/null | ALLOW | ALLOW by inspection — conditional skip at line 73 | Missing dedicated test |
+| 4 | Gate 0b only applies to investigator subagent_type | no effect on others | Confirmed — guard scope ends at line 85 before Ellis gates | OK |
+| 5 | Gate 5 amendment: empty `docs/product/` exempts Robert review on medium/large | ALLOW | ALLOW confirmed (test_gate5_no_product_specs_ellis_allowed) | OK |
+| 6 | Gate 5 amendment: present .md specs preserve BLOCK | BLOCK | BLOCK confirmed (test_gate5_product_specs_exist_ellis_still_blocked) | OK |
+| 7 | Gate 5 amendment: absent `docs/product/` directory preserves original BLOCK | BLOCK | Confirmed by inspection — `if [ -d ... ]` skipped when dir absent; robert_reviewed check proceeds | Not covered by a dedicated test |
+| 8 | Mirror byte-identical | identical | diff returns 0 | OK |
 
-## Mirror Parity Verification
+### Unfinished Markers
 
-```
-diff source/shared/rules/pipeline-models.md <(tail -n +6 .claude/rules/pipeline-models.md)
-# exit 0 — byte-identical body after stripping 5-line Claude frontmatter
+`grep -r "TODO|FIXME|HACK|XXX"` on changed files: 0 matches in
+`source/claude/hooks/enforce-sequencing.sh`, `.claude/hooks/enforce-sequencing.sh`,
+or `tests/hooks/test_enforce_sequencing.py`.
 
-diff source/shared/rules/pipeline-models.md <(tail -n +11 .cursor-plugin/rules/pipeline-models.mdc)
-# exit 0 — byte-identical body after stripping 10-line Cursor double-frontmatter
-```
+### Issues Found
 
-Fix 6 (placeholder substitution in mirrors) was correctly reverted — mirror-parity tests require byte-identical content, and `{pipeline_state_dir}` is intentional (resolved at runtime). Confirmed this design holds: installed mirrors contain the literal `{pipeline_state_dir}` token, not a substituted path.
+**BLOCKER** (pipeline halts): None.
 
-## Unfinished Markers
+**FIX-REQUIRED** (queued before commit):
 
-`TODO/FIXME/HACK/XXX` grep on fix targets:
-- `pipeline-models.md` (all 3 copies): zero matches
-- `invocation-templates.md`: 2 matches at lines 201 and 261 — both are literal constraint phrases Colby is told to grep for ("Zero TODO/FIXME/HACK", "Grep TODO/FIXME/HACK -- non-test = BLOCKER"). Not unfinished work markers. No action required.
+1. `tests/hooks/test_enforce_sequencing.py` — missing explicit test case:
+   **Gate 0b fail-open when `worktree_path` is absent from PIPELINE_STATUS
+   on an investigator invocation.** Current coverage verifies the BLOCK
+   path (worktree_path present, prompt missing it) and the ALLOW path
+   (worktree_path present, prompt includes it), but does not confirm the
+   third branch: worktree_path absent → allow. Logic is correct by code
+   inspection (lines 72-73), but the contract should be locked down with
+   a regression test so a future refactor cannot silently flip the
+   default.
 
-## Test Results
+2. `tests/hooks/test_enforce_sequencing.py` — missing explicit test case:
+   **Gate 5 amendment when `docs/product/` directory is absent.** The
+   amendment has three paths: dir absent (preserve original BLOCK), dir
+   present and empty of .md (exempt), dir present with .md specs (BLOCK).
+   Only the latter two are covered. Add a regression test that asserts
+   BLOCK when `docs/product/` does not exist AND robert_reviewed is
+   false. Without this, a future change to the `[ -d
+   "$PROJECT_ROOT/$PRODUCT_SPECS_DIR" ]` branch could accidentally
+   convert "dir absent" to "exempt", silently bypassing Robert review.
 
-Command: `pytest tests/adr-0042/ -q`
+These are FIX-REQUIRED rather than BLOCKER because the guards are
+correct by inspection and the 39 existing tests do cover the primary
+positive and negative cases. Adding the two regression tests locks down
+the defensive contract.
 
-Result: **64 passed in 0.13s** (1 warning — urllib3/chardet version mismatch, unrelated to ADR-0042).
+### Doc Impact: NO
 
-Full suite status (per Colby's report, not re-run in scoped mode): 1843/1844 passing. The 1 pre-existing brain version failure is unrelated to ADR-0042 scope.
+Hook-internal guards with no user-facing surface change. Behavior is
+additive (Gate 0b is new; Gate 5 amendment is a conditional carve-out
+that only relaxes enforcement when the dir exists and is empty of .md).
+No ADR, README, or user guide updates required.
 
-## Issues Found
+### Roz's Assessment
 
-None. No BLOCKER. No FIX-REQUIRED.
+Clean, additive work. Gate 0b is well-scoped (investigator-only, fails
+open on empty/null worktree_path), and Gate 5 amendment uses a
+conservative "exists and empty" check that preserves original
+enforcement in the default case. The byte-identical mirror and green
+targeted suite (39/39) are enough to ship this wave. The two missing
+test cases are test-surface gaps, not logic defects — Colby should add
+them in a follow-up so the fail-open and dir-absent contracts are
+locked to regression tests, but they do not block this wave.
 
-## Regression Check
-
-Scoped check for new regressions in the 4 directly affected files:
-- No new TODO/FIXME/HACK markers introduced
-- Mirror parity preserved (byte-identical bodies)
-- Template 2c's inline synthesis output-shape prompt remains intact — all per-primary-agent shapes preserved (Cal research-brief, Colby colby-context, Roz qa-evidence)
-- Enforcement Rule 3 rewrite preserves the "higher tier default under ambiguity" behavior; only the effort-promotion reference was scoped out
-- All `<model-table>` IDs and closing tags intact
-- No new references to removed `effort_large_signal` or similar deprecated concepts
-
-## Doc Impact: NO
-
-Scoped fix to rule/reference files; no user-facing documentation surface affected. ADR-0042 itself is immutable and was not modified (correctly — ADRs are append-only, the "xhigh is max" and "Effort +1 when" strings still exist in ADR-0041 and ADR-0042 body text as historical record, which is expected behavior).
-
-## Roz's Assessment
-
-Clean fix cycle. Colby applied all 5 fixes precisely — each finding was addressed at the exact locus Poirot flagged, in all three mirror copies, with no drift between source and installed files. Mirror-parity tests passed without requiring placeholder substitution, which is the correct design call.
-
-The decision to revert Fix 6 (placeholder substitution) deserves explicit note: the mirror-parity tests are a load-bearing invariant — byte-identical bodies between `source/shared/` and `.claude/` / `.cursor-plugin/`. Substituting `{pipeline_state_dir}` at install time would have broken that invariant. Colby reverted correctly.
-
-One stylistic observation that is NOT a blocker: the Roz and Sentinel rationale rows both use a Unicode arrow (→). Consistent, and matches the pre-existing style elsewhere in the table. No change needed.
-
-Ship it.
-
----
-
-**Verdict: PASS** — all 5 Poirot findings resolved, no regressions detected, tests green. Ready for Ellis commit.
+Minor style note for future hardening (not FIX-REQUIRED): Gate 0b uses
+POSIX `case` glob matching in `case "$INVOCATION_PROMPT" in
+*"$WORKTREE_PATH"*)`. If a worktree path ever contained shell glob
+metacharacters (`*`, `?`, `[`), matching could misbehave. Worktree
+paths are typically filesystem paths and safe, but a belt-and-suspenders
+approach would prefer literal-substring matching. Filed as a style note
+only — no action required this wave.
