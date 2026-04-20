@@ -346,22 +346,23 @@ Most agent persona files use `disallowedTools` (denylist) in their frontmatter. 
 |-------|------|---------------|-------|-------------|--------------|-------|
 | **Eva** | Pipeline Orchestrator / DevOps | Main thread (always loaded) | Read, Glob, Grep, Bash, TaskCreate, TaskUpdate | `docs/pipeline/` state files ONLY | Reads: `agent_search`, `atelier_stats`. Writes: cross-cutting decisions, phase transitions, Poirot findings. | N/A (orchestrator) |
 | **Robert** (skill) | CPO -- spec authoring | Main thread (`/pm`) | Full conversational | Spec files | Reads: prior specs, corrections. Writes: spec rationale, corrections. | N/A (skill) |
-| **Robert** (subagent) | Product acceptance reviewer | Subagent | Read, Glob, Grep, Bash | **None** (read-only) | Reads: spec evolution, prior drift. Writes: drift findings, pass verdicts. | Opus, medium (Tier 2) |
+| **Robert** (subagent) | Product acceptance reviewer | Subagent | Read, Glob, Grep, Bash | **None** (read-only) | Reads: spec evolution, prior drift. Writes: drift findings, pass verdicts. | Sonnet, medium (Tier 2) |
 | **Sable** (skill) | UX Designer -- doc authoring | Main thread (`/ux`) | Full conversational | UX docs | Reads: prior UX decisions, a11y. Writes: UX rationale, corrections. | N/A (skill) |
-| **Sable** (subagent) | UX acceptance reviewer | Subagent | Read, Glob, Grep, Bash | **None** (read-only) | Reads: UX doc evolution. Writes: drift/missing verdicts, five-state audit. | Opus, medium (Tier 2) |
+| **Sable** (subagent) | UX acceptance reviewer | Subagent | Read, Glob, Grep, Bash | **None** (read-only) | Reads: UX doc evolution. Writes: drift/missing verdicts, five-state audit. | Sonnet, medium (Tier 2) |
 | **Cal** (skill) | Architect -- conversational | Main thread (`/architect`) | Full conversational | None during conversation | Reads: prior decisions, constraints. | N/A (skill) |
 | **Cal** (subagent) | Architect -- ADR production | Subagent | Read, Write, Edit, Glob, Grep, Bash, Agent(roz) | ADR files | Reads: prior decisions, rejected approaches. Writes: mechanical via brain-extractor (decisions, rejections, insights). | Opus, xhigh (Tier 4) |
 | **Colby** | Senior Software Engineer | Subagent | Read, Write, Edit, MultiEdit, Glob, Grep, Bash, Agent(roz, cal) | Source files, test files | Reads: implementation patterns, gotchas. Writes: mechanical via brain-extractor (implementation insights, workarounds). | Opus, high (Tier 3 build Medium+) / Opus, medium (Tier 2 rework or Small first-build) |
-| **Roz** | QA Engineer | Subagent | Read, Write, Glob, Grep, Bash | **Test files ONLY** | Reads: QA patterns, fragile areas. Writes: mechanical via brain-extractor (recurring patterns, investigation findings, doc impact). | Opus, high (Tier 3 sweep Medium+) / Opus, medium (Tier 2 scoped rerun) |
+| **Roz** | QA Engineer | Subagent | Read, Write, Glob, Grep, Bash | **Test files ONLY** | Reads: QA patterns, fragile areas. Writes: mechanical via brain-extractor (recurring patterns, investigation findings, doc impact). | Opus, medium (Tier 3 sweep Medium+) / Opus, medium (Tier 2 scoped rerun) |
 | **Poirot** | Blind Code Investigator | Subagent | Read, Glob, Grep, Bash | **None** (read-only) | **None** -- Poirot never touches brain. Eva captures his findings. | Opus, high (Tier 3); xhigh at final juncture |
 | **Agatha** (skill) | Documentation -- planning | Main thread (`/docs`) | Full conversational | None during planning | N/A | N/A (skill) |
-| **Agatha** (subagent) | Documentation -- writing | Subagent | Read, Write, Edit, MultiEdit, Grep, Glob, Bash | Documentation files | Reads: prior doc reasoning, drift patterns. Writes: mechanical via brain-extractor (doc update reasoning, gap findings). | Opus, medium (Tier 2 conceptual) / Haiku, low (Tier 1 reference) |
-| **brain-extractor** | Mechanical brain capture extractor | SubagentStop hook (Haiku) | `agent_capture` (brain MCP only) | **None** | **Writes only** -- two-pass extraction per completion: (1) decisions/patterns/lessons/seeds; (2) structured quality signals per agent type (`metadata.quality_signals`). Never reads files. | Haiku, low (Tier 1) |
-| **Ellis** | Commit and Changelog Manager | Subagent | Read, Write, Edit, Glob, Grep, Bash | Git operations, changelog | N/A | Haiku, low (Tier 1) |
-| **Distillator** | Lossless Compression Engine | Subagent | Read, Glob, Grep, Bash | **None** (read-only, output returned to Eva) | **None** | Haiku, low (Tier 1) |
-| **Sentinel** | Security Audit (opt-in) | Subagent | Read, Glob, Grep, Bash + Semgrep MCP (`semgrep_scan`, `semgrep_findings`) | **None** (read-only) | **None** -- Eva captures findings post-review. | Opus, medium (Tier 2); high on auth/crypto |
-| **Deps** | Dependency Management (opt-in) | Subagent | Read, Glob, Grep, Bash (read-only), WebSearch, WebFetch | **None** (read-only) | Reads: prior dependency decisions. Writes: scan results, upgrade risk assessments. | Opus, medium (Tier 2) |
+| **Agatha** (subagent) | Documentation -- writing | Subagent | Read, Write, Edit, MultiEdit, Grep, Glob, Bash | Documentation files | Reads: prior doc reasoning, drift patterns. Writes: mechanical via brain-extractor (doc update reasoning, gap findings). | Opus, medium (Tier 2) -- always; ADR-0041's Tier 1 runtime override removed by ADR-0042 |
+| **brain-extractor** | Mechanical brain capture extractor | SubagentStop hook | `agent_capture` (brain MCP only) | **None** | **Writes only** -- two-pass extraction per completion: (1) decisions/patterns/lessons/seeds; (2) structured quality signals per agent type (`metadata.quality_signals`). Never reads files. | Sonnet, low (Tier 1) |
+| **Ellis** | Commit and Changelog Manager | Subagent | Read, Write, Edit, Glob, Grep, Bash | Git operations, changelog | N/A | Sonnet, low (Tier 1) |
+| **Distillator** | Lossless Compression Engine | Subagent | Read, Glob, Grep, Bash | **None** (read-only, output returned to Eva) | **None** | Sonnet, low (Tier 1) |
+| **Sentinel** | Security Audit (opt-in) | Subagent | Read, Glob, Grep, Bash + Semgrep MCP (`semgrep_scan`, `semgrep_findings`) | **None** (read-only) | **None** -- Eva captures findings post-review. | Opus, low (Tier 2) |
+| **Deps** | Dependency Management (opt-in) | Subagent | Read, Glob, Grep, Bash (read-only), WebSearch, WebFetch | **None** (read-only) | Reads: prior dependency decisions. Writes: scan results, upgrade risk assessments. | Sonnet, medium (Tier 2) |
 | **Darwin** | Self-Evolving Pipeline Engine (opt-in) | Subagent | Read, Glob, Grep, Bash (read-only) | **None** (read-only) | Reads: Tier 3 telemetry, prior Darwin proposals, error patterns. Eva captures proposals post-review. | Opus, high (Tier 3) |
+| **Synthesis** (new, ADR-0042) | Scout-output filter/rank/trim (post-scout, pre-primary-agent, Medium+ pipelines) | Subagent | Read, Glob, Grep | **None** (read-only; populates named block) | **None** -- does NOT form opinions. | Sonnet, low (Tier 2) |
 
 ### Forbidden Actions by Agent
 
@@ -519,29 +520,53 @@ Model assignment is mechanical -- determined by the agent's task class on a give
 
 | Tier | Task class | Model | Base effort | Typical agents |
 |------|------------|-------|-------------|----------------|
-| Tier 1 | Mechanical -- no reasoning | Haiku | low | Ellis, Explore, Distillator, Agatha (reference), brain-extractor |
-| Tier 2 | Supporting reasoning -- review / acceptance / compliance | Opus | medium | Robert, Sable, Sentinel, Deps, Agatha (conceptual), Colby (rework), Colby (first-build Small), Roz (scoped rerun) |
-| Tier 3 | Critical-path reasoning -- creates / verifies shipped artifact | Opus | high | Colby (first-build Medium+), Roz (full sweep Medium+), Poirot, Darwin |
+| Tier 1 | Mechanical -- no reasoning | Sonnet (Explore scouts use Haiku) | low | Ellis, Distillator, brain-extractor; Explore scouts (Haiku) |
+| Tier 2 | Supporting reasoning -- review / acceptance / compliance | Opus or Sonnet (per-agent; see Per-Agent Assignment Table) | medium | Robert (Sonnet), Sable (Sonnet), Deps (Sonnet), Sentinel (Opus/low), Synthesis (Sonnet/low), Agatha (Opus), robert-spec (Opus), sable-ux (Opus), Colby (rework / first-build Small), Roz (scoped rerun) |
+| Tier 3 | Critical-path reasoning -- creates / verifies shipped artifact | Opus | high (Roz: medium) | Colby (first-build Medium+), Roz (full sweep Medium+, effort medium per ADR-0042), Poirot, Darwin |
 | Tier 4 | Architectural design | Opus | xhigh | Cal |
 
-Model follows task class, not agent identity. A single agent can occupy different tiers on different runs -- Colby first-build Medium is Tier 3; Colby rework is Tier 2. Pipeline sizing is a tier-picker signal, not a model-setter.
+Model follows task class, not agent identity. A single agent can occupy different tiers on different runs -- Colby first-build Medium is Tier 3; Colby rework is Tier 2. Pipeline sizing is a tier-picker signal, not a model-setter. Tier 2 splits between Opus (authoring / design-adjacent) and Sonnet (structured review / filter-rank-trim); see the Per-Agent Assignment Table in `pipeline-models.md` for the authoritative per-agent binding.
+
+**Adaptive-thinking rationale (Opus 4.7, per ADR-0042).** Fixed thinking budgets are unsupported in Opus 4.7 -- `effort` controls the model's propensity to think adaptively. `medium` bounds adaptive-thinking capacity (appropriate for coverage-oriented review like Roz's full sweep). `high` exposes full adaptive thinking (appropriate for execution with sub-decisions -- Colby build, Poirot). `xhigh` is the default for coding and architecture (Cal, final-juncture Poirot). `max` is evaluation-only, prone to overthinking, and forbidden in production pipelines.
 
 **Promotion signals (one rung each, floor `low`, ceiling `xhigh`):**
 
 | Signal | Applies to tier | Effect |
 |--------|-----------------|--------|
-| Auth / security / crypto files touched | 2, 3 | +1 rung |
-| Pipeline sizing = Large | 2, 3 | +1 rung |
 | Poirot at final-juncture blind review | 3 | +1 rung (high -> xhigh) |
 | Read-only evidence collection (no ADR, no code) | 2 | -1 rung |
 | Task is mechanical (format, rename, config-only) | 2, 3 | -1 rung |
 
 Signals are existence-checks, not scores -- multiple signals still move effort by exactly one rung. Tier 1 is immune to effort promotion; Tier 4 is already at ceiling.
 
+ADR-0042 removed three promotion signals that were present in ADR-0041:
+- "Auth / security / crypto files touched" -- promoting generalist-agent effort does not verify security. The right response is route to **Sentinel** at the review juncture.
+- "Pipeline sizing = Large" -- more files means more coordination overhead, not more per-step deliberation. Size is a tier-picker, not a per-invocation model selector.
+- "New module / service creation" -- subsumed by Cal's `xhigh` base and Colby's `high` adaptive-thinking baseline.
+
 **Enforcement rules:**
 - Ambiguous sizing defaults UP (assume Large; use higher tier for multi-tier agents like Colby and Roz until sizing is confirmed)
 - Sizing changes propagate immediately to subsequent invocations
 - Both `model` and `effort` parameters required explicitly in every Agent tool invocation
+- **`max` effort is forbidden** (ADR-0042). Per Anthropic's Opus 4.7 adaptive-thinking guidance, `max` is evaluation-only -- prone to overthinking and degraded on production workloads. Ceiling is `xhigh`. Eva MUST NOT invoke any agent at `effort: max`.
+
+### Scout Synthesis Layer (ADR-0042)
+
+On Medium+ pipelines, after haiku scouts complete in parallel for Cal, Colby, or Roz, Eva invokes **one Sonnet/low synthesis agent** before the primary agent. Synthesis reads all raw scout outputs and produces a compact, structured brief populated into the existing named evidence block (`<research-brief>` for Cal, `<colby-context>` for Colby, `<qa-evidence>` for Roz). It filters, ranks, and trims -- **it does NOT form opinions**, propose designs, or recommend approaches.
+
+**Per-primary-agent synthesis shape** (Cal / Colby / Roz):
+
+| Primary agent | Block | Required fields |
+|---------------|-------|-----------------|
+| Cal | `<research-brief>` | Top patterns (<=5, `file:line` + one-liner); Confirmed blast-radius (<=10 files with reason); Manifest notes |
+| Colby | `<colby-context>` | Key functions/blocks in scope (extracts, not full files); Relevant patterns to replicate (<=5); Files pre-loaded (full content only if <=50 lines) |
+| Roz | `<qa-evidence>` | Changed sections (per file, changed functions/blocks only); Test baseline (N passed / N failed, failing test names only); Risk areas |
+
+An optional `Brain context` field is included when `brain_available: true`. Forbidden in every shape: full file contents over 50 lines, prose recommendations, design proposals, "best approach" narratives.
+
+**Skip conditions mirror scout skips:** Cal synthesis skipped on Small/Micro; Colby synthesis skipped on Micro and on re-invocation fix cycles; Roz synthesis skipped on scoped re-runs. When synthesis is skipped, scouts still run per ADR-0033 and raw scout output populates the block directly.
+
+**Explicit spawn directive.** Eva MUST spawn scouts **and** synthesis as separate parallel subagent invocations. Eva does NOT collect scout evidence or perform synthesis in her own turn. The `enforce-scout-swarm.sh` hook inspects the primary-agent prompt (it cannot observe Eva's in-thread reasoning). In-thread scout collection or synthesis is the same class of violation as Eva running `git commit` on code.
 
 ### State Management
 
@@ -920,7 +945,7 @@ The config file also supports an optional `brain_name` field -- a display name f
 
 ### Hybrid Capture Model
 
-Brain writes from Cal, Colby, Roz, Agatha, Robert, Robert-spec, Sable, Sable-ux, and Ellis are **mechanical**: when any of these nine agents completes, a `SubagentStop` `"type": "agent"` hook launches a lightweight Haiku extractor (`brain-extractor`). The extractor reads the parent agent's `last_assistant_message`, identifies decisions, patterns, lessons, and seeds worth preserving, and calls `agent_capture` using the correct `source_agent`, `thought_type`, `source_phase`, and `importance` values. No agent instruction is required -- the pipeline captures knowledge automatically on every completion.
+Brain writes from Cal, Colby, Roz, Agatha, Robert, Robert-spec, Sable, Sable-ux, and Ellis are **mechanical**: when any of these nine agents completes, a `SubagentStop` `"type": "agent"` hook launches a lightweight Sonnet extractor (`brain-extractor`). The extractor reads the parent agent's `last_assistant_message`, identifies decisions, patterns, lessons, and seeds worth preserving, and calls `agent_capture` using the correct `source_agent`, `thought_type`, `source_phase`, and `importance` values. No agent instruction is required -- the pipeline captures knowledge automatically on every completion.
 
 **Agent-to-metadata mapping (extractor-assigned):**
 

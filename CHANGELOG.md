@@ -5,6 +5,32 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Added
+
+- **ADR-0042: Scout Synthesis Layer and Model/Effort Tier Corrections** — Adds a Sonnet/low synthesis step between haiku scouts and the primary agent (Cal, Colby, Roz) on Medium+ pipelines. Synthesis filters/ranks/trims raw scout output into a compact per-agent brief (`<research-brief>` for Cal, `<colby-context>` for Colby, `<qa-evidence>` for Roz). Synthesis does NOT form opinions — it emits data, not judgment. Addresses Roz context exhaustion on medium+ waves by preserving `file:line` evidence while dropping full-file dumps. Eva MUST spawn scouts and synthesis as separate parallel subagents; in-thread collection silently bypasses the scout-swarm hook. The existing `enforce-scout-swarm.sh` hook is unchanged — synthesis output populates the same named blocks the hook already guards.
+
+### Changed
+
+- **Per-Agent Assignment Table rewritten** (supersedes portions of ADR-0041):
+  - Roz effort: `high` → `medium` (coverage-oriented verification; bounded adaptive thinking)
+  - Robert (acceptance) model: `opus` → `sonnet` (structured spec-vs-implementation review)
+  - Sable (acceptance) model: `opus` → `sonnet` (structured UX-vs-implementation review)
+  - Sentinel effort: `medium` → `low` (pattern-matching over Semgrep output; prevents false-positive inflation)
+  - Deps model: `opus` → `sonnet` (version diff + CVE lookup)
+  - Ellis model: `haiku` → `sonnet` (Haiku mis-applies Conventional Commits)
+  - Distillator model: `haiku` → `sonnet` (Haiku drops load-bearing facts)
+  - brain-extractor model: `haiku` → `sonnet` (Sonnet/low less error-prone on SubagentStop payload extraction)
+  - Synthesis (new row): Tier 2, `sonnet`, `low`
+- **Promotion Signals reduced to 3 rows** (supersedes portions of ADR-0041):
+  - Removed: "Auth/security/crypto files touched" (wrong lever — route to Sentinel at review juncture, do not promote generalist effort)
+  - Removed: "Pipeline sizing = Large" (more files != more per-step deliberation; size is a tier-picker, not a model-setter)
+  - Removed: "New module / service creation" (subsumed under Cal's `xhigh` base and Colby's `high` adaptive thinking)
+  - Kept: Poirot final-juncture +1, read-only evidence -1, mechanical task -1
+- **`max` effort explicitly forbidden** — Enforcement Rule 5 added to `pipeline-models.md`. Per Anthropic's Opus 4.7 adaptive-thinking guidance, `max` is evaluation-only (prone to overthinking, degraded on production workloads). Ceiling is `xhigh`.
+- **Agatha Tier 1 runtime override removed** — Agatha is always Tier 2 (`opus`, `medium`). The ADR-0041 "reference docs → runtime Haiku/low" row was not mechanically enforceable; runtime discretion is exactly what ADR-0009 forbids.
+- **`docs/guide/technical-reference.md` §Model Selection** — Agent Table updated to reflect Robert/Sable (Sonnet), Roz (medium), Sentinel (low), Ellis/Distillator/brain-extractor (Sonnet), Agatha (always Tier 2); Promotion Signals table trimmed; Synthesis row added; adaptive-thinking rationale paragraph added.
+- **`docs/guide/user-guide.md`** — "lightweight Haiku extractor" updated to "lightweight Sonnet extractor" for the brain-extractor description.
+
 ## [3.35.0] - 2026-04-17
 
 ### Fixed
