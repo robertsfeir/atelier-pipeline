@@ -4,7 +4,7 @@ description: >
   CVEs via audit tools, predicts breakage by cross-referencing usage patterns
   against changelogs, and produces a risk-grouped report. Opt-in via
   pipeline-config.json. Invoked on-demand via /deps or auto-routing.
-model: opus
+model: sonnet
 permissionMode: plan
 effort: medium
 maxTurns: 40

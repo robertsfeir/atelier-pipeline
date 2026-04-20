@@ -28,6 +28,7 @@ tool invocation. `duration_ms = end_time - start_time`.
 | 2 | cal-adr-large | Cal | ADR production with research brief (medium/large) |
 | 2a | scout-research-brief | Explore+haiku (x3) | Pre-Cal research scouts (medium+large) |
 | 2b | codebase-investigation | Explore+haiku (xN) → Sonnet reviewer | Ad-hoc codebase scan: partition by area, collect evidence, synthesize |
+| 2c | scout-synthesis | Sonnet | Post-scout filter/rank/trim before primary agent |
 | 3 | colby-mockup | Colby | UI mockup with mock data |
 | 4 | colby-build | Colby | Build unit; **CI Watch variant:** scope to CI fix |
 | 5 | roz-investigation | Roz | Bug investigation; **CI Watch variant:** CI logs in CONTEXT |
@@ -101,11 +102,67 @@ Three scouts launched in parallel by Eva. Each receives one focused prompt.
 <task>Identify source files likely in scope for [feature area]: files matching the feature name, adjacent modules, integration points, test files.</task>
 <constraints>- Return file paths only. Max 15 files. Prefer specific over broad.</constraints>
 <output>blast_radius_files: [path, ...]</output>
+
+**Post-scout synthesis:** After all three scouts return, Eva invokes Template 2c (scout-synthesis) before invoking Cal. Scout raw output is passed to the synthesis agent, not directly to Cal. Synthesis produces the compact `<research-brief>` block consumed by Cal.
 </template>
 
 <template id="codebase-investigation">
 ### Codebase Investigation (Explore+haiku → Sonnet)
 Ad-hoc read-only surveys (security mapping, architecture reviews, dependency tracing). No ADR, no code changes. Eva fans out parallel area scouts — `Agent(subagent_type: "Explore", model: "haiku")`, one concern per scout, facts only, `findings: [{file, line, description}]`. Passes evidence to `Agent(model: "sonnet")` via named `<scout-evidence>` blocks. Synthesis produces structured findings table with file:line evidence. DoR/DoD.
+</template>
+
+<template id="scout-synthesis">
+### Scout Synthesis (Sonnet filter/rank/trim, post-scout, pre-primary-agent)
+<task>Filter, rank, and trim scout outputs into the named block for the primary agent. Emit only the required field names per the output shape. No opinions, no design proposals.</task>
+Eva invokes ONE Sonnet agent after scouts complete. Synthesis reads all
+scout outputs and produces the compact block consumed by Cal/Colby/Roz.
+Does NOT form opinions. Filters, ranks, trims only.
+
+**Invocation:** `Agent(subagent_type: "general-purpose", model: "sonnet", effort: "low")`
+with the synthesis output-shape prompt embedded inline. When a dedicated `synthesis` persona is registered in a future ADR, switch to `subagent_type: "synthesis"`.
+
+Block populated: `<research-brief>` (Cal) / `<colby-context>` (Colby) / `<qa-evidence>` (Roz).
+
+**Per-primary-agent output shape:**
+
+Cal synthesis fills `<research-brief>`:
+- Top patterns (<=5 ranked by relevance): [file:line + one-line description]
+- Confirmed blast-radius (<=10 files with reason): [list]
+- Manifest notes: [conflicts or "none"]
+- Brain context (top 3 thoughts): [excerpts; omit when brain unavailable]
+
+Colby synthesis fills `<colby-context>`:
+- Key functions/blocks in scope for this step (NOT full files -- extract only the
+  functions/classes/blocks the step will touch): [list]
+- Relevant patterns to replicate (<=5, file:line + one-line description): [list]
+- Files pre-loaded (full content only if <=50 lines): [list]
+- Brain context (top 2 patterns for this step): [excerpts; omit when brain unavailable]
+
+Roz synthesis fills `<qa-evidence>`:
+- Changed sections (per file: ONLY the changed functions/blocks, NOT full file): [list]
+- Test baseline: [N passed, N failed, failing test names only]
+- Risk areas (specific functions/paths worth scrutiny): [list]
+- Brain context (prior QA findings on this feature area): [excerpts; omit when brain unavailable]
+
+**Forbidden in all synthesis output:**
+- Full file contents over 50 lines
+- Prose explanation of what the primary agent should decide
+- Design proposals or architectural recommendations
+- Ranked "best approach" narratives
+- Commentary beyond one-line descriptions on file:line entries
+
+**Skip conditions (mirror scout skips):**
+- Cal: Small and Micro pipelines
+- Colby: Micro pipelines AND re-invocation fix cycles
+- Roz: Scoped re-run mode
+
+<constraints>
+- Filter/rank/trim only -- no opinions.
+- Emit the exact field names above. Missing required fields = BLOCKED by primary-agent DoR.
+- No file content over 50 lines per entry.
+- Brain context field omitted when `brain_available: false`.
+</constraints>
+<output>The named block (Cal/Colby/Roz), populated per shape above.</output>
 </template>
 
 <template id="colby-mockup">
@@ -126,10 +183,13 @@ Ad-hoc read-only surveys (security mapping, architecture reviews, dependency tra
 **CI Watch variant:** TASK = "Fix CI failure -- [root cause]". CONTEXT includes
 Roz's CI diagnosis + failure logs. Scope to the specific CI failure.
 <task>Implement ADR-NNNN Step N -- [description]</task>
+<!-- `<colby-context>` is populated by Template 2c (scout-synthesis) on Medium+ pipelines;
+     raw scout output is pre-filtered to Key functions/blocks, Relevant patterns, Files pre-loaded. -->
 <colby-context>
-  <existing-code>[Existing-code scout: contents of files the ADR step will modify]</existing-code>
-  <patterns>[Patterns scout: grep results for similar constructs, file:line only]</patterns>
-  <brain>[Brain scout: agent_search results for ADR step description (only when brain_available: true)]</brain>
+  <key-functions-blocks-in-scope>[Synthesis: functions/classes/blocks this step will touch]</key-functions-blocks-in-scope>
+  <relevant-patterns-to-replicate>[Synthesis: ≤5 file:line + one-line description]</relevant-patterns-to-replicate>
+  <files-pre-loaded>[Synthesis: full content only if ≤50 lines]</files-pre-loaded>
+  <brain>[Brain scout synthesis: top 2 patterns (only when brain_available: true)]</brain>
 </colby-context>
 <context>Roz's tests define correct behavior. Make them pass. Do not modify assertions.
 [Prior step's Contracts Produced table when consuming a contract.]</context>
@@ -187,9 +247,13 @@ includes CI logs (200 lines/job), branch, SHA, platform. Diagnose from logs.
 In `unit-qa` mode, Eva adds to CONSTRAINTS: "Mode: unit-qa — run Tier 1 targeted tests only; Tier 2 limited to checks 8 (Security) and 11 (Dependencies)."
 In `wave-sweep` mode, Eva adds to CONSTRAINTS: "Mode: wave-sweep — run full test suite; full Tier 2."
 <task>Full QA on ADR-NNNN Wave W -- Steps [N, M, ...]</task>
+<!-- `<qa-evidence>` is populated by Template 2c (scout-synthesis) on Medium+ pipelines;
+     raw scout output is pre-filtered to Changed sections, Test baseline, Risk areas. -->
 <qa-evidence>
-  <changed-files>[File scout: file contents or diff hunks]</changed-files>
-  <test-output>[Test scout: pytest output, head -100]</test-output>
+  <changed-sections>[Synthesis: per file, ONLY the changed functions/blocks, NOT full file]</changed-sections>
+  <test-baseline>[Synthesis: N passed, N failed, failing test names only]</test-baseline>
+  <risk-areas>[Synthesis: specific functions/paths worth scrutiny]</risk-areas>
+  <brain>[Brain scout synthesis: prior QA findings (only when brain_available: true)]</brain>
 </qa-evidence>
 <read>{config_dir}/references/qa-checks.md</read>
 <constraints>

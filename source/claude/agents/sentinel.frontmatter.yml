@@ -5,6 +5,6 @@ description: >
   misconfigurations in changed code. Opt-in via pipeline-config.json.
 model: opus
 permissionMode: plan
-effort: medium
+effort: low
 maxTurns: 40
 disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit

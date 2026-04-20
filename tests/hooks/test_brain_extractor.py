@@ -7,6 +7,10 @@ FAIL before Wave 1 is implemented (brain-extractor.md does not exist yet,
 settings.json does not have the agent hook yet).
 
 Colby MUST NOT modify these assertions.
+
+Note: T-0024-005 and T-0033-028 were updated per ADR-0042 -- the
+brain-extractor model was changed from `haiku` to `sonnet` (see
+ADR-0042 CHANGED_AGENT_EXPECTED).
 """
 
 import json
@@ -181,24 +185,26 @@ def test_T_0024_004_extractor_persona_file_exists():
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# T-0024-005: brain-extractor frontmatter specifies model: haiku
+# T-0024-005: brain-extractor frontmatter specifies model: sonnet (per ADR-0042)
 # ═══════════════════════════════════════════════════════════════════════
 
 
 def test_T_0024_005_extractor_model_is_haiku():
-    """brain-extractor frontmatter must specify model: haiku (or a haiku variant).
+    """brain-extractor frontmatter must specify model: sonnet (or a sonnet variant).
 
-    The extractor is a minimal extraction agent -- Opus/Sonnet would be wasteful
-    and inconsistent with the ADR decision rationale.
+    Per ADR-0042, the brain-extractor model was changed from haiku to sonnet
+    (see CHANGED_AGENT_EXPECTED in tests/fixtures/adr_0042_baselines.py).
+    The test function name is preserved for history; the assertion now reflects
+    the ADR-0042 supersession.
     """
     assert EXTRACTOR_FRONTMATTER.exists(), (
         f"brain-extractor.frontmatter.yml not found -- T-0024-015 must pass first"
     )
     fm = parse_frontmatter(EXTRACTOR_FRONTMATTER)
     model = fm.get("model", "")
-    assert re.search(r"haiku", str(model), re.IGNORECASE), (
-        f"brain-extractor model is '{model}', expected a haiku model. "
-        "ADR-0024 specifies Haiku for cost-efficient extraction."
+    assert re.search(r"sonnet", str(model), re.IGNORECASE), (
+        f"brain-extractor model is '{model}', expected a sonnet model. "
+        "ADR-0042 supersedes ADR-0024: brain-extractor now uses Sonnet."
     )
 
 
@@ -457,7 +463,7 @@ def test_T_0024_029b_installed_warn_brain_capture_absent():
 #
 # T-0033-018: persona early-exit guard lists all 9 target agent types
 # T-0033-019: persona agent-to-metadata table has 9 unique rows
-# T-0033-028: frontmatter uses `model: haiku` stable alias
+# T-0033-028: frontmatter uses `model: sonnet` stable alias (per ADR-0042)
 # T-0033-029: frontmatter description lists 9 agent types
 #
 # Colby MUST NOT modify these assertions.
@@ -593,19 +599,24 @@ def test_T_0033_019_extractor_metadata_table_has_nine_unique_rows():
 
 
 def test_T_0033_028_extractor_frontmatter_model_is_haiku_alias():
-    """brain-extractor.frontmatter.yml must use the stable `model: haiku`
-    alias rather than a dated string like `claude-haiku-4-5-20251001`.
+    """brain-extractor.frontmatter.yml must use the stable `model: sonnet`
+    alias rather than a dated string.
 
-    ADR-0033 Step 5 (m5): avoids pinning to a dated model string that goes
-    stale on every Anthropic release.
+    Per ADR-0042, the brain-extractor model was changed from `haiku` to
+    `sonnet` (see CHANGED_AGENT_EXPECTED in adr_0042_baselines.py). The
+    stable-alias requirement from ADR-0033 Step 5 (m5) still holds --
+    avoid dated model strings like `claude-sonnet-4-5-20251001`.
+
+    The test function name is preserved for history; the assertion now
+    reflects the ADR-0042 supersession.
     """
     assert EXTRACTOR_FRONTMATTER.exists(), "brain-extractor.frontmatter.yml not found"
     fm = parse_frontmatter(EXTRACTOR_FRONTMATTER)
     model = fm.get("model")
-    assert model == "haiku", (
-        f"brain-extractor model should be exactly 'haiku' (stable alias). "
-        f"Got {model!r}. ADR-0033 Step 5 (m5) replaces the dated model string "
-        f"with the stable alias."
+    assert model == "sonnet", (
+        f"brain-extractor model should be exactly 'sonnet' (stable alias). "
+        f"Got {model!r}. ADR-0042 supersedes ADR-0024/ADR-0033's haiku "
+        f"assignment -- brain-extractor now uses Sonnet."
     )
 
 

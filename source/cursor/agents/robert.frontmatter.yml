@@ -4,7 +4,7 @@ description: >
   implementation against product spec. ADR-blind — reads only the spec
   and implemented code. Flags spec drift and doc accuracy. Read-only —
   no Write/Edit access.
-model: opus
+model: sonnet
 effort: medium
 color: orange
 maxTurns: 40

@@ -5,9 +5,9 @@ Assignment Table x 2 platforms (Claude + Cursor) = 30 assertions.
 
 Covers test-spec IDs T-0041-025 through T-0041-039 (both platforms).
 
-Pre-build: majority of assertions FAIL -- reasoning-tier agents still carry
-`sonnet` or outdated effort values. That is the expected pre-build signal
-per Roz-first TDD (retro lesson 002).
+Expected values updated per ADR-0042 (supersedes ADR-0041 per-agent
+assignments). The unchanged agents retain the ADR-0041 values; the 8
+agents listed in ADR-0042 carry the new (model, effort) pairs.
 """
 
 import re
@@ -20,23 +20,27 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CLAUDE_AGENTS_DIR = PROJECT_ROOT / "source" / "claude" / "agents"
 CURSOR_AGENTS_DIR = PROJECT_ROOT / "source" / "cursor" / "agents"
 
-# ADR-0041 §Per-Agent Assignment Table (authoritative runtime lookup).
+# ADR-0042 §Per-Agent Assignment Table (supersedes ADR-0041).
+# Unchanged agents (per ADR-0042 UNCHANGED_AGENT_EXPECTED): cal, colby,
+# investigator, darwin, robert-spec, sable-ux, agatha.
+# Changed agents (per ADR-0042 CHANGED_AGENT_EXPECTED): roz, robert, sable,
+# sentinel, deps, ellis, distillator, brain-extractor.
 EXPECTED = {
-    "cal":             {"model": "opus",  "effort": "xhigh"},
-    "colby":           {"model": "opus",  "effort": "high"},
-    "roz":             {"model": "opus",  "effort": "high"},
-    "investigator":    {"model": "opus",  "effort": "high"},
-    "robert":          {"model": "opus",  "effort": "medium"},
-    "robert-spec":     {"model": "opus",  "effort": "medium"},
-    "sable":           {"model": "opus",  "effort": "medium"},
-    "sable-ux":        {"model": "opus",  "effort": "medium"},
-    "sentinel":        {"model": "opus",  "effort": "medium"},
-    "deps":            {"model": "opus",  "effort": "medium"},
-    "darwin":          {"model": "opus",  "effort": "high"},
-    "agatha":          {"model": "opus",  "effort": "medium"},
-    "ellis":           {"model": "haiku", "effort": "low"},
-    "distillator":     {"model": "haiku", "effort": "low"},
-    "brain-extractor": {"model": "haiku", "effort": "low"},
+    "cal":             {"model": "opus",   "effort": "xhigh"},
+    "colby":           {"model": "opus",   "effort": "high"},
+    "roz":             {"model": "opus",   "effort": "medium"},
+    "investigator":    {"model": "opus",   "effort": "high"},
+    "robert":          {"model": "sonnet", "effort": "medium"},
+    "robert-spec":     {"model": "opus",   "effort": "medium"},
+    "sable":           {"model": "sonnet", "effort": "medium"},
+    "sable-ux":        {"model": "opus",   "effort": "medium"},
+    "sentinel":        {"model": "opus",   "effort": "low"},
+    "deps":            {"model": "sonnet", "effort": "medium"},
+    "darwin":          {"model": "opus",   "effort": "high"},
+    "agatha":          {"model": "opus",   "effort": "medium"},
+    "ellis":           {"model": "sonnet", "effort": "low"},
+    "distillator":     {"model": "sonnet", "effort": "low"},
+    "brain-extractor": {"model": "sonnet", "effort": "low"},
 }
 
 PLATFORMS = [
@@ -94,11 +98,12 @@ _PARAMS = [
 @pytest.mark.parametrize("agent,platform,agents_dir", _PARAMS)
 def test_frontmatter_model_and_effort(agent, platform, agents_dir):
     """For each (agent, platform): the frontmatter file carries the `model`
-    and `effort` values from ADR-0041 §Per-Agent Assignment Table.
+    and `effort` values from ADR-0042 §Per-Agent Assignment Table.
 
-    Pre-build: FAILS for reasoning-tier agents still carrying `sonnet`, for
-    Cal still carrying `high` effort, and for brain-extractor missing the
-    `effort` field altogether.
+    ADR-0042 supersedes ADR-0041's per-agent assignments: the 8 changed
+    agents (roz, robert, sable, sentinel, deps, ellis, distillator,
+    brain-extractor) carry new (model, effort) pairs; the remaining 7
+    agents retain their ADR-0041 values.
     """
     path = agents_dir / f"{agent}.frontmatter.yml"
     fm = _parse_frontmatter(path)
@@ -114,7 +119,7 @@ def test_frontmatter_model_and_effort(agent, platform, agents_dir):
     )
     assert _model_matches(actual_model, expected_model), (
         f"{path}: expected model family '{expected_model}' but got "
-        f"'{actual_model}'. ADR-0041 §Per-Agent Assignment Table requires "
+        f"'{actual_model}'. ADR-0042 §Per-Agent Assignment Table requires "
         f"the {agent} agent to use {expected_model} base model."
     )
 
@@ -124,6 +129,6 @@ def test_frontmatter_model_and_effort(agent, platform, agents_dir):
     )
     assert actual_effort == expected_effort, (
         f"{path}: expected effort '{expected_effort}' but got "
-        f"'{actual_effort}'. ADR-0041 §Per-Agent Assignment Table assigns "
+        f"'{actual_effort}'. ADR-0042 §Per-Agent Assignment Table assigns "
         f"{expected_effort} to the {agent} agent."
     )

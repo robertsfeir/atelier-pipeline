@@ -5,7 +5,7 @@ description: >
   last_assistant_message, extracts decisions, patterns, lessons, and seeds,
   then performs a second pass to capture structured quality signals per
   agent_type (ADR-0025), calls agent_capture via atelier-brain MCP.
-model: haiku
+model: sonnet
 effort: low
 maxTurns: 5
 tools:

@@ -8,6 +8,11 @@ expected signal.
 
 Reference: ADR-0041 §Test Specification (T-0041-001 through T-0041-017)
 and §Implementation Steps 1 and 6.
+
+ADR-0042 amendments: the `security` (auth / security / crypto) and
+`new module` promotion-signal rows were removed from pipeline-models.md.
+Tests that previously asserted their presence now assert their absence;
+the Tier-3 new-module row tests are inverted similarly.
 """
 
 from pathlib import Path
@@ -186,28 +191,62 @@ def test_source_rule_does_not_contain_banned_marker(banned_marker):
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Promotion signals present (broad presence check)
+#
+# ADR-0042 amendment: the `security` (auth/security/crypto) and `new module`
+# rows were removed from the Promotion Signals table. The remaining signals
+# (Large, final juncture) must still be present.
 # ─────────────────────────────────────────────────────────────────────────────
 
 
 @pytest.mark.parametrize(
     "signal_phrase",
-    ["auth", "security", "Large", "final juncture", "new module"],
+    ["Large", "final juncture"],
 )
 def test_source_rule_mentions_promotion_signal(signal_phrase):
-    """The Promotion Signals table must carry the signals ADR-0041 enumerates.
+    """The Promotion Signals table must carry the signals that remain after
+    ADR-0042 pruning (Large, Poirot final juncture).
 
-    Pre-build: FAILS until Colby writes the promotion-signals section.
+    ADR-0042 removed the `auth / security / crypto` and `new module` rows;
+    those values are tested separately as ABSENT in the companion test.
     """
     text = _read(SOURCE_RULE)
     assert signal_phrase in text, (
         f"source/shared/rules/pipeline-models.md does not mention promotion "
         f"signal '{signal_phrase}'. ADR-0041 Decision §Promotion Signals "
-        "requires auth/security, Large, Poirot final juncture, and new-module."
+        "requires Large and Poirot final juncture (auth/security and "
+        "new-module rows removed by ADR-0042)."
+    )
+
+
+@pytest.mark.parametrize(
+    "removed_signal",
+    ["auth / security / crypto", "new module"],
+)
+def test_source_rule_does_not_mention_removed_promotion_signal(removed_signal):
+    """ADR-0042 removed the `auth / security / crypto` and `new module` rows
+    from the Promotion Signals table. These signal phrases must NOT appear
+    in the promotion-signals section after ADR-0042 lands.
+
+    The phrase is checked within the promotion-signals section only --
+    incidental mentions elsewhere in the file (e.g. examples, footnotes)
+    do not violate the ADR.
+    """
+    text = _read(SOURCE_RULE)
+    section = _extract_promotion_signals_section(text)
+    if not section:
+        pytest.fail(
+            'source/shared/rules/pipeline-models.md is missing the '
+            '<model-table id="promotion-signals"> section entirely.'
+        )
+    assert removed_signal.lower() not in section.lower(), (
+        f"promotion-signals section still contains removed signal "
+        f"'{removed_signal}'. ADR-0042 removed this row; it must no longer "
+        f"appear in the promotion-signals table."
     )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Promotion signals -- new module must be an explicit Tier 3 row
+# Promotion signals -- new module row removed by ADR-0042
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -215,8 +254,9 @@ def _new_module_tier3_row_in_section(section: str) -> bool:
     """Return True if the promotion-signals section contains a table row where
     both 'new module' (case-insensitive) AND '3' appear on the same line.
 
-    This encodes that 'new module' must be an explicit Tier 3 promotion signal
-    row, not merely mentioned somewhere in the file.
+    Pre-ADR-0042 this encoded 'new module must be an explicit Tier 3
+    promotion-signal row'. ADR-0042 removed that row; the helper now serves
+    the inverted assertion (must NOT be present).
     """
     for line in section.splitlines():
         line_lower = line.lower()
@@ -227,15 +267,14 @@ def _new_module_tier3_row_in_section(section: str) -> bool:
 
 def test_promotion_signals_new_module_tier3_row_source():
     """promotion-signals table in source/shared/rules/pipeline-models.md must
-    have an explicit Tier 3 row for 'new module'.
+    NOT have a Tier 3 row for 'new module' -- ADR-0042 removed it.
 
-    The scout swarm found the existing file has exactly 5 rows and 'new module'
-    does NOT appear as a row -- it was only referenced in the Tier 4 task-class
-    table parenthetically. The promotion-signals section requires a dedicated
-    row with explicit Tier 3 scope.
+    Previously (ADR-0041 F-5) this asserted the row was present. ADR-0042
+    supersedes that requirement: the new-module promotion-signal was removed
+    because it duplicated the Tier 4 task-class parenthetical.
 
-    Finding: F-5 (T-0041 §Promotion Signals).
-    Pre-build: FAILS until Colby adds the row.
+    The test function name is preserved for history; the assertion now
+    reflects the ADR-0042 supersession.
     """
     text = _read(SOURCE_RULE)
     section = _extract_promotion_signals_section(text)
@@ -244,21 +283,23 @@ def test_promotion_signals_new_module_tier3_row_source():
             'source/shared/rules/pipeline-models.md is missing the '
             '<model-table id="promotion-signals"> section entirely.'
         )
-    assert _new_module_tier3_row_in_section(section), (
-        "promotion-signals table must have an explicit Tier 3 row for "
-        "'new module' (F-5, ADR-0041 §Promotion Signals)"
+    assert not _new_module_tier3_row_in_section(section), (
+        "promotion-signals table must NOT have a Tier 3 row for 'new module'. "
+        "ADR-0042 removed this row; if it still appears, the source template "
+        "has not been fully migrated."
     )
 
 
 def test_promotion_signals_new_module_tier3_row_installed():
-    """Installed mirror .claude/rules/pipeline-models.md must also have an
-    explicit Tier 3 'new module' row in the promotion-signals section.
+    """Installed mirror .claude/rules/pipeline-models.md must also NOT have a
+    Tier 3 'new module' row in the promotion-signals section.
 
-    Same requirement as the source check (F-5) applied to the installed mirror
+    Same requirement as the source check applied to the installed mirror
     after /pipeline-setup sync. Frontmatter is stripped before inspection.
 
-    Finding: F-5, installed-mirror parity.
-    Pre-build: FAILS until Colby propagates the rewritten file via Step 6.
+    Previously (ADR-0041 F-5) this asserted the row was present. ADR-0042
+    supersedes that requirement. The test function name is preserved for
+    history; the assertion now reflects the ADR-0042 supersession.
     """
     if not CLAUDE_RULE.exists():
         pytest.skip(f"Installed mirror not found: {CLAUDE_RULE}")
@@ -270,10 +311,10 @@ def test_promotion_signals_new_module_tier3_row_installed():
             '.claude/rules/pipeline-models.md is missing the '
             '<model-table id="promotion-signals"> section entirely.'
         )
-    assert _new_module_tier3_row_in_section(section), (
-        "promotion-signals table in .claude/rules/pipeline-models.md must "
-        "have an explicit Tier 3 row for 'new module' (F-5, ADR-0041 "
-        "§Promotion Signals)"
+    assert not _new_module_tier3_row_in_section(section), (
+        "promotion-signals table in .claude/rules/pipeline-models.md must NOT "
+        "have a Tier 3 row for 'new module'. ADR-0042 removed this row; if it "
+        "still appears in the installed mirror, the sync is incomplete."
     )
 
 

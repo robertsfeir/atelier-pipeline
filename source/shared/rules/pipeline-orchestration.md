@@ -607,6 +607,8 @@ Eva fans out Explore+haiku agents in parallel before invoking Cal, Roz, or Colby
 
 **Invocation:** `Agent(subagent_type: "Explore", model: "haiku")`. Facts only — no design opinions. Dedup rule: each file read by at most one scout.
 
+**Explicit spawn requirement:** Eva MUST spawn scouts as separate parallel subagent invocations. Eva MUST spawn the synthesis agent as a separate parallel subagent invocation after scouts return for Cal, Colby, or Roz. Eva does NOT collect scout evidence in her own turn. Eva does NOT synthesize in her own turn. Performing either task in-thread silently bypasses the fan-out and the scout-swarm hook cannot detect the bypass (the hook inspects the primary-agent prompt; it does not observe Eva's in-thread reasoning). In-thread scout collection or synthesis is the same class of violation as Eva running `git commit` on code.
+
 #### Per-Agent Configuration
 
 | Agent | Block | Scouts | Skip condition |
@@ -617,6 +619,8 @@ Eva fans out Explore+haiku agents in parallel before invoking Cal, Roz, or Colby
 | **brain-hydrate** | `<hydration-content>` | ADR scout (reads `docs/architecture/ADR-*.md` or `docs/adrs/ADR-*.md`), Spec scout (reads `docs/product/*.md`), UX scout (reads `docs/ux/*.md`), Pipeline scout (reads error-patterns + retro-lessons + context-brief), Git scout (runs `git log`, filters significant commits) | Per-source type skip when user excludes that source type from scope or scan finds 0 files for that category |
 
 All scouts are `Agent(subagent_type: "Explore", model: "haiku")`. Explore agents inherit project MCP servers — the Brain scout calls `agent_search` directly, no custom agent needed. Eva collects all scout results and populates the named block before invoking the agent.
+
+**Synthesis step (Medium+ pipelines, applies to Cal, Colby, and Roz):** After scouts return for a primary agent (Cal / Colby / Roz), Eva invokes a single Sonnet synthesis agent per Template 2c (scout-synthesis) before invoking the primary agent. Synthesis filters/ranks/trims scout output into the compact named block (`<research-brief>` for Cal, `<colby-context>` for Colby, `<qa-evidence>` for Roz) — synthesis replaces the raw scout dump in the block. Skip conditions mirror the scout skip table (Cal: Small/Micro; Colby: Micro + re-invocation fix cycle; Roz: scoped re-run). The brain-hydrate flow is a batch hydration pipeline, not a primary-agent invocation — it does not use the synthesis step.
 
 **Note:** Brain scout only fires when `brain_available: true`. When brain is unavailable, the Brain scout row is skipped and the `<brain>` element is omitted from the context block.
 
