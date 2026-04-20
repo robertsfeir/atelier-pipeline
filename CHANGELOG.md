@@ -5,6 +5,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.37.0] - 2026-04-20
+
+### Added
+
+- **ADR-0043: Gate 0b — Investigator/Poirot worktree path enforcement** — New PreToolUse guard blocks `investigator` subagent invocations that do not reference the active `worktree_path` from PIPELINE_STATUS. Prevents Poirot from reading files in the main repository instead of the session worktree, which caused false-positive and false-negative findings. Fails open when no `worktree_path` is present in state (no active pipeline). Implemented in `enforce-sequencing.sh` as Gate 0b, before all other gates.
+
+### Fixed
+
+- **ADR-0043: Gate 5 amendment — Robert requirement conditional on product spec existence** — Gate 5 (Robert must review on Medium/Large pipelines at the review juncture) previously blocked Ellis on all Medium/Large pipelines regardless of whether a product spec existed. For pipeline-internal changes (hook guards, orchestration fixes, infrastructure) with no `docs/product/*.md` files, Robert was reviewing Eva's own rubric — circular and incorrect. Gate 5 now reads `product_specs_dir` from `pipeline-config.json` and counts spec files with `-maxdepth 1` (direct children only; excludes README.md and archived specs in subdirectories). Zero spec files → Ellis proceeds without Robert.
+
 ## [3.36.0] - 2026-04-20
 
 ### Added
