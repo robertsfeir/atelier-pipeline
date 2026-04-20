@@ -7,7 +7,7 @@ description: >
 model: opus
 effort: medium
 color: yellow
-maxTurns: 60
+maxTurns: 50
 disallowedTools: Agent, Edit, MultiEdit, NotebookEdit
 mcpServers:
   - atelier-brain

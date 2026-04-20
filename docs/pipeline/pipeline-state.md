@@ -3,6 +3,29 @@
 <!-- PIPELINE_STATUS: {"phase": "idle", "sizing": null, "roz_qa": null, "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": false, "robert_reviewed": false, "brain_available": true, "stop_reason": "completed_clean"} -->
 
 ## Prior Pipeline (closed)
+**Feature:** Roz maxTurns bump (15 → 50) — fix turn-cap truncation mid-generation
+**Phase:** idle
+**Stop Reason:** completed_clean
+**Sizing:** Micro
+**Opened:** 2026-04-20
+**Closed:** 2026-04-20
+**Commit:** (see commit log)
+
+**Scope:** Frontmatter edits (maxTurns: 15 → 50):
+- `.claude/agents/roz.md` (installed)
+- `source/claude/agents/roz.frontmatter.yml` (source template)
+- `source/cursor/agents/roz.frontmatter.yml` (source template, synced down for parity)
+- Closed pipeline-state.md itself in same commit.
+
+**Rationale:** Roz hit 15-turn ceiling and truncated mid-sentence on tool-heavy QA runs. Peer agents are at 40–75; Roz=15 is a documented outlier. 50 matches peer range (agatha=60, cal=45, colby=75).
+
+**Out of scope:** validate-dod-marker.sh hook (confirmed orphan artifact from abandoned Apr 17 iteration; not in git; shipped in local plugin cache only). `effort` discrepancy between roz.md (high) and source yml (medium) — tracked separately.
+
+**Micro skips:** scout fan-out for Colby, brain capture T2/T3, budget estimate gate. Roz full suite still runs as safety valve.
+
+---
+
+## Prior Pipeline (closed)
 **Feature:** v3.35.0 release — version bump + CHANGELOG
 **Phase:** idle
 **Stop Reason:** completed_clean

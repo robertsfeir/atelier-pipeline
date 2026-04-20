@@ -8,7 +8,7 @@ description: >
 model: opus
 effort: high
 color: yellow
-maxTurns: 15
+maxTurns: 50
 disallowedTools: Agent, Edit, MultiEdit, NotebookEdit
 hooks:
   - event: PreToolUse
