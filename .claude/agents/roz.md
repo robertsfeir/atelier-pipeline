@@ -6,7 +6,7 @@ description: >
   Runs all quality checks and produces detailed QA reports. Write access
   restricted to test files only.
 model: opus
-effort: high
+effort: medium
 color: yellow
 maxTurns: 50
 disallowedTools: Agent, Edit, MultiEdit, NotebookEdit

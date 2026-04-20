@@ -1,6 +1,39 @@
 # Pipeline State
 
-<!-- PIPELINE_STATUS: {"phase": "idle", "sizing": null, "roz_qa": null, "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": false, "robert_reviewed": false, "brain_available": true, "stop_reason": "completed_clean"} -->
+<!-- PIPELINE_STATUS: {"phase": "idle", "sizing": null, "roz_qa": null, "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": false, "robert_reviewed": false, "brain_available": false, "stop_reason": "completed_clean"} -->
+
+## Prior Pipeline (closed)
+**Feature:** Pre-release cleanup — Roz effort parity + marketplace.json sync + release script
+**Phase:** idle
+**Stop Reason:** completed_clean
+**Sizing:** Small
+**Opened:** 2026-04-20
+**Closed:** 2026-04-20
+**Commit:** (see commit log)
+
+**Scope (3 concerns, 5 files + 1 test + CHANGELOG + pipeline state):**
+1. `.claude/agents/roz.md` — `effort: high` → `medium` (match source template and pipeline-models.md Tier 3 base) ✓ landed
+2. `.claude-plugin/marketplace.json` — `"version": "3.34.0"` → `"3.37.0"` (end users currently can't install 3.35/3.36/3.37 via Claude marketplace; stale since 3.34.0) ✓ landed
+3. `scripts/release.sh` — NEW utility bumping all 5 version files in a single invocation ✓ landed
+
+**Rationale:** Investigation revealed `.claude-plugin/marketplace.json` was missed in every release commit from 3.35.0 onward. The 5 version files drift apart silently. Adding a release script mechanically prevents the class of error; updating marketplace.json to 3.37.0 clears the current lag.
+
+**Progress:**
+- Colby build v1: complete
+- Roz safety-valve sweep: PASS
+- Poirot blind review v1: CONCERNS — 4 FIX-REQUIRED items on release.sh/tests/CHANGELOG
+- Colby rework: complete (strict semver regex, 9 parametrized rejection cases, nested-keys pin, CHANGELOG atomicity wording softened)
+- Roz scoped re-run: PASS (13/13 tests, all findings resolved, no collateral damage)
+- Poirot blind re-review: PASS (CONCERNS log-level only — ship-gate clear)
+- Ellis commit: complete
+
+**Out of scope:**
+- Local plugin cache pollution at `~/.claude/plugins/cache/atelier-pipeline/atelier-pipeline/{3.36.0,3.37.0}` — local maintenance, not a code change. User will `rm -rf` separately.
+- Bumping to 3.38.0 — user will do that as a follow-up once cleanup lands.
+- `docs/pipeline/error-patterns.md` `unknown/unknown` telemetry noise (Poirot finding #7) — upstream capture hygiene, separate concern.
+
+**Small ceremony:** Scout fan-out for Colby done. Roz full suite + scoped rework re-verify. Poirot blind diff review done (rework cycle got focused re-check). No Cal (no architectural decision). No Robert (Small skips review-juncture Robert gate).
+---
 
 ## Prior Pipeline (closed)
 **Feature:** Roz maxTurns bump (15 → 50) — fix turn-cap truncation mid-generation
