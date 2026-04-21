@@ -1,6 +1,6 @@
 ---
 name: brain-hydrate
-description: Use when users want to bootstrap the brain with existing project knowledge -- reading ADRs, feature specs, UX docs, commit history, retro lessons, and error patterns to seed institutional memory on a project that already has artifacts on disk. Also use for incremental re-hydration after significant work outside the pipeline. Triggers on "hydrate brain", "bootstrap brain", "seed memory", "brain init", "populate brain", "import history".
+description: Use when users want to bootstrap the brain with existing project knowledge -- reading ADRs, feature specs, UX docs, commit history, and error patterns to seed institutional memory on a project that already has artifacts on disk. Also use for incremental re-hydration after significant work outside the pipeline. Triggers on "hydrate brain", "bootstrap brain", "seed memory", "brain init", "populate brain", "import history".
 ---
 
 # Atelier Brain -- Hydrate
@@ -44,7 +44,6 @@ Scan the project for extractable sources. Use Glob and Bash to inventory:
 | Feature specs | `ls docs/product/*.md` | Number of spec files |
 | UX docs | `ls docs/ux/*.md` | Number of UX files |
 | Error patterns | `cat docs/pipeline/error-patterns.md` | Number of entries |
-| Retro lessons | `cat .claude/references/retro-lessons.md` or `cat source/shared/references/retro-lessons.md` | Number of lessons |
 | Context briefs | `cat docs/pipeline/context-brief.md` | Exists or not |
 | Git history | `git log --oneline --since="6 months ago"` (or full history if <500 commits) | Number of significant commits |
 
@@ -59,7 +58,6 @@ ADRs:           [N] files in docs/adrs/
 Feature specs:  [N] files in docs/product/
 UX docs:        [N] files in docs/ux/
 Error patterns: [N] entries
-Retro lessons:  [N] entries
 Context brief:  [exists/none]
 Git commits:    [N] commits (last 6 months)
 
@@ -92,7 +90,7 @@ After the user approves the scan inventory, Eva fans out Explore+haiku scouts in
 | **ADR scout** | `docs/architecture/ADR-*.md` or `docs/adrs/ADR-*.md` | `<adrs>` |
 | **Specs scout** | `docs/product/*.md` | `<specs>` |
 | **UX scout** | `docs/ux/*.md` | `<ux-docs>` |
-| **Pipeline scout** | `error-patterns.md` + `retro-lessons.md` + `context-brief.md` | `<pipeline-artifacts>` |
+| **Pipeline scout** | `error-patterns.md` + `context-brief.md` | `<pipeline-artifacts>` |
 | **Git scout** | `git log` output -- filter for significant commits only; if no significant commits found, returns empty | `<git-history>` |
 
 ### Scout Content Format
@@ -274,16 +272,6 @@ Read `docs/pipeline/error-patterns.md`. Extract each entry:
    - `importance`: Scale by recurrence count: 1-2 occurrences → 0.5, 3-4 → 0.7, 5+ → 0.9
    - `thought`: "[Pattern type]: [description]. Recurred [N] times. Mitigation: [what works]."
 
-#### Retro Lessons → lessons, corrections
-
-Read `.claude/references/retro-lessons.md` (or `source/shared/references/retro-lessons.md`). Extract each lesson:
-
-1. **Each lesson** → `agent_capture` with:
-   - `thought_type: "lesson"` (general lessons) or `"correction"` (if the lesson corrects a prior approach)
-   - `source_agent: "eva"` (retro lessons are pipeline-level)
-   - `source_phase: "review"`
-   - `importance: 0.7`
-
 #### Context Brief → preferences, corrections
 
 Read `docs/pipeline/context-brief.md` if it exists. Extract:
@@ -347,7 +335,6 @@ The Sonnet subagent reports progress after each source type:
 [Specs] Captured 8 decisions, 3 preferences. Created 6 cross-references to ADR thoughts.
 [UX] Captured 4 decisions, 2 preferences.
 [Error patterns] Captured 7 lessons.
-[Retro lessons] Captured 5 lessons, 2 corrections.
 [Git history] Scanned 187 commits, captured 11 significant insights/lessons.
 ```
 

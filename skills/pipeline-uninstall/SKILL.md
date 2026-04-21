@@ -1,6 +1,6 @@
 ---
 name: pipeline-uninstall
-description: Use when users want to remove the atelier-pipeline multi-agent orchestration system from their project. Cleanly removes all installed files, hook registrations, and CLAUDE.md pipeline section. Preserves user-created custom agents and retro lessons on request.
+description: Use when users want to remove the atelier-pipeline multi-agent orchestration system from their project. Cleanly removes all installed files, hook registrations, and CLAUDE.md pipeline section. Preserves user-created custom agents.
 ---
 
 # Atelier Pipeline -- Uninstall
@@ -40,18 +40,15 @@ Before removing anything, scan the project to build a complete inventory of what
   pm.md
   ux.md
   architect.md
-  debug.md
   pipeline.md
   devops.md
   docs.md
 
 .claude/references/
   dor-dod.md
-  retro-lessons.md
   invocation-templates.md
   pipeline-operations.md
   agent-preamble.md
-  qa-checks.md
   branch-mr-mode.md
   xml-prompt-schema.md
 
@@ -72,14 +69,12 @@ docs/pipeline/
   context-brief.md
   error-patterns.md
   investigation-ledger.md
-  last-qa-report.md
 ```
 
-**Detect each file's existence** using Glob and build three lists:
+**Detect each file's existence** using Glob and build two lists:
 
 1. **Core pipeline files** -- files matching the manifest above that exist on disk
 2. **User-created custom agents** -- any `.md` files in `.claude/agents/` whose YAML frontmatter `name` does NOT match a core agent (sarah, colby, ellis, agatha, robert, sable, investigator, distillator, sentinel)
-3. **Retro lessons content** -- check if `.claude/references/retro-lessons.md` contains any content beyond the empty template markers
 
 ### Step 2: Present Removal Plan
 
@@ -105,23 +100,13 @@ WILL MODIFY:
 
 WILL PRESERVE (not removed):
   [List any user-created custom agents found in .claude/agents/]
-  [If retro-lessons.md has content: "retro-lessons.md contains [N] lessons -- see Step 3"]
-  [If no custom agents and retro-lessons is empty: "No user content to preserve."]
+  [If no custom agents: "No user content to preserve."]
 
 Total files to remove: [count]
 Total files to modify: [count]
 ```
 
 ### Step 3: Handle Preservable Content
-
-**Retro lessons:** If `.claude/references/retro-lessons.md` contains content beyond the empty template, ask the user:
-
-> Your retro lessons file contains accumulated knowledge from past pipelines.
-> Would you like to:
-> 1. **Keep it** -- I'll copy it to `docs/retro-lessons-backup.md` before removing the pipeline
-> 2. **Remove it** -- Delete it along with everything else
-
-If the user chooses to keep it, copy the file to `docs/retro-lessons-backup.md` before proceeding with removal.
 
 **Custom agents:** If user-created custom agents are found in `.claude/agents/`, inform the user:
 
@@ -206,7 +191,6 @@ If you change your mind, reinstall with: /pipeline-setup
 
 - **Never remove files without showing the plan first.** The inventory step is mandatory.
 - **Never remove user-created custom agents.** Only remove files that match the core pipeline manifest.
-- **Always offer to preserve retro-lessons.md.** This file accumulates institutional knowledge that may be valuable even after uninstalling.
 - **Preserve non-pipeline content in settings.json and CLAUDE.md.** Only remove pipeline-specific entries.
 - **Handle missing files gracefully.** If a file from the manifest doesn't exist, skip it silently -- don't error.
 - **This skill does NOT remove the plugin itself.** It removes the installed project files. The user must run `claude plugin remove atelier-pipeline` separately to remove the plugin.

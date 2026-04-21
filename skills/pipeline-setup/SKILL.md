@@ -22,11 +22,11 @@ Before gathering project information, understand where the pipeline installs fil
 | `.claude/rules/` | Eva persona, orchestration rules, model selection, branch lifecycle | Project-local, committed to repo | Yes -- team members get the same pipeline rules |
 | `.claude/agents/` | Agent persona files (Sarah, Colby, etc.) | Project-local, committed to repo | Yes -- consistent agent behavior across the team |
 | `.claude/commands/` | Slash command definitions (/pm, /pipeline, etc.) | Project-local, committed to repo | Yes -- same commands available to all |
-| `.claude/references/` | Quality framework, retro lessons, invocation templates | Project-local, committed to repo | Yes -- shared knowledge base |
+| `.claude/references/` | Quality framework, invocation templates | Project-local, committed to repo | Yes -- shared knowledge base |
 | `.claude/hooks/` | Enforcement scripts (path, sequencing, git guards) | Project-local, committed to repo | Yes -- same guardrails for everyone |
 | `.claude/pipeline-config.json` | Branching strategy, feature flags | Project-local, committed to repo | Yes -- team-wide configuration |
 | `.claude/settings.json` | Hook registrations (tells Claude Code to run the hooks) | Project-local, committed to repo | Yes -- hooks activate for all team members |
-| `docs/pipeline/` | Pipeline state, context brief, error patterns, QA reports | Project-local, committed to repo | Yes -- session recovery works across machines |
+| `docs/pipeline/` | Pipeline state, context brief, error patterns | Project-local, committed to repo | Yes -- session recovery works across machines |
 | `CLAUDE.md` | Pipeline section appended to project instructions | Project-local, committed to repo | Yes -- Claude Code reads this automatically |
 
 **Key points:**
@@ -262,17 +262,14 @@ plugins/atelier-pipeline/source/
       pm.md                            # /pm -- Robert (product)
       ux.md                            # /ux -- Sable (UX design)
       architect.md                     # /architect -- Sarah (architecture)
-      debug.md                         # /debug -- Colby 
       pipeline.md                      # /pipeline -- Eva (orchestration)
       devops.md                        # /devops -- Eva (infrastructure)
       docs.md                          # /docs -- Agatha (documentation)
     references/
       dor-dod.md                       # Definition of Ready / Definition of Done framework
-      retro-lessons.md                 # Retro lessons template (starts empty)
       invocation-templates.md          # Subagent invocation examples
       pipeline-operations.md           # Operational procedures (model selection, QA flow, feedback loops)
       agent-preamble.md               # Shared agent required actions (DoR/DoD, retro, brain)
-      qa-checks.md                     # Poirot verification check procedures
       branch-mr-mode.md               # Colby branch/MR procedures for MR-based strategies
       step-sizing.md                  # ADR step sizing gate (S1-S5) and split heuristics
     pipeline/
@@ -280,7 +277,6 @@ plugins/atelier-pipeline/source/
       context-brief.md                # Context preservation template
       error-patterns.md               # Error pattern log template
       investigation-ledger.md         # Debug hypothesis tracking template
-      last-qa-report.md               # QA report template
       pipeline-config.json            # Branching strategy configuration
     rules/
       default-persona.md              # Eva orchestrator persona
@@ -345,16 +341,13 @@ Files are assembled from `source/shared/` (content) + `source/claude/` (overlays
 | `source/shared/commands/pm.md` assembled with overlay | `.claude/commands/pm.md` | /pm slash command |
 | `source/shared/commands/ux.md` assembled with overlay | `.claude/commands/ux.md` | /ux slash command |
 | `source/shared/commands/architect.md` assembled with overlay | `.claude/commands/architect.md` | /architect slash command |
-| `source/shared/commands/debug.md` assembled with overlay | `.claude/commands/debug.md` | /debug slash command |
 | `source/shared/commands/pipeline.md` assembled with overlay | `.claude/commands/pipeline.md` | /pipeline slash command |
 | `source/shared/commands/devops.md` assembled with overlay | `.claude/commands/devops.md` | /devops slash command |
 | `source/shared/commands/docs.md` assembled with overlay | `.claude/commands/docs.md` | /docs slash command |
 | `source/shared/references/dor-dod.md` | `.claude/references/dor-dod.md` | Quality framework |
-| `source/shared/references/retro-lessons.md` | `.claude/references/retro-lessons.md` | Shared lessons (empty template) |
 | `source/shared/references/invocation-templates.md` | `.claude/references/invocation-templates.md` | Subagent invocation examples |
 | `source/shared/references/pipeline-operations.md` | `.claude/references/pipeline-operations.md` | Operational procedures (model selection, QA, feedback, batch, worktree, context) |
 | `source/shared/references/agent-preamble.md` | `.claude/references/agent-preamble.md` | Shared agent required actions |
-| `source/shared/references/qa-checks.md` | `.claude/references/qa-checks.md` | Poirot verification check procedures |
 | `source/shared/references/branch-mr-mode.md` | `.claude/references/branch-mr-mode.md` | Colby branch/MR procedures |
 | `source/shared/references/telemetry-metrics.md` | `.claude/references/telemetry-metrics.md` | Telemetry metric schemas, cost table, alert thresholds |
 | `source/shared/references/step-sizing.md` | `.claude/references/step-sizing.md` | ADR step sizing gate (S1-S5) and split heuristics |
@@ -362,11 +355,10 @@ Files are assembled from `source/shared/` (content) + `source/claude/` (overlays
 | `source/shared/pipeline/context-brief.md` | `docs/pipeline/context-brief.md` | Context preservation |
 | `source/shared/pipeline/error-patterns.md` | `docs/pipeline/error-patterns.md` | Error pattern tracking |
 | `source/shared/pipeline/investigation-ledger.md` | `docs/pipeline/investigation-ledger.md` | Debug hypothesis tracking |
-| `source/shared/pipeline/last-qa-report.md` | `docs/pipeline/last-qa-report.md` | QA report persistence |
 | `source/shared/pipeline/pipeline-config.json` | `.claude/pipeline-config.json` | Branching strategy configuration |
 | `source/shared/variants/branch-lifecycle-{strategy}.md` assembled with overlay | `.claude/rules/branch-lifecycle.md` | Branch lifecycle rules (selected variant only) |
 
-**Total: 34 mandatory files across 5 directories (before hooks and config).**
+**Total: 30 mandatory files across 5 directories (before hooks and config).**
 
 **State file guard:** The 5 pipeline state files in `docs/pipeline/` and `.claude/pipeline-config.json` are live state — they contain active pipeline progress, user decisions, and project configuration. On re-install or update:
 - If the destination file already exists, **skip it** — do not overwrite
@@ -512,7 +504,7 @@ file already exists. Add this hooks section:
 If `jq` is not available, tell the user: "Install jq for pipeline enforcement hooks:
 `brew install jq` (macOS) or `apt install jq` (Linux)."
 
-**Total with hooks: 42 mandatory files across 7 directories.**
+**Total with hooks: 38 mandatory files across 7 directories.**
 
 #### Custom Agent Discovery
 
@@ -566,11 +558,9 @@ alwaysApply: false
 | Source | Destination | Description |
 |--------|-------------|-------------|
 | `source/shared/references/dor-dod.md` | `.cursor-plugin/rules/dor-dod.mdc` | Definition of Ready / Definition of Done framework |
-| `source/shared/references/retro-lessons.md` | `.cursor-plugin/rules/retro-lessons.mdc` | Retro lessons -- shared reference for past pipeline learnings |
 | `source/shared/references/invocation-templates.md` | `.cursor-plugin/rules/invocation-templates.mdc` | Invocation templates -- standardized XML tag patterns for subagent invocation |
 | `source/shared/references/pipeline-operations.md` | `.cursor-plugin/rules/pipeline-operations.mdc` | Pipeline operations -- continuous QA, feedback loops, batch mode, and worktree rules |
 | `source/shared/references/agent-preamble.md` | `.cursor-plugin/rules/agent-preamble.mdc` | Agent preamble -- shared actions and protocols for all pipeline agents |
-| `source/shared/references/qa-checks.md` | `.cursor-plugin/rules/qa-checks.mdc` | QA checks -- Poirot Tier 1/Tier 2 procedures, test spec review, and scoped re-run |
 | `source/shared/references/branch-mr-mode.md` | `.cursor-plugin/rules/branch-mr-mode.mdc` | Branch and MR mode -- Colby branch creation and MR procedures for MR-based strategies |
 | `source/shared/references/telemetry-metrics.md` | `.cursor-plugin/rules/telemetry-metrics.mdc` | Telemetry metrics -- metric schemas, cost table, and alert thresholds |
 | `source/shared/references/xml-prompt-schema.md` | `.cursor-plugin/rules/xml-prompt-schema.mdc` | XML prompt schema -- tag vocabulary for agent persona files |
@@ -621,7 +611,7 @@ This project uses a multi-agent orchestration pipeline for structured developmen
 
 **Agents:** Eva (orchestrator), Robert (product), Sable (UX), Sarah (architect), Colby (engineer), Poirot, Agatha (docs), Ellis (commit)
 
-**Commands:** /pm, /ux, /architect, /debug, /pipeline, /devops, /docs
+**Commands:** /pm, /ux, /architect, /pipeline, /devops, /docs
 
 **Pipeline state:** docs/pipeline/ -- Eva reads this at session start for recovery
 
@@ -636,7 +626,7 @@ This project uses a multi-agent orchestration pipeline for structured developmen
 
 After installation, print:
 
-1. A count of files installed (41 mandatory files across 7 directories, plus any optional tech-stack references)
+1. A count of files installed (37 mandatory files across 7 directories, plus any optional tech-stack references)
 2. The directory tree showing what was created
 3. The configured branching strategy and any CI recommendations
 4. A reminder of available slash commands
@@ -648,13 +638,13 @@ After installation, print:
 ```
 Atelier Pipeline installed successfully.
 
-Files installed: 40 (mandatory)
+Files installed: 36 (mandatory)
   .claude/rules/       -- 5 files (Eva persona, orchestration rules, pipeline operations, model selection, branch lifecycle)
   .claude/agents/      -- 9 files (Sarah, Colby, Robert, Sable, Poirot, Distillator, Ellis, Agatha)
-  .claude/commands/    -- 7 files (/pm, /ux, /architect, /debug, /pipeline, /devops, /docs)
-  .claude/references/  -- 8 files (quality framework, retro lessons, invocation templates, pipeline operations, agent preamble, QA checks, branch/MR mode, telemetry metrics)
+  .claude/commands/    -- 6 files (/pm, /ux, /architect, /pipeline, /devops, /docs)
+  .claude/references/  -- 6 files (quality framework, invocation templates, pipeline operations, agent preamble, branch/MR mode, telemetry metrics)
   .claude/hooks/       -- 6 files (path enforcement, sequencing, git guard, DoR/DoD warning, pre-compact, config)
-  docs/pipeline/       -- 5 files (state tracking for session recovery)
+  docs/pipeline/       -- 4 files (state tracking for session recovery)
   .claude/pipeline-config.json -- branching strategy configuration
   .claude/settings.json -- updated with hook registration
   CLAUDE.md            -- written fresh (project-specific content carried forward from CLAUDE.md.orig)
