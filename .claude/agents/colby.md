@@ -53,7 +53,10 @@ Check for design system: if Eva's read tag includes design system files,
 they are already in your context. If no design system files appear in your
 context, follow the detection rules in
 `{config_dir}/references/design-system-loading.md`. Record loaded files in
-your DoR. If `design-system/icons/` does not exist, proceed without icon
+your DoR as: `Design system: [tokens.md + domain file, or "None"]`.
+The UI Contract row capturing this detail lives in `pipeline-state.md`
+under the current unit per ADR-0043 Decision #3 -- not inline in the
+return. If `design-system/icons/` does not exist, proceed without icon
 references -- no error.
 
 ## Premise Verification (fix mode only)
@@ -124,54 +127,21 @@ stylesheet and apply them conditionally in the template.
 </constraints>
 
 <output>
-## Build Output
+Write the full build record (DoR, UI Contract, UI/UX Verification, DoD,
+Contracts Produced, Contracts Consumed, Bugs Discovered) into your work in
+the repository -- DoR/DoD in the implementation commit messages, UI
+Contract and Contracts tables in `{pipeline_state_dir}/pipeline-state.md`
+under the current unit. Test runs and lint/typecheck output stay in your
+tool transcript.
 
-```
-## DoR: Requirements Extracted
-[per dor-dod.md]
+Return exactly one line to Eva:
 
-### UI Contract
-*Complete before writing any code. If no UI is touched, write "N/A — backend only."*
+`Unit N DONE. N files changed. Lint PASS/FAIL. Typecheck PASS/FAIL. Ready for Roz: Y/N.`
 
-| Concern | Declaration |
-|---------|-------------|
-| New routes | [path(s), or "None"] |
-| Nav wiring | [file:line where link will be added, or "None"] |
-| Form elements added | [each `select`, `input`, `button` this step introduces] |
-| Dropdown options | [field → options in the order they will render] |
-| Sort order source | [ADR-specified / alphabetical / spec-defined] |
-| Color coding | [CSS class(es), or "None"] |
-| Global CSS file | [filename imported, or "Isolated — flagged"] |
-| Save/submit button | [element id, or "None"] |
-| Design system | [tokens.md + domain file, or "None"] |
+Fix-cycle re-invocation one-line DoD stays per the existing workflow:
+`Fixed [what] at path/to/file.ext:LINE. Tests pass.`
 
-**Step N complete.** [1-2 sentences]
-
-## Bugs Discovered
-[Root cause, all affected files (grep results), fix applied or flagged.]
-
-## UI/UX Verification
-*Each row from the UI Contract above, with implementation evidence.*
-
-| Concern | Implemented | Evidence |
-|---------|-------------|----------|
-| Nav wiring | [Yes/No] | [file:line] |
-| Sort order | [Yes/No] | [actual rendered order] |
-| Color coding | [Yes/No] | [CSS classes used] |
-| Global CSS | [Yes/No] | [file imported] |
-| Save/submit | [Yes/No] | [element id or "N/A"] |
-
-## DoD: Verification
-[coverage table, acceptance criteria]
-
-## Contracts Produced
-| Endpoint/Method | Response Shape | Consumer (ADR step) |
-|-----------------|---------------|---------------------|
-
-## Contracts Consumed
-| Endpoint/Method | Expected Shape | Actual Shape | Wired In |
-|-----------------|---------------|--------------|----------|
-
-Implementation complete for ADR-NNNN. Files changed: [list]. Ready for Roz.
-```
+Do not inline DoR tables, UI Contract rows, Contracts tables, code diffs,
+or test output in the return. See
+`.claude/references/agent-preamble.md` preamble id="return-condensation".
 </output>

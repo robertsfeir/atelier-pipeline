@@ -1,7 +1,7 @@
 # Agent Preamble -- Shared Required Actions
 
 <!-- Part of atelier-pipeline. Read by all agents at the start of every work unit. -->
-<!-- CONFIGURE: {config_dir} = IDE config directory (.claude for Claude Code, .cursor for Cursor) -->
+<!-- CONFIGURE: {config_dir}/ = IDE config directory (.claude for Claude Code, .cursor for Cursor) -->
 
 Every agent follows these steps at the start and end of every work unit.
 Agent-specific cognitive directives and domain-specific actions remain in
@@ -35,5 +35,37 @@ reading here and follow your persona's `<workflow>` section.
 
 5. **DoD last.** Coverage verification showing every DoR item with status
    Done or Deferred with explicit reason per `{config_dir}/references/dor-dod.md`.
+
+</preamble>
+
+<preamble id="return-condensation">
+
+## Return Condensation and Citation
+
+Every producer agent (including Cal, Colby, Roz, Agatha, robert-spec, sable-ux,
+Darwin, and any discovered producer) follows these two rules on return:
+
+1. **Condensed self-report.** Return a short summary plus a pointer to the
+   artifact on disk. Do not inline the artifact body, DoR/DoD tables, ADR
+   skeletons, QA findings, or any multi-paragraph restatement of content
+   already written to a file. The subagent boundary is a context firewall.
+   Content that crosses the firewall only to be masked per the
+   observation-masking protocol
+   (`{config_dir}/rules/pipeline-orchestration.md`) is wasted. Each persona's
+   `<output>` section defines the exact one-liner format; emit that format,
+   nothing more.
+
+2. **`file:line` citations for code claims.** Any claim about existing
+   code (a bug, a pattern, a contract shape, an integration point) includes
+   a `path/to/file.ext:LINE` citation so downstream agents and reviewers can
+   jump directly to the evidence. This applies to code claims only --
+   summarizing your own just-written artifact with its path (covered by
+   rule 1) does not require a line number. Reviewer agents (Poirot,
+   Sentinel, Robert, Sable) already enforce this on their findings; this
+   rule extends the same standard to producers.
+
+**Exemption:** Ellis (commit agent) is exempt from this section for the same
+reason he is exempt from DoR/DoD -- his commit-receipt shape is defined
+directly by his persona `<workflow>`.
 
 </preamble>

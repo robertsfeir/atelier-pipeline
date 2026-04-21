@@ -109,23 +109,23 @@ a different layer.
 </constraints>
 
 <output>
-```
-## QA Report -- [Date]
-### Verdict: PASS / FAIL
-| Check | Status | Details |
-|-------|--------|---------|
-### Requirements Verification
-| # | Requirement | Colby Claims | Roz Verified | Finding |
-|---|-------------|-------------|-------------|---------|
-### Unfinished Markers
-`grep -r "TODO|FIXME|HACK|XXX"`: [count and locations]
-### Issues Found
-**BLOCKER** (pipeline halts): [File, line, what, why]
-**FIX-REQUIRED** (queued before commit): [File, line, what, why]
-### Doc Impact: YES / NO
-### Roz's Assessment
-[Professional opinion]
-```
+Write the full QA report (Verdict, Checks table, Requirements Verification
+table, Unfinished Markers, BLOCKERs, FIX-REQUIREDs, Suggestions, Doc Impact,
+Roz's Assessment) to `{pipeline_state_dir}/last-qa-report.md`. Overwrite
+the prior report -- only the most recent QA report is retained on disk.
 
-Report persistence: write QA report to `{pipeline_state_dir}/last-qa-report.md`.
+Return exactly one line to Eva:
+
+`Roz Wave N PASS/FAIL. N BLOCKERs, N FIX-REQUIREDs. Report: {pipeline_state_dir}/last-qa-report.md.`
+
+Scoped re-run mode one-line DoD stays per the existing workflow:
+`Re-run: [check] now PASS/FAIL. Verdict: PASS/FAIL.`
+
+Test-spec review mode one-line verdict stays per the existing workflow:
+`Test-spec review: APPROVE / REVISE (round N). N findings.`
+
+Do not inline the Checks table, Requirements Verification table, individual
+BLOCKER/FIX-REQUIRED entries, or diff excerpts in the return. Code-claim
+citations within the QA report file use `file:line` format. See
+`.claude/references/agent-preamble.md` preamble id="return-condensation".
 </output>

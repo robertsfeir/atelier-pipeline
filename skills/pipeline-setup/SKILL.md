@@ -605,7 +605,7 @@ After installation, print:
 3. The configured branching strategy and any CI recommendations
 4. A reminder of available slash commands
 5. Instructions to start their first pipeline run
-6. **Offer optional features** -- Sentinel security agent, Agent Teams parallel execution, CI Watch automated CI monitoring, Deps Agent dependency scanning, Darwin self-evolving pipeline, Dashboard integration, and Atelier Brain persistent memory (Steps 6a through 6f)
+6. **Offer optional features** -- Sentinel security agent, Agent Teams parallel execution, CI Watch automated CI monitoring, Deps Agent dependency scanning, Darwin self-evolving pipeline, Dashboard integration, Claude Code Agent Resume prerequisite, and Atelier Brain persistent memory (Steps 6a through 6g)
 
 **Example summary:**
 
@@ -874,9 +874,61 @@ Choose [1/2/3]:
 
 **Error handling:** If any install step fails (clone fails, install script errors, npx install errors): log the error with "Dashboard install failed: [reason]. Skipping.", set `dashboard_mode: "none"` in `.claude/pipeline-config.json`, and continue setup. Never block setup on dashboard install failure.
 
+### Step 6g: Claude Code Agent Resume Prerequisite (Experimental)
+
+After the Dashboard offer (whether user said yes or no), if the user is running Claude Code, offer one more experimental flag — ensure Claude Code's experimental
+subagent-resume flag is enabled. This unlocks the `SendMessage` tool, which
+the Agent tool advertises as the standard way to resume a spawned subagent
+("use SendMessage with to: '<agentId>' to continue this agent"). Without
+the flag, `SendMessage` is absent from the tool registry and every
+follow-up to a subagent respawns a fresh agent that re-reads context from
+scratch.
+
+This is a Claude Code regression currently tracked at
+[anthropics/claude-code#42737](https://github.com/anthropics/claude-code/issues/42737).
+The atelier pipeline depends on cheap subagent resume for Cal ADR
+revisions, Colby rework cycles, and Roz scoped re-runs.
+
+**Check `~/.claude/settings.json` for the existing env var:**
+
+```bash
+jq -r '.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS // empty' ~/.claude/settings.json
+```
+
+**If the value is already `1`, skip to the Brain setup offer.** (Idempotency.)
+
+**Otherwise, prompt the user:**
+
+> The atelier-pipeline relies on subagent resume for efficient multi-turn
+> agent flows (Cal ADR revisions, Colby rework cycles, Roz scoped re-runs).
+> Claude Code currently gates the `SendMessage` tool behind
+> `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`
+> (github.com/anthropics/claude-code/issues/42737).
+>
+> Add this env var to `~/.claude/settings.json`? [Y/n]
+
+**If user says yes**, apply idempotently via jq:
+
+```bash
+jq '. + {env: ((.env // {}) + {CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1"})}' \
+  ~/.claude/settings.json > ~/.claude/settings.json.tmp && \
+  mv ~/.claude/settings.json.tmp ~/.claude/settings.json
+```
+
+Confirm: "`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` is set. Restart Claude
+Code for the change to take effect."
+
+**If user says no**, print: "Subagent resume will spawn a fresh agent each
+time. The pipeline still works but pays a context-rebuild cost on every
+follow-up. Enable later by re-running pipeline-setup or adding the env var
+manually."
+
+**No installation manifest expansion** -- this is a user-settings mutation,
+not a pipeline file install.
+
 **Brain setup offer (always ask):**
 
-After the Dashboard offer (whether user said yes or no), ask the user:
+After the Claude Code Agent Resume Prerequisite offer (whether user said yes or no), ask the user:
 
 > The pipeline is ready. Would you also like to set up the **Atelier Brain**?
 > It gives your agents persistent memory across sessions -- architectural

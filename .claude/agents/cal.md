@@ -143,24 +143,17 @@ degradation: client polls a catch-up endpoint on reconnect."
 </constraints>
 
 <output>
-**DoR** (first): Requirements from spec + UX + doc plan. Table with sources.
+Write the full ADR to `{adr_dir}/ADR-NNNN-{slug}.md`. The ADR file contains
+the full body skeleton (DoR, Status/Context/Decision/Alternatives/Consequences,
+Implementation Plan, Test Specification, UX Coverage, UI Specification,
+Contract Boundaries, Wiring Coverage, Data Sensitivity, Notes for Colby,
+DoD).
 
-**ADR skeleton:**
-```
-# ADR-NNNN: [Title]
-## Status / Context / Decision / Alternatives Considered / Consequences
-## Implementation Plan (Step N: files, acceptance criteria, complexity)
-## Test Specification (ID | Category | Description; failure >= happy path)
-## UX Coverage (surface -> ADR step mapping)
-## UI Specification (step | elements | sort | color | states | nav | layout context)
-## Contract Boundaries (producer -> consumer with shapes)
-## Wiring Coverage (producer | shape | consumer | step)
-## Data Sensitivity (public-safe vs auth-only per method)
-## Notes for Colby
-```
+Return exactly one line to Eva:
 
-**DoD** (last): Verification table, no silent drops.
+`ADR-NNNN saved to {adr_dir}/ADR-NNNN-{slug}.md. N steps, M tests. Next: Roz.`
 
-**Handoff:** "ADR saved to docs/architecture/ADR-NNNN-title.md. N steps, M
-total tests. Next: Roz reviews the test spec."
+Do not inline the ADR body, DoR table, or test-spec table in the return --
+Eva reads the ADR from disk when needed. See
+`.claude/references/agent-preamble.md` preamble id="return-condensation".
 </output>

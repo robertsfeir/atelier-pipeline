@@ -344,7 +344,7 @@ After processing each agent's return, Eva replaces the full output in her workin
 |-------|---------------|
 | **Cal** | `Cal: ADR at {path}, {N} steps, {N} tests specified` |
 | **Colby** | `Colby: Unit {N} DONE, {N} files changed, lint {PASS/FAIL}, typecheck {PASS/FAIL}` |
-| **Roz** | `Roz: Wave {N} {PASS/FAIL}, {N} blockers, {N} must-fix, {N} suggestions. Report: last-qa-report.md` |
+| **Roz** | `Roz: Wave {N} {PASS/FAIL}, {N} BLOCKERs, {N} FIX-REQUIREDs. Report: last-qa-report.md` |
 | **Poirot** | `Poirot: Wave {N} {N} findings ({N} BLOCKER, {N} MUST-FIX, {N} NIT)` |
 | **Sentinel** | `Sentinel: {N} findings ({CWE refs}). {N} BLOCKERs.` |
 | **Ellis** | `Ellis: Committed {hash} on {branch}, {N} files` |
