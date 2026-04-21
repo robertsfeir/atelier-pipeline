@@ -5,6 +5,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.39.0] - 2026-04-21
+
+### Added
+
+- **ADR-0043 (slice 1) — Agent Return Condensation**: One-line receipts for Cal/Colby/Roz `<output>` blocks. New `<preamble id="return-condensation">` in `agent-preamble.md` mandates summary + path-pointer returns and `file:line` citations across all producers. 37-case pytest suite (`tests/test_adr0043_output_contract.py`) green. Closes slice 1 of Issue #31; slices 2–4 remain open.
+- **`skills/pipeline-setup/SKILL.md` Step 6g**: Offers `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` as Claude Code SendMessage prerequisite (GH anthropics/claude-code#42737). Cursor plugin-setup unchanged — flag is Claude Code-specific.
+
+### Changed
+
+- **ADR-0043 Addendum supersedes ADR-0040's Colby UI-contract design-system row** (moves to Colby `<workflow>`). `<slug>` → `{slug}` resolves ADR-0005 XML scanner conflict. "Skeleton" keyword retained for ADR-0023 compat.
+- **Roz `<output>` one-liner drops "N suggestions"** — Roz persona never defined a Suggestions tier. Eva observation-masking row updated to `{N} BLOCKERs, {N} FIX-REQUIREDs` (phantom suggestions tier dropped).
+- **Preamble rule 2 terminology normalized to `file:line`** (matches robert.md/sable.md). Preamble mandate sentence split for clarity.
+
+> **Note:** CHANGELOG entries under 3.37.0 forward-referenced "ADR-0043" for Poirot path enforcement and Robert spec-gate work that shipped without an ADR file. ADR-0043 now canonically refers to Agent Return Condensation (this release).
+
 ## [3.38.0] - 2026-04-20
 
 ### Added
