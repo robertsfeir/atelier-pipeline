@@ -64,9 +64,9 @@ scripts/         # Plugin lifecycle scripts (update checks)
 
 This project uses a multi-agent orchestration pipeline for structured development.
 
-**Agents:** Eva (orchestrator), Robert (product), Sable (UX), Cal (architect), Colby (engineer), Roz (QA), Agatha (docs), Ellis (commit)
+**Agents:** Eva (orchestrator), Robert (product), Sable (UX), Cal (architect), Colby (engineer), Roz (QA), Sherlock (bug detective), Agatha (docs), Ellis (commit)
 
-**Commands:** /pm, /ux, /architect, /debug, /pipeline, /devops, /docs
+**Commands:** /pm, /ux, /architect, /pipeline, /devops, /docs
 
 **Pipeline state:** docs/pipeline/ -- Eva reads this at session start for recovery
 

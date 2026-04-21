@@ -12,7 +12,7 @@ import tempfile
 import pytest
 
 from tests.conftest import (
-    ALL_AGENTS_12,
+    ALL_AGENTS_CORE,
     CLAUDE_DIR,
     CURSOR_DIR,
     CURSOR_PLUGIN_DIR,
@@ -521,8 +521,8 @@ def test_T_0019_044_agent_files_have_valid_YAML_frontmatter_starts_and_ends_with
     pass  # Complex bats test
 
 
-def test_T_0019_096_total_agent_count_is_12_9_core_3_optional():
-    """T-0019-096: total agent count is 12 (9 core + 3 optional)."""
+def test_T_0019_096_total_agent_count_post_slice4():
+    """T-0019-096: total agent count is 14 (shared), Cursor mirror omits brain-extractor/robert-spec/sable-ux (pre-existing drift)."""
     pass  # Complex bats test
 
 

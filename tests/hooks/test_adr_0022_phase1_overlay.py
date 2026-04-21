@@ -29,7 +29,7 @@ from conftest import (
 def test_T_0022_001_shared_commands():
     assert SHARED_DIR / "commands" is not None
     count = len(list((SHARED_DIR / "commands").glob("*.md")))
-    assert count == 11
+    assert count == 6  # ADR-0045 Slice 4 removed debug/darwin/deps/create-agent/telemetry-hydrate
 
 
 def test_T_0022_002_shared_references():
@@ -166,7 +166,7 @@ def test_T_0022_017_tools_retained(agent):
     assert "tools:" in fm
 
 
-@pytest.mark.parametrize("agent", ["roz", "ellis", "agatha", "robert", "sable", "investigator", "distillator", "sentinel", "darwin", "deps"])
+@pytest.mark.parametrize("agent", ["roz", "ellis", "agatha", "robert", "sable", "investigator", "distillator", "sentinel", "sherlock"])  # ADR-0045: darwin+deps removed; sherlock added (diagnose-only, disallowed-tools list)
 def test_T_0022_018_disallowed_tools(agent):
     fm = (CLAUDE_DIR / "agents" / f"{agent}.frontmatter.yml").read_text()
     assert "disallowedTools:" in fm

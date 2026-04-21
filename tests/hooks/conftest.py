@@ -42,15 +42,18 @@ CURSOR_DIR = SOURCE_DIR / "cursor"
 
 # ── Agent Lists ──────────────────────────────────────────────────────────
 
+# Post ADR-0045 Slice 4: darwin + deps personas removed; sherlock added.
+# Name preserved (AGENTS_12) for downstream import stability across call sites;
+# count is now 11 despite the _12 suffix -- rename deferred to a future refactor.
 AGENTS_12 = [
     "cal", "colby", "roz", "robert", "sable", "ellis",
-    "agatha", "investigator", "distillator", "sentinel", "darwin", "deps",
+    "agatha", "investigator", "distillator", "sentinel", "sherlock",
 ]
 
 HOOK_AGENTS = ["roz", "cal", "colby", "agatha"]
 PRODUCER_AGENTS = ["robert-spec", "sable-ux"]
 PERMISSION_MODE_AGENTS = ["colby", "cal", "agatha", "ellis"]
-READ_ONLY_AGENTS = ["robert", "sable", "investigator", "distillator", "sentinel", "darwin", "deps"]
+READ_ONLY_AGENTS = ["robert", "sable", "investigator", "distillator", "sentinel", "sherlock"]  # ADR-0045: darwin/deps removed; sherlock added (diagnose-only read-only)
 
 ALL_HOOK_SCRIPT_NAMES = [
     "enforce-roz-paths.sh",

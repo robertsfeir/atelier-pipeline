@@ -13,7 +13,7 @@ import time
 import pytest
 
 from tests.conftest import (
-    ALL_AGENTS_12,
+    ALL_AGENTS_CORE,
     CLAUDE_DIR,
     CURSOR_DIR,
     CURSOR_PLUGIN_DIR,
@@ -499,44 +499,12 @@ def test_T_0023_060_Sentinel_persona_contains_CWE_OWASP_requirement():
     assert re.search(r"CWE|OWASP", c, re.IGNORECASE)
 
 
-def test_T_0023_061_Darwin_persona_100_lines():
-    """T-0023-061: Darwin persona <=100 lines."""
-    f = SHARED_AGENTS / "darwin.md"
-    assert f.is_file()
-    lines = len(f.read_text().splitlines())
-    assert lines <= 100, f"{lines} lines (expected <= 100)"
-
-
-def test_T_0023_062_Darwin_persona_contains_self_edit_protection_constraint():
-    """T-0023-062: Darwin persona contains self-edit protection constraint."""
-    f = SHARED_AGENTS / "darwin.md"
-    assert f.is_file()
-    c = f.read_text()
-    assert re.search(r"self.edit.*protect|cannot.*propose.*darwin\.md|cannot.*modify.*darwin", c, re.IGNORECASE)
-
-
-def test_T_0023_063_Darwin_persona_contains_5_pipelines_data_requirement():
-    """T-0023-063: Darwin persona contains '5+ pipelines' data requirement."""
-    f = SHARED_AGENTS / "darwin.md"
-    assert f.is_file()
-    c = f.read_text()
-    assert re.search(r"5.*pipeline|five.*pipeline", c, re.IGNORECASE)
-
-
-def test_T_0023_064_Deps_persona_90_lines():
-    """T-0023-064: Deps persona <=90 lines."""
-    f = SHARED_AGENTS / "deps.md"
-    assert f.is_file()
-    lines = len(f.read_text().splitlines())
-    assert lines <= 90, f"{lines} lines (expected <= 90)"
-
-
-def test_T_0023_065_Deps_persona_contains_conservative_risk_labeling_constraint():
-    """T-0023-065: Deps persona contains conservative risk labeling constraint."""
-    f = SHARED_AGENTS / "deps.md"
-    assert f.is_file()
-    c = f.read_text()
-    assert re.search(r"conservative.*label|conservative.*risk|risk.*classif|default.*high", c, re.IGNORECASE)
+# removed by ADR-0045 — asserted deleted feature
+# test_T_0023_061_Darwin_persona_100_lines
+# test_T_0023_062_Darwin_persona_contains_self_edit_protection_constraint
+# test_T_0023_063_Darwin_persona_contains_5_pipelines_data_requirement
+# test_T_0023_064_Deps_persona_90_lines
+# test_T_0023_065_Deps_persona_contains_conservative_risk_labeling_constraint
 
 
 def test_T_0023_066_Distillator_persona_130_lines_NOT_reduced_below_Haiku_threshold_per_R14():
@@ -563,7 +531,7 @@ def test_T_0023_067_Distillator_persona_contains_2_examples_Haiku_compliance_gro
     assert_has_tag(f, "examples")
 
 
-@pytest.mark.parametrize("agent_file", ALL_AGENTS_12)
+@pytest.mark.parametrize("agent_file", ALL_AGENTS_CORE)
 def test_T_0023_068_Every_agent_persona_has_1_examples_section_with_1_example(agent_file):
     """T-0023-068: Every agent persona has >=1 <examples> section with >=1 example."""
     f = SHARED_AGENTS / agent_file
@@ -572,7 +540,7 @@ def test_T_0023_068_Every_agent_persona_has_1_examples_section_with_1_example(ag
     assert section, f"No <examples> content found in {agent_file}"
 
 
-@pytest.mark.parametrize("agent_file", ALL_AGENTS_12)
+@pytest.mark.parametrize("agent_file", ALL_AGENTS_CORE)
 def test_T_0023_069_No_agent_persona_contains_How_Agent_Fits_the_Pipeline_section(agent_file):
     """T-0023-069: No agent persona contains 'How [Agent] Fits the Pipeline' section."""
     f = SHARED_AGENTS / agent_file
@@ -582,7 +550,7 @@ def test_T_0023_069_No_agent_persona_contains_How_Agent_Fits_the_Pipeline_sectio
         f"Found 'How X Fits the Pipeline' section in {agent_file}"
 
 
-@pytest.mark.parametrize("agent_file", ALL_AGENTS_12)
+@pytest.mark.parametrize("agent_file", ALL_AGENTS_CORE)
 def test_T_0023_070_No_Opus_Sonnet_agent_persona_contains_generic_review_category_checklists(agent_file):
     """T-0023-070: No Opus/Sonnet agent persona contains generic review category checklists."""
     f = SHARED_AGENTS / agent_file
@@ -599,7 +567,7 @@ def test_T_0023_070_No_Opus_Sonnet_agent_persona_contains_generic_review_categor
     ), f"Found generic review category checklist in {agent_file}"
 
 
-@pytest.mark.parametrize("agent_file", ALL_AGENTS_12)
+@pytest.mark.parametrize("agent_file", ALL_AGENTS_CORE)
 def test_T_0023_071_Every_reduced_agent_persona_retains_its_original_YAML_frontmatter_unchanged(agent_file):
     """T-0023-071: Every reduced agent persona retains its original YAML frontmatter unchanged."""
     f = SHARED_AGENTS / agent_file
@@ -610,7 +578,7 @@ def test_T_0023_071_Every_reduced_agent_persona_retains_its_original_YAML_frontm
     assert "<!-- Part of atelier-pipeline" in c, f"Missing HTML comment header in {agent_file}"
 
 
-@pytest.mark.parametrize("agent_file", ALL_AGENTS_12)
+@pytest.mark.parametrize("agent_file", ALL_AGENTS_CORE)
 def test_T_0023_072_Every_reduced_agent_persona_contains_all_required_XML_tags_identity_required_actions_work(agent_file):
     """T-0023-072: Every reduced agent persona contains all required XML tags (identity, required-actions, workflow, examples, constraints, output)."""
     f = SHARED_AGENTS / agent_file
@@ -1010,16 +978,16 @@ def test_T_0023_115_warn_agents_array_contains_agent_names_from_error_patterns_m
             f"Expected 'colby' in warn_agents with Recurrence >= 3, got {data['warn_agents']}"
 
 
-def test_T_0023_116_session_boot_sh_JSON_contains_ci_watch_enabled_darwin_enabled_dashboard_mode_sentinel_ena():
-    """T-0023-116: session-boot.sh JSON contains ci_watch_enabled, darwin_enabled, dashboard_mode, sentinel_enabled, deps_agent_enabled."""
+def test_T_0023_116_session_boot_sh_JSON_contains_ci_watch_enabled_dashboard_mode_sentinel_enabled():
+    """T-0023-116: session-boot.sh JSON contains ci_watch_enabled, dashboard_mode, sentinel_enabled."""
     f = SHARED_HOOKS / "session-boot.sh"
     if not f.is_file(): pytest.skip("not yet created")
     with tempfile.TemporaryDirectory() as tmpdir:
         rc, data, _ = _run_session_boot(cwd=tmpdir)
         assert rc == 0
         assert data is not None, "Invalid JSON output"
-        for field in ["ci_watch_enabled", "darwin_enabled", "dashboard_mode",
-                      "sentinel_enabled", "deps_agent_enabled"]:
+        for field in ["ci_watch_enabled", "dashboard_mode",
+                      "sentinel_enabled"]:  # ADR-0045: darwin_enabled + deps_agent_enabled removed
             assert field in data, f"JSON missing {field} field"
 
 

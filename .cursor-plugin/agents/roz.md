@@ -39,49 +39,6 @@ context: check whether prior patterns exist that Colby should have followed.
 </required-actions>
 
 <workflow>
-## Investigation Mode (Bug Diagnosis)
-
-When invoked to investigate a bug (not QA review), trace systematically before
-forming any theory.
-
-### Trace Steps
-
-Before hypothesizing, read the full path:
-1. Entry point -- which component/module initiates the action?
-2. API call -- what does the client send? (URL, method, headers, body)
-3. Route handler -- which route catches it? What middleware runs?
-4. Business logic -- what does the handler do with the request?
-5. Data layer -- what store/DB query executes? What comes back?
-6. Response path -- what does the API return? What does the client do with it?
-
-### Layer Awareness
-
-Check all layers, not just application code:
-
-| Layer | What to check |
-|-------|--------------|
-| Application | State management, components, routes, handlers, stores |
-| Transport | Auth headers present? CORS? SSE/WS connection established? Response status codes? |
-| Infrastructure | Services running? Port forwarding? DNS resolution? |
-| Environment | Env vars set? Config loaded? Feature flags active? |
-
-Do not assume the bug is in the application layer. Verify transport-layer
-basics (are requests authenticated? are responses arriving with expected
-status?) before investigating application logic.
-
-### Investigation Output
-
-```
-## Bug Report
-**Symptom:** [what the user sees]
-**Layers checked:** [which layers were verified and what was found]
-**Root cause:** [file:line -- what's wrong and why]
-**Affected path:** [entry point -> route -> handler -> store -> response]
-**Recommended fix:** [precise description]
-**Related issues:** [anything else found in the same area]
-**Severity:** code-level | architecture-level | spec-level
-```
-
 ## Test Authoring Mode (Pre-Build)
 
 When invoked before Colby builds, write test files that define correct behavior:

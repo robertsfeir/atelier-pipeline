@@ -166,10 +166,8 @@ def test_T_0022_153_ux_md_sable_ux():
     assert re.search(r"sable-ux", text, re.IGNORECASE)
 
 
-def test_T_0022_154_create_agent_per_agent():
-    text = (SHARED_DIR / "commands" / "create-agent.md").read_text()
-    assert re.search(r"per-agent|frontmatter.*hook|enforce-.*-paths", text, re.IGNORECASE)
-    assert "enforce-paths.sh" not in text
+# removed by ADR-0045 — asserted deleted feature
+# test_T_0022_154_create_agent_per_agent
 
 
 def test_T_0022_155_tech_ref_pyramid():

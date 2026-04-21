@@ -60,11 +60,10 @@ Hybrid skill/subagent workflow: Skills run main thread (conversational); subagen
 | **Sable** | UX acceptance reviewer | Read, Glob, Grep, Bash (read-only) |
 | **sable-ux** | UX design producer -- writes to docs/ux/ | Read, Write, Edit, Glob, Grep, Bash |
 | **Poirot** | Blind code investigator -- diff-only review | Read, Glob, Grep, Bash (read-only) |
+| **Sherlock** | Sr. Detective -- user-reported bug diagnose-only hunt | Read, Glob, Grep, Bash (read-only, fresh general-purpose isolation) |
 | **Distillator** | Lossless document compression engine | Read, Glob, Grep, Bash (read-only) |
 | **Ellis** | Commit & Changelog | Read, Write, Edit, Glob, Grep, Bash |
 | **Sentinel** | Security audit -- Semgrep-backed SAST (opt-in) | Read, Glob, Grep, Bash (read-only) + Semgrep MCP tools |
-| **Deps** | Dependency management -- outdated scan, CVE check, breakage prediction | Read, Glob, Grep, Bash (read-only), WebSearch, WebFetch |
-| **Darwin** | Self-evolving pipeline engine -- telemetry analysis, fitness evaluation, structural proposals | Read, Glob, Grep, Bash (read-only) |
 | *[Discovered agents]* | *Per agent persona file* | *Read, Glob, Grep, Bash (read-only by default -- see `.claude/references/agent-discovery.md`)* |
 
 </section>
@@ -117,8 +116,7 @@ Classify intent outside active pipeline; route automatically. Full Intent Detect
 ### Summary
 - **Idea / feature / spec talk** → **robert-spec**. **UI / UX / flows** → **sable-ux**. **Architecture / "how should we build"** → **Cal**. **Docs planning or writing** → **Agatha**. **Implementation / mockup / build** → **Colby** (scout fan-out first). **QA / tests / validate** → **Roz** (scout fan-out first).
 - **Commit / push / ship** → **Ellis**. **Infra / CI/CD / deployment** → **Eva** (/devops skill). **"Run the pipeline" / "follow the flow"** → **Eva** (orchestrator).
-- **Bug reports / "this is broken"** → Scout swarm → **Roz** (diagnose, hard pause) → **Colby** (fix after user approval).
-- **Dependency / CVE / upgrade questions** → **Deps** (requires `deps_agent_enabled: true`). **Pipeline health / agent performance / "run Darwin"** → **Darwin** (requires `darwin_enabled: true`).
+- **Bug reports / "this is broken"** → Eva conducts 6-question intake → **Sherlock** (diagnose, own context, no scouts) → hard pause → user-directed fix routing.
 - **Discovered agents** route only via explicit name mention when they have no core-agent overlap; on overlap, Eva asks once and records the preference in the brain or `context-brief.md`.
 - **Edge cases** (ambiguous intent, smart-context checks against `docs/product` / `docs/ux` / `docs/architecture`, discovered-agent conflict protocol) → Eva reads `.claude/references/routing-detail.md`.
 
@@ -172,7 +170,7 @@ See `.claude/references/invocation-templates.md` for detailed examples per agent
 
 ## CRITICAL: Custom Commands Are NOT Skills
 
-Do NOT invoke the `Skill` tool for `/pm`, `/ux`, `/docs`, `/architect`, `/debug`, `/pipeline`, `/devops`, `/deps`, `/darwin`. Read the corresponding file and adopt the persona:
+Do NOT invoke the `Skill` tool for `/pm`, `/ux`, `/docs`, `/architect`, `/pipeline`, `/devops`. Read the corresponding file and adopt the persona:
 
 | Command | File | Agent |
 |---------|------|-------|
@@ -180,11 +178,8 @@ Do NOT invoke the `Skill` tool for `/pm`, `/ux`, `/docs`, `/architect`, `/debug`
 | `/ux` | `.claude/commands/ux.md` | sable-ux (UX design producer) |
 | `/docs` | `.claude/commands/docs.md` | Agatha (doc planning) |
 | `/architect` | `.claude/commands/architect.md` | Cal (conversational clarification) |
-| `/debug` | `.claude/commands/debug.md` | Eva routes: Roz -> Colby -> Roz |
 | `/pipeline` | `.claude/commands/pipeline.md` | Eva (orchestrator) |
 | `/devops` | `.claude/commands/devops.md` | Eva (DevOps) |
-| `/deps` | `.claude/commands/deps.md` | Deps (dependency scan) |
-| `/darwin` | `.claude/commands/darwin.md` | Darwin (pipeline evolution) |
 
 Subagents are invoked via the Agent tool with their persona files in `.claude/agents/`:
 
@@ -199,11 +194,10 @@ Subagents are invoked via the Agent tool with their persona files in `.claude/ag
 | Sable (acceptance) | `.claude/agents/sable.md` |
 | sable-ux (producer) | `.claude/agents/sable-ux.md` |
 | Poirot | `.claude/agents/investigator.md` |
+| Sherlock (bug detective) | `.claude/agents/sherlock.md` |
 | Distillator | `.claude/agents/distillator.md` |
 | Ellis | `.claude/agents/ellis.md` |
 | Sentinel (security audit) | `.claude/agents/sentinel.md` |
-| Deps (dependency scan) | `.claude/agents/deps.md` |
-| Darwin (pipeline evolution) | `.claude/agents/darwin.md` |
 | *[Discovered agents]* | *`.claude/agents/{name}.md` (see `.claude/references/agent-discovery.md`)* |
 
 </gate>

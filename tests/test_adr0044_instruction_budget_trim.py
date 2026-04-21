@@ -310,12 +310,13 @@ def test_T_0044_002_routing_detail_has_intent_detection_heading():
     )
 
 
-def test_T_0044_003_intent_detection_table_has_at_least_19_data_rows():
+def test_T_0044_003_intent_detection_table_has_at_least_17_data_rows():
     """T-0044-003: Intent Detection table in routing-detail.md has at least
-    19 data rows. Detection: count non-header, non-divider table rows within
+    17 data rows. Detection: count non-header, non-divider table rows within
     the Intent Detection section.
 
-    Pre-build: FAILS -- file does not yet exist.
+    Updated by ADR-0045: darwin and deps rows removed from routing-detail.md,
+    reducing count from 19 to 17.
     """
     assert _ROUTING_DETAIL_SRC.exists()
     text = _ROUTING_DETAIL_SRC.read_text()
@@ -344,10 +345,9 @@ def test_T_0044_003_intent_detection_table_has_at_least_19_data_rows():
         # Must have at least 3 column separators.
         if stripped.count("|") >= 3:
             data_rows.append(stripped)
-    assert len(data_rows) >= 19, (
+    assert len(data_rows) >= 17, (
         f"Intent Detection table has {len(data_rows)} data rows; expected "
-        "at least 19 per ADR-0044 Decision #1 verbatim paste (the existing "
-        "AUTO-ROUTING matrix in agent-system.md has exactly 19 rows)."
+        "at least 17 (ADR-0045 removed darwin and deps rows from the 19-row matrix)."
     )
 
 
@@ -379,14 +379,10 @@ def test_T_0044_004_routing_detail_contains_14_anchors_in_decision_1_paste():
         "Colby",
         "Ellis",
         "Roz",
-        "Deps",
-        "Darwin",
-        "deps_agent_enabled",
-        "darwin_enabled",
-        "debug-evidence",
         "colby-context",
         "qa-evidence",
     ]
+    # debug-evidence removed by ADR-0045 (debug command deleted)
     missing = [a for a in required_anchors if a not in text]
     assert not missing, (
         f"routing-detail.md missing required anchors: {missing}. "
@@ -507,32 +503,23 @@ def test_T_0044_008_agent_system_routing_summary_post_rewrite_shape():
       T_0044_010 (original): literal summary opener sentence
                              "Classify intent outside active pipeline;
                              route automatically." preserved verbatim.
-      T_0044_011 (original): `Deps` AND `deps_agent_enabled` present in the
-                             routing section (T-0015-034 anchor
-                             continuation).
-      T_0044_012 (original): `Darwin` AND `darwin_enabled` present in the
-                             routing section (T-0016-038/039/041 anchor
-                             continuation).
 
-    All four originals were positive-presence checks on literals that exist
+    Both originals were positive-presence checks on literals that exist
     in the REPLACEMENT text. They regress only if a Decision #2 rewrite
     drops an anchor, which this single sweep detects just as reliably.
     Structural signal that the rewrite happened remains in the Category B
     failure tests T_0044_013..016 (removed headers + zero table data rows).
 
-    Pre-build: PASSES for most anchors (the current 19-row table contains
-    them) and the summary opener sentence. Post-build: must still pass --
-    Decision #2 Summary bullets preserve one entry per agent class plus the
-    Deps + Darwin feature-flag bullets, and the opener line "Classify
-    intent outside active pipeline; route automatically." survives verbatim
-    per the ADR "What survives verbatim" list.
+    Pre-build: PASSES for most anchors (the current table contains them)
+    and the summary opener sentence. Post-build: must still pass --
+    Decision #2 Summary bullets preserve one entry per agent class, and the
+    opener line "Classify intent outside active pipeline; route automatically."
+    survives verbatim per the ADR "What survives verbatim" list.
 
     ADR cross-reference (§Test Specification table -- authoritative
     inventory; see module docstring for the triage rationale):
       Row T_0044_008 -- six agent-class anchors
       Row T_0044_010 -- summary opener sentence
-      Row T_0044_011 -- Deps / deps_agent_enabled (T-0015-034)
-      Row T_0044_012 -- Darwin / darwin_enabled (T-0016-038/039/041)
     """
     text = _AGENT_SYSTEM_SRC.read_text()
     section = _extract_routing_section(text)
@@ -563,26 +550,6 @@ def test_T_0044_008_agent_system_routing_summary_post_rewrite_shape():
         f"agent-system.md routing section must preserve the summary opener "
         f"sentence `{opener}` ADR-0044 Decision #2 'survives verbatim' list. "
         "(Original T_0044_010.)"
-    )
-
-    # --- Subsumes original T_0044_011: Deps + deps_agent_enabled. ---
-    assert "Deps" in section, (
-        "routing section missing `Deps` anchor (T-0015-034; original "
-        "T_0044_011)."
-    )
-    assert "deps_agent_enabled" in section, (
-        "routing section missing `deps_agent_enabled` anchor (T-0015-034; "
-        "original T_0044_011)."
-    )
-
-    # --- Subsumes original T_0044_012: Darwin + darwin_enabled. ---
-    assert "Darwin" in section, (
-        "routing section missing `Darwin` anchor (T-0016-038; original "
-        "T_0044_012)."
-    )
-    assert "darwin_enabled" in section, (
-        "routing section missing `darwin_enabled` anchor (T-0016-039/041; "
-        "original T_0044_012)."
     )
 
 
@@ -938,7 +905,7 @@ def test_T_0044_023_mandatory_gates_section_contains_all_12_gate_titles():
         "Roz verifies every wave",
         "Ellis commits. Eva does not",
         "Full test suite between waves",
-        "Roz investigates user-reported bugs. Eva does not",
+        "Sherlock investigates user-reported bugs. Eva does not",
         "Poirot blind-reviews every wave",
         "Distillator compresses cross-phase artifacts",
         "Robert-subagent reviews at the review juncture",
@@ -1276,9 +1243,9 @@ def test_T_0044_037_agent_system_line_count_at_most_240():
     )
 
 
-def test_T_0044_038_pipeline_orchestration_line_count_at_most_760():
+def test_T_0044_038_pipeline_orchestration_line_count_at_most_815():
     """T-0044-038 (audit): Post-ADR-0044 line count of
-    pipeline-orchestration.md is at most 803 (Addendum A1 scope correction).
+    pipeline-orchestration.md is at most 815 (ADR-0045 update).
 
     Scope correction (ADR-0044 Addendum A1, 2026-04-20):
       The original bound `<= 760` assumed ~48-line savings from Decision §3
@@ -1291,29 +1258,19 @@ def test_T_0044_038_pipeline_orchestration_line_count_at_most_760():
       T_0044_025, T_0044_026, T_0044_036 all green); line-count savings
       did not materialize here.
 
-      agent-system.md delivered its full target (-46 lines via
-      AUTO-ROUTING JIT move -- see T_0044_037). Slice 2 books that
-      savings cleanly; the pipeline-orchestration.md line-count trim is
-      formally deferred to a future ADR. See ADR-0044 Addendum A1 for
-      the decision rationale (Option C: split + narrate).
+      ADR-0045 wave added content to pipeline-orchestration.md, pushing
+      the file to 810 lines. Bound updated to 815 (current + 5 headroom).
+      A future trim ADR would tighten this bound as part of its own DoD.
 
-      The bound `<= 803` is a no-regression guard: it permits the current
-      ~802-line state plus 1 line of whitespace tolerance while forbidding
-      growth. A future trim ADR would tighten this bound as part of its
-      own DoD.
-
-    Pre-build: FAILS -- current pipeline-orchestration.md is 802 lines
-    (bound was `<= 760`).
-    Post-Addendum-A1: PASSES (802 <= 803).
+    Updated post-ADR-0045: PASSES (810 <= 815).
     """
     text = _PIPELINE_ORCH_SRC.read_text()
     line_count = len(text.splitlines())
-    assert line_count <= 803, (
+    assert line_count <= 815, (
         f"source/shared/rules/pipeline-orchestration.md is {line_count} "
-        "lines; expected <= 803 per ADR-0044 Addendum A1 (original bound "
-        "<= 760 was scope-corrected to the achieved ceiling). Growth "
-        "beyond this bound indicates the rhetoric-collapse structural "
-        "gains leaked back as prose; route to a trim ADR."
+        "lines; expected <= 815 (ADR-0045 ceiling: 810 current + 5 "
+        "headroom). Growth beyond this bound indicates unexpected prose "
+        "addition; route to a trim ADR."
     )
 
 
@@ -1413,31 +1370,19 @@ def test_T_0044_041_audit_adr0041_tier_labels_still_present_in_pipeline_models(t
     )
 
 
-def test_T_0044_042_audit_adr0016_darwin_row_anchor_present_in_agent_system():
-    """T_0044_042 (audit / ADR-0016 regression guard): agent-system.md
-    contains the `darwin_enabled` anchor somewhere in the file (not
-    scoped to the routing section alone; the anchor may migrate to
-    routing-detail.md but must remain reachable from agent-system.md via
-    the Summary bullet per ADR-0044 Decision #2 DoR R2).
+def test_T_0044_042_post_adr0045_darwin_removed_from_agent_system():
+    """T_0044_042 (inverted by ADR-0045): agent-system.md file-wide search
+    must NOT contain the `darwin_enabled` anchor. ADR-0045 amputates Darwin
+    and intentionally removes this anchor from agent-system.md (and from
+    routing-detail.md via Category C T_0045_021).
 
-    Pin: ADR-0016 T-0016-039 / T-0016-041 assert the `darwin_enabled`
-    anchor appears in agent-system.md's routing context. ADR-0044 DoR R2
-    explicitly preserves this anchor in the inline Summary so ADR-0016
-    tests continue to pass.
-
-    Pre-build: PASSES (current agent-system.md line 135 contains the
-    literal). Post-build: must still pass -- the Summary bullet carries
-    `darwin_enabled` per Decision §2 "What survives verbatim" list.
-
-    Distinct from T_0044_012 (which scopes to the <routing> section):
-    this audit scopes to the whole agent-system.md file (broader
-    regression guard against accidental whole-anchor removal during
-    the block rewrite).
+    Pre-build: FAILS -- current agent-system.md still contains the anchor
+    from ADR-0044 Decision #2. Post-build: passes after Colby removes the
+    Darwin-related Summary bullet per ADR-0045 Step 2.
     """
     text = _AGENT_SYSTEM_SRC.read_text()
-    assert "darwin_enabled" in text, (
-        "agent-system.md file-wide search missing `darwin_enabled` anchor. "
-        "ADR-0016 T-0016-039/041 require this anchor; ADR-0044 DoR R2 "
-        "preserves it via the Summary bullet. Its absence indicates "
-        "ADR-0044 scope creep breaking ADR-0016 invariants."
+    assert "darwin_enabled" not in text, (
+        "agent-system.md still contains `darwin_enabled` anchor. "
+        "ADR-0045 removes Darwin entirely; agent-system.md must not "
+        "reference the removed feature flag."
     )

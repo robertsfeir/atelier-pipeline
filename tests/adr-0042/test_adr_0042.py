@@ -232,11 +232,11 @@ def _count_table_data_rows(section: str) -> int:
 # ===========================================================================
 
 
-def test_T_0042_001_per_agent_table_has_17_rows():
-    """T-0042-001 (happy): Per-Agent Assignment Table has exactly 17 rows.
+def test_T_0042_001_per_agent_table_has_16_rows():
+    """T-0042-001 (happy): Per-Agent Assignment Table has exactly 16 rows.
 
-    Required agents: Cal, Colby, Roz, Poirot, Darwin, Robert, robert-spec,
-    Sable, sable-ux, Sentinel, Deps, Agatha, Ellis, Distillator,
+    Required agents: Cal, Colby, Roz, Poirot, Sherlock, Robert, robert-spec,
+    Sable, sable-ux, Sentinel, Agatha, Ellis, Distillator,
     brain-extractor, Explore, Synthesis.
 
     Pre-build: FAILS until Colby rewrites the table per ADR-0042 Step 1.
@@ -249,10 +249,10 @@ def test_T_0042_001_per_agent_table_has_17_rows():
         "'## Per-Agent Assignment Table' section."
     )
     rows = _count_table_data_rows(section)
-    assert rows == 17, (
-        f"Per-Agent Assignment Table has {rows} data rows; expected 17. "
-        "ADR-0042 Decision #2 requires: Cal, Colby, Roz, Poirot, Darwin, "
-        "Robert, robert-spec, Sable, sable-ux, Sentinel, Deps, Agatha, "
+    assert rows == 16, (
+        f"Per-Agent Assignment Table has {rows} data rows; expected 16. "
+        "ADR-0042 Decision #2 requires: Cal, Colby, Roz, Poirot, Sherlock, "
+        "Robert, robert-spec, Sable, sable-ux, Sentinel, Agatha, "
         "Ellis, Distillator, brain-extractor, Explore, Synthesis."
     )
 
@@ -447,16 +447,7 @@ def test_T_0042_011_sentinel_claude_frontmatter():
     )
 
 
-def test_T_0042_012_deps_claude_frontmatter():
-    """T-0042-012 (happy): deps.frontmatter.yml (Claude) has sonnet / medium."""
-    fm = _parse_frontmatter(CLAUDE_AGENTS_DIR / "deps.frontmatter.yml")
-    assert _model_matches(fm.get("model"), "sonnet"), (
-        f"deps (Claude): expected model family 'sonnet', got {fm.get('model')!r}. "
-        "ADR-0042 Decision #2 demotes Deps opus -> sonnet."
-    )
-    assert fm.get("effort") == "medium", (
-        f"deps (Claude): expected effort 'medium', got {fm.get('effort')!r}."
-    )
+# T_0042_012 removed by ADR-0045 -- Deps agent and its frontmatter were removed.
 
 
 def test_T_0042_013_ellis_claude_frontmatter():
@@ -539,7 +530,7 @@ def test_T_0042_016_changed_agents_platform_parity(agent):
 
 @pytest.mark.parametrize(
     "agent",
-    ["cal", "colby", "investigator", "darwin", "robert-spec", "sable-ux", "agatha"],
+    ["cal", "colby", "investigator", "sherlock", "robert-spec", "sable-ux", "agatha"],
 )
 def test_T_0042_017_unchanged_agents_values_match_baseline(agent):
     """T-0042-017 (failure): Each of the 7 unchanged agents has the exact

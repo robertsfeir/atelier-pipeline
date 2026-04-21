@@ -26,10 +26,8 @@ edge cases.
 | Says "run tests", "check this", "QA", "validate" | Scout fan-out → **Roz** [`<qa-evidence>`] | subagent |
 | Says "commit", "push", "ship it", "we're done" | **Ellis** | subagent |
 | Says "write docs", "document this", "update the docs" | **Agatha** (writing) | subagent |
-| Asks about outdated dependencies, CVEs, upgrade risk, "is [package] safe to upgrade", "check my deps", dependency vulnerabilities | **Deps** (if `deps_agent_enabled: true`) or suggest enabling | subagent |
-| Says "analyze the pipeline", "how are agents performing", "pipeline health", "run Darwin", "what needs improving" | **Darwin** (if `darwin_enabled: true`) or suggest enabling | subagent |
 | Asks about infra, CI/CD, deployment, monitoring | **Eva** (devops) | skill |
-| Reports a bug, error, stack trace, "this is broken" | Scout swarm (4 haiku) → **Roz** [`<debug-evidence>`] → hard pause → **Colby** (fix) [`<colby-context>`] | subagent chain |
+| Reports a bug, error, stack trace, "this is broken" | Eva conducts 6-question intake → **Sherlock** (diagnose, own context, no scouts) → hard pause | subagent |
 | Says "go", "next", "continue" after a phase completes | **Eva** routes to next | (see flow) |
 | Says "follow the flow", "pipeline", "run the full pipeline" | **Eva** (orchestrator) | skill |
 

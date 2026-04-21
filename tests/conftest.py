@@ -64,17 +64,17 @@ AGENT_FILES = [
     "robert.md", "sable.md", "investigator.md", "distillator.md",
 ]
 
-# All 12 core agent filenames (post ADR-0015/0016)
-ALL_AGENTS_12 = [
+# All core agent filenames (post ADR-0045 Slice 4: darwin + deps removed, sherlock added)
+ALL_AGENTS_CORE = [
     "cal.md", "colby.md", "roz.md", "agatha.md", "ellis.md",
     "robert.md", "sable.md", "investigator.md", "sentinel.md",
-    "darwin.md", "deps.md", "distillator.md",
+    "distillator.md", "sherlock.md",
 ]
 
-# All 7 command file basenames
+# All 6 command file basenames (post ADR-0045 Slice 4: debug removed -- bug investigation routes through Sherlock subagent, not /debug skill)
 COMMAND_FILES = [
     "pm.md", "ux.md", "docs.md", "architect.md",
-    "debug.md", "pipeline.md", "devops.md",
+    "pipeline.md", "devops.md",
 ]
 
 # Brain-context-capable agents

@@ -106,10 +106,8 @@ def test_T_0021_040_roz_disallowed():
     assert "NotebookEdit" in fm
 
 
-def test_T_0021_041_roz_workflow():
-    text = (SHARED_AGENTS / "roz.md").read_text()
-    assert "Investigation Mode" in text
-    assert "Code QA Mode" in text
+# removed by ADR-0045 — asserted deleted feature
+# test_T_0021_041_roz_workflow (Investigation Mode section deleted)
 
 
 # Regression: Agatha

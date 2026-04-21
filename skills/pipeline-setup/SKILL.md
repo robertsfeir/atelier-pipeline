@@ -146,6 +146,44 @@ Before installing, ask the user about their project. Ask these questions convers
 
 If the user does not have answers for optional items (coverage), use sensible defaults.
 
+### Step 1a: Design System Path (Optional)
+
+Some projects keep their design system (tokens, components, icons) in a
+directory outside the project root -- a shared monorepo package, a sibling
+directory, or an external path. By default, agents look for a
+`design-system/` directory at the project root. If yours lives elsewhere,
+configure the path now.
+
+Ask conversationally (not as a list):
+
+> Does your project have a design system directory, and is it at the default
+> `design-system/` path at the project root?
+>
+> - **Yes, default path** (or "I don't have a design system"): press Enter.
+> - **Yes, external path:** provide the absolute or project-relative path.
+
+**If user provides a path:**
+
+1. **Validate existence.** Check that the path exists. If not found, print
+   `Directory [path] not found -- skipping design-system path configuration.`
+   and continue without setting the path.
+2. **Validate tokens.md.** Check that `tokens.md` exists inside the directory.
+   If missing, print `No tokens.md found at [path]. Skipping -- a valid design
+   system must include tokens.md.` and continue without setting the path.
+3. **Set config.** Resolve to absolute path, and store in
+   `.claude/pipeline-config.json` as `design_system_path`.
+4. **List discovered files.** Print: `Design system path set to [path]. Found:
+   [list of .md files]. [icons/ directory present | No icons/ directory]`.
+
+**If user does not provide a path (default or absent):**
+
+Leave `design_system_path` as `null` in `pipeline-config.json` (the template
+default). Agents will fall back to convention-based detection (`design-system/`
+at project root). Print nothing -- this is the common case.
+
+**To change the path later:** re-run `/pipeline-setup` (this step is idempotent
+and will re-prompt).
+
 ### Step 1b: Git Repository Detection
 
 Before asking about branching strategy, determine git availability.
@@ -275,7 +313,7 @@ plugins/atelier-pipeline/source/
 > 1. Ensure `docs/pipeline/` exists: `mkdir -p docs/pipeline`
 > 2. Create sentinel: write an empty file to `docs/pipeline/.setup-mode`
 >
-> After all files are installed (end of Step 6f), remove the sentinel:
+> After all files are installed (end of Step 6d), remove the sentinel:
 > delete `docs/pipeline/.setup-mode`.
 >
 > The sentinel file is also checked into `.gitignore` patterns in the
@@ -606,7 +644,7 @@ After installation, print:
 3. The configured branching strategy and any CI recommendations
 4. A reminder of available slash commands
 5. Instructions to start their first pipeline run
-6. **Offer optional features** -- Sentinel security agent, Agent Teams parallel execution, CI Watch automated CI monitoring, Deps Agent dependency scanning, Darwin self-evolving pipeline, Dashboard integration, Claude Code Agent Resume prerequisite, and Atelier Brain persistent memory (Steps 6a through 6g)
+6. **Offer optional features** -- Sentinel security agent, Agent Teams parallel execution, CI Watch automated CI monitoring, Claude Code Agent Resume prerequisite, and Atelier Brain persistent memory (Steps 6a through 6d)
 
 **Example summary:**
 
@@ -634,16 +672,12 @@ Branching strategy: [selected strategy]
 Sentinel security agent: [enabled (Semgrep MCP) | not enabled]
 Agent Teams: [enabled (experimental) | not enabled]
 CI Watch: [enabled (max retries: N) | not enabled]
-Deps agent: [enabled | not enabled]
-Darwin: [enabled | not enabled]
-Dashboard: [PlanVisualizer | claude-code-kanban | not enabled]
 Compaction API: PreCompact hook installed for pipeline state preservation
 
 Available commands:
   /pm          -- Feature discovery and product spec (Robert)
   /ux          -- UI/UX design (Sable)
   /architect   -- Architecture and ADR production (Cal)
-  /debug       -- Bug investigation and fix chain (Roz -> Colby -> Roz)
   /pipeline    -- Full pipeline orchestration (Eva)
   /devops      -- Infrastructure and deployment (Eva)
   /docs        -- Documentation planning and writing (Agatha)
@@ -748,136 +782,9 @@ After the Agent Teams offer (whether user said yes or no), offer the optional CI
 
 **No new agent files installed** -- CI Watch uses existing Roz, Colby, and Ellis personas.
 
-### Step 6d: Deps Agent Opt-In
+### Step 6d: Claude Code Agent Resume Prerequisite (Experimental)
 
-After the CI Watch offer (whether user said yes or no), offer the optional Deps agent:
-
-> Would you also like to enable the **Deps agent** -- predictive dependency management?
-> It scans your dependencies for CVEs, checks for outdated packages, and predicts
-> breakage risk before you upgrade. No external tools required beyond your existing
-> package managers. Optional -- the pipeline works fine without it.
-
-**If user says yes:**
-
-1. Set `deps_agent_enabled: true` in `.claude/pipeline-config.json`.
-2. Assemble `source/shared/agents/deps.md` + `source/claude/agents/deps.frontmatter.yml` to `.claude/agents/deps.md`.
-3. Assemble `source/shared/commands/deps.md` + overlay to `.claude/commands/deps.md`.
-4. Print: "Deps agent: enabled. Use /deps to scan your dependencies."
-
-**Idempotency:** If `deps_agent_enabled` already exists in `pipeline-config.json`
-and is `true`, skip mutation and inform: "Deps agent is already enabled." If it
-exists and is `false`, confirm before changing. If the key is absent (missing from
-the config), treat as `false` (default false) and proceed with the offer.
-
-**If user says no:** Skip entirely. `deps_agent_enabled` remains `false`.
-Print: "Deps agent: not enabled"
-
-**Installation manifest addition (conditional):**
-
-| Template Source | Destination | Install When |
-|----------------|-------------|-------------|
-| `source/shared/agents/deps.md` + `source/claude/agents/deps.frontmatter.yml` | `.claude/agents/deps.md` | User enables Deps in Step 6d (overlay assembly) |
-| `source/shared/commands/deps.md` + overlay | `.claude/commands/deps.md` | User enables Deps in Step 6d (overlay assembly) |
-
-### Step 6e: Darwin Self-Evolving Pipeline (Opt-In)
-
-After the Deps Agent offer (whether user said yes or no), offer the optional Darwin agent:
-
-> Would you also like to enable **Darwin** -- the self-evolving pipeline engine?
-> It analyzes your pipeline telemetry to identify underperforming agents and proposes
-> structural fixes (persona edits, rule changes, enforcement additions) backed by evidence.
-> Requires persistent memory with 5+ pipelines of telemetry data. Optional -- the
-> pipeline works fine without it.
-
-**If user says yes:**
-
-1. Set `darwin_enabled: true` in `.claude/pipeline-config.json`.
-2. Assemble `source/shared/agents/darwin.md` + `source/claude/agents/darwin.frontmatter.yml` to `.claude/agents/darwin.md`.
-3. Assemble `source/shared/commands/darwin.md` + overlay to `.claude/commands/darwin.md`.
-4. Print: "Darwin: enabled. Use /darwin to analyze pipeline performance, or Darwin will auto-trigger when degradation is detected."
-
-**Idempotency:** If `darwin_enabled` already exists in `pipeline-config.json`
-and is `true`, skip mutation and inform: "Darwin is already enabled." If it
-exists and is `false`, confirm before changing. If the key is absent (missing from
-the config), treat as `false` (default false) and proceed with the offer.
-
-**If user says no:** Skip entirely. `darwin_enabled` remains `false`.
-Print: "Darwin: not enabled"
-
-**Dependency:** Darwin requires the Atelier Brain for telemetry data. If no
-brain is configured (`.claude/brain-config.json` absent), inform user: "Darwin
-requires the Atelier Brain for telemetry data. Set up brain first, then re-run
-setup."
-
-**Installation manifest addition (conditional):**
-
-| Template Source | Destination | Install When |
-|----------------|-------------|-------------|
-| `source/shared/agents/darwin.md` + `source/claude/agents/darwin.frontmatter.yml` | `.claude/agents/darwin.md` | User enables Darwin in Step 6e (overlay assembly) |
-| `source/shared/commands/darwin.md` + overlay | `.claude/commands/darwin.md` | User enables Darwin in Step 6e (overlay assembly) |
-
-### Step 6f: Dashboard Integration (Opt-In)
-
-After the Darwin offer (whether user said yes or no), offer dashboard integration:
-
-```
-Dashboard integration (optional):
-  1. PlanVisualizer -- project-level tracking with kanban, cost trends,
-     traceability across pipeline runs
-     https://github.com/ksyed0/PlanVisualizer
-  2. claude-code-kanban -- real-time session dashboard, watch agents
-     work live (lightweight, instant setup)
-     https://github.com/NikiforovAll/claude-code-kanban
-  3. None
-
-Choose [1/2/3]:
-```
-
-**Pre-check (before showing menu):** Detect current state by checking:
-- Does `.plan-visualizer/` directory exist? (PlanVisualizer installed)
-- Do claude-code-kanban hooks exist in `~/.claude/hooks/`? (kanban installed)
-
-**If both dashboards detected:** Force choice before proceeding. Print:
-"Both dashboards detected. Pick one or remove both." Then show the menu.
-
-**Idempotency:** Before running any install or cleanup, read `dashboard_mode` from `.claude/pipeline-config.json`. If it already matches the user's choice, skip mutation and announce: "Dashboard is already set to [choice]." Do not re-run install.
-
-**If user picks 1 (PlanVisualizer):**
-
-1. Check Node.js: run `node --version`. If node is not found or the version is < 18: warn "PlanVisualizer requires Node.js 18+. Skipping." Set `dashboard_mode: "none"` in `.claude/pipeline-config.json` and skip remaining steps.
-2. **Switch cleanup:** If switching from claude-code-kanban, run `npx claude-code-kanban --uninstall` (if npx available). If that fails or npx is unavailable, manually remove kanban hooks from `~/.claude/hooks/`. Log any uninstall failure but continue -- manual cleanup is the fallback.
-3. Clone PlanVisualizer to `.plan-visualizer/` in the project root (e.g., `git clone https://github.com/ksyed0/PlanVisualizer .plan-visualizer`). Pin to a known-good tag if available.
-   Add `.plan-visualizer/` to the project's `.gitignore` if not already present.
-4. Run PlanVisualizer's install script from within `.plan-visualizer/`.
-5. Copy bridge script: `source/dashboard/telemetry-bridge.sh` -> `.claude/dashboard/telemetry-bridge.sh`.
-6. Set `dashboard_mode: "plan-visualizer"` in `.claude/pipeline-config.json`.
-7. Print: "Dashboard: PlanVisualizer installed. Run `node tools/generate-plan.js` to view."
-
-**Note:** PlanVisualizer works without the Atelier Brain. When brain is not configured, the bridge script falls back to reading `docs/pipeline/pipeline-state.md` to populate the dashboard.
-
-**If user picks 2 (claude-code-kanban):**
-
-1. Check npx: run `command -v npx`. If not found: warn "claude-code-kanban requires npm/npx. Skipping." Set `dashboard_mode: "none"` in `.claude/pipeline-config.json` and skip remaining steps.
-2. **Switch cleanup from PlanVisualizer:** If switching from PlanVisualizer, remove the `.plan-visualizer/` directory and bridge script (`.claude/dashboard/telemetry-bridge.sh`).
-3. Run `npx claude-code-kanban@latest --install` to register hooks (use `npx claude-code-kanban --install` if `@latest` is unavailable in your npm registry).
-   **Note:** `@latest` prevents stale cached versions. For production environments, pin a specific version (e.g., `npx claude-code-kanban@1.2.3 --install`) for reproducibility.
-   claude-code-kanban installs hooks at `~/.claude/hooks/` (user-level, affects all projects).
-4. Set `dashboard_mode: "claude-code-kanban"` in `.claude/pipeline-config.json`.
-5. Print: "Dashboard: claude-code-kanban installed. Run `npx claude-code-kanban --open` to view."
-
-**If user picks 3 (None):**
-
-1. **Switch cleanup:** If switching from an existing dashboard:
-   - If switching from PlanVisualizer: remove `.plan-visualizer/` directory and bridge script.
-   - If switching from claude-code-kanban: run `npx claude-code-kanban --uninstall` (if available), or manually remove kanban hooks from `~/.claude/hooks/`.
-2. Set `dashboard_mode: "none"` in `.claude/pipeline-config.json`.
-3. Print: "Dashboard: not enabled"
-
-**Error handling:** If any install step fails (clone fails, install script errors, npx install errors): log the error with "Dashboard install failed: [reason]. Skipping.", set `dashboard_mode: "none"` in `.claude/pipeline-config.json`, and continue setup. Never block setup on dashboard install failure.
-
-### Step 6g: Claude Code Agent Resume Prerequisite (Experimental)
-
-After the Dashboard offer (whether user said yes or no), if the user is running Claude Code, offer one more experimental flag — ensure Claude Code's experimental
+After the CI Watch offer (whether user said yes or no), if the user is running Claude Code, offer one more experimental flag — ensure Claude Code's experimental
 subagent-resume flag is enabled. This unlocks the `SendMessage` tool, which
 the Agent tool advertises as the standard way to resume a spawned subagent
 ("use SendMessage with to: '<agentId>' to continue this agent"). Without
@@ -929,7 +836,7 @@ not a pipeline file install.
 
 **Brain setup offer (always ask):**
 
-After the Claude Code Agent Resume Prerequisite offer (whether user said yes or no), ask the user:
+After the Claude Code Agent Resume Prerequisite (Step 6d) offer (whether user said yes or no), ask the user:
 
 > The pipeline is ready. Would you also like to set up the **Atelier Brain**?
 > It gives your agents persistent memory across sessions -- architectural

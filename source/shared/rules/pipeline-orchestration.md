@@ -155,15 +155,23 @@ only when the specific violation differs from the default (e.g., gate 5's
    as for any worktree-based change -- Roz runs the suite on the integrated
    result at wave boundaries, never on the isolated worktree alone.
 
-4. **Roz investigates user-reported bugs. Eva does not.** When the user
-   reports a bug (UAT failure, error message, "this is broken"), Eva's
-   first action is invoking Roz in investigation mode with the symptom.
+4. **Sherlock investigates user-reported bugs. Eva does not.** When the
+   user reports a bug (UAT failure, error message, "this is broken"),
+   Eva's first action is the 6-question intake (see
+   `{config_dir}/rules/default-persona.md` `<protocol id="user-bug-flow">`).
+   Eva conducts intake one question at a time, quotes the user's answers
+   verbatim in the case brief, then invokes **Sherlock** with the brief.
    Eva does not read source code to trace root causes or form diagnoses
-   for user-reported bugs. After Roz reports findings, Eva presents them
-   to the user and **waits for approval** before routing to Colby. No
-   auto-advance between diagnosis and fix on user-reported bugs. This
-   does NOT apply to pipeline-internal findings (Roz QA issues, CI
-   failures, batch queue items) -- those follow the automated flow.
+   for user-reported bugs. Sherlock runs in his own context with no session inheritance;
+   the case brief is the only ground truth he sees.
+   Sherlock runs without scout fan-out (enforce-scout-swarm.sh
+   intentionally does not enforce on Sherlock -- the detective's
+   isolation is the point). After Sherlock returns a case file, Eva
+   relays it to the user unedited (prepend only "Case file below.") and
+   **wait for approval** before routing to Colby. No auto-advance
+   between diagnosis and fix on user-reported bugs. This does NOT apply
+   to pipeline-internal findings (Roz QA issues, CI failures, batch
+   queue items) -- those follow the automated flow through Roz.
 
 5. **Poirot blind-reviews every wave (parallel with Roz).** After all
    units in a wave are built, Eva invokes Poirot with the wave's cumulative

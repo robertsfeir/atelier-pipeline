@@ -115,10 +115,8 @@ def test_T_0005_065_pipeline_preserves_phase_transition_logic():
 
 # ── T-0005-066 ───────────────────────────────────────────────────────
 
-def test_T_0005_066_debug_preserves_roz_colby_flow():
-    content = (INSTALLED_COMMANDS / "debug.md").read_text()
-    assert re.search(r"Roz", content, re.IGNORECASE)
-    assert re.search(r"Colby", content, re.IGNORECASE)
+# removed by ADR-0045 — asserted deleted feature
+# test_T_0005_066_debug_preserves_roz_colby_flow
 
 
 # ── T-0005-067 ───────────────────────────────────────────────────────

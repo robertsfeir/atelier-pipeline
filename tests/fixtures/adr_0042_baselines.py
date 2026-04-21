@@ -122,11 +122,13 @@ UNCHANGED_AGENT_FULL_HASHES: dict[str, dict[str, str]] = {
 # ---------------------------------------------------------------------------
 # T-0042-017: Unchanged-agent expected values (model + effort).
 # ---------------------------------------------------------------------------
+# ADR-0045 Slice 4: darwin entry replaced with sherlock (opus/high per R6); parametrize
+# list in test_T_0042_017 was updated by Category H T_0045_059 to exercise the sherlock row.
 UNCHANGED_AGENT_EXPECTED: dict[str, dict[str, str]] = {
     "cal":          {"model": "opus",  "effort": "xhigh"},
     "colby":        {"model": "opus",  "effort": "high"},
     "investigator": {"model": "opus",  "effort": "high"},
-    "darwin":       {"model": "opus",  "effort": "high"},
+    "sherlock":     {"model": "opus",  "effort": "high"},
     "robert-spec":  {"model": "opus",  "effort": "medium"},
     "sable-ux":     {"model": "opus",  "effort": "medium"},
     "agatha":       {"model": "opus",  "effort": "medium"},

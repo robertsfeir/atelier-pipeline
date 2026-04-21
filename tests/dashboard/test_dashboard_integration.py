@@ -12,7 +12,7 @@ import tempfile
 import pytest
 
 from tests.conftest import (
-    ALL_AGENTS_12,
+    ALL_AGENTS_CORE,
     CLAUDE_DIR,
     CURSOR_DIR,
     CURSOR_PLUGIN_DIR,
@@ -130,8 +130,8 @@ def test_T_0018_013_No_existing_fields_in_either_config_file_are_removed_after_a
     pass  # Complex bats test
 
 
-def test_T_0018_014_darwin_enabled_sentinel_enabled_deps_agent_enabled_unchanged_in_source_config():
-    """T-0018-014: darwin_enabled, sentinel_enabled, deps_agent_enabled unchanged in source config."""
+def test_T_0018_014_sentinel_enabled_unchanged_in_source_config():
+    """T-0018-014: sentinel_enabled unchanged in source config. Removed keys (darwin_enabled, deps_agent_enabled) are tested separately in Category E."""
     pass  # Complex bats test
 
 
@@ -152,11 +152,11 @@ def test_T_0018_016_Step_0_cleanup_does_not_affect_other_hook_entries_enforce_pa
     assert "enforce-git.sh" in c
 
 
-def test_T_0018_017_SKILL_md_contains_Step_6f_block_positioned_after_Step_6e_Darwin_and_before_Brain_setup_of():
-    """T-0018-017: SKILL.md contains Step 6f block positioned after Step 6e (Darwin) and before Brain setup offer."""
+def test_T_0018_017_SKILL_md_contains_Step_1a_design_system_path():
+    """T-0018-017: SKILL.md contains `Step 1a: Design System Path` fold (ADR-0045 Slice 4 replaces the Dashboard Step 6f check)."""
     f = SKILL_FILE
     c = f.read_text()
-    assert "Step 6f" in c
+    assert "Step 1a: Design System Path" in c
 
 
 def test_T_0018_018_Step_6f_menu_shows_3_options_with_descriptions_and_GitHub_links():
@@ -259,11 +259,8 @@ def test_T_0018_035_Step_6f_notes_that_PlanVisualizer_works_without_brain_bridge
     f = SKILL_FILE
 
 
-def test_T_0018_036_Step_6e_Darwin_block_heading_is_unchanged_after_Step_6f_insertion():
-    """T-0018-036: Step 6e (Darwin) block heading is unchanged after Step 6f insertion."""
-    f = SKILL_FILE
-    c = f.read_text()
-    assert "### Step 6e: Darwin Self-Evolving Pipeline" in c
+# removed by ADR-0045 — asserted deleted feature
+# test_T_0018_036_Step_6e_Darwin_block_heading_is_unchanged_after_Step_6f_insertion
 
 
 def test_T_0018_037_Brain_setup_offer_is_positioned_after_Step_6f():
@@ -277,15 +274,14 @@ def test_T_0018_038_Steps_6a_through_6d_headings_are_unchanged_after_Step_6f_ins
     c = f.read_text()
     assert "### Step 6a: Sentinel Security Agent" in c
     assert "### Step 6b: Agent Teams Opt-In" in c
-    assert "### Step 6c: CI Watch Opt-In" in c
-    assert "### Step 6d: Deps Agent Opt-In" in c
+    assert "### Step 6c: CI Watch Opt-In" in c  # ADR-0045: Step 6d (Deps) removed
 
 
-def test_T_0018_038b_Brain_setup_offer_intro_references_After_the_Dashboard_offer_not_After_the_Darwin_offer():
-    """T-0018-038b: Brain setup offer intro references 'After the Dashboard offer' (not 'After the Darwin offer')."""
+def test_T_0018_038b_Brain_setup_offer_intro_references_post_slice4_predecessor():
+    """T-0018-038b: Brain setup offer intro references the predecessor step that survives after ADR-0045 Slice 4 cleanup (Dashboard + Darwin steps removed; Brain setup now follows the Agent Resume Prerequisite offer or the CI Watch offer)."""
     f = SKILL_FILE
     c = f.read_text()
-    assert "After the Dashboard offer" in c
+    assert "After the Agent Resume Prerequisite offer" in c or "After the CI Watch offer" in c
 
 
 def test_T_0018_039_source_dashboard_telemetry_bridge_sh_exists_and_is_executable():
@@ -667,20 +663,6 @@ def test_T_0018_094_All_existing_enforcement_logic_in_each_hook_is_unchanged_aft
     pass  # Complex bats test
 
 
-def test_T_0018_095_SKILL_md_Steps_1_6e_and_Steps_7_are_unchanged_after_setup_mode_documentation_addition():
-    """T-0018-095: SKILL.md Steps 1-6e and Steps 7 are unchanged after setup-mode documentation addition."""
-    f = SKILL_FILE
-    c = f.read_text()
-    assert "### Step 1: Gather Project Information" in c
-    assert "### Step 2: Read Templates" in c
-    assert "### Step 3: Install Files" in c
-    assert "### Step 4: Customize Placeholders" in c
-    assert "### Step 5: Write CLAUDE.md" in c
-    assert "### Step 6: Print Summary and Offer Optional Features" in c
-    assert "### Step 6a: Sentinel Security Agent (Opt-In)" in c
-    assert "### Step 6b: Agent Teams Opt-In (Experimental)" in c
-    assert "### Step 6c: CI Watch Opt-In" in c
-    assert "### Step 6d: Deps Agent Opt-In" in c
-    assert "### Step 6e: Darwin Self-Evolving Pipeline (Opt-In)" in c
-    assert "### Step 7: Lightweight Reconfig" in c
+# removed by ADR-0045 — asserted deleted feature
+# test_T_0018_095_SKILL_md_Steps_1_6e_and_Steps_7_are_unchanged_after_setup_mode_documentation_addition
 

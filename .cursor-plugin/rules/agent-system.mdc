@@ -66,11 +66,10 @@ Hybrid skill/subagent workflow: Skills run main thread (conversational); subagen
 | **Sable** | UX acceptance reviewer | Read, Glob, Grep, Bash (read-only) |
 | **sable-ux** | UX design producer -- writes to docs/ux/ | Read, Write, Edit, Glob, Grep, Bash |
 | **Poirot** | Blind code investigator -- diff-only review | Read, Glob, Grep, Bash (read-only) |
+| **Sherlock** | Sr. Detective -- user-reported bug diagnose-only hunt | Read, Glob, Grep, Bash (read-only, fresh general-purpose isolation) |
 | **Distillator** | Lossless document compression engine | Read, Glob, Grep, Bash (read-only) |
 | **Ellis** | Commit & Changelog | Read, Write, Edit, Glob, Grep, Bash |
 | **Sentinel** | Security audit -- Semgrep-backed SAST (opt-in) | Read, Glob, Grep, Bash (read-only) + Semgrep MCP tools |
-| **Deps** | Dependency management -- outdated scan, CVE check, breakage prediction | Read, Glob, Grep, Bash (read-only), WebSearch, WebFetch |
-| **Darwin** | Self-evolving pipeline engine -- telemetry analysis, fitness evaluation, structural proposals | Read, Glob, Grep, Bash (read-only) |
 | *[Discovered agents]* | *Per agent persona file* | *Read, Glob, Grep, Bash (read-only by default -- see `{config_dir}/references/agent-discovery.md`)* |
 
 </section>
@@ -123,8 +122,7 @@ Classify intent outside active pipeline; route automatically. Full Intent Detect
 ### Summary
 - **Idea / feature / spec talk** → **robert-spec**. **UI / UX / flows** → **sable-ux**. **Architecture / "how should we build"** → **Cal**. **Docs planning or writing** → **Agatha**. **Implementation / mockup / build** → **Colby** (scout fan-out first). **QA / tests / validate** → **Roz** (scout fan-out first).
 - **Commit / push / ship** → **Ellis**. **Infra / CI/CD / deployment** → **Eva** (/devops skill). **"Run the pipeline" / "follow the flow"** → **Eva** (orchestrator).
-- **Bug reports / "this is broken"** → Scout swarm → **Roz** (diagnose, hard pause) → **Colby** (fix after user approval).
-- **Dependency / CVE / upgrade questions** → **Deps** (requires `deps_agent_enabled: true`). **Pipeline health / agent performance / "run Darwin"** → **Darwin** (requires `darwin_enabled: true`).
+- **Bug reports / "this is broken"** → Eva conducts 6-question intake → **Sherlock** (diagnose, own context, no scouts) → hard pause → user-directed fix routing.
 - **Discovered agents** route only via explicit name mention when they have no core-agent overlap; on overlap, Eva asks once and records the preference in the brain or `context-brief.md`.
 - **Edge cases** (ambiguous intent, smart-context checks against `{product_specs_dir}` / `{ux_docs_dir}` / `{architecture_dir}`, discovered-agent conflict protocol) → Eva reads `{config_dir}/rules/routing-detail.mdc`.
 
@@ -178,7 +176,7 @@ See `{config_dir}/references/invocation-templates.md` for detailed examples per 
 
 ## CRITICAL: Custom Commands Are NOT Skills
 
-Do NOT invoke the `Skill` tool for `/pm`, `/ux`, `/docs`, `/architect`, `/debug`, `/pipeline`, `/devops`, `/deps`, `/darwin`. Read the corresponding file and adopt the persona:
+Do NOT invoke the `Skill` tool for `/pm`, `/ux`, `/docs`, `/architect`, `/pipeline`, `/devops`. Read the corresponding file and adopt the persona:
 
 | Command | File | Agent |
 |---------|------|-------|
@@ -186,11 +184,8 @@ Do NOT invoke the `Skill` tool for `/pm`, `/ux`, `/docs`, `/architect`, `/debug`
 | `/ux` | `{config_dir}/commands/ux.md` | sable-ux (UX design producer) |
 | `/docs` | `{config_dir}/commands/docs.md` | Agatha (doc planning) |
 | `/architect` | `{config_dir}/commands/architect.md` | Cal (conversational clarification) |
-| `/debug` | `{config_dir}/commands/debug.md` | Eva routes: Roz -> Colby -> Roz |
 | `/pipeline` | `{config_dir}/commands/pipeline.md` | Eva (orchestrator) |
 | `/devops` | `{config_dir}/commands/devops.md` | Eva (DevOps) |
-| `/deps` | `{config_dir}/commands/deps.md` | Deps (dependency scan) |
-| `/darwin` | `{config_dir}/commands/darwin.md` | Darwin (pipeline evolution) |
 
 Subagents are invoked via the Agent tool with their persona files in `{config_dir}/agents/`:
 
@@ -205,11 +200,10 @@ Subagents are invoked via the Agent tool with their persona files in `{config_di
 | Sable (acceptance) | `{config_dir}/agents/sable.md` |
 | sable-ux (producer) | `{config_dir}/agents/sable-ux.md` |
 | Poirot | `{config_dir}/agents/investigator.md` |
+| Sherlock (bug detective) | `{config_dir}/agents/sherlock.md` |
 | Distillator | `{config_dir}/agents/distillator.md` |
 | Ellis | `{config_dir}/agents/ellis.md` |
 | Sentinel (security audit) | `{config_dir}/agents/sentinel.md` |
-| Deps (dependency scan) | `{config_dir}/agents/deps.md` |
-| Darwin (pipeline evolution) | `{config_dir}/agents/darwin.md` |
 | *[Discovered agents]* | *`{config_dir}/agents/{name}.md` (see `{config_dir}/references/agent-discovery.md`)* |
 
 </gate>

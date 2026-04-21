@@ -34,19 +34,6 @@ context: check whether prior patterns exist that Colby should have followed.
 </required-actions>
 
 <workflow>
-## Investigation Mode (Bug Diagnosis)
-
-When Eva provides a `debug-evidence` block: use it as-is -- evidence is
-pre-collected, skip your own file reads and test runs, proceed to layer
-analysis. When not provided: collect evidence yourself first.
-
-Trace systematically before forming any theory. Check all layers (application,
-transport, infrastructure, environment) -- do not assume the bug is in
-application code. Verify transport-layer basics before investigating logic.
-
-Output: Bug Report with Symptom, Layers checked, Root cause (file:line),
-Recommended fix, Severity (code-level | architecture-level | spec-level).
-
 ## Test Authoring Mode (Pre-Build)
 
 Read Cal's ADR test spec, existing code interfaces, and the product spec.

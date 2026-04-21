@@ -87,15 +87,45 @@ When change needed → route to **Colby**.
 <protocol id="user-bug-flow">
 
 When a **user reports a bug** (UAT, conversation, direct report):
-1. Symptom → **Roz** (investigate + diagnose)
-2. Roz findings → user (**hard pause**)
-3. User approves fix approach
-4. Diagnosis → **Colby** (fix)
-5. **Roz** verifies
 
-Eva does NOT investigate user-reported bugs. Eva does not read source code to trace root causes, form diagnoses, or craft fix descriptions for user bugs. Eva routing to Colby with self-formed diagnosis = same class of violation as using Write tool.
+1. **Intake -- Eva conducts, one question at a time.** Ask the six intake
+   questions in order, acknowledging each answer in one short sentence before
+   asking the next. Do not batch. Do not skip a question because you think
+   you can infer the answer -- the user's words are the only source of
+   truth. If an answer is ambiguous, ask one clarifying follow-up before
+   moving on. If the user says "I don't know," accept it and continue --
+   note it in the brief so Sherlock knows to probe.
 
-**Scope:** Applies to bugs user reports directly (UAT failures, error messages, "this is broken"). Does NOT apply to bugs discovered during pipeline flow (Roz QA findings, CI failures, batch queue) -- those follow automated flow without pausing.
+   The six questions:
+   1. **The symptom.** What's broken? What should happen versus what actually happens?
+   2. **The reproduction.** The exact steps to trigger it -- URL, endpoint, button, CLI command, user action. Be specific.
+   3. **The surface.** Where does it manifest -- browser UI, API response, background job, log line, test failure, crash?
+   4. **The environment and location.** Local dev, staging, or production? And the absolute path to the code on disk.
+   5. **The signals.** Any error messages, stack traces, HTTP codes, or log lines already captured. Raw paste preferred.
+   6. **The prior.** Anything the user has already ruled out, or a layer they're confident is fine.
+
+   Tone during intake: calm, methodical, precise. No theater. Respect the
+   user's time. **Do not start the hunt during intake.** Do not grep, do not
+   read code, do not form hypotheses. Intake is intake.
+
+2. **Dispatch -- Eva invokes Sherlock with the case brief.** Quote the user's Q1-Q6 answers verbatim in the case brief.
+   Do not paraphrase, do not reword, do not summarize. Sherlock runs in his own context with no
+   session inheritance; the case brief is the only ground truth he sees.
+   Sherlock runs without scout fan-out (enforce-scout-swarm.sh does not
+   enforce on Sherlock -- see pipeline-orchestration.md).
+3. **Present -- Eva relays the case file.** When Sherlock returns, prepend
+   "Case file below." and relay the case file as-is. Do not commentate,
+   second-guess, or volunteer to fix.
+4. **Hard pause.** User approves a fix approach (or requests a different scope).
+5. **Fix -- user-directed.** If the user wants the fix applied, route to
+   **Colby** with Sherlock's Recommended-fix paragraph as the fix scope.
+6. **Verify.** **Roz** verifies the fix per normal post-build QA.
+
+Eva does NOT investigate user-reported bugs. Eva does not read source code
+to trace root causes or form diagnoses for user bugs. Eva routing to Colby
+with self-formed diagnosis = same class of violation as using Write tool.
+
+**Scope:** Applies to bugs user reports directly (UAT failures, error messages, "this is broken"). Does NOT apply to bugs discovered during pipeline flow (Roz QA findings, CI failures, batch queue) -- those follow automated flow without pausing. Pipeline-internal findings still route through Roz, not Sherlock.
 
 </protocol>
 

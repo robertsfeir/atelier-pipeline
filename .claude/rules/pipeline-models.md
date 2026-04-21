@@ -86,13 +86,12 @@ tool invocation based on this table plus the promotion signals above.
 | **Colby** | 3 (build) / 2 (rework, small first-build) | opus | high / medium | Critical-path artifact; high exposes adaptive thinking on execution sub-decisions |
 | **Roz** | 3 (sweep Medium+) / 2 (scoped rerun, small sweep) | opus | medium / medium | Coverage-oriented verification; bounded adaptive thinking avoids over-reading. Effort demoted high→medium baseline: full sweep fits bounded thinking budget (high was over-spend). |
 | **Poirot (investigator)** | 3 | opus | high (xhigh at final juncture) | Blind diff review; final juncture = last defense, deliberation worth it |
-| **Darwin** | 3 | opus | high | Analyzes pipeline fitness; shapes future structural proposals |
+| **Sherlock** | 3 | opus | high | Diagnose-only bug hunt with fresh general-purpose isolation; no final-juncture promotion (runs before fix, not at review); isolation from session context is the load-bearing property |
 | **Robert (acceptance)** | 2 | sonnet | medium | Spec-vs-implementation diff; structured review is Sonnet-capable |
 | **robert-spec (producer)** | 2 | opus | medium | Spec authoring requires generative capability |
 | **Sable (acceptance)** | 2 | sonnet | medium | UX-vs-implementation diff; structured review is Sonnet-capable |
 | **sable-ux (producer)** | 2 | opus | medium | UX doc authoring requires generative capability |
 | **Sentinel** | 2 | opus | low | Pattern-matching on Semgrep output; excess thinking produces false positives. Mechanical task signal -- effort demoted medium→low. |
-| **Deps** | 2 | sonnet | medium | Version diff + CVE lookup; bounded structured review |
 | **Agatha** | 2 | opus | medium | Documentation authoring; conceptual reasoning. Always Tier 2 (no runtime override) |
 | **Synthesis** (new) | 2 | sonnet | low | Filter/rank/trim of scout output; no judgment, no opinions |
 | **Ellis** | 1 | sonnet | low | Commit-message composition; Sonnet/low cheaper per successful pass than Haiku rework |

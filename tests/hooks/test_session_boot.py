@@ -173,19 +173,19 @@ def test_T_0033_005_legacy_no_space_pattern_not_matched(tmp_path):
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# T-0033-006: CORE_AGENTS string in the hook contains all 15 agent names
+# T-0033-006: CORE_AGENTS string in the hook contains all 14 agent names
 # ═══════════════════════════════════════════════════════════════════════
 
 
-EXPECTED_CORE_AGENTS_15 = [
+EXPECTED_CORE_AGENTS_14 = [
     "cal", "colby", "roz", "ellis", "agatha", "robert", "sable",
-    "investigator", "distillator", "sentinel", "darwin", "deps",
+    "investigator", "distillator", "sentinel", "sherlock",
     "brain-extractor", "robert-spec", "sable-ux",
 ]
 
 
-def test_T_0033_006_core_agents_list_contains_all_15(tmp_path):
-    """The CORE_AGENTS variable in session-boot.sh must list all 15 pipeline-native agents.
+def test_T_0033_006_core_agents_list_contains_all_14(tmp_path):
+    """The CORE_AGENTS variable in session-boot.sh must list all 14 pipeline-native agents.
 
     Verified structurally: read the source file, grep for the CORE_AGENTS= line,
     tokenize, assert every expected name is present.
@@ -205,13 +205,13 @@ def test_T_0033_006_core_agents_list_contains_all_15(tmp_path):
     # Format: CORE_AGENTS="cal colby roz ..."
     value = core_line.split("=", 1)[1].strip().strip('"').strip("'")
     tokens = value.split()
-    for agent in EXPECTED_CORE_AGENTS_15:
+    for agent in EXPECTED_CORE_AGENTS_14:
         assert agent in tokens, (
             f"CORE_AGENTS missing '{agent}'. Current list: {tokens}. "
-            f"Expected all 15: {EXPECTED_CORE_AGENTS_15}"
+            f"Expected all 14: {EXPECTED_CORE_AGENTS_14}"
         )
-    assert len(tokens) == 15, (
-        f"CORE_AGENTS should have exactly 15 entries, has {len(tokens)}: {tokens}"
+    assert len(tokens) == 14, (
+        f"CORE_AGENTS should have exactly 14 entries, has {len(tokens)}: {tokens}"
     )
 
 
@@ -221,16 +221,16 @@ def test_T_0033_006_core_agents_list_contains_all_15(tmp_path):
 
 
 def test_T_0033_007_default_agent_set_reports_zero_custom(tmp_path):
-    """A .claude/agents/ directory populated with exactly the 15 pipeline-native
+    """A .claude/agents/ directory populated with exactly the 14 pipeline-native
     agents must yield custom_agent_count=0.
     """
-    make_agents_dir(tmp_path, EXPECTED_CORE_AGENTS_15)
+    make_agents_dir(tmp_path, EXPECTED_CORE_AGENTS_14)
     # Need a pipeline-state file so hook runs cleanly; idle state.
     write_state(tmp_path, '{"phase":"idle","feature":""}')
     proc = run_session_boot(tmp_path)
     data = parse_boot_output(proc)
     assert data["custom_agent_count"] == 0, (
-        f"15 pipeline-native agents should produce custom_agent_count=0, "
+        f"14 pipeline-native agents should produce custom_agent_count=0, "
         f"got {data['custom_agent_count']}. Full output: {data!r}"
     )
 
@@ -248,12 +248,12 @@ def test_T_0033_008_one_custom_agent_reports_one(tmp_path):
     by 6 (because 6 pipeline-native agents weren't in the list), so a bare
     fixture could report a non-zero count even with no real custom agents.
     """
-    agents = list(EXPECTED_CORE_AGENTS_15) + ["zod-custom"]
+    agents = list(EXPECTED_CORE_AGENTS_14) + ["zod-custom"]
     make_agents_dir(tmp_path, agents)
     write_state(tmp_path, '{"phase":"idle","feature":""}')
     proc = run_session_boot(tmp_path)
     data = parse_boot_output(proc)
     assert data["custom_agent_count"] == 1, (
-        f"15 core + 1 custom should produce custom_agent_count=1, "
+        f"14 core + 1 custom should produce custom_agent_count=1, "
         f"got {data['custom_agent_count']}. Full output: {data!r}"
     )
