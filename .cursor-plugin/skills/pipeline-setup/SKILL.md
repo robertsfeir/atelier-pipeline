@@ -349,7 +349,9 @@ Files are assembled from `source/shared/` (content) + `source/claude/` (overlays
 | `source/shared/references/pipeline-operations.md` | `.claude/references/pipeline-operations.md` | Operational procedures (model selection, QA, feedback, batch, worktree, context) |
 | `source/shared/references/agent-preamble.md` | `.claude/references/agent-preamble.md` | Shared agent required actions |
 | `source/shared/references/branch-mr-mode.md` | `.claude/references/branch-mr-mode.md` | Colby branch/MR procedures |
-| `source/shared/references/telemetry-metrics.md` | `.claude/references/telemetry-metrics.md` | Telemetry metric schemas, cost table, alert thresholds |
+| `source/shared/references/telemetry-metrics.md` | `.claude/references/telemetry-metrics.md` | Telemetry metric schemas, cost table, alert thresholds (also holds JIT telemetry-capture protocol) |
+| `source/shared/references/pipeline-phases.md` | `.claude/references/pipeline-phases.md` | JIT phase sizing, budget gate, investigation discipline, concurrent session detection, state file descriptions |
+| `source/shared/references/worktree-isolation.md` | `.claude/references/worktree-isolation.md` | JIT worktree-per-session protocol (ADR-0038) |
 | `source/shared/references/step-sizing.md` | `.claude/references/step-sizing.md` | ADR step sizing gate (S1-S5) and split heuristics |
 | `source/shared/pipeline/pipeline-state.md` | `docs/pipeline/pipeline-state.md` | Session recovery state |
 | `source/shared/pipeline/context-brief.md` | `docs/pipeline/context-brief.md` | Context preservation |
@@ -562,7 +564,9 @@ alwaysApply: false
 | `source/shared/references/pipeline-operations.md` | `.cursor-plugin/rules/pipeline-operations.mdc` | Pipeline operations -- continuous QA, feedback loops, batch mode, and worktree rules |
 | `source/shared/references/agent-preamble.md` | `.cursor-plugin/rules/agent-preamble.mdc` | Agent preamble -- shared actions and protocols for all pipeline agents |
 | `source/shared/references/branch-mr-mode.md` | `.cursor-plugin/rules/branch-mr-mode.mdc` | Branch and MR mode -- Colby branch creation and MR procedures for MR-based strategies |
-| `source/shared/references/telemetry-metrics.md` | `.cursor-plugin/rules/telemetry-metrics.mdc` | Telemetry metrics -- metric schemas, cost table, and alert thresholds |
+| `source/shared/references/telemetry-metrics.md` | `.cursor-plugin/rules/telemetry-metrics.mdc` | Telemetry metrics -- metric schemas, cost table, alert thresholds, JIT telemetry-capture protocol |
+| `source/shared/references/pipeline-phases.md` | `.cursor-plugin/rules/pipeline-phases.mdc` | JIT phase sizing, budget gate, investigation discipline, concurrent session detection, state file descriptions |
+| `source/shared/references/worktree-isolation.md` | `.cursor-plugin/rules/worktree-isolation.mdc` | JIT worktree-per-session protocol (ADR-0038) |
 | `source/shared/references/xml-prompt-schema.md` | `.cursor-plugin/rules/xml-prompt-schema.mdc` | XML prompt schema -- tag vocabulary for agent persona files |
 | `source/shared/references/cloud-architecture.md` | `.cursor-plugin/rules/cloud-architecture.mdc` | Cloud architecture -- reference for cloud-native deployment patterns |
 | `source/shared/references/step-sizing.md` | `.cursor-plugin/rules/step-sizing.mdc` | ADR step sizing gate (S1-S5) and split heuristics |

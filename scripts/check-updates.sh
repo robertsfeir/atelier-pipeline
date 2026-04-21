@@ -19,6 +19,14 @@ agents/docker-infrastructure.md
 agents/python-fastapi.md
 agents/nextjs-app-router.md
 agents/react-frontend.md
+agents/roz.md
+agents/cal.md
+references/qa-checks.md
+references/retro-lessons.md
+pipeline/last-qa-report.md
+hooks/enforce-roz-paths.sh
+hooks/enforce-cal-paths.sh
+commands/debug.md
 "
 
 # check_platform PLATFORM_DIR PLATFORM_LABEL

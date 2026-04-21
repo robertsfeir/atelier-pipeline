@@ -235,3 +235,39 @@ When Sarah has already produced an ADR with N steps, apply these multipliers to 
 | Poirot | ceil(N / wave_size) where `wave_size` defaults to 3 |
 
 **Default `wave_size`:** 3 (three ADR steps per wave before Poirot blind-review).
+
+---
+
+<protocol id="telemetry-capture">
+
+## Telemetry Capture Protocol (when brain is available)
+
+JIT-loaded from `pipeline-orchestration.md`. Triggered after the first agent
+returns in an active pipeline. The `<protocol id="telemetry-capture">` anchor
+is preserved for downstream references.
+
+Captures use `thought_type: 'insight'`, `source_agent: 'eva'`, `source_phase: 'telemetry'`, `metadata.pipeline_id`. Eva reads `telemetry-metrics.md` at pipeline start. `brain_available: false` -> skip captures; in-memory accumulators still run.
+
+**Tier 1 (per-invocation, in-memory):** After every Agent completion, record duration/model/tokens/cost into accumulators (`total_cost`, `total_invocations`, `invocations_by_agent/model`). NOT captured individually -- bulk-captured at T2. Micro: T1 only.
+
+**Tier 2 (per-wave, best-effort):** Single `agent_capture` after each wave passes Poirot verification. Per-unit: `rework_cycles`, `first_pass_qa`, `unit_cost_usd`. Wave: `finding_counts`, `finding_convergence`, `evoscore_delta`. `importance: 0.5`, `metadata.telemetry_tier: 2`. `evoscore_delta = (tests_after - tests_broken) / tests_before` (0 tests = 1.0). On failure: log and continue. Skipped on Micro.
+
+**Tier 3 (per-pipeline, best-effort):** At pipeline end after Ellis commit. Aggregate: `rework_rate`, `first_pass_qa_rate`, `evoscore`, `phase_durations`, `total_cost_usd`, `total_duration_ms`, `agent_failures`. `importance: 0.7`, `metadata.telemetry_tier: 3`. Success -> set `telemetry_captured: true` in PIPELINE_STATUS (Ellis gate requires it). Failure -> do NOT set flag. Skipped on Micro.
+
+**Pipeline-End Summary format:**
+```
+Pipeline complete. Telemetry summary:
+  Cost: ${total_cost_usd} ({agent}: ${agent_cost}, ...)
+  Duration: {total_duration_min} min | Rework: {rework_rate} cycles/unit
+  EvoScore: {evoscore} ({tests_before} before, {tests_after} after, {tests_broken} broken)
+  Findings: Poirot {N}, Robert {N} (convergence: {N} shared)
+```
+Micro: `Telemetry: {invocation_count} invocations, {total_duration_min} min`. Cost unavailable: "Cost: unavailable". Post-summary: "Tip: Run /telemetry-hydrate to capture detailed token usage."
+
+**Darwin Auto-Trigger:** Fires when ALL: `darwin_enabled: true`, `brain_available: true`, degradation alert fired, sizing != Micro. Eva pre-fetches T3 + prior Darwin proposals + error-patterns.md, invokes Darwin. User approves/rejects/modifies each proposal individually (hard pause). Approved: capture + route Colby + mechanical gate + Poirot + Ellis commit. Rejected: capture with reason. Does not block pipeline completion.
+
+**Pattern Staleness (pipeline end):** Check `thought_type: 'pattern'` thoughts for files modified this pipeline. >50% churn -> invalidate via `atelier_relation` supersedes. 20-50% -> append warning.
+
+**Dashboard Bridge (post-pipeline):** `dashboard_mode: "plan-visualizer"` -> run `{config_dir}/dashboard/telemetry-bridge.sh`. Never a blocker. `claude-code-kanban` or `none` -> skip. Boot announcement: `plan-visualizer` -> "Dashboard: PlanVisualizer", `claude-code-kanban` -> "Dashboard: claude-code-kanban", `none`/absent -> omit.
+
+</protocol>

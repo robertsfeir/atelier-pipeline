@@ -375,3 +375,4 @@ Sarah (ADR-0044 with research brief) → Roz test spec review → Colby build �
 </content>
 </invoke><!-- COMPACTION: 2026-04-17T02:23:07Z -->
 <!-- COMPACTION: 2026-04-17T03:08:07Z -->
+<!-- COMPACTION: 2026-04-21T20:56:22Z -->

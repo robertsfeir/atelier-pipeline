@@ -151,7 +151,10 @@ def test_T_0021_071_no_mandatory_brain_access():
 
 
 def test_T_0021_072_best_effort():
-    text = (SHARED_RULES / "pipeline-orchestration.md").read_text()
+    # Telemetry capture protocol moved to telemetry-metrics.md per v4.0 JIT
+    # extraction from pipeline-orchestration.md. The `best-effort` descriptor
+    # lives with the protocol in its new home.
+    text = (SHARED_REFS / "telemetry-metrics.md").read_text()
     assert re.search(r"best-effort", text, re.IGNORECASE)
 
 
@@ -175,7 +178,9 @@ def test_T_0021_076_seed_devops():
 
 
 def test_T_0021_077_tier1():
-    text = (SHARED_RULES / "pipeline-orchestration.md").read_text()
+    # Telemetry tier definitions moved to telemetry-metrics.md per v4.0 JIT
+    # extraction from pipeline-orchestration.md.
+    text = (SHARED_REFS / "telemetry-metrics.md").read_text()
     assert re.search(r"Tier 1", text, re.IGNORECASE)
 
 
