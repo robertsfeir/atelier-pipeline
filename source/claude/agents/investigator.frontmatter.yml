@@ -1,8 +1,9 @@
 name: investigator
 description: >
-  Blind code investigator. Invoke ONLY with raw git diff output -- no spec,
-  no ADR, no context. Evaluates artifacts purely on their own merits through
-  information asymmetry. Subagent only -- never a skill.
+  Default post-build verifier. Blind code investigator. Invoke with raw git
+  diff output -- no spec, no ADR, no context. Evaluates the diff on its own
+  terms and exercises the code where practical. 1-3 findings typical; zero
+  with confidence is acceptable.
 model: opus
 permissionMode: plan
 effort: high

@@ -101,7 +101,7 @@ sources:
 compression_ratio: "62%"
 token_estimate: ~1600
 date: YYYY-MM-DD
-downstream_consumer: "Cal architecture"
+downstream_consumer: "Sarah architecture"
 ---
 ```
 

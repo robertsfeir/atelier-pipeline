@@ -1,8 +1,3 @@
----
-name: pipeline # prettier-ignore
-description: Run the full Robert -> Sable -> Cal -> Colby -> Roz -> Ellis pipeline from the current starting point.
----
-
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>
@@ -29,22 +24,41 @@ Ground every decision in what the codebase actually shows.
 <behavior>
 ## Phase Sizing
 
-Eva assesses scope at the start and adjusts ceremony accordingly.
+Eva assesses scope at the start, recommends a sizing, and presents all four
+options as a choice list. The recommended option is in **bold**. The user picks.
 
-**Small** (single ADR step, < 3 files, bug fix, or user says "quick fix"):
-- Skip Robert/Sable if spec/UX already exist or are not relevant
-- Auto-advance through phases, only pause before commit
-- Compressed pipeline -- no "go" prompts between phases
+- **Micro** -- <=2 files, purely mechanical, no tests needed, no brain
+- **Small** -- single ADR step, <3 files, bug fix. Skip Robert/Sable, auto-advance, pause before commit
+- **Medium** -- 2-4 ADR steps, typical feature. Pause between major phases, auto-advance within
+- **Large** -- 5+ ADR steps, new system, multi-concern. Full ceremony, one phase per turn
 
-**Medium** (2-4 ADR steps, typical feature):
-- Pause between major phase shifts (design -> build -> QA -> commit)
-- Auto-advance within phases
+Example presentation:
 
-**Large** (5+ ADR steps, new system, multi-concern):
-- Full ceremony -- pause at every transition
-- Roz spot-checks mid-build in addition to continuous QA
+> This feature sizes as a typical enhancement. Pick your pipeline sizing:
+>
+> - Micro
+> - Small
+> - **Medium** (recommended)
+> - Large
 
-User can override: "fast track this" forces small, "full pipeline" forces large.
+User can override at any point: "upgrade to Large" or "downgrade to Small".
+
+### Budget Estimate Gate (after sizing choice, before first agent invocation)
+
+After the user selects sizing, if the sizing triggers the gate (Large always, or
+Medium when `token_budget_warning_threshold` is configured), Eva computes and
+displays the budget estimate before invoking the first agent.
+
+See the `<gate id="budget-estimate">` section in `pipeline-orchestration.md` for
+the full gate rules table, estimate presentation format, and user cancellation flow.
+
+Summary:
+- **Large:** estimate always shown, hard pause always fires. Proceed/cancel/downsize options offered.
+- **Medium with threshold set:** estimate shown, hard pause fires only if estimate EXCEEDS threshold.
+- **Micro / Small / Medium without threshold:** no estimate, no gate.
+
+The estimate is order-of-magnitude -- not billing. Formula is in the "Budget Estimate
+Heuristic" section of `telemetry-metrics.md`.
 
 ## Auto-Routing Confidence
 
@@ -62,10 +76,10 @@ When routing to an agent based on user intent:
 | Just an idea | Robert (skill) |
 | Feature spec | Sable + Agatha planning in parallel (skills) |
 | Spec + UX doc | Mockup (Colby mockup mode subagent) |
-| Spec + UX + mockup approved | Cal clarification -> Cal ADR production |
-| Spec + UX + doc plan | Cal clarification -> Cal ADR production |
-| ADR from Cal | Roz test spec review, then Colby + Agatha writing |
-| Implemented code | Roz code QA (subagent) |
+| Spec + UX + mockup approved | Sarah clarification -> Sarah ADR production |
+| Spec + UX + doc plan | Sarah clarification -> Sarah ADR production |
+| ADR from Sarah | Poirot test spec review, then Colby + Agatha writing |
+| Implemented code | Poirot code QA (subagent) |
 | QA-passed code | Ellis (subagent) |
 
 ### 2. Execute the Pipeline
@@ -75,28 +89,28 @@ When routing to an agent based on user intent:
 - After spec gate -> Sable and Agatha (doc plan)
 - After Sable + Agatha -> Colby mockup mode
 - After mockup -> user UAT
-- After UAT approved -> Cal conversational clarification, then Cal subagent
-- After Cal -> Roz (test spec review)
-- After Roz approves test spec -> continuous QA (interleaved Colby + Roz)
+- After UAT approved -> Sarah conversational clarification, then Sarah subagent
+- After Sarah  (test spec review)
+- After Poirot approves test spec -> continuous QA (interleaved Colby + Poirot)
   plus Agatha writing
-- After Cal (non-code ADR) -> skip Roz test spec/authoring. Colby implements,
-  then Roz reviews against ADR requirements. Agatha runs after Roz passes.
-- After all units pass + Roz final sweep -> Ellis
-- After Roz fail (minor) -> Colby fix -> Roz scoped re-run
-- After Roz fail (structural) -> Cal revise -> Colby -> Roz full run
+- After Sarah (non-code ADR) -> skip Poirot test spec/authoring. Colby implements,
+  then Poirot reviews against ADR requirements. Agatha runs after Poirot passes.
+- After all units pass + Poirot final review -> Ellis
+- After Poirot fail (minor) -> Colby fix  scoped re-run
+- After Poirot fail (structural) -> Sarah revise -> Colby  full run
 
-**Continuous QA (interleaved Colby + Roz):**
+**Continuous QA (interleaved Colby + Poirot):**
 1. Before invoking Colby, check context-brief for corrections since the ADR.
    Preference-level corrections go in Colby's context. Structural corrections
-   go back to Cal first.
+   go back to Sarah first.
 2. Eva invokes Colby for unit 1
-3. When Colby finishes, Eva invokes Roz for scoped review and Colby for unit 2
-4. If Roz flags an issue, Eva queues the fix
+3. When Colby finishes, Eva invokes Poirot for scoped review and Colby for unit 2
+4. If Poirot flags an issue, Eva queues the fix
 5. Eva updates pipeline-state.md after each unit transition
-6. Agatha writing runs in parallel with the Colby+Roz cycle
+6. Agatha writing runs in parallel with the Colby+Poirot cycle
 
-**Pre-commit sweep:** after Roz final sweep, check all reports for unresolved
-items. If any remain, Colby gets one cleanup invocation, then Roz does a
+**Pre-commit sweep:** after Poirot final review, check all reports for unresolved
+items. If any remain, Colby gets one cleanup invocation, then Poirot does a
 scoped re-run.
 
 ### 3. Final Report
@@ -109,13 +123,14 @@ scoped re-run.
 | Spec | Robert | Done / N/A |
 | UX | Sable | Done / N/A |
 | Mockup + UAT | Colby + User | Done / N/A |
-| Architecture | Cal | Done |
+| Architecture | Sarah | Done |
 | Implementation | Colby | Done |
-| QA | Roz | Done |
+| QA | Poirot | Done |
 | Docs | Agatha | Done / N/A |
 | Commit | Ellis | Done |
 
 **ADR / Files changed / Tests passing / Commit hash**
+**Stop Reason:** {stop_reason}
 ```
 
 ## Context Brief Maintenance
@@ -160,8 +175,8 @@ Final report follows the format in the Process section above.
 
 <constraints>
 - Do not skip a phase. The pipeline exists for a reason.
-- If Roz returns a blocker, pipeline halts -- Colby fixes, Roz re-runs.
-- If Roz returns fix-required items, they are queued. All are resolved before
+- If Poirot returns a blocker, pipeline halts -- Colby fixes, Poirot re-runs.
+- If Poirot returns fix-required items, they are queued. All are resolved before
   Ellis commits.
 - No code ships with open issues of any severity.
 - Each agent's forbidden actions apply in pipeline mode.

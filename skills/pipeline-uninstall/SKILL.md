@@ -26,9 +26,8 @@ Before removing anything, scan the project to build a complete inventory of what
   branch-lifecycle.md
 
 .claude/agents/  (core agents only)
-  cal.md
+  sarah.md
   colby.md
-  roz.md
   robert.md
   sable.md
   investigator.md
@@ -79,7 +78,7 @@ docs/pipeline/
 **Detect each file's existence** using Glob and build three lists:
 
 1. **Core pipeline files** -- files matching the manifest above that exist on disk
-2. **User-created custom agents** -- any `.md` files in `.claude/agents/` whose YAML frontmatter `name` does NOT match a core agent (cal, colby, roz, ellis, agatha, robert, sable, investigator, distillator, sentinel)
+2. **User-created custom agents** -- any `.md` files in `.claude/agents/` whose YAML frontmatter `name` does NOT match a core agent (sarah, colby, ellis, agatha, robert, sable, investigator, distillator, sentinel)
 3. **Retro lessons content** -- check if `.claude/references/retro-lessons.md` contains any content beyond the empty template markers
 
 ### Step 2: Present Removal Plan
@@ -92,7 +91,7 @@ Pipeline Uninstall Plan
 
 WILL REMOVE (core pipeline files):
   .claude/rules/           -- [N] files (Eva persona, orchestration rules, models, branch lifecycle)
-  .claude/agents/          -- [N] core agent files (cal, colby, roz, ...)
+  .claude/agents/          -- [N] core agent files (sarah, colby, ...)
   .claude/commands/        -- [N] files (slash command definitions)
   .claude/references/      -- [N] files (quality framework, templates, operations)
   .claude/hooks/           -- [N] files (enforcement scripts and config)

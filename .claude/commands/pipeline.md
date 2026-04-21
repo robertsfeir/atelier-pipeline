@@ -1,6 +1,3 @@
----
-name: pipeline # prettier-ignore
-description: Run the full Robert -> Sable -> Cal -> Colby -> Roz -> Ellis pipeline from the current starting point.---
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>
@@ -19,8 +16,8 @@ Ground every decision in what the codebase actually shows.
 </required-actions>
 
 <required-reading>
-- `docs\/pipeline/pipeline-state.md` -- current pipeline progress
-- `docs\/pipeline/context-brief.md` -- user preferences and decisions
+- `docs/pipeline/pipeline-state.md` -- current pipeline progress
+- `docs/pipeline/context-brief.md` -- user preferences and decisions
 - `docs/pipeline/error-patterns.md` -- recurring patterns to watch for
 </required-reading>
 
@@ -79,10 +76,10 @@ When routing to an agent based on user intent:
 | Just an idea | Robert (skill) |
 | Feature spec | Sable + Agatha planning in parallel (skills) |
 | Spec + UX doc | Mockup (Colby mockup mode subagent) |
-| Spec + UX + mockup approved | Cal clarification -> Cal ADR production |
-| Spec + UX + doc plan | Cal clarification -> Cal ADR production |
-| ADR from Cal | Roz test spec review, then Colby + Agatha writing |
-| Implemented code | Roz code QA (subagent) |
+| Spec + UX + mockup approved | Sarah clarification -> Sarah ADR production |
+| Spec + UX + doc plan | Sarah clarification -> Sarah ADR production |
+| ADR from Sarah | Poirot test spec review, then Colby + Agatha writing |
+| Implemented code | Poirot code QA (subagent) |
 | QA-passed code | Ellis (subagent) |
 
 ### 2. Execute the Pipeline
@@ -92,28 +89,28 @@ When routing to an agent based on user intent:
 - After spec gate -> Sable and Agatha (doc plan)
 - After Sable + Agatha -> Colby mockup mode
 - After mockup -> user UAT
-- After UAT approved -> Cal conversational clarification, then Cal subagent
-- After Cal -> Roz (test spec review)
-- After Roz approves test spec -> continuous QA (interleaved Colby + Roz)
+- After UAT approved -> Sarah conversational clarification, then Sarah subagent
+- After Sarah  (test spec review)
+- After Poirot approves test spec -> continuous QA (interleaved Colby + Poirot)
   plus Agatha writing
-- After Cal (non-code ADR) -> skip Roz test spec/authoring. Colby implements,
-  then Roz reviews against ADR requirements. Agatha runs after Roz passes.
-- After all units pass + Roz final sweep -> Ellis
-- After Roz fail (minor) -> Colby fix -> Roz scoped re-run
-- After Roz fail (structural) -> Cal revise -> Colby -> Roz full run
+- After Sarah (non-code ADR) -> skip Poirot test spec/authoring. Colby implements,
+  then Poirot reviews against ADR requirements. Agatha runs after Poirot passes.
+- After all units pass + Poirot final review -> Ellis
+- After Poirot fail (minor) -> Colby fix  scoped re-run
+- After Poirot fail (structural) -> Sarah revise -> Colby  full run
 
-**Continuous QA (interleaved Colby + Roz):**
+**Continuous QA (interleaved Colby + Poirot):**
 1. Before invoking Colby, check context-brief for corrections since the ADR.
    Preference-level corrections go in Colby's context. Structural corrections
-   go back to Cal first.
+   go back to Sarah first.
 2. Eva invokes Colby for unit 1
-3. When Colby finishes, Eva invokes Roz for scoped review and Colby for unit 2
-4. If Roz flags an issue, Eva queues the fix
+3. When Colby finishes, Eva invokes Poirot for scoped review and Colby for unit 2
+4. If Poirot flags an issue, Eva queues the fix
 5. Eva updates pipeline-state.md after each unit transition
-6. Agatha writing runs in parallel with the Colby+Roz cycle
+6. Agatha writing runs in parallel with the Colby+Poirot cycle
 
-**Pre-commit sweep:** after Roz final sweep, check all reports for unresolved
-items. If any remain, Colby gets one cleanup invocation, then Roz does a
+**Pre-commit sweep:** after Poirot final review, check all reports for unresolved
+items. If any remain, Colby gets one cleanup invocation, then Poirot does a
 scoped re-run.
 
 ### 3. Final Report
@@ -126,9 +123,9 @@ scoped re-run.
 | Spec | Robert | Done / N/A |
 | UX | Sable | Done / N/A |
 | Mockup + UAT | Colby + User | Done / N/A |
-| Architecture | Cal | Done |
+| Architecture | Sarah | Done |
 | Implementation | Colby | Done |
-| QA | Roz | Done |
+| QA | Poirot | Done |
 | Docs | Agatha | Done / N/A |
 | Commit | Ellis | Done |
 
@@ -138,7 +135,7 @@ scoped re-run.
 
 ## Context Brief Maintenance
 
-Eva maintains `docs\/pipeline/context-brief.md` as a living document. Append
+Eva maintains `docs/pipeline/context-brief.md` as a living document. Append
 whenever the user says something that could shape agent behavior. Capture
 preferences, corrections, rejected alternatives, scope boundaries, quality
 tradeoffs, technology preferences.
@@ -148,7 +145,7 @@ When brain is available, Eva also captures context-brief entries via
 
 ## Pipeline State Tracking
 
-Eva maintains `docs\/pipeline/pipeline-state.md` to track progress. Update after
+Eva maintains `docs/pipeline/pipeline-state.md` to track progress. Update after
 each phase transition and unit completion. This file enables session recovery.
 
 ## Error Pattern Tracking
@@ -178,8 +175,8 @@ Final report follows the format in the Process section above.
 
 <constraints>
 - Do not skip a phase. The pipeline exists for a reason.
-- If Roz returns a blocker, pipeline halts -- Colby fixes, Roz re-runs.
-- If Roz returns fix-required items, they are queued. All are resolved before
+- If Poirot returns a blocker, pipeline halts -- Colby fixes, Poirot re-runs.
+- If Poirot returns fix-required items, they are queued. All are resolved before
   Ellis commits.
 - No code ships with open issues of any severity.
 - Each agent's forbidden actions apply in pipeline mode.

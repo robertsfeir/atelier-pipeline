@@ -106,8 +106,8 @@ if [ "$SUBAGENT_TYPE" = "ellis" ]; then
   fi
 fi
 
-# ─── Gate 1: Ellis requires Roz QA PASS during active pipelines ─────
-# "Ellis commits. Eva does not." + "Roz verifies every Colby output."
+# ─── Gate 1: Ellis requires Poirot verification PASS during active pipelines ─────
+# "Ellis commits. Eva does not." + "Poirot verifies every Colby output."
 # During an active pipeline, Ellis cannot be invoked unless roz_qa is PASS.
 # Outside an active pipeline (no state file, no marker, idle/complete phase),
 # Ellis is allowed through for infrastructure, doc-only, and setup commits.
@@ -129,12 +129,12 @@ if [ "$SUBAGENT_TYPE" = "ellis" ]; then
   # Inactive phases -> allow (pipeline not running).
   # "none" is included because PIPELINE_STATUS may carry phase:none when the state file
   # exists but no pipeline has been activated yet. Without this, Ellis falls through to
-  # the Roz QA enforcement and gets blocked with "pipeline is active (phase: none)".
+  # the Poirot verification enforcement and gets blocked with "pipeline is active (phase: none)".
   if [ "$PHASE" = "idle" ] || [ "$PHASE" = "complete" ] || [ "$PHASE" = "none" ]; then
     exit 0
   fi
 
-  # Micro pipelines skip Roz -- test suite is the safety valve
+  # Micro pipelines skip Poirot -- test suite is the safety valve
   SIZING=$(parse_pipeline_status "sizing") || true
   SIZING=$(echo "$SIZING" | tr '[:upper:]' '[:lower:]')
   if [ "$SIZING" = "micro" ]; then
@@ -142,29 +142,29 @@ if [ "$SUBAGENT_TYPE" = "ellis" ]; then
   fi
 
   # CI Watch fix cycle: if ci_watch_active=true and roz_qa=CI_VERIFIED, allow Ellis
-  # CI_VERIFIED is distinct from PASS -- written by Eva after Roz verifies a CI fix
+  # CI_VERIFIED is distinct from PASS -- written by Eva after Poirot verifies a CI fix
   CI_WATCH_ACTIVE=$(parse_pipeline_status "ci_watch_active") || true
   ROZ_QA=$(parse_pipeline_status "roz_qa") || true
   if [ "$CI_WATCH_ACTIVE" = "true" ] && [ "$ROZ_QA" = "CI_VERIFIED" ]; then
     exit 0
   fi
 
-  # Active phase -> enforce Roz QA PASS
+  # Active phase -> enforce Poirot verification PASS
   if [ "$ROZ_QA" != "PASS" ]; then
-    echo "BLOCKED: Cannot invoke Ellis — pipeline is active (phase: $PHASE) but no Roz QA PASS found. Roz must verify Colby's output before committing." >&2
+    echo "BLOCKED: Cannot invoke Ellis — pipeline is active (phase: $PHASE) but no Poirot verification PASS found. Poirot must verify Colby's output before committing." >&2
     exit 2
   fi
 fi
 
-# ─── Gate 2: Agatha after Roz, not during build ─────────────────────
-# "Agatha writes docs after final Roz sweep, not during build."
+# ─── Gate 2: Agatha after Poirot, not during build ─────────────────────
+# "Agatha writes docs after final Poirot review, not during build."
 # Uses the structured PIPELINE_STATUS phase field instead of grep.
 if [ "$SUBAGENT_TYPE" = "agatha" ]; then
   if [ -f "$STATE_FILE" ]; then
     CURRENT_PHASE=$(parse_pipeline_status "phase") || true
     CURRENT_PHASE=$(echo "$CURRENT_PHASE" | tr '[:upper:]' '[:lower:]')
     if [ "$CURRENT_PHASE" = "build" ] || [ "$CURRENT_PHASE" = "implement" ]; then
-      echo "BLOCKED: Cannot invoke Agatha during the build phase. Agatha writes docs after Roz's final sweep against verified code." >&2
+      echo "BLOCKED: Cannot invoke Agatha during the build phase. Agatha writes docs after Poirot's final sweep against verified code." >&2
       exit 2
     fi
   fi
@@ -212,12 +212,12 @@ fi
 # ─── Gate 4 (old note): Removed ───────────────────────────────────────
 # Previously checked if Colby was invoked for "build" without an ADR.
 # Removed: keyword matching on prompts was fragile, and ADR file naming
-# varies by project. The real enforcement is Gate 1 (Ellis requires Roz
+# varies by project. The real enforcement is Gate 1 (Ellis requires Poirot
 # QA PASS) — if Colby builds something bad, it can't ship without QA.
 
 # ─── Gate 4: Ellis requires Poirot review during active pipelines ─────
 # "Poirot blind-reviews every wave. Skipping Poirot is the same class
-# of violation as skipping Roz." (pipeline-orchestration.md mandatory gate 5)
+# of violation as skipping Poirot." (pipeline-orchestration.md mandatory gate 5)
 # During an active pipeline, Ellis cannot be invoked unless poirot_reviewed
 # is true. Micro pipelines and CI Watch fix cycles are exempt.
 if [ "$SUBAGENT_TYPE" = "ellis" ]; then

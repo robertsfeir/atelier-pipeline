@@ -1,7 +1,3 @@
----
-description: Telemetry metrics reference -- tier schemas, cost tables, alert thresholds
-alwaysApply: false
----
 # Telemetry Metrics Reference
 
 Eva reads this file at pipeline start alongside `pipeline-operations.md` to load
@@ -41,7 +37,7 @@ Captured after every Agent tool completion by Eva.
 
 ## Tier 2: Per-Unit Metrics
 
-Captured after each work unit completes Roz QA PASS. Aggregated from Tier 1.
+Captured after each work unit completes Poirot verification PASS. Aggregated from Tier 1.
 Skipped on Micro pipelines.
 
 | Field | Type | Aggregation Rule | Default When Unavailable |
@@ -50,8 +46,8 @@ Skipped on Micro pipelines.
 | `rework_cycles` | integer | Count of Colby re-invocations after first on this unit (0 = first-pass QA) | `0` |
 | `first_pass_qa` | boolean | `rework_cycles == 0` (zero re-invocations, not one) | `false` |
 | `unit_cost_usd` | float or null | Sum of Tier 1 `cost_usd` for all invocations with this `work_unit_id` | `null` when any Tier 1 cost was null |
-| `finding_counts` | object | `{roz: N, poirot: N, robert: N, sable: N, sentinel: N}` count per reviewer | `{roz: 0, poirot: 0, robert: 0, sable: 0, sentinel: 0}` |
-| `finding_convergence` | integer | Findings flagged independently by both Roz and Poirot | `0` |
+| `finding_counts` | object | `{poirot: N, robert: N, sable: N, sentinel: N}` count per reviewer | `{poirot: 0, robert: 0, sable: 0, sentinel: 0}` |
+| `finding_convergence` | integer | Findings flagged independently by both Poirot | `0` |
 | `evoscore_delta` | float | `(tests_after - tests_broken) / tests_before` for this unit; `1.0` when `tests_before == 0` | `null` when test counts unavailable |
 
 ---
@@ -70,11 +66,19 @@ Skipped on Micro pipelines.
 | `phase_durations` | object | `{phase_name: duration_ms}` -- sum of Tier 1 `duration_ms` by `pipeline_phase` | `{}` |
 | `total_invocations` | integer | Count of all Tier 1 captures | From in-memory accumulator |
 | `invocations_by_agent` | object | `{agent_name: count}` | From in-memory accumulator |
+| `invocations_by_model` | object | `{model_name: count}` from Tier 1 `model` field | `{"unknown": N}` when all models unavailable |
+| `total_tokens` | integer or null | Sum of all Tier 1 `(input_tokens + output_tokens)` | `null` if any Tier 1 tokens were unavailable |
 | `rework_rate` | float | `total_rework_cycles / total_units` | `0.0` when no units |
 | `first_pass_qa_rate` | float | `units_with_first_pass_qa / total_units` | `null` when no units |
 | `agent_failures` | object | `{agent_name: count}` of aborted/failed invocations | `{}` |
 | `evoscore` | float | Average `evoscore_delta` across all Tier 2 captures | `null` when no units |
 | `regression_count` | integer | Count of units where `evoscore_delta < 1.0` | `0` |
+| `project_name` | string | From `pipeline_project_name` session state | Current directory basename |
+| `stop_reason` | string | From pipeline-state.md at terminal transition (see pipeline-orchestration.md terminal-transition protocol for enum values) | `"legacy_unknown"` |
+| `budget_estimate_low` | float or null | Eva's pre-pipeline heuristic estimate lower bound (USD); set at sizing gate, before first agent invocation. See Budget Estimate Heuristic section. | `null` |
+| `budget_estimate_high` | float or null | Eva's pre-pipeline heuristic estimate upper bound (USD); set at sizing gate, before first agent invocation. See Budget Estimate Heuristic section. | `null` |
+
+**T3 `budget_estimate_low` / `budget_estimate_high` producer:** Eva computes and stores the estimate at the sizing decision gate (before the first agent invocation). These fields are set in memory at that point and written to T3 brain capture at pipeline end. When the gate does not fire (Micro, Small, or Medium without threshold), both fields remain `null`.
 
 ---
 
@@ -114,8 +118,21 @@ Hardcoded estimates -- order-of-magnitude accuracy. Not for billing.
 | claude-opus-4 (Opus) | 0.015 | 0.075 | 200000 |
 | claude-sonnet-4-5 (Sonnet) | 0.003 | 0.015 | 200000 |
 | claude-haiku-3-5 (Haiku) | 0.001 | 0.005 | 200000 |
+| claude-opus-4-7 (Opus 4.7) | 0.0175 | 0.0875 | 200000 |
 
 **Cost formula:** `cost_usd = (input_tokens / 1000 * input_per_1k) + (output_tokens / 1000 * output_per_1k)`
+
+### Observed Effective Per-M Rates (This Pipeline's Workload)
+
+Distinct from the list-price per-1k table above. The numbers below are empirical per-million-token rates derived from Tier 1 brain telemetry for this pipeline's actual workload, which is characterized by heavy input-token caching (agent-preamble and rules reinjected across invocations) and sparse output. Cache reads are billed at a fraction of fresh-input price, so the effective per-M rate is well below what the list price would predict for an uncached workload.
+
+| Model | Observed effective per-M rate |
+|-------|-------------------------------|
+| Haiku | ~$0.11/M |
+| Sonnet | ~$0.33/M |
+| Opus | ~$2.22/M |
+
+Use these as rough-cut comparisons when reasoning about tier cost deltas in this pipeline. For any billing-grade or `cost_usd` computation, the per-1k list-price table above is authoritative -- the effective rates are a telemetry-derived planning figure, not a pricing contract.
 
 When model is `"unknown"` or not in this table: set `cost_usd: null`, log "Cost unavailable -- model not in pricing table".
 
@@ -162,3 +179,59 @@ Last [N]: [values]. [suggestion].
 ```
 
 **Anti-fatigue rule:** Track the streak count for each alert type. Reset to 0 when a pipeline passes the threshold. Only fire the alert announcement at the 3rd consecutive breach and again every 3 breaches thereafter (not on every pipeline once triggered).
+
+---
+
+## Budget Estimate Heuristic
+
+Order-of-magnitude estimates for the pre-pipeline token budget gate (see `<gate id="budget-estimate">` in `pipeline-orchestration.md`). Not for billing. These numbers are rough averages -- actual usage varies by context fill, tool calls, rework, and output length.
+
+### Per-Invocation Cost Estimates by Model
+
+Derived from the Cost Estimation Table above using typical context window utilization rates.
+
+| Model | Avg input tokens | Avg output tokens | Typical cost per invocation (USD) |
+|-------|-----------------|-------------------|------------------------------------|
+| claude-opus-4 (Opus) | 50,000 | 8,000 | ~$1.35 |
+| claude-sonnet-4-5 (Sonnet) | 40,000 | 6,000 | ~$0.21 |
+| claude-haiku-3-5 (Haiku) | 20,000 | 3,000 | ~$0.035 |
+
+> Tier model introduced by ADR-0041. Per-agent effort assignments determine which row applies at invocation time.
+
+These estimates are order-of-magnitude -- not billing. Per-model pricing comes from the Cost Estimation Table above. If that table is updated with new pricing, these per-invocation estimates inherit the change.
+
+### Agent Roster by Sizing Tier
+
+Typical agent invocation counts per sizing tier. Used as the base input to the estimate formula when step count is not yet known.
+
+| Sizing | Agent Invocations (typical range) | Notes |
+|--------|-----------------------------------|-------|
+| Micro | 1--2 (Colby + Poirot) | No estimate shown |
+| Small | 3--5 (Sarah skill + Colby + Poirot + Ellis) | No estimate shown |
+| Medium | 8--15 (Robert? + Sable? + Sarah + Poirot test + Colby*N + Poirot verification*N + Poirot + Ellis) | Estimate shown only if `token_budget_warning_threshold` is set |
+| Large | 15--30+ (full ceremony: Robert + Sable + Agatha plan + Colby mockup + Sable verify + Sarah + Poirot test + Colby*N + Poirot verification*N + Poirot*N + Robert review + Sable review + Sentinel? + Agatha docs + Ellis) | Estimate always shown |
+
+### Estimate Formula
+
+```
+low_estimate  = sum(agent_count_by_model[model] * cost_per_invocation[model]) * 0.7
+high_estimate = sum(agent_count_by_model[model] * cost_per_invocation[model]) * 1.5
+```
+
+Where `agent_count_by_model` is derived from the agent roster table above, mapping each agent to its model tier per `pipeline-models.md` at the current sizing.
+
+**Multipliers:**
+- `0.7x` (optimistic): fewer tool calls, smaller context windows, no rework
+- `1.5x` (pessimistic): full context windows, rework cycles, retries, larger outputs
+
+### Step Count Multiplier
+
+When Sarah has already produced an ADR with N steps, apply these multipliers to the agent roster before computing the estimate. When step count is not yet known (estimate runs before Sarah), use the sizing-tier defaults from the agent roster table above.
+
+| Agent | Invocation count with N steps |
+|-------|-------------------------------|
+| Colby | N * 1.3 (30% rework assumption) |
+| Poirot | N * 1.1 (10% scoped re-run assumption) |
+| Poirot | ceil(N / wave_size) where `wave_size` defaults to 3 |
+
+**Default `wave_size`:** 3 (three ADR steps per wave before Poirot blind-review).

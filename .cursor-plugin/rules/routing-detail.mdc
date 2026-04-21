@@ -1,7 +1,3 @@
----
-description: Auto-routing detail matrix -- loaded on-demand for edge-case routing decisions
-alwaysApply: false
----
 # AUTO-ROUTING -- Detail Matrix
 
 <!-- JIT-loaded. Loaded on-demand from the `<routing id="auto-routing">` block in rules/agent-system.md when Eva encounters an edge-case routing decision (new intent, ambiguous keyword, discovered-agent conflict). Not in always-loaded context. -->
@@ -9,7 +5,7 @@ alwaysApply: false
 Loaded by Eva when she encounters an ambiguous routing case outside an
 active pipeline, when a discovered agent appears to overlap a core agent,
 or when smart-context detection needs to run against the full artifact
-table. The inline summary in `.cursor/rules/agent-system.mdc`
+table. The inline summary in `.cursor/rules/agent-system.md`
 `<routing id="auto-routing">` covers the common cases and points here for
 edge cases.
 
@@ -19,15 +15,15 @@ edge cases.
 |---|---|---|
 | Describes new idea, feature concept, "what if we..." | **robert-spec** | subagent |
 | Discusses UI, UX, user flows, wireframes, design patterns | **sable-ux** | subagent |
-| Says "review this ADR", "plan this", "how should we architect..." | **Cal** | skill |
-| References feature spec without ADR | **Cal** | skill |
+| Says "review this ADR", "plan this", "how should we architect..." | **Sarah** | skill |
+| References feature spec without ADR | **Sarah** | skill |
 | Says "plan the docs", "what docs do we need", "documentation plan" | **Agatha** (doc planning) | skill |
 | Says "mockup", "prototype", "let me see it" | Scout fan-out → **Colby** (mockup mode) [`<colby-context>`] | subagent |
 | Says "scan the codebase", "investigate paths", "map all X", "review the whole codebase" (read-only survey, no existing ADR or bug report) | Explore+haiku scouts → Sonnet reviewer | subagent |
-| Cal just finished ADR with test spec tables | Scout fan-out → **Roz** (test spec review) [`<qa-evidence>`] | subagent |
-| Roz approved test spec, ready to build | Scout fan-out → **Colby** + **Agatha** (parallel) [`<colby-context>`] | subagent |
+| Sarah just finished ADR with test spec tables | Scout fan-out → **Poirot** (test spec review) [`<qa-evidence>`] | subagent |
+| Poirot approved test spec, ready to build | Scout fan-out → **Colby** + **Agatha** (parallel) [`<colby-context>`] | subagent |
 | Says "build this", "implement", "code this" with existing plan | Scout fan-out → **Colby** + **Agatha** (parallel) [`<colby-context>`] | subagent |
-| Says "run tests", "check this", "QA", "validate" | Scout fan-out → **Roz** [`<qa-evidence>`] | subagent |
+| Says "run tests", "check this", "QA", "validate" | Scout fan-out → **Poirot** [`<qa-evidence>`] | subagent |
 | Says "commit", "push", "ship it", "we're done" | **Ellis** | subagent |
 | Says "write docs", "document this", "update the docs" | **Agatha** (writing) | subagent |
 | Asks about infra, CI/CD, deployment, monitoring | **Eva** (devops) | skill |
@@ -38,11 +34,11 @@ edge cases.
 ## Smart Context Detection
 
 Before routing, check for existing artifacts:
-- Feature spec in `{product_specs_dir}` → skip Robert
-- UX design doc in `{ux_docs_dir}` → skip Sable
+- Feature spec in `docs/product` → skip Robert
+- UX design doc in `docs/ux` → skip Sable
 - Doc plan exists → skip Agatha (planning)
-- Feature components with mock data hooks → mockup done, go to Cal
-- ADR in `{architecture_dir}` → skip Cal
+- Feature components with mock data hooks → mockup done, go to Sarah
+- ADR in `docs/architecture` → skip Sarah
 - Code staged and tests pass → skip to Ellis
 
 ## Auto-Routing Confidence

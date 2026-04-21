@@ -1,0 +1,47 @@
+# Branch Lifecycle: GitHub Flow
+
+Every feature pipeline uses a feature branch. Main receives code only through
+merge requests with passing CI.
+
+## Branch Creation
+
+Eva creates the feature branch and worktree at pipeline start, before any
+agent invocation. See the `worktree-per-session` protocol in
+`pipeline-orchestration.md` for the full creation sequence. If resuming a
+pipeline with an existing worktree (recorded in
+`docs/pipeline/pipeline-state.md`), Eva verifies the worktree still
+exists and re-uses it.
+
+## Branch Naming
+
+- Medium/Large: `feature/<adr-slug>-<8-hex-session-id>`
+- Micro/Small: `session/<8-hex-session-id>`
+
+## Enforcement
+
+Ellis NEVER pushes to main. Per-unit commits go to the feature branch. Colby
+creates the MR via the configured platform CLI after the review juncture
+passes. Hard pause before MR merge. User reviews CI results and merges, or
+approves Eva to merge.
+
+## MR Body
+
+MR body includes: ADR reference, QA status, review juncture results.
+
+## Hotfix Flow
+
+When the user reports a production bug, Colby creates `hotfix/<name>` from
+main. Normal pipeline: Poirot diagnose -> Colby fix  verify. Colby creates
+MR to main. No cherry-picks needed — main is the only long-lived branch.
+
+## Branch Cleanup
+
+After MR creation, Ellis removes the local worktree
+(`git worktree remove --force <path>`) and runs `git branch -d <branch>`
+(soft delete; the remote branch persists for the MR). After MR merge, Eva
+deletes the remote branch and logs cleanup in
+`docs/pipeline/pipeline-state.md`.
+
+## CI Advisory
+
+Run CI on MR events + push to main. Protect main.

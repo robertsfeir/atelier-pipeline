@@ -20,20 +20,23 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-sequencing.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-sequencing.sh",
+            "if": "tool_input.subagent_type != 'Explore'"
           },
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-pipeline-activation.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-pipeline-activation.sh",
+            "if": "tool_input.subagent_type == 'colby'"
           },
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-scout-swarm.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-scout-swarm.sh",
+            "if": "tool_input.subagent_type == 'sarah' || tool_input.subagent_type == 'colby'"
           },
           {
             "type": "prompt",
             "prompt": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-brain-prefetch.sh",
-            "if": "tool_input.subagent_type == 'cal' || tool_input.subagent_type == 'colby' || tool_input.subagent_type == 'roz'"
+            "if": "tool_input.subagent_type == 'sarah' || tool_input.subagent_type == 'colby'"
           }
         ]
       },
@@ -88,7 +91,7 @@
             "type": "agent",
             "agent": "brain-extractor",
             "prompt": "Extract decisions, patterns, and lessons from the completed agent's output and capture them to the brain via agent_capture.",
-            "if": "agent_type == 'cal' || agent_type == 'colby' || agent_type == 'roz' || agent_type == 'agatha' || agent_type == 'robert' || agent_type == 'robert-spec' || agent_type == 'sable' || agent_type == 'sable-ux' || agent_type == 'ellis'"
+            "if": "agent_type == 'sarah' || agent_type == 'colby' || agent_type == 'agatha' || agent_type == 'robert' || agent_type == 'robert-spec' || agent_type == 'sable' || agent_type == 'sable-ux' || agent_type == 'ellis'"
           }
         ]
       }

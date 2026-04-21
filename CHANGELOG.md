@@ -5,6 +5,114 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-04-21
+
+**BREAKING.** Major pipeline redesign driven by observed over-engineering in
+the v3.x line: too many agents producing too many artifacts that other agents
+skim rather than read, too much ceremony around tests that only repeat the
+implementation in a different syntax, too much reflexive process. v4.0 trims
+hard and moves the verification model from a pre-built-test contract to a
+post-build exercised-behavior contract.
+
+### Removed
+
+- **Roz agent (deleted entirely).** The QA / test-authoring agent is gone.
+  Pre-built test assertions (Roz-first TDD) are no longer part of the default
+  flow. Tests are written by Colby when Sarah's ADR names a specific failure
+  mode that would bite users if regressed, or when the user asks for one
+  explicitly — never "for coverage" or "to document behavior."
+- **Roz-specific enforcement hook** (`enforce-roz-paths.sh`) deleted from
+  `source/claude/hooks/`, `.claude/hooks/`, and hook registration in
+  `.claude/settings.json`.
+- **`source/shared/references/retro-lessons.md`** deleted. Lesson 004
+  (hung-process rule) migrates into Colby's persona as a durable constraint.
+  The remaining lessons were either obsolete or cheaper to rediscover than to
+  carry in context.
+- **`source/shared/references/qa-checks.md`** deleted (Roz-specific; no
+  v4.0 consumer).
+- **`source/shared/pipeline/last-qa-report.md` template** and the live
+  `docs/pipeline/last-qa-report.md` deleted. Poirot returns his verifier
+  report directly to Eva in his invocation return — no persisted file.
+- **~1200 structural pinning tests** deleted across `tests/adr-0014-telemetry/`,
+  `tests/adr-0023-reduction/`, `tests/adr-0027/`, `tests/adr-0042/`,
+  `tests/adr-0045/`, `tests/xml-prompt-structure/`, `tests/cursor-port/`,
+  `tests/dashboard/`, and the top-level ADR pin tests. These asserted
+  structural properties of source files (line counts, section orders, agent
+  rosters, template counts) that burn tokens to run and catch nothing a human
+  review wouldn't. ~500 behavioral tests kept: brain MCP, hook behavior,
+  script behavior.
+- **`Agent(roz, cal)` tool grants** removed from Colby. **`Agent(roz)`**
+  removed from Cal/Sarah. Post-v4.0, neither Sarah nor Colby delegates via
+  the Agent tool.
+
+### Changed
+
+- **Cal renamed to Sarah** (pronouns she/her) with a fundamentally different
+  output contract. Sarah's ADRs are now 1-2 pages: `## Status`, `## Context`,
+  `## Options Considered` (2-3 options in prose, one paragraph each),
+  `## Decision`, `## Rationale`, `## Falsifiability`, `## Sources` (optional).
+  No implementation manuals. No requirements tables with source citations.
+  No verbatim replacement text for files Colby will edit. No test
+  specifications. No wiring-coverage sections. Sarah decides; Colby
+  implements; Poirot catches orphans. Persona at
+  `source/shared/agents/sarah.md`.
+- **Colby's Feedback Loop is now mandatory.** Every change must be exercised
+  at least once before DoD: backend code runs with representative input,
+  frontend code renders in the dev server (screenshot or browser MCP), hooks
+  fire with test payloads, endpoints get called, CLIs get executed. A change
+  that has not been executed is not done. Documented-but-unexercised wiring
+  is a blocker. Persona at `source/shared/agents/colby.md`.
+- **Poirot promoted to default post-build verifier.** Previously
+  opt-in-on-request; now runs on every wave after the mechanical gate
+  passes. Minimum findings dropped from 5 to 1-3 typical; zero findings with
+  confidence is acceptable ("I exercised X, Y, Z; all behaved as the diff
+  implies; no concerns.") The old minimum-5 rule produced padding. Poirot
+  exercises the code where practical (hooks, endpoints, MCP tools, UI
+  components) and reports what happened. Persona at
+  `source/shared/agents/investigator.md`.
+- **Mandatory Gate 1 is now the mechanical test gate**, not "Roz verifies
+  every wave." Between Colby-done and Poirot invocation, Eva runs the
+  project's declared test command from CLAUDE.md directly via Bash. Pass →
+  Poirot. Fail → back to Colby with output. Eva is responsible for the test
+  run, not a subagent.
+- **Scout fan-out is sizing-gated.** `enforce-scout-swarm.sh` now skips
+  Micro/Small pipelines entirely (scouts' ceremony cost exceeds their value
+  at that scale) and enforces `<research-brief>`/`<colby-context>` blocks
+  only on Medium/Large. Roz dropped from the case statement. Cal renamed to
+  Sarah in the case statement. Error messages updated to say Sarah.
+- **Stop-reason enum**: `roz_blocked` → `verification_blocked` (with
+  `roz_blocked` kept as read-time alias for pre-v4.0 pipelines).
+- **`CLAUDE.md`** rewrote Key Conventions and Pipeline Key Rules for the
+  v4.0 agent roster (no Roz, Cal→Sarah) and verification model.
+- **`docs/guide/user-guide.md`** and **`docs/guide/technical-reference.md`**
+  updated for v4.0 agent roster, verification model, and scout sizing gate.
+
+### Migration notes
+
+Downstream projects installing atelier-pipeline pull a breaking change:
+- `enforce-roz-paths.sh` hook no longer exists. Any project-local custom
+  hook chain that depends on it must be updated.
+- `Agent(roz, ...)` invocations in project-local custom agents will fail
+  (agent doesn't exist). Replace with `Agent(poirot, ...)` where semantics
+  map; otherwise remove.
+- Projects relying on pre-built test contracts from Roz in their own
+  workflows need to either (a) write tests themselves, (b) have Colby write
+  them when Sarah's ADR names a failure mode, or (c) accept that Poirot's
+  exercise-the-code pass replaces contract-style test authoring.
+- Downstream `/debug` users: the command now routes to Sherlock-then-Colby
+  rather than Roz-then-Colby. Same semantics for user-reported bugs.
+
+### Rationale (research-cited)
+
+Capture of the research that drove this redesign lives in the post-hoc ADR
+(Sarah writes it after this release lands). Eva's auto-memory records the
+observed patterns that prompted the trim: structural-pinning tests with
+near-zero regression signal, Roz-first TDD producing "tests that describe
+what Colby already did" rather than behavioral contracts, ADR steps
+expanding into implementation manuals Colby skims and re-derives, scout
+fan-out cost exceeding its value at small scale. This release is the
+response.
+
 ## [3.41.0] - 2026-04-21
 
 ### Added

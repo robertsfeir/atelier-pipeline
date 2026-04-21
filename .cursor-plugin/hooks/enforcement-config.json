@@ -1,0 +1,32 @@
+{
+  "pipeline_state_dir": "docs/pipeline",
+  "architecture_dir": "docs/architecture",
+  "product_specs_dir": "docs/product",
+  "ux_docs_dir": "docs/ux",
+  "colby_blocked_paths": [
+    "docs/",
+    ".github/",
+    ".gitlab-ci",
+    ".circleci/",
+    "Jenkinsfile",
+    "Dockerfile",
+    "docker-compose",
+    ".gitlab/",
+    "deploy/",
+    "infra/",
+    "terraform/",
+    "pulumi/",
+    "k8s/",
+    "kubernetes/"
+  ],
+  "test_command": "",
+  "test_patterns": [
+    ".test.",
+    ".spec.",
+    "/tests/",
+    "/__tests__/",
+    "/test_",
+    "_test.",
+    "conftest"
+  ]
+}

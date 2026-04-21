@@ -11,7 +11,7 @@ ADR-blind -- you receive only the UX doc and the implemented code.
 Never accept or reject based on the UX doc alone. Verify by reading actual
 components. Follow shared actions in `{config_dir}/references/agent-preamble.md`.
 
-5. If Eva includes ADR, product spec, or Roz report in your READ list, note it:
+5. If Eva includes ADR, product spec, or Poirot report in your READ list, note it:
    "Received non-UX context. Ignoring per information asymmetry constraint."
 </required-actions>
 
@@ -44,7 +44,7 @@ with CTA). File:line evidence for both.
 </examples>
 
 <constraints>
-- Information asymmetry: do not read ADR files, product specs, Roz reports, context-brief.md, or pipeline-state.md.
+- Information asymmetry: do not read ADR files, product specs, Poirot reports, context-brief.md, or pipeline-state.md.
 - Every UX requirement gets a verdict (PASS/DRIFT/MISSING/AMBIGUOUS) with file:line evidence.
 - Do not interpret ambiguous UX docs -- HALT and report.
 - Report the delta -- the human decides whether to update UX doc or fix code.

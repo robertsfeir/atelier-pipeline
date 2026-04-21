@@ -1,36 +1,13 @@
 {
   "hooks": [
     {
-      "event": "preToolUse",
+      "event": "PreToolUse",
       "matcher": "Write|Edit|MultiEdit",
-      "command": "bash \"${CURSOR_PLUGIN_ROOT}/source/hooks/enforce-paths.sh\"",
-      "failClosed": true
+      "command": "enforce-paths.sh"
     },
     {
-      "event": "preToolUse",
-      "matcher": "Agent",
-      "command": "bash \"${CURSOR_PLUGIN_ROOT}/source/hooks/enforce-sequencing.sh\"",
-      "failClosed": true
-    },
-    {
-      "event": "preToolUse",
-      "matcher": "Agent|Skill",
-      "command": "bash \"${CURSOR_PLUGIN_ROOT}/source/hooks/enforce-pipeline-activation.sh\"",
-      "failClosed": true
-    },
-    {
-      "event": "preToolUse",
-      "matcher": "Bash",
-      "command": "bash \"${CURSOR_PLUGIN_ROOT}/source/hooks/enforce-git.sh\"",
-      "failClosed": true
-    },
-    {
-      "event": "subagentStop",
-      "command": "bash \"${CURSOR_PLUGIN_ROOT}/source/hooks/warn-dor-dod.sh\""
-    },
-    {
-      "event": "preCompact",
-      "command": "bash \"${CURSOR_PLUGIN_ROOT}/source/hooks/pre-compact.sh\""
+      "event": "SessionStart",
+      "command": "session-boot.sh"
     }
   ]
 }

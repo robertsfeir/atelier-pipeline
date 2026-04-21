@@ -31,7 +31,7 @@ MR body includes: ADR reference, QA status, review juncture results.
 ## Hotfix Flow
 
 When the user reports a production bug, Colby creates `hotfix/<name>` from
-main. Normal pipeline: Roz diagnose -> Colby fix -> Roz verify. Colby creates
+main. Normal pipeline: Poirot diagnose -> Colby fix  verify. Colby creates
 MR to main. No cherry-picks needed — main is the only long-lived branch.
 
 ## Branch Cleanup

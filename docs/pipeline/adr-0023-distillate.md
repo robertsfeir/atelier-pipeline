@@ -20,7 +20,7 @@ downstream_consumer: "Roz (test spec review)"
 | R4 | Upgrade examples from generic competency demos to project-specific judgment calibration (e.g., "wrong default -> correct behavior") | Anthropic docs |
 | R5 | Scale example density by model tier: Opus 0-1, Sonnet 1-2, Haiku 2 | Audit finding |
 | R6 | Consolidate brain capture protocol (~28 lines) into agent-preamble.md; keep only agent-specific thought_types in personas | Audit finding |
-| R7 | Move step sizing gate (S1-S5) from Cal's persona to shared reference file | Audit finding |
+| R7 | Move step sizing gate (S1-S5) from Sarah's persona to shared reference file | Audit finding |
 | R8 | Collapse invocation-templates.md: extract shared patterns to header; remove repeated brain-context XML blocks (~200 lines); remove persona-constraint duplicates (~100 lines) | Audit finding |
 | R9 | Remove "How X Fits the Pipeline" sections from agent personas | Audit finding |
 | R10 | Remove explicit tool lists from persona body text (frontmatter is single source of truth post-ADR-0022) | ADR-0022 dependency |
@@ -61,9 +61,9 @@ Reduce agent specification by ~57% through two sequential phases: structural red
 
 | Step | Action | Target Lines | Files | Key Preservation |
 |------|--------|--------------|-------|------------------|
-| **1a** | Extract brain capture protocol to agent-preamble.md | agent-preamble.md +20; Cal/Colby/Roz/Agatha: <=6 each (vs ~27 now); save ~80 lines | cal.md, colby.md, roz.md, agatha.md, agent-preamble.md | All capture gates; agent-specific thought_type + importance values retained |
-| **1b** | Extract step sizing gate (S1-S5) to shared reference | Create step-sizing.md (~45 lines); Cal: 1-line reference | Create: step-sizing.md; Modify: cal.md | S1-S5 table, split heuristics, evidence paragraph, Darwin review trigger |
-| **1c** | Reduce Cal persona | <=120 lines (from 315) | cal.md | Spec challenge + SPOF analysis pattern; hard gates 1-4; vertical slice preference; anti-goals; contract tables in output |
+| **1a** | Extract brain capture protocol to agent-preamble.md | agent-preamble.md +20; Sarah/Colby/Roz/Agatha: <=6 each (vs ~27 now); save ~80 lines | sarah.md, colby.md, roz.md, agatha.md, agent-preamble.md | All capture gates; agent-specific thought_type + importance values retained |
+| **1b** | Extract step sizing gate (S1-S5) to shared reference | Create step-sizing.md (~45 lines); Sarah: 1-line reference | Create: step-sizing.md; Modify: sarah.md | S1-S5 table, split heuristics, evidence paragraph, Darwin review trigger |
+| **1c** | Reduce Sarah persona | <=120 lines (from 315) | sarah.md | Spec challenge + SPOF analysis pattern; hard gates 1-4; vertical slice preference; anti-goals; contract tables in output |
 | **1d** | Reduce Colby persona | <=95 lines (from 237) | colby.md | "Make Roz's tests pass, don't modify assertions" (TDD-first per R15); contract tables; premise verification; 1 example: premise verification judgment |
 | **1e** | Reduce Roz persona | <=100 lines (from 242) | roz.md | Both current examples (judgment restraint: "looks wrong but isn't"); "assert domain-correct behavior"; qa-checks.md reference; TDD constraint explicit |
 | **1f** | Reduce 8 remaining agents | Ellis: <=65; Agatha: <=55; Robert: <=60; Sable: <=60; Poirot: <=65; Sentinel: <=65; Darwin: <=100; Deps: <=90; Distillator: >=130 | ellis.md, agatha.md, robert.md, sable.md, investigator.md, sentinel.md, darwin.md, deps.md, distillator.md | Information asymmetry constraints (Robert, Sable, Sentinel, Poirot); PASS/DRIFT/MISSING/AMBIGUOUS (Robert); five-state audit (Sable); min 5 findings (Poirot); CWE/OWASP (Sentinel); fitness/escalation tables (Darwin); risk classification (Deps); **Distillator unchanged density** |
@@ -72,7 +72,7 @@ Reduce agent specification by ~57% through two sequential phases: structural red
 | **1i** | Reduce pipeline-orchestration.md | <=650 lines (from 952) | pipeline-orchestration.md | **Preserve verbatim:** all 12 mandatory gates; observation masking receipts; brain capture model; investigation discipline; pipeline flow diagram; phase sizing rules; **Condense:** telemetry capture prose; CI Watch protocol; Darwin auto-trigger; pattern staleness, dashboard bridge |
 | **1j** | Register new reference + hook | N/A | Update: SKILL.md; /pipeline-setup logic | Copy step-sizing.md to target `.claude/references/`; register session-boot.sh hook in settings.json SessionStart event |
 | **1k** | Write tests for new reference + hook | N/A | Create: tests/hooks/session-boot.bats (~25 tests) | session-boot.sh JSON output validation, missing file handling, exit 0 guarantee |
-| **1l** | Final integration verification | Total agent personas <=935 lines (from 2,392); invocation-templates.md <=300; default-persona.md boot <=30; all tests pass | All agent files; invocation-templates.md; tests/ | All bats tests pass; all brain tests pass; 3 spot-check: assemble Cal, Colby, Roz from source/shared + source/claude overlay and verify valid markdown |
+| **1l** | Final integration verification | Total agent personas <=935 lines (from 2,392); invocation-templates.md <=300; default-persona.md boot <=30; all tests pass | All agent files; invocation-templates.md; tests/ | All bats tests pass; all brain tests pass; 3 spot-check: assemble Sarah, Colby, Roz from source/shared + source/claude overlay and verify valid markdown |
 
 ---
 
@@ -91,13 +91,13 @@ Reduce agent specification by ~57% through two sequential phases: structural red
 All 108 tests preserved with exact IDs (T-0023-001 through T-0023-155):
 
 ### Step 1a (8 tests: T-0023-001 to T-0023-008)
-- agent-preamble.md contains `<protocol id="brain-capture">`; Cal/Colby/Roz/Agatha <=6 lines each; retain thought_type + importance; step 4 retains mcpServers list
+- agent-preamble.md contains `<protocol id="brain-capture">`; Sarah/Colby/Roz/Agatha <=6 lines each; retain thought_type + importance; step 4 retains mcpServers list
 
 ### Step 1b (6 tests: T-0023-010 to T-0023-015)
-- step-sizing.md exists with S1-S5 table, split heuristics, evidence (57%->93%), Darwin trigger; Cal references by path; table NOT duplicated
+- step-sizing.md exists with S1-S5 table, split heuristics, evidence (57%->93%), Darwin trigger; Sarah references by path; table NOT duplicated
 
 ### Step 1c (10 tests: T-0023-020 to T-0023-029)
-- Cal <=120 lines; contains "spec challenge" + "SPOF"; hard gates 1-4; vertical slice; anti-goals; 1 example (spec challenge + SPOF judgment); NO "State Machine Analysis", "Blast Radius", "Migration & Rollback" headers; output template retains: DoR, ADR skeleton, UX Coverage, Wiring Coverage, Contract Boundaries, Notes for Colby, DoD
+- Sarah <=120 lines; contains "spec challenge" + "SPOF"; hard gates 1-4; vertical slice; anti-goals; 1 example (spec challenge + SPOF judgment); NO "State Machine Analysis", "Blast Radius", "Migration & Rollback" headers; output template retains: DoR, ADR skeleton, UX Coverage, Wiring Coverage, Contract Boundaries, Notes for Colby, DoD
 
 ### Step 1d (8 tests: T-0023-030 to T-0023-037)
 - Colby <=95 lines; "Make Roz's tests pass" + "do not modify assertions" verbatim; Contracts Produced table; premise verification; 1 example (premise verification judgment); NO "Retrieval-led reasoning" opening; TDD constraint explicit
@@ -121,7 +121,7 @@ All 108 tests preserved with exact IDs (T-0023-001 through T-0023-155):
 - SKILL.md lists step-sizing.md; settings.json template includes session-boot.sh in SessionStart hooks; /pipeline-setup copies step-sizing.md; registers session-boot.sh
 
 ### Step 1l (6 tests: T-0023-150 to T-0023-155)
-- Total agent lines <=935; all bats tests pass; all brain tests pass; assembled Cal/Colby/Roz valid markdown
+- Total agent lines <=935; all bats tests pass; all brain tests pass; assembled Sarah/Colby/Roz valid markdown
 
 **Test distribution:** Step 1a: 8; 1b: 6; 1c: 10; 1d: 8; 1e: 6; 1f: 21; 1g: 12; 1h: 22; 1i: 5; 1j: 4; 1l: 6. **Total: 108 tests.**
 
@@ -131,16 +131,16 @@ All 108 tests preserved with exact IDs (T-0023-001 through T-0023-155):
 
 | Producer | Shape | Consumer | Step |
 |----------|-------|----------|------|
-| step-sizing.md | Markdown: S1-S5 table, split heuristics, evidence, Darwin trigger | Cal (reference), Darwin (reference) | 1b |
-| agent-preamble.md `<protocol id="brain-capture">` | Shared capture gates; agents specify thought_type + importance | Cal, Colby, Roz, Agatha (pointer + agent-specific) | 1a |
+| step-sizing.md | Markdown: S1-S5 table, split heuristics, evidence, Darwin trigger | Sarah (reference), Darwin (reference) | 1b |
+| agent-preamble.md `<protocol id="brain-capture">` | Shared capture gates; agents specify thought_type + importance | Sarah, Colby, Roz, Agatha (pointer + agent-specific) | 1a |
 | session-boot.sh | JSON stdout: pipeline_active, phase, feature, stale_context, warn_agents[], branching_strategy, agent_teams_enabled/env, custom_agent_count, ci_watch_*, project_name | Eva boot sequence default-persona.md (parse + use) | 1h |
 | invocation-templates.md header | Brain injection protocol, standard READ items, persona-constraint note | All templates (no longer repeat) | 1g |
 | Baseline metrics | Brain capture: `{baseline_for: 'ADR-0023', per_agent_first_pass_qa, per_agent_rework_rate, ...}` | Phase 2 Step 2c comparison | 2a |
 
 ## Wiring Coverage
 
-- step-sizing.md → Cal (references by path), Darwin (threshold data)
-- agent-preamble.md brain protocol → Cal, Colby, Roz, Agatha persona pointers
+- step-sizing.md → Sarah (references by path), Darwin (threshold data)
+- agent-preamble.md brain protocol → Sarah, Colby, Roz, Agatha persona pointers
 - session-boot.sh JSON → Eva default-persona.md boot parsing, SKILL.md hook registration, /pipeline-setup install
 - Reduced personas → /pipeline-setup overlay assembly
 - Phase 1 all changes → Phase 2 baseline measurement
@@ -150,7 +150,7 @@ All 108 tests preserved with exact IDs (T-0023-001 through T-0023-155):
 ## Notes for Colby (11 items)
 
 1. **ADR-0022 must be complete.** All `source/` paths assume post-ADR-0022 structure (`source/shared/agents/`, `source/shared/references/`, etc.).
-2. **Line count targets are ±10%.** Cal <=120 means 108-132 acceptable; don't pad or cut useful content.
+2. **Line count targets are ±10%.** Sarah <=120 means 108-132 acceptable; don't pad or cut useful content.
 3. **"Remove" = delete, not comment.** No `<!-- removed: ... -->` blocks, no `_unused` renames.
 4. **Examples are write-once.** Replace generic examples from scratch with "wrong default → correct behavior" structure, not retrofit.
 5. **Test the examples.** Each replacement demonstrates judgment call; if you can't articulate what model would get wrong without it, example isn't earning budget.

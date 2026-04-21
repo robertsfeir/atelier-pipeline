@@ -69,7 +69,7 @@ See `pipeline-orchestration.md` for brain capture model and /devops capture gate
 Eva may:
 - **Read** files (Read, Glob, Grep)
 - **Run** shell commands (Bash) for diagnostics -- logs, container status, test runs, DB queries
-- **Route** work to agents (Colby for fixes, Cal for architecture)
+- **Route** work to agents (Colby for fixes, Sarah for architecture)
 - **Write/Edit ONLY** files in `docs/pipeline`: pipeline-state.md, context-brief.md, error-patterns.md, investigation-ledger.md, last-qa-report.md
 - **Track** subagent work via TaskCreate and TaskUpdate
 
@@ -119,13 +119,15 @@ When a **user reports a bug** (UAT, conversation, direct report):
 4. **Hard pause.** User approves a fix approach (or requests a different scope).
 5. **Fix -- user-directed.** If the user wants the fix applied, route to
    **Colby** with Sherlock's Recommended-fix paragraph as the fix scope.
-6. **Verify.** **Roz** verifies the fix per normal post-build QA.
+   Colby exercises the fix per his Feedback Loop.
+6. **Verify.** **Poirot** blind-reviews the fix diff as the default
+   post-build verifier. Eva also runs the mechanical test gate.
 
 Eva does NOT investigate user-reported bugs. Eva does not read source code
 to trace root causes or form diagnoses for user bugs. Eva routing to Colby
 with self-formed diagnosis = same class of violation as using Write tool.
 
-**Scope:** Applies to bugs user reports directly (UAT failures, error messages, "this is broken"). Does NOT apply to bugs discovered during pipeline flow (Roz QA findings, CI failures, batch queue) -- those follow automated flow without pausing. Pipeline-internal findings still route through Roz, not Sherlock.
+**Scope:** Applies to bugs user reports directly (UAT failures, error messages, "this is broken"). Does NOT apply to bugs discovered during pipeline flow (Poirot verification findings, CI failures, batch queue) -- those follow automated flow without pausing. Pipeline-internal findings route through Poirot, not Sherlock.
 
 </protocol>
 

@@ -200,21 +200,21 @@ Read each ADR file. Extract:
 
 1. **Each decision made** → `agent_capture` with:
    - `thought_type: "decision"`
-   - `source_agent: "cal"` (architect decisions)
+   - `source_agent: "sarah"` (architect decisions)
    - `source_phase: "design"`
    - `importance: 0.9` (architectural decisions are high-importance)
    - `thought`: One sentence summarizing the decision and its rationale. Reference the ADR: "ADR-NNNN: [decision summary]. Rationale: [why]."
 
 2. **Each rejected alternative** → `agent_capture` with:
    - `thought_type: "rejection"`
-   - `source_agent: "cal"`
+   - `source_agent: "sarah"`
    - `source_phase: "design"`
    - `importance: 0.5`
    - `thought`: "Rejected [alternative] for [feature]. Reason: [why]. See ADR-NNNN."
 
 3. **Spec challenges or risk call-outs** → `agent_capture` with:
    - `thought_type: "insight"`
-   - `source_agent: "cal"`
+   - `source_agent: "sarah"`
    - `source_phase: "design"`
    - `importance: 0.6`
 
@@ -269,7 +269,7 @@ Read `docs/pipeline/error-patterns.md`. Extract each entry:
 
 1. **Each error pattern** → `agent_capture` with:
    - `thought_type: "lesson"`
-   - `source_agent: "roz"` (QA-discovered patterns)
+   - `source_agent: 'poirot'` (QA-discovered patterns)
    - `source_phase: "qa"`
    - `importance`: Scale by recurrence count: 1-2 occurrences → 0.5, 3-4 → 0.7, 5+ → 0.9
    - `thought`: "[Pattern type]: [description]. Recurred [N] times. Mitigation: [what works]."

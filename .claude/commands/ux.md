@@ -1,6 +1,3 @@
----
-name: ux # prettier-ignore
-description: Invoke Sable (UI/UX Designer) to design user experiences, interaction patterns, and interface flows from a feature spec before architecture begins.---
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>
@@ -88,7 +85,7 @@ Save to `docs/ux/FEATURE-NAME-ux.md`. Starts with DoR, ends with DoD:
 ## Component Inventory
 ## Content and Copy
 ## Design Decisions and Rationale
-## Notes for Cal
+## Notes for Sarah
 ## Notes for Colby
 
 ## DoD: Verification

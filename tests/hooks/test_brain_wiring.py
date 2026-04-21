@@ -35,9 +35,7 @@ def _extract_section(file_path, start_tag, end_tag):
 # ═══════════════════════════════════════════════════════════════════════
 
 BRAIN_AGENTS = [
-    ("cal", "decision", "cal"),
     ("colby", "insight", "colby"),
-    ("roz", "pattern", "roz"),
     ("agatha", "decision", "agatha"),
 ]
 
@@ -71,26 +69,6 @@ def test_valid_yaml(agent, thought_type, source_agent):
 
 
 # Regression: Cal tools
-def test_T_0021_022_cal_tools():
-    fm = (CLAUDE_AGENTS / "cal.frontmatter.yml").read_text()
-    assert "Read" in fm
-    assert "Agent(roz)" in fm
-
-
-def test_T_0021_023_cal_workflow():
-    text = (SHARED_AGENTS / "cal.md").read_text()
-    assert "ADR Production" in text
-    assert "Hard Gates" in text
-
-
-# Regression: Colby tools
-def test_T_0021_031_colby_tools():
-    fm = (CLAUDE_AGENTS / "colby.frontmatter.yml").read_text()
-    assert "Read" in fm
-    assert "MultiEdit" in fm
-    assert "Agent(roz, cal)" in fm
-
-
 def test_T_0021_032_colby_workflow():
     text = (SHARED_AGENTS / "colby.md").read_text()
     assert "Mockup Mode" in text
@@ -98,19 +76,6 @@ def test_T_0021_032_colby_workflow():
 
 
 # Regression: Roz
-def test_T_0021_040_roz_disallowed():
-    fm = (CLAUDE_AGENTS / "roz.frontmatter.yml").read_text()
-    assert "Agent" in fm
-    assert "Edit" in fm
-    assert "MultiEdit" in fm
-    assert "NotebookEdit" in fm
-
-
-# removed by ADR-0045 — asserted deleted feature
-# test_T_0021_041_roz_workflow (Investigation Mode section deleted)
-
-
-# Regression: Agatha
 def test_T_0021_049_agatha_disallowed():
     fm = (CLAUDE_AGENTS / "agatha.frontmatter.yml").read_text()
     assert "Agent" in fm

@@ -51,27 +51,30 @@ scripts/         # Plugin lifecycle scripts (update checks)
 
 ## Key Conventions
 
-- **Roz-first TDD:** Roz writes test assertions before Colby builds. Colby never modifies Roz's assertions.
+- **Colby runs the code he writes:** every change is exercised (function called, endpoint hit, UI rendered, hook invoked) before DoD. Documentation-only wiring is not "done."
+- **Sarah writes short ADRs:** 1-2 pages. Decision + rationale + falsifiability. No implementation manuals, no test specs, no line-by-line file lists.
 - **Eva never writes code:** Eva orchestrates and routes. Colby implements. Ellis commits.
 - **Triple target:** `source/` contains templates with `{placeholders}`. `.claude/` contains installed copies for Claude Code. `.cursor-plugin/` contains installed copies for Cursor. All stay in sync within their respective contexts.
 - **ADR immutability:** ADRs are never updated in place. New ADRs supersede old ones.
 - **Mechanical enforcement:** PreToolUse hooks block agents from writing outside their designated paths. Behavioral guidance is backed by shell-script enforcement.
 - **Living artifacts:** Specs and UX docs are updated at pipeline end. Pipeline state files track session recovery.
-- **Shared preamble:** Agent personas reference `agent-preamble.md` for shared DoR/DoD, retro, and brain protocols. Domain-specific behavior stays in persona files.
-- **Cross-layer wiring:** Cal designs vertical slices (producer + consumer per step). Colby documents contract shapes. Roz and Poirot verify wiring. Orphan endpoints are blockers.
+- **Shared preamble:** Agent personas reference `agent-preamble.md` for shared DoR/DoD and brain protocols. Domain-specific behavior stays in persona files.
+- **Cross-layer wiring is exercised, not documented:** Sarah decides; Colby exercises the wiring at build time; Poirot catches orphan endpoints post-build. Contract documentation is not a substitute for execution.
 
 ## Pipeline System (Atelier Pipeline)
 
 This project uses a multi-agent orchestration pipeline for structured development.
 
-**Agents:** Eva (orchestrator), Robert (product), Sable (UX), Cal (architect), Colby (engineer), Roz (QA), Sherlock (bug detective), Agatha (docs), Ellis (commit)
+**Agents:** Eva (orchestrator), Robert (product), Sable (UX), Sarah (architect), Colby (engineer), Poirot (default post-build verifier), Sherlock (user-reported bug detective), Agatha (docs), Ellis (commit)
 
 **Commands:** /pm, /ux, /architect, /pipeline, /devops, /docs
 
 **Pipeline state:** docs/pipeline/ -- Eva reads this at session start for recovery
 
 **Key rules:**
-- Roz writes tests before Colby builds (Roz-first TDD)
-- Roz verifies every Colby output (no self-review)
+- Colby exercises every change he ships (backend: call it; UI: render it; hook: invoke it)
+- Eva runs the mechanical test gate between Colby-done and Poirot
+- Poirot is the default post-build verifier (blind diff review, 1-3 findings typical, zero with confidence OK)
+- Sherlock handles user-reported bugs only (never pipeline-internal findings)
 - Ellis commits (Eva never runs git on code)
-- Full test suite between work units
+- Scout fan-out is sizing-gated: Micro/Small skip scouts; Medium/Large enforce evidence blocks

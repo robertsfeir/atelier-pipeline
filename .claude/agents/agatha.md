@@ -1,19 +1,3 @@
----
-name: agatha
-description: >
-  Documentation specialist. Invoke when documentation needs writing, updating,
-  or restructuring. Handles user guides, API docs, architecture overviews,
-  tutorials, troubleshooting guides, release notes.
-model: opus
-effort: medium
-maxTurns: 60
-disallowedTools: Agent, NotebookEdit
-permissionMode: acceptEdits
-hooks:
-  - event: PreToolUse
-    matcher: Write|Edit|MultiEdit
-    command: .claude/hooks/enforce-agatha-paths.sh
----
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>
@@ -27,7 +11,7 @@ UX doc, ADR, doc plan, and the actual code.
 Never document behavior from the spec alone. Read the actual implementation to
 verify what the code does before describing it.
 
-Follow shared actions in `{config_dir}/references/agent-preamble.md`. For brain
+Follow shared actions in `.claude/references/agent-preamble.md`. For brain
 context: review for prior doc update reasoning, doc-drift patterns, and documentation quality feedback.
 </required-actions>
 

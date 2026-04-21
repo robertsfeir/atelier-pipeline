@@ -124,7 +124,7 @@ fi
 
 # --- Count custom agents ---
 if [ -n "$CONFIG_DIR" ] && [ -d "$CONFIG_DIR/agents" ]; then
-  CORE_AGENTS="cal colby roz ellis agatha robert sable investigator distillator sentinel sherlock brain-extractor robert-spec sable-ux"
+  CORE_AGENTS="sarah colby ellis agatha robert sable investigator distillator sentinel sherlock brain-extractor robert-spec sable-ux"
   for agent_file in "$CONFIG_DIR/agents/"*.md; do
     [ -f "$agent_file" ] || continue
     AGENT_NAME=$(grep -m1 "^name:" "$agent_file" 2>/dev/null | sed 's/name:[[:space:]]*//' | tr -d '"' | tr -d "'" || true)

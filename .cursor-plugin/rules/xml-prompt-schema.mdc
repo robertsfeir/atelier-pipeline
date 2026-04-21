@@ -1,7 +1,3 @@
----
-description: XML prompt tag vocabulary -- all tags used in agent persona files, commands, and invocations
-alwaysApply: false
----
 # XML Prompt Tag Vocabulary
 
 This document defines every XML tag used in atelier-pipeline agent persona
@@ -11,7 +7,7 @@ pipeline file.
 
 ## Persona File Tags
 
-Agent persona files (`{config_dir}/agents/*.md`) use these 7 tags in this order.
+Agent persona files (`.cursor/agents/*.md`) use these 7 tags in this order.
 `<identity>` is always first, `<output>` is always last.
 
 | Tag | Purpose | Attributes |
@@ -32,7 +28,7 @@ its output format last.
 
 ## Skill Command Tags
 
-Skill command files (`{config_dir}/commands/*.md`) use a slightly different
+Skill command files (`.cursor/commands/*.md`) use a slightly different
 structure for conversational agents running in the main thread.
 
 | Tag | Purpose | Attributes |
@@ -54,12 +50,30 @@ Tags with no content for a given invocation are omitted entirely, not left empty
 | `<task>` | What to do -- observed symptom for debug, feature name for build. Task is always first. | None |
 | `<required-actions>` | Per-invocation capture requirements (when needed beyond persona defaults) | None |
 | `<brain-context>` | Pre-fetched brain context (only when brain is available and returned results) | None |
+| `<colby-context>` | Pre-collected scout evidence for Colby (file content, patterns, brain results) | None |
+| `<qa-evidence>` | Pre-collected scout evidence for Poirot (changed files, test output, brain results) | None |
 | `<context>` | Decisions from context-brief.md | None |
 | `<hypotheses>` | Debug invocations only -- Eva's theory + alternative | None |
 | `<read>` | Comma-separated file paths to read | None |
 | `<warn>` | Retro lesson reference when error-patterns.md shows 3+ recurrences | None |
 | `<constraints>` | Boundaries for this specific invocation (3-5 bullets) | None |
 | `<output>` | What to produce, format, where to write it | None |
+
+## Scout Context Tags
+
+The `<colby-context>` and `<qa-evidence>` tags carry pre-collected scout
+evidence injected by Eva before invoking Colby or Poirot. When present, the
+receiving agent uses the provided content directly and skips redundant reads
+or test runs.
+
+| Tag | Consumer | Content |
+|-----|----------|---------|
+| `<colby-context>` | Colby | File content for ADR step files, grep pattern results (file:line only), brain search results for the step's feature area. When provided: do NOT re-read listed files, do NOT re-grep listed patterns, read additional files only if context is insufficient for a specific decision. |
+| `<qa-evidence>` | Poirot | Full content of changed source files (≤200 lines; ±20 lines per hunk if larger), targeted test output (`pytest` or `node --test` scoped to changed files, first 100 lines), brain search results for changed file names + feature area. When provided: do NOT re-read listed files, do NOT re-run listed tests, begin analysis immediately. |
+
+Eva populates these tags via haiku scout fan-out (see `pipeline-orchestration.md`
+phase-sizing section). Tags are omitted when scouts are skipped (Micro pipelines,
+Scoped Re-run Mode, Re-invocation fix cycle).
 
 ## Brain Context Tags
 
@@ -93,7 +107,7 @@ these attributes:
 - `handoff` -- during phase transition context packaging
 
 **`agent`** -- source agent who captured the thought. Any of the 10 agents
-(cal, colby, roz, agatha, robert, sable, eva, poirot, ellis, distillator).
+(sarah, colby, agatha, robert, sable, eva, poirot, ellis, distillator).
 
 **`relevance`** -- relevance score from agent_search, ranging from 0.00 to 1.00.
 
@@ -125,10 +139,10 @@ The `retro-lessons.md` file uses these tags:
 
 ### Attribute Details
 
-- `<lesson id="001" agents="cal, colby, roz">` -- the `id` is a three-digit
+- `<lesson id="001" agents="sarah, colby">` -- the `id` is a three-digit
   zero-padded string, monotonically increasing. The `agents` list enables
   filtering: agents can read only lessons relevant to them.
-- `<rule agent="cal">` -- the `agent` attribute matches one of the agents
+- `<rule agent="sarah">` -- the `agent` attribute matches one of the agents
   listed in the parent `<lesson>`'s `agents` attribute. Every agent listed
   in `agents` should have a corresponding `<rule>` child.
 
@@ -160,7 +174,7 @@ their markdown header do NOT need wrapping.
 
 Tags use an `id` attribute for filtering and identification:
 - `<gate id="mandatory-gates">` -- enables grep-based lookup of specific gates
-- `<template id="cal-adr">` -- enables lookup of specific invocation templates
+- `<template id="sarah-adr">` -- enables lookup of specific invocation templates
 - `<protocol id="boot-sequence">` -- enables lookup of specific procedures
 
 The `id` attribute is kebab-case, descriptive, and unique within a file.
@@ -217,15 +231,15 @@ disallowedTools:
 ```
 
 The `disallowedTools` list is the conservative read-only default. Users who
-need write access for a discovered agent must also add a case to
-`{config_dir}/hooks/enforce-paths.sh`.
+need write access for a discovered agent must also add a per-agent
+frontmatter hook (e.g., enforce-{name}-paths.sh) to the agent's overlay.
 
 ### Structural Mapping
 
 | Source Content | Target Tag | Required |
 |----------------|------------|----------|
 | Role, identity, pronouns, personality | `<identity>` | Yes |
-| Cognitive directive, proactive behaviors | `<required-actions>` | Yes -- always includes reference to `{config_dir}/references/agent-preamble.md` |
+| Cognitive directive, proactive behaviors | `<required-actions>` | Yes -- always includes reference to `.cursor/references/agent-preamble.md` |
 | Ordered steps, process, methodology | `<workflow>` | No -- omit tag if source has no workflow |
 | Scenarios showing correct behavior | `<examples>` | No -- omit tag if source has no examples |
 | Tool access list, tool-specific guidance | `<tools>` | No -- omit tag if source has no tool list |
@@ -237,7 +251,7 @@ need write access for a discovered agent must also add a case to
 Every converted agent's `<required-actions>` must begin with:
 
 ```
-Follow the shared required actions in `{config_dir}/references/agent-preamble.md`:
+Follow the shared required actions in `.cursor/references/agent-preamble.md`:
 DoR first, read upstream artifacts, review retro lessons, review brain context
 (if provided), DoD last.
 ```

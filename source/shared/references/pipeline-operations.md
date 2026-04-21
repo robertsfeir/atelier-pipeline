@@ -23,7 +23,7 @@ Eva prefetches brain context before invoking agents. Reinforced by `prompt-brain
 1. Calls `agent_search` with a query derived from the feature area
 2. Injects results into the `<brain-context>` tag in the invocation prompt
 3. Domain-specific captures are handled automatically by the brain-extractor
-   SubagentStop hook after each cal/colby/roz/agatha completion
+   SubagentStop hook after each sarah/colby/agatha completion
 
 Eva captures cross-cutting concerns only (best-effort).
 
@@ -31,49 +31,48 @@ Eva captures cross-cutting concerns only (best-effort).
 
 <operations id="continuous-qa">
 
-## Continuous QA (Wave-Level Roz + Colby)
+## Continuous QA (Wave-Level Poirot + Colby)
 
-Cal's ADR steps become work units grouped into waves. Roz writes tests per wave, Colby implements per unit, QA runs per wave.
+Sarah's ADR steps become work units grouped into waves. Colby writes tests when Sarah names a failure mode per wave, Colby implements per unit, QA runs per wave.
 
 **Pre-build test authoring (per wave, not per unit):**
-1. Eva invokes Roz in Test Authoring Mode for ALL units in the wave at once
-2. Roz reads Cal's test spec for all wave units + existing code + product spec
-3. Roz writes test files for the entire wave -- concrete assertions per unit
+1. Eva invokes Poirot in Test Authoring Mode for ALL units in the wave at once
+2. Poirot reads Sarah's test spec for all wave units + existing code + product spec
+3. Poirot writes test files for the entire wave -- concrete assertions per unit
 4. Tests are expected to fail -- they define the target state for the wave
 
 **Build (per unit within wave):**
 1. Eva invokes Colby for each unit sequentially (or via Agent Teams in parallel)
-2. Colby implements to make Roz's tests pass (may add additional tests)
+2. Colby implements to make Poirot's tests pass (may add additional tests)
 3. After each Colby unit, Colby runs `lint + typecheck` as a fast sanity check
    (shell command in build flow, not a separate agent invocation)
 4. If lint/typecheck fails, Colby fixes before marking unit complete
 
 **Wave QA (per wave, not per unit):**
-1. After ALL units in the wave are built, Eva invokes Roz for wave-level QA AND
-   Poirot for wave-level blind diff review in PARALLEL. Roz gets full context for
+1. After ALL units in the wave are built, Eva invokes Poirot for wave-level QA AND
+   Poirot for wave-level blind diff review in PARALLEL. Poirot gets full context for
    all units in the wave; Poirot gets ONLY the cumulative `git diff` for the wave.
 2. Eva triages findings from both reviewers: deduplicates, classifies severity.
    Findings unique to Poirot get special attention.
-3. If any findings require fixes, Eva routes to Colby. After fix, Eva invokes Roz
+3. If any findings require fixes, Eva routes to Colby. After fix, Eva invokes Poirot
    for a scoped rerun on the affected unit(s) only.
 4. **Sentinel does NOT run per-wave.** Sentinel runs once at the review juncture only.
 5. **Eva invokes Ellis for a per-wave commit** on the feature branch after wave QA
-   PASS. Ellis uses wave commit mode. Per-wave commits auto-advance after Roz
-   QA PASS -- no user approval required. The final commit and push requires
+   PASS. Ellis uses wave commit mode. Per-wave commits auto-advance after Poirot verification PASS -- no user approval required. The final commit and push requires
    user approval (hard pause).
 6. Eva updates `{pipeline_state_dir}/pipeline-state.md` after each wave completes
 
 **Post-build pipeline tail (after all waves complete -- review juncture):**
-7. Eva invokes the review juncture: Roz final sweep + Poirot + Robert-subagent
+7. Eva invokes the review juncture: Poirot final review + Poirot + Robert-subagent
    + Sable-subagent (Large) + Sentinel (if `sentinel_enabled: true`) in parallel.
    Sentinel runs HERE (at review juncture) and not during the build phase.
    Eva triages findings using the Triage Consensus Matrix (see below). Routes
-   fixes to Colby if needed, re-runs Roz. Eva captures Sentinel findings
+   fixes to Colby if needed, re-runs Poirot. Eva captures Sentinel findings
    post-review via `agent_capture` with `source_agent: 'eva'`,
    `thought_type: 'insight'` (same pattern as Poirot -- Sentinel does not touch
    brain directly).
 8. Eva invokes Agatha to write/update docs against the final verified code.
-   On Small: only if Roz flagged doc impact. On Medium/Large: always.
+   On Small: only if Poirot flagged doc impact. On Medium/Large: always.
 9. Eva invokes Robert-subagent in doc review mode to verify Agatha's output
 10. If Robert-subagent or Sable-subagent flagged DRIFT: hard pause. Human
     decides fix code or update spec/UX.
@@ -100,15 +99,15 @@ Cal's ADR steps become work units grouped into waves. Roz writes tests per wave,
 At every review juncture, Eva consults this matrix to determine the action.
 No discretion -- the matrix is the rule.
 
-| Roz | Poirot | Robert | Sable | Sentinel | Action |
+| Poirot | Poirot | Robert | Sable | Sentinel | Action |
 |-----|--------|--------|-------|----------|--------|
-| BLOCKER | any | any | any | -- | **HALT.** Roz BLOCKER is always authoritative. |
-| any | BLOCKER | any | any | -- | **HALT.** Eva investigates Poirot's finding. If confirmed, same as Roz BLOCKER. |
-| any | any | any | any | BLOCKER | **HALT.** Sentinel BLOCKER (exploitable vulnerability) is always authoritative. Eva verifies Semgrep finding is not false positive (check CWE, check if code path is reachable). If confirmed, same as Roz BLOCKER. |
+| BLOCKER | any | any | any | -- | **HALT.** Poirot BLOCKER is always authoritative. |
+| any | BLOCKER | any | any | -- | **HALT.** Eva investigates Poirot's finding. If confirmed, same as Poirot BLOCKER. |
+| any | any | any | any | BLOCKER | **HALT.** Sentinel BLOCKER (exploitable vulnerability) is always authoritative. Eva verifies Semgrep finding is not false positive (check CWE, check if code path is reachable). If confirmed, same as Poirot BLOCKER. |
 | MUST-FIX | agrees | -- | -- | -- | **HIGH-CONFIDENCE.** Queue fix, Colby priority. |
-| PASS | flags issue | -- | -- | -- | **CONTEXT-ANCHORING MISS.** Eva investigates -- Poirot caught what Roz's context biased her to miss. Treat as MUST-FIX minimum. |
+| PASS | flags issue | -- | -- | -- | **CONTEXT-ANCHORING MISS.** Eva investigates -- Poirot caught what Poirot's context biased her to miss. Treat as MUST-FIX minimum. |
 | MUST-FIX | PASS | -- | -- | -- | **STANDARD.** Queue fix per normal flow. |
-| PASS | PASS | -- | -- | MUST-FIX | **SECURITY CONCERN.** Queue fix, Colby priority. Sentinel caught what Roz and Poirot missed (SAST-specific finding). |
+| PASS | PASS | -- | -- | MUST-FIX | **SECURITY CONCERN.** Queue fix, Colby priority. Sentinel caught what Poirot missed (SAST-specific finding). |
 | MUST-FIX | flags issue | -- | -- | MUST-FIX | **CONVERGENT SECURITY.** Multiple reviewers flag security. High-confidence fix needed. |
 | -- | -- | DRIFT | -- | -- | **HARD PAUSE.** Human decides: fix code or update spec. |
 | -- | -- | AMBIGUOUS | -- | -- | **HARD PAUSE.** Human clarifies spec. |
@@ -127,8 +126,8 @@ recurring pattern exists, Eva adds a WARN to the relevant agent's invocation.
 
 **Escalation rule:** If the same matrix cell fires 3+ times across
 pipelines (tracked via Brain or error-patterns.md), Eva injects a WARN
-into the upstream agent's next invocation. Example: persistent Roz-PASS +
-Poirot-flags-issue on the same module -> WARN to Roz: "Poirot has caught
+into the upstream agent's next invocation. Example: persistent Poirot-PASS +
+Poirot-flags-issue on the same module -> WARN to Poirot: "Poirot has caught
 issues in this module that you've missed 3 times. Extra scrutiny warranted."
 
 </matrix>
@@ -143,14 +142,14 @@ issues in this module that you've missed 3 times. Extra scrutiny warranted."
 | UAT feedback (spec change) | Robert -> Sable -> re-mockup -> Sable-subagent verify |
 | UAT feedback (UX flow change) | Sable -> re-mockup -> Sable-subagent verify |
 | Sable-subagent mockup DRIFT | Colby mockup fix -> Sable-subagent re-verify |
-| Roz test spec gaps | Cal subagent (revise) -> Roz (re-review) |
-| Roz code QA (minor) | Colby fix -> Roz scoped re-run |
-| Roz code QA (structural) | Cal subagent (revise) -> Colby -> Roz full run |
+| Poirot test spec gaps | Sarah subagent (revise)  (re-review) |
+| Poirot code QA (minor) | Colby fix  scoped re-run |
+| Poirot code QA (structural) | Sarah subagent (revise) -> Colby  full run |
 | Robert-subagent spec DRIFT | Hard pause -> human decides -> Robert-skill updates spec OR Colby fixes code |
 | Sable-subagent UX DRIFT | Hard pause -> human decides -> Sable-skill updates UX doc OR Colby fixes code |
-| CI/CD issue | Colby (config) or Cal subagent (architectural) |
-| User reports a bug | Roz (investigate + diagnose) -> Colby (fix) -> Roz (verify) |
-| CI failure (watched) | Roz (CI investigate) -> Colby (CI fix) -> Roz (CI verify) -> hard pause -> Ellis (push fix) -> re-watch |
+| CI/CD issue | Colby (config) or Sarah subagent (architectural) |
+| User reports a bug | Poirot (investigate + diagnose) -> Colby (fix)  (verify) |
+| CI failure (watched) | Poirot (CI investigate) -> Colby (CI fix)  (CI verify) -> hard pause -> Ellis (push fix) -> re-watch |
 
 </section>
 
@@ -160,9 +159,9 @@ issues in this module that you've missed 3 times. Extra scrutiny warranted."
 
 If any agent raises a concern about another agent's domain, Eva asks the
 user if they want to loop that agent back in:
-- Cal questions Robert's spec -> "Want me to check with Robert on this?"
-- Sable's design implies arch changes -> "Cal should weigh in. Loop him in?"
-- Roz finds a spec gap -> "This traces back to the spec. Want Robert to clarify?"
+- Sarah questions Robert's spec -> "Want me to check with Robert on this?"
+- Sable's design implies arch changes -> "Sarah should weigh in. Loop him in?"
+- Poirot finds a spec gap -> "This traces back to the spec. Want Robert to clarify?"
 
 </section>
 
@@ -173,7 +172,7 @@ user if they want to loop that agent back in:
 Default execution model is **sequential with full pipeline per issue.**
 
 1. **One issue at a time.** Eva does not start issue N+1 until issue N is committed and verified.
-2. **Roz runs the full test suite between issues.** Eva invokes Roz between issues. If tests fail, Eva halts and routes the failure.
+2. **Eva runs the full test suite between issues.** Eva invokes Poirot between issues. If tests fail, Eva halts and routes the failure.
 3. **Parallelization requires explicit user approval** and zero file overlap confirmation.
 4. **No silent reordering.** Eva announces dependency-driven reorders.
 
@@ -186,8 +185,8 @@ Default execution model is **sequential with full pipeline per issue.**
 Changes from isolated worktrees must be integrated using git operations -- **never naive file copying.**
 
 1. **Use `git merge` or `git cherry-pick`** to bring worktree changes into the working branch.
-2. **Resolve conflicts before advancing.** Route to Colby for resolution, run Roz before advancing.
-3. **One worktree merges at a time.** Eva invokes Roz to run the test suite between each merge.
+2. **Resolve conflicts before advancing.** Route to Colby for resolution, run Poirot before advancing.
+3. **One worktree merges at a time.** Eva invokes Poirot to run the test suite between each merge.
 4. **Worktree agents do not see each other's changes.** Eva is responsible for the integration.
 
 **Agent Teams Worktrees (when `agent_teams_available: true`, experimental):**
@@ -201,13 +200,13 @@ handles worktree lifecycle.
   order). This ensures reproducible integration regardless of Teammate
   completion order.
 - **Test suite between merges:** Rule 3 applies unchanged -- Eva invokes
-  Roz to run the full test suite on the integrated codebase between each
+  Poirot to run the full test suite on the integrated codebase between each
   Teammate merge.
 - **Merge conflict handling:** If a conflict is detected during a Teammate
   merge, Eva falls back to sequential for the conflicting unit. Eva routes
-  conflict resolution to Colby, runs Roz before advancing (Rule 2 applies).
+  conflict resolution to Colby, runs Poirot before advancing (Rule 2 applies).
 - **Worktree cleanup:** Claude Code manages worktree lifecycle. Eva does not
-  delete worktrees via Bash. After a successful merge and Roz QA PASS, the
+  delete worktrees via Bash. After a successful merge and Poirot verification PASS, the
   worktree is no longer needed -- Eva signals completion to the Agent Teams
   runtime rather than manually removing the directory.
 
@@ -221,9 +220,9 @@ When an ADR has multiple steps, Eva analyzes file-level dependencies to
 group independent steps into waves. Steps within a wave execute in
 parallel; waves execute sequentially.
 
-**Wave extraction algorithm (Eva, after Roz test spec is ready):**
+**Wave extraction algorithm (Eva, after Poirot test spec is ready):**
 1. For each ADR step, extract: `files_to_create`, `files_to_modify`
-   (from Cal's plan).
+   (from Sarah's plan).
 2. Build adjacency: step A depends on step B if A modifies/reads a file
    that B creates or modifies.
 3. Topological sort into waves -- steps with zero shared files land in
@@ -236,7 +235,7 @@ parallel; waves execute sequentially.
 
 **Sub-unit execution order:** When an ADR uses sub-sliced steps (e.g., 2a,
 2b, 2c), sub-units within the same parent step execute sequentially — 2a
-completes Colby/Roz/Ellis before 2b begins. Sub-units from different parent
+completes Colby/Poirot/Ellis before 2b begins. Sub-units from different parent
 steps (e.g., 2c and 3a) may be wave-grouped if they have zero file overlap,
 following the standard wave extraction algorithm above.
 
@@ -281,7 +280,7 @@ after implementation. They do NOT run the full test suite and do NOT commit.
 
 After all TaskCompleted events arrive for the wave, Eva merges each worktree
 sequentially -- one merge at a time, in the order tasks were created (see
-Worktree Integration Rules). Eva invokes Roz to run the full test suite
+Worktree Integration Rules). Eva invokes Poirot to run the full test suite
 between each merge.
 
 **Timeout and failure handling (Agent Teams):**
@@ -296,14 +295,14 @@ between each merge.
 
 **Constraint preservation within waves:**
 - Each unit within a wave follows: Colby build + lint/typecheck. After all
-  units in the wave complete: Roz wave QA + Poirot wave blind review.
+  units in the wave complete: Poirot wave QA + Poirot wave blind review.
   All mandatory gates apply per wave, not per unit.
-- When Agent Teams is active, Roz and Poirot run after ALL Teammates'
+- When Agent Teams is active, Poirot run after ALL Teammates'
   worktrees in the wave are merged -- they review the cumulative wave
   result, not individual worktree diffs.
-- Roz and Poirot run once per wave on the cumulative wave diff.
+- Poirot run once per wave on the cumulative wave diff.
   Cross-wave integration is the final review juncture.
-- The final review juncture (Roz sweep + Poirot + Robert + Sable) runs
+- The final review juncture (Poirot review + Poirot + Robert + Sable) runs
   AFTER all waves complete, not after each wave.
 - Batch-mode rules still apply: parallel requires zero file overlap,
   sequential is the fallback. Eva announces wave grouping to the user
@@ -314,7 +313,7 @@ between each merge.
 Agent Teams applies exclusively to Colby build units within a wave. Agent
 Teams does NOT replace subagent invocations for any other agent:
 
-- Roz, Poirot, Robert, Sable, Ellis, Agatha, Cal, Sentinel, and all
+- Poirot, Robert, Sable, Ellis, Agatha, Sarah, Sentinel, and all
   discovered agents are invoked sequentially (existing behavior, unchanged).
 - Agent Teams is not used for read-only verification agents, doc writers,
   commit agents, or any phase outside the Colby build step.
@@ -359,7 +358,7 @@ Constraints:
 - Do NOT commit -- Eva merges and routes to Ellis
 - Do NOT modify files outside your assigned scope above
 - If a dependency is missing, mark task as blocked
-- Make Roz's pre-written tests pass -- do not modify her assertions
+- Make Poirot's pre-written tests pass -- do not modify her assertions
 - Zero TODO/FIXME/HACK in delivered code
 ```
 
@@ -377,7 +376,7 @@ events sequentially (retro #003). Blocked tasks fall back to sequential Colby.
 5. After all Teammates in the wave complete (all TaskCompleted events
    received), Eva merges each worktree sequentially (see Worktree
    Integration Rules -- Agent Teams Worktrees subsection).
-6. After all worktrees in the wave are merged, Roz wave QA + Poirot wave
+6. After all worktrees in the wave are merged, Poirot wave QA + Poirot wave
    blind review run once on the cumulative wave diff (see Wave QA above).
 
 Eva uses `TaskGet` to check Teammate task status during wave execution.
@@ -413,7 +412,7 @@ Eva launches a background Bash polling loop via `run_in_background` after Ellis 
 
 ```
 # Read from pipeline-config.json at watch launch:
-#   max_retries = ci_watch_max_retries  -- fix cycle cap (how many Roz->Colby->Roz cycles before giving up)
+#   max_retries = ci_watch_max_retries  -- fix cycle cap (how many Colby cycles before giving up)
 #   Note: max_errors below is a separate polling-health counter, not the fix cycle cap.
 
 max_iterations = 60          # 30 minutes at 30-second intervals
@@ -461,7 +460,7 @@ wait for user input
 
 - **Single failed job:** last 200 lines of the job log.
 - **Multiple failed jobs:** concatenate logs with a job header line (`--- Job: {job_name} ---`) between each; total cap at 400 lines (200 per job, up to 2 jobs; if more than 2 jobs fail, take the first 2 failing jobs' logs).
-- Logs are passed to Roz in the CONTEXT field of the `roz-ci-investigation` template, not written to disk.
+- Logs are passed to Poirot in the CONTEXT field of the CI-investigation invocation, not written to disk.
 
 ### CI Watch State Fields (PIPELINE_STATUS marker in `{pipeline_state_dir}/pipeline-state.md`)
 
@@ -515,7 +514,7 @@ suggest session breaks for context reasons.
 - **Primary within-session mechanism: observation masking.** Before each subagent invocation and at phase transitions, Eva replaces superseded tool outputs (file reads, grep results, bash outputs) with structured placeholders. See `<protocol id="observation-masking">` below for the full procedure.
 - **Cross-phase artifact compression: Distillator.** When upstream documents (spec, UX doc, ADR) exceed ~5K tokens at a phase boundary, Eva invokes Distillator. See gate 6 in `pipeline-orchestration.md`.
 - **Between major phases:** start fresh subagent sessions. Pipeline-state.md is the recovery mechanism.
-- **Within Colby+Roz interleaving:** Each unit is a separate subagent invocation (fresh context).
+- **Within Colby+Poirot interleaving:** Each unit is a separate subagent invocation (fresh context).
 - **Eva herself:** Compaction API manages context automatically. Eva no longer tracks context usage
   percentage. For very large pipelines (20+ agent handoffs), Eva may still suggest a fresh session
   if response quality visibly degrades -- but this is a quality signal, not a context-counting
@@ -533,7 +532,7 @@ suggest session breaks for context reasons.
   findings; brain captures preserve the decisions that matter most.
 - **Agent Teams Teammates have inherently fresh context per task.** Each Teammate is a new Claude
   Code instance -- no compaction needed. Teammates start fresh regardless of wave width.
-- **Never carry Roz reports in Eva's context.** Read the verdict only.
+- **Never carry Poirot reports in Eva's context.** Read the verdict only.
 - **Wave-boundary compact advisory.** A SubagentStop prompt hook (`prompt-compact-advisory.sh`) detects when Ellis completes a per-wave commit during the build phase and advises Eva to suggest `/compact` to the user. This is purely advisory -- Eva relays the suggestion; the user decides. The advisory does not fire on the final commit (review/complete phase) because the pipeline is ending.
 
 ### What Eva Carries vs. What Subagents Carry
@@ -583,10 +582,10 @@ invocations, not backward (Claude Code's conversation history is append-only).
 
 1. File read outputs superseded by a more recent read of the same path
 2. Tool outputs from completed pipeline phases (e.g., Robert's spec exploration
-   outputs after Cal has the ADR)
+   outputs after Sarah has the ADR)
 3. Verbose Bash outputs (build logs, test suite outputs) after Eva has
    extracted the verdict
-4. Git diff outputs after Roz and Poirot have completed their review of that
+4. Git diff outputs after Poirot have completed their review of that
    unit
 5. Individual Tier 1 `agent_capture` responses after Eva has updated the
    telemetry accumulators (the brain response confirmation is transient)

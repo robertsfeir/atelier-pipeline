@@ -24,17 +24,13 @@ tool invocation. `duration_ms = end_time - start_time`.
 
 | # | Template ID | Agent | Purpose |
 |---|-------------|-------|---------|
-| 1 | cal-adr | Cal | ADR production (standard) |
-| 2 | cal-adr-large | Cal | ADR production with research brief (medium/large) |
-| 2a | scout-research-brief | Explore+haiku (x3) | Pre-Cal research scouts (medium+large) |
+| 1 | sarah-adr | Sarah | ADR production (standard) |
+| 2 | sarah-adr-large | Sarah | ADR production with research brief (medium/large) |
+| 2a | scout-research-brief | Explore+haiku (x3) | Pre-Sarah research scouts (medium+large) |
 | 2b | codebase-investigation | Explore+haiku (xN) → Sonnet reviewer | Ad-hoc codebase scan: partition by area, collect evidence, synthesize |
+| 2c | scout-synthesis | Sonnet | Post-scout filter/rank/trim before primary agent |
 | 3 | colby-mockup | Colby | UI mockup with mock data |
 | 4 | colby-build | Colby | Build unit; **CI Watch variant:** scope to CI fix |
-| 5 | roz-investigation | Roz | Bug investigation; **CI Watch variant:** CI logs in CONTEXT |
-| 6 | roz-test-spec-review | Roz | Test spec review (after Cal ADR) |
-| 7 | roz-test-authoring | Roz | Test authoring per wave |
-| 8 | roz-code-qa | Roz | Wave QA (after all units built) |
-| 9 | roz-scoped-rerun | Roz | Scoped re-run; **CI Watch variant:** CI fix verify |
 | 10 | ellis-commit | Ellis | Wave commit |
 | 11 | agatha-writing | Agatha | Documentation writing |
 | 12 | robert-acceptance | Robert | Product acceptance review |
@@ -52,8 +48,8 @@ Note: darwin-edit-proposal uses colby-build with Darwin proposal in CONTEXT.
 
 ---
 
-<template id="cal-adr">
-### Cal (ADR Production)
+<template id="sarah-adr">
+### Sarah (ADR Production)
 <task>Produce ADR for [feature name]</task>
 <context>[User preferences from context-brief.md]</context>
 <read>docs/product/FEATURE.md, docs/ux/FEATURE-ux.md, docs/product/FEATURE-doc-plan.md, [blast_radius_files from scout when available]</read>
@@ -65,8 +61,8 @@ Note: darwin-edit-proposal uses colby-build with Darwin proposal in CONTEXT.
 <output>ADR at docs/architecture/ADR-NNNN-feature-name.md with DoR/DoD</output>
 </template>
 
-<template id="cal-adr-large">
-### Cal (Large ADR -- With Research Brief)
+<template id="sarah-adr-large">
+### Sarah (Large ADR -- With Research Brief)
 <task>Produce ADR for [feature name]</task>
 <research-brief>
 - Existing patterns: [from patterns scout, file:line]
@@ -84,7 +80,7 @@ Note: darwin-edit-proposal uses colby-build with Darwin proposal in CONTEXT.
 </template>
 
 <template id="scout-research-brief">
-### Scout Research Brief (Explore+haiku, pre-Cal, Medium+Large)
+### Scout Research Brief (Explore+haiku, pre-Sarah, Medium+Large)
 Three scouts launched in parallel by Eva. Each receives one focused prompt.
 
 **Patterns scout:**
@@ -101,6 +97,8 @@ Three scouts launched in parallel by Eva. Each receives one focused prompt.
 <task>Identify source files likely in scope for [feature area]: files matching the feature name, adjacent modules, integration points, test files.</task>
 <constraints>- Return file paths only. Max 15 files. Prefer specific over broad.</constraints>
 <output>blast_radius_files: [path, ...]</output>
+
+**Post-scout synthesis:** After all three scouts return, Eva invokes Template 2c (scout-synthesis) before invoking Sarah. Scout raw output is passed to the synthesis agent, not directly to Sarah. Synthesis produces the compact `<research-brief>` block consumed by Sarah.
 </template>
 
 <template id="codebase-investigation">
@@ -108,8 +106,62 @@ Three scouts launched in parallel by Eva. Each receives one focused prompt.
 Ad-hoc read-only surveys (security mapping, architecture reviews, dependency tracing). No ADR, no code changes. Eva fans out parallel area scouts — `Agent(subagent_type: "Explore", model: "haiku")`, one concern per scout, facts only, `findings: [{file, line, description}]`. Passes evidence to `Agent(model: "sonnet")` via named `<scout-evidence>` blocks. Synthesis produces structured findings table with file:line evidence. DoR/DoD.
 </template>
 
+<template id="scout-synthesis">
+### Scout Synthesis (Sonnet filter/rank/trim, post-scout, pre-primary-agent)
+<task>Filter, rank, and trim scout outputs into the named block for the primary agent. Emit only the required field names per the output shape. No opinions, no design proposals.</task>
+Eva invokes ONE Sonnet agent after scouts complete. Synthesis reads all
+scout outputs and produces the compact block consumed by Sarah/Colby/Poirot.
+Does NOT form opinions. Filters, ranks, trims only.
+
+**Invocation:** `Agent(subagent_type: "general-purpose", model: "sonnet", effort: "low")`
+with the synthesis output-shape prompt embedded inline. When a dedicated `synthesis` persona is registered in a future ADR, switch to `subagent_type: "synthesis"`.
+
+Block populated: `<research-brief>` (Sarah) / `<colby-context>` (Colby) / `<qa-evidence>` (Poirot).
+
+**Per-primary-agent output shape:**
+
+Sarah synthesis fills `<research-brief>`:
+- Top patterns (<=5 ranked by relevance): [file:line + one-line description]
+- Confirmed blast-radius (<=10 files with reason): [list]
+- Manifest notes: [conflicts or "none"]
+- Brain context (top 3 thoughts): [excerpts; omit when brain unavailable]
+
+Colby synthesis fills `<colby-context>`:
+- Key functions/blocks in scope for this step (NOT full files -- extract only the
+  functions/classes/blocks the step will touch): [list]
+- Relevant patterns to replicate (<=5, file:line + one-line description): [list]
+- Files pre-loaded (full content only if <=50 lines): [list]
+- Brain context (top 2 patterns for this step): [excerpts; omit when brain unavailable]
+
+Poirot synthesis fills `<qa-evidence>`:
+- Changed sections (per file: ONLY the changed functions/blocks, NOT full file): [list]
+- Test baseline: [N passed, N failed, failing test names only]
+- Risk areas (specific functions/paths worth scrutiny): [list]
+- Brain context (prior QA findings on this feature area): [excerpts; omit when brain unavailable]
+
+**Forbidden in all synthesis output:**
+- Full file contents over 50 lines
+- Prose explanation of what the primary agent should decide
+- Design proposals or architectural recommendations
+- Ranked "best approach" narratives
+- Commentary beyond one-line descriptions on file:line entries
+
+**Skip conditions (mirror scout skips):**
+- Sarah: Small and Micro pipelines
+- Colby: Micro pipelines AND re-invocation fix cycles
+- Poirot: Scoped re-run mode
+
+<constraints>
+- Filter/rank/trim only -- no opinions.
+- Emit the exact field names above. Missing required fields = BLOCKED by primary-agent DoR.
+- No file content over 50 lines per entry.
+- Brain context field omitted when `brain_available: false`.
+</constraints>
+<output>The named block (Sarah/Colby/Poirot), populated per shape above.</output>
+</template>
+
 <template id="colby-mockup">
-### Colby Mockup (After Sable, Before Cal)
+### Colby Mockup (After Sable, Before Sarah)
 <task>Build mockup for [feature name]</task>
 <context>[User preferences from context-brief.md]</context>
 <read>docs/product/FEATURE.md, docs/ux/FEATURE-ux.md</read>
@@ -124,94 +176,26 @@ Ad-hoc read-only surveys (security mapping, architecture reviews, dependency tra
 <template id="colby-build">
 ### Colby Build (Unit N)
 **CI Watch variant:** TASK = "Fix CI failure -- [root cause]". CONTEXT includes
-Roz's CI diagnosis + failure logs. Scope to the specific CI failure.
+Poirot's CI diagnosis + failure logs. Scope to the specific CI failure.
 <task>Implement ADR-NNNN Step N -- [description]</task>
+<!-- `<colby-context>` is populated by Template 2c (scout-synthesis) on Medium+ pipelines;
+     raw scout output is pre-filtered to Key functions/blocks, Relevant patterns, Files pre-loaded. -->
 <colby-context>
-  <existing-code>[Existing-code scout: contents of files the ADR step will modify]</existing-code>
-  <patterns>[Patterns scout: grep results for similar constructs, file:line only]</patterns>
-  <brain>[Brain scout: agent_search results for ADR step description (only when brain_available: true)]</brain>
+  <key-functions-blocks-in-scope>[Synthesis: functions/classes/blocks this step will touch]</key-functions-blocks-in-scope>
+  <relevant-patterns-to-replicate>[Synthesis: ≤5 file:line + one-line description]</relevant-patterns-to-replicate>
+  <files-pre-loaded>[Synthesis: full content only if ≤50 lines]</files-pre-loaded>
+  <brain>[Brain scout synthesis: top 2 patterns (only when brain_available: true)]</brain>
 </colby-context>
-<context>Roz's tests define correct behavior. Make them pass. Do not modify assertions.
+<context>Poirot's tests define correct behavior. Make them pass. Do not modify assertions.
 [Prior step's Contracts Produced table when consuming a contract.]</context>
-<read>ADR-NNNN (Step N + Contract Boundaries), [Roz-authored test files]</read>
+<read>ADR-NNNN (Step N + Contract Boundaries), [Poirot-authored test files]</read>
 <constraints>
-- Make Roz's tests pass -- do not modify her assertions
+- Make Poirot's tests pass -- do not modify her assertions
 - Inner loop: `echo "no single test configured"`. Full suite at unit end.
-- Roz test fails against existing code = code bug -- fix it
+- Poirot test fails against existing code = code bug -- fix it
 - Shared utility bug: grep all instances codebase-wide. Zero TODO/FIXME/HACK.
 </constraints>
 <output>Step N report with DoR/DoD, Bugs Discovered, files changed</output>
-</template>
-
-<template id="roz-investigation">
-### Roz Investigation (User Reports a Bug)
-**CI Watch variant:** TASK = "Investigate CI failure -- [summary]". CONTEXT
-includes CI logs (200 lines/job), branch, SHA, platform. Diagnose from logs.
-<task>Investigate bug -- [observed symptom, not theory]</task>
-<hypotheses>[Eva's theory] | [alternative at different layer]</hypotheses>
-<read>[relevant feature and API files]</read>
-<constraints>
-- Trace full request path. Run tests to confirm. Check logs.
-- Root cause with file:line. Check related issues. Diagnosis only -- no code.
-</constraints>
-<output>Symptom, root cause (file:line), code path, fix description, related issues</output>
-</template>
-
-<template id="roz-test-spec-review">
-### Roz Test Spec Review (After Cal)
-<task>Review test spec for ADR-NNNN</task>
-<read>ADR-NNNN, docs/product/FEATURE.md, .claude/references/qa-checks.md</read>
-<constraints>
-- Failure:happy ratio >= 1:1 (hard rule)
-- Verify Cal's DoR covers all spec requirements -- flag silent drops
-- 4+ test categories in one step -> flag for sub-slicing
-</constraints>
-<output>Coverage table, gaps, missing tests, verdict (APPROVED / REVISE)</output>
-</template>
-
-<template id="roz-test-authoring">
-### Roz Test Authoring (Pre-Build, Per Wave)
-<task>Write test assertions for ADR-NNNN Wave W -- Steps [N, M, ...]</task>
-<read>ADR-NNNN (Steps N, M, ...), docs/product/FEATURE.md, [relevant source files]</read>
-<constraints>
-- Concrete assertions, not descriptions. Assert DOMAIN-CORRECT behavior.
-- Code contradicts domain intent -> test for correct behavior (Colby fixes code)
-- All steps in wave. Organize per step.
-</constraints>
-<output>Test files in tests// per step. DoR/DoD.</output>
-</template>
-
-<template id="roz-code-qa">
-### Roz Code QA
-**Mode:** `unit-qa` (default, per Colby→Roz handoff) or `wave-sweep` (pre-Ellis only, Eva explicitly requests).
-In `unit-qa` mode, Eva adds to CONSTRAINTS: "Mode: unit-qa — run Tier 1 targeted tests only; Tier 2 limited to checks 8 (Security) and 11 (Dependencies)."
-In `wave-sweep` mode, Eva adds to CONSTRAINTS: "Mode: wave-sweep — run full test suite; full Tier 2."
-<task>Full QA on ADR-NNNN Wave W -- Steps [N, M, ...]</task>
-<qa-evidence>
-  <changed-files>[File scout: file contents or diff hunks]</changed-files>
-  <test-output>[Test scout: pytest output, head -100]</test-output>
-</qa-evidence>
-<read>.claude/references/qa-checks.md</read>
-<constraints>
-- REQUIREMENTS TO VERIFY: [Eva pastes from spec/ADR]
-- Verify Colby's DoD claims. Grep TODO/FIXME/HACK -- non-test = BLOCKER.
-- qa-evidence is pre-collected. Do NOT re-read listed files. Do NOT re-run tests.
-- Full test suite for final sweep only: pytest tests/ && cd brain && node --test ../tests/brain/*.test.mjs
-</constraints>
-<output>QA Report: verdict, check table, requirements verification, issues</output>
-</template>
-
-<template id="roz-scoped-rerun">
-### Roz Scoped Re-Run (After Colby Fix)
-**CI Watch variant:** CONTEXT includes Colby's fix report + original diagnosis.
-Focus on CI failure area, not full QA.
-<task>Scoped QA re-run on ADR-NNNN fix</task>
-<read>ADR-NNNN, .claude/references/qa-checks.md</read>
-<constraints>
-- Failed checks from first pass: [list]. SCOPED RE-RUN only.
-- Re-verify BLOCKER items from first pass.
-</constraints>
-<output>Scoped QA Report with updated verification</output>
 </template>
 
 <template id="ellis-commit">
@@ -297,7 +281,7 @@ Focus on CI failure area, not full QA.
 <constraints>
 - Named package only. Changelog for version range.
 - Grep all removed/changed API usage. Structured brief with file:line.
-- Never modify files. Brief inputs to Cal's ADR.
+- Never modify files. Brief inputs to Sarah's ADR.
 </constraints>
 <output>Breaking changes, usage inventory, migration approach, effort. DoR/DoD.</output>
 </template>
@@ -307,7 +291,7 @@ Focus on CI failure area, not full QA.
 
 <template id="distillator-compress">
 ### Distillator (Compress Between Phases)
-<task>Compress spec + UX doc for downstream consumption by Cal</task>
+<task>Compress spec + UX doc for downstream consumption by Sarah</task>
 <read>docs/product/FEATURE.md, docs/ux/FEATURE-ux.md</read>
 <constraints>
 - Lossless: decisions, constraints, alternatives, scope boundaries survive

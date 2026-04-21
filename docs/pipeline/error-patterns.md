@@ -110,3 +110,28 @@ get WARN injection into the relevant agent's invocation prompt.
 
 - Error: server_error
 - Message: unknown
+
+### StopFailure: unknown at 2026-04-20T19:03:34Z
+
+- Error: unknown
+- Message: unknown
+
+### StopFailure: unknown at 2026-04-20T19:38:09Z
+
+- Error: unknown
+- Message: unknown
+
+### StopFailure: roz at 2026-04-21T03:07:11Z
+
+- Error: rate_limit
+- Message: unknown
+
+### StopFailure: roz at 2026-04-21T14:56:39Z
+
+- Error: rate_limit
+- Message: unknown
+
+### StopFailure: unknown at 2026-04-21T17:19:22Z
+
+- Error: rate_limit
+- Message: unknown

@@ -115,7 +115,7 @@ compression_ratio: 0.43
 ### Step 6: Invocation Templates
 
 - **Modify:** `source/references/invocation-templates.md` — add "handoff briefs" to BRAIN sections
-- Applies to: Cal, Colby mockup, Colby build, Roz (all variants), Agatha, Robert
+- Applies to: Sarah, Colby mockup, Colby build, Roz (all variants), Agatha, Robert
 - No structural template changes — clarification only
 - DoR: R4, R10
 - DoD: All BRAIN sections mention handoff briefs

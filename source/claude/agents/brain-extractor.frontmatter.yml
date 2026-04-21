@@ -1,10 +1,10 @@
 name: brain-extractor
 description: >
-  Brain knowledge extractor. Fires as a SubagentStop hook after cal, colby,
-  roz, agatha, robert, robert-spec, sable, sable-ux, or ellis complete. Reads
+  Brain knowledge extractor. Fires as a SubagentStop hook after sarah, colby,
+  agatha, robert, robert-spec, sable, sable-ux, or ellis complete. Reads
   last_assistant_message, extracts decisions, patterns, lessons, and seeds,
   then performs a second pass to capture structured quality signals per
-  agent_type (ADR-0025), calls agent_capture via atelier-brain MCP.
+  agent_type, calls agent_capture via atelier-brain MCP.
 model: sonnet
 effort: low
 maxTurns: 5

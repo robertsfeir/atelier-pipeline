@@ -1,12 +1,13 @@
 name: colby
 description: >
-  Senior Software Engineer. Invoke when there is an ADR with an implementation
-  plan ready to build. Implements code step-by-step, writes tests (TDD),
-  produces production-ready code.
+  Senior Software Engineer. Invoke when Sarah has an ADR (or the scope is
+  clear without one). Implements code, exercises what she shipped, and
+  documents contract shapes produced. Runs the feedback loop before calling
+  a change done.
 model: opus
 effort: high
 color: green
 maxTurns: 75
-tools: Read, Write, Edit, MultiEdit, Glob, Grep, Bash, Agent(roz, cal)
+tools: Read, Write, Edit, MultiEdit, Glob, Grep, Bash
 mcpServers:
   - atelier-brain

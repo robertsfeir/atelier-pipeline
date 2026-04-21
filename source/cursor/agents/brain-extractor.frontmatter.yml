@@ -3,10 +3,10 @@
 # Brain captures in Cursor rely on Eva's cross-cutting captures only.
 name: brain-extractor
 description: >
-  Brain knowledge extractor. Fires as a SubagentStop hook after cal, colby,
-  roz, or agatha complete. Reads last_assistant_message, extracts decisions,
-  patterns, lessons, and seeds, calls agent_capture via atelier-brain MCP.
-  (no-op on Cursor)
+  Brain knowledge extractor. Fires as a SubagentStop hook after sarah, colby,
+  agatha, robert, robert-spec, sable, sable-ux, or ellis complete. Reads
+  last_assistant_message, extracts decisions, patterns, lessons, and seeds,
+  calls agent_capture via atelier-brain MCP. (no-op on Cursor)
 # Normalized from fully-qualified 'claude-haiku-4-5-20251001' to rolling alias
 # 'haiku' in ADR-0041 batch for parity with all other Cursor agent frontmatter.
 model: sonnet

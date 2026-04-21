@@ -15,7 +15,7 @@ You receive SubagentStop hook input containing `agent_type` and
 
 ### Early-exit guard (secondary loop prevention)
 
-If `agent_type` is not one of the nine target agents (`cal`, `colby`, `roz`,
+If `agent_type` is not one of the eight target agents (`sarah`, `colby`,
 `agatha`, `robert`, `robert-spec`, `sable`, `sable-ux`, `ellis`), stop
 immediately and produce zero captures. Do not read, do not analyze, do not
 call any tools. This is not a target agent -- early-exit now.
@@ -42,9 +42,8 @@ is always acceptable.
 
 | agent_type  | source_agent | source_phase |
 |-------------|--------------|--------------|
-| cal         | cal          | design       |
+| sarah       | sarah        | design       |
 | colby       | colby        | build        |
-| roz         | roz          | qa           |
 | agatha      | agatha       | handoff      |
 | robert      | robert       | product      |
 | robert-spec | robert-spec  | product      |
@@ -67,7 +66,7 @@ After the decisions/patterns/lessons/seeds extraction above, perform a second
 best-effort pass to capture structured quality signals. This second pass does
 not replace or gate the first -- both run independently.
 
-For each of the four core quality agents (roz, colby, agatha, cal), attempt to parse structured fields from
+For each of the three core quality agents (colby, agatha, sarah), attempt to parse structured fields from
 `last_assistant_message` using the per-agent schema below. If the brain MCP
 server is unavailable, skip this second pass entirely.
 
@@ -88,21 +87,6 @@ captures.
 never invent or assume a value. If zero fields are parseable, emit no quality
 signal capture -- zero captures is a valid outcome, not a failure.
 
-#### roz quality signals
-
-Search `last_assistant_message` for:
-- **verdict**: look for a `PASS` or `FAIL` verdict line near the end of output
-  (e.g., "Verdict: PASS.", "Wave N PASS", "verdict: PASS"). Case-insensitive
-  scan; strip trailing punctuation. Extract the string `PASS` or `FAIL`.
-- **finding counts by severity**: scan for BLOCKER, MUST-FIX, NIT, SUGGESTION
-  count patterns (e.g., "2 BLOCKERs", "BLOCKER: 2", "MUST-FIX: 1", "0 NIT",
-  "SUGGESTION: 3"). Extract integer counts for each severity level found.
-- **test counts**: scan for suite summary lines containing `tests_before`,
-  `tests_after`, `tests_broken` labels and extract those values directly. If
-  those labels are absent, fall back to pytest summary format: map "X passed"
-  → `tests_after`, "Y failed" → `tests_broken`. `tests_before` is unavailable
-  from pytest output alone -- omit it.
-
 #### colby quality signals
 
 Search `last_assistant_message` for:
@@ -110,24 +94,26 @@ Search `last_assistant_message` for:
   `dod_present: true`; if absent, omit.
 - **files_changed**: look for a "Files Changed" row in the DoD table or a
   "files changed" summary line. Extract the integer count of files changed.
+- **exercised**: scan the DoD for an "Exercised" line or equivalent phrase
+  naming what Colby ran against the change. Set `exercised: true` if found;
+  omit otherwise. Unexercised changes are a red flag under the v4.0 feedback-
+  loop mandate.
 - **rework**: scan the DoR section (or anywhere in the message) for phrases
-  indicating this invocation is fixing a prior Roz FAIL -- e.g., "fixing Roz",
-  "addressing Roz", "FAIL verdict", "prior QA FAIL". If any phrase is
-  found, set `rework: true`; otherwise omit.
+  indicating this invocation is fixing a prior verifier finding -- e.g.,
+  "fixing Poirot", "addressing finding", "FIX-REQUIRED", "prior review
+  failure". If any phrase is found, set `rework: true`; otherwise omit.
 
-#### cal quality signals
+#### sarah quality signals
 
 Search `last_assistant_message` for:
-- **step_count**: look for "N steps" or "step count" patterns (e.g., "12 steps",
-  "Step 12"). Extract the highest step number found as an integer.
-- **test_spec_count**: look for T-NNNN patterns (e.g., "T-0025-001") or "N tests"
-  in a test specification table. Count the distinct T-NNNN references found.
-- **adr_revision**: look for "Revision N" or "revision: N" patterns in Cal's
-  DoR section. Extract the integer revision number if found; omit if absent.
-- **dor_present**: look for a `## DoR` section header. Set `true` if found; omit
-  if absent.
-- **dod_present**: look for a `## DoD` section header. Set `true` if found; omit
-  if absent.
+- **options_considered**: count the number of `## Options Considered`
+  sub-entries (paragraphs) in Sarah's ADR. Sarah's 1-2 page format expects
+  2-3 options; deviations are worth capturing.
+- **falsifiability_present**: look for a `## Falsifiability` section header.
+  Set `true` if found; omit if absent. Missing falsifiability is a quality
+  signal.
+- **adr_revision**: look for "Revision N" or "revision: N" patterns in
+  Sarah's ADR. Extract the integer revision number if found; omit if absent.
 
 #### agatha quality signals
 
@@ -154,7 +140,7 @@ After both passes complete, emit one of the following [Brain] prefix lines:
 - **Capture errors:** `[Brain] WARNING: {N} capture failure(s) post {source_agent} work`
 
 Where:
-- `{source_agent}` is the parent agent name (cal, colby, roz, or agatha)
+- `{source_agent}` is the parent agent name (sarah, colby, or agatha)
 - `{N}` is total knowledge captures (decisions + patterns + lessons + seeds)
 - `{K}` is quality signal captures
 

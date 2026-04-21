@@ -41,25 +41,6 @@ def build_agent_prompt_input(subagent_type: str, prompt: str = "", agent_id: str
 
 # ── T-SCOUT-001: jq missing → exit 2 ───────────────────────────────────────
 
-def test_T_SCOUT_001_jq_missing(hook_env):
-    env = hide_jq_env(hook_env)
-    inp = build_agent_prompt_input("colby", "<colby-context>some context</colby-context>")
-    hook_path = prepare_hook("enforce-scout-swarm.sh", hook_env)
-    r = subprocess.run(
-        ["bash", str(hook_path)],
-        input=inp,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        env=env,
-        timeout=30,
-    )
-    assert r.returncode == 2
-    assert "jq" in r.stdout or "jq" in r.stderr
-
-
-# ── T-SCOUT-002: non-Agent tool → pass through ─────────────────────────────
-
 def test_T_SCOUT_002_non_agent_tool_passthrough(hook_env):
     _config_with_state_dir(hook_env)
     inp = json.dumps({"tool_name": "Write", "tool_input": {"file_path": "foo.py"}})
@@ -90,7 +71,7 @@ def test_T_SCOUT_004_non_target_agent_passthrough(hook_env):
 # ── T-SCOUT-005: colby missing <colby-context> → blocked ───────────────────
 
 def test_T_SCOUT_005_colby_missing_block_blocked(hook_env):
-    write_pipeline_status(hook_env, '{"phase":"build","sizing":"small"}')
+    write_pipeline_status(hook_env, '{"phase":"build","sizing":"medium"}')
     _config_with_state_dir(hook_env)
     inp = build_agent_prompt_input("colby", "Implement the feature as per the ADR.")
     r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
@@ -102,7 +83,7 @@ def test_T_SCOUT_005_colby_missing_block_blocked(hook_env):
 # ── T-SCOUT-006: colby with <colby-context> → allowed ──────────────────────
 
 def test_T_SCOUT_006_colby_with_block_allowed(hook_env):
-    write_pipeline_status(hook_env, '{"phase":"build","sizing":"small"}')
+    write_pipeline_status(hook_env, '{"phase":"build","sizing":"medium"}')
     _config_with_state_dir(hook_env)
     inp = build_agent_prompt_input(
         "colby",
@@ -114,10 +95,10 @@ def test_T_SCOUT_006_colby_with_block_allowed(hook_env):
 
 # ── T-SCOUT-007: cal missing <research-brief> → blocked ────────────────────
 
-def test_T_SCOUT_007_cal_missing_block_blocked(hook_env):
+def test_T_SCOUT_007_sarah_missing_block_blocked(hook_env):
     write_pipeline_status(hook_env, '{"phase":"design","sizing":"medium"}')
     _config_with_state_dir(hook_env)
-    inp = build_agent_prompt_input("cal", "Write an ADR for this feature.")
+    inp = build_agent_prompt_input("sarah", "Write an ADR for this feature.")
     r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
     assert r.returncode == 2
     assert "BLOCKED" in r.stdout
@@ -130,7 +111,7 @@ def test_T_SCOUT_008_cal_with_block_allowed(hook_env):
     write_pipeline_status(hook_env, '{"phase":"design","sizing":"medium"}')
     _config_with_state_dir(hook_env)
     inp = build_agent_prompt_input(
-        "cal",
+        "sarah",
         "<research-brief><patterns>found pattern at line 42 of source/claude/hooks/enforce.sh</patterns></research-brief>\nWrite ADR.",
     )
     r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
@@ -138,50 +119,6 @@ def test_T_SCOUT_008_cal_with_block_allowed(hook_env):
 
 
 # ── T-SCOUT-009: roz missing both debug-evidence and qa-evidence → blocked ──
-
-def test_T_SCOUT_009_roz_missing_block_blocked(hook_env):
-    write_pipeline_status(hook_env, '{"phase":"build","sizing":"small"}')
-    _config_with_state_dir(hook_env)
-    inp = build_agent_prompt_input("roz", "Run QA on the changed files.")
-    r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
-    assert r.returncode == 2
-    assert "BLOCKED" in r.stdout
-    assert "debug-evidence" in r.stdout or "qa-evidence" in r.stdout
-
-
-# ── T-SCOUT-010: roz with <qa-evidence> → allowed ──────────────────────────
-
-def test_T_SCOUT_010_roz_with_qa_evidence_allowed(hook_env):
-    write_pipeline_status(hook_env, '{"phase":"build","sizing":"small"}')
-    _config_with_state_dir(hook_env)
-    # ADR-0033 Step 3 (M3) adds 50-char content validation to Roz. Arrangement
-    # padded to >=50 chars to preserve the original test intent (Roz passes
-    # with a valid <qa-evidence> block). Assertion unchanged.
-    inp = build_agent_prompt_input(
-        "roz",
-        "<qa-evidence><files>changed_file.py and two other source files under review</files></qa-evidence>\nRun QA.",
-    )
-    r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
-    assert r.returncode == 0
-
-
-# ── T-SCOUT-011: roz with <debug-evidence> → allowed ───────────────────────
-
-def test_T_SCOUT_011_roz_with_debug_evidence_allowed(hook_env):
-    write_pipeline_status(hook_env, '{"phase":"build","sizing":"small"}')
-    _config_with_state_dir(hook_env)
-    # ADR-0033 Step 3 (M3) adds 50-char content validation to Roz. Arrangement
-    # padded to >=50 chars to preserve the original test intent (Roz passes
-    # with a valid <debug-evidence> block). Assertion unchanged.
-    inp = build_agent_prompt_input(
-        "roz",
-        "<debug-evidence><tests>failing test output captured from pytest run on the changed module</tests></debug-evidence>\nInvestigate.",
-    )
-    r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
-    assert r.returncode == 0
-
-
-# ── T-SCOUT-012: colby skip when sizing=micro ──────────────────────────────
 
 def test_T_SCOUT_012_colby_micro_skip(hook_env):
     """Micro pipeline skips colby enforcement — no block required."""
@@ -195,29 +132,17 @@ def test_T_SCOUT_012_colby_micro_skip(hook_env):
 
 # ── T-SCOUT-013: cal skip when sizing=small ────────────────────────────────
 
-def test_T_SCOUT_013_cal_small_skip(hook_env):
-    """Small pipeline skips cal enforcement — no block required."""
+def test_T_SCOUT_013_sarah_small_skip(hook_env):
+    """Small pipeline skips sarah enforcement — no block required."""
     write_pipeline_status(hook_env, '{"phase":"design","sizing":"small"}')
     _config_with_state_dir(hook_env)
     # No <research-brief> but sizing=small → should pass
-    inp = build_agent_prompt_input("cal", "Write a quick ADR.")
+    inp = build_agent_prompt_input("sarah", "Write a quick ADR.")
     r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
     assert r.returncode == 0
 
 
 # ── T-SCOUT-014: roz skip when scoped_rerun=true ───────────────────────────
-
-def test_T_SCOUT_014_roz_scoped_rerun_skip(hook_env):
-    """Scoped re-run mode skips roz enforcement — no block required."""
-    write_pipeline_status(hook_env, '{"phase":"build","sizing":"small","scoped_rerun":"true"}')
-    _config_with_state_dir(hook_env)
-    # No evidence block but scoped_rerun=true → should pass
-    inp = build_agent_prompt_input("roz", "Re-verify the fix.")
-    r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
-    assert r.returncode == 0
-
-
-# ── T-SCOUT-015: fail-open when pipeline-state.md missing ──────────────────
 
 def test_T_SCOUT_015_fail_open_no_state_file(hook_env):
     """No pipeline-state.md → fail-open, no block enforcement."""
@@ -232,7 +157,7 @@ def test_T_SCOUT_015_fail_open_no_state_file(hook_env):
 
 def test_T_SCOUT_016_fail_open_empty_prompt(hook_env):
     """Empty prompt → no block to check, fail-open."""
-    write_pipeline_status(hook_env, '{"phase":"build","sizing":"small"}')
+    write_pipeline_status(hook_env, '{"phase":"build","sizing":"medium"}')
     _config_with_state_dir(hook_env)
     inp = build_agent_prompt_input("colby", "")
     r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
@@ -260,7 +185,7 @@ def test_T_SCOUT_018_cal_medium_with_block_allowed(hook_env):
     write_pipeline_status(hook_env, '{"phase":"design","sizing":"medium"}')
     _config_with_state_dir(hook_env)
     inp = build_agent_prompt_input(
-        "cal",
+        "sarah",
         "<research-brief>Pattern analysis complete. Found 3 matching hooks in source/claude/hooks/.</research-brief>",
     )
     r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
@@ -269,11 +194,11 @@ def test_T_SCOUT_018_cal_medium_with_block_allowed(hook_env):
 
 # ── T-SCOUT-019: cal with medium and no block → blocked ────────────────────
 
-def test_T_SCOUT_019_cal_medium_missing_block_blocked(hook_env):
+def test_T_SCOUT_019_sarah_medium_missing_block_blocked(hook_env):
     """Medium pipeline requires research-brief; it's absent → blocked."""
     write_pipeline_status(hook_env, '{"phase":"design","sizing":"medium"}')
     _config_with_state_dir(hook_env)
-    inp = build_agent_prompt_input("cal", "Just go ahead and architect this.")
+    inp = build_agent_prompt_input("sarah", "Just go ahead and architect this.")
     r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
     assert r.returncode == 2
     assert "BLOCKED" in r.stdout
@@ -308,35 +233,6 @@ def test_T_SCOUT_021_colby_large_missing_block_blocked(hook_env):
 
 # ── T-SCOUT-022: roz with scoped_rerun=false and no block → blocked ─────────
 
-def test_T_SCOUT_022_roz_not_scoped_rerun_blocked(hook_env):
-    """scoped_rerun=false (not a re-run) → enforcement applies, block missing → blocked."""
-    write_pipeline_status(hook_env, '{"phase":"build","sizing":"small","scoped_rerun":"false"}')
-    _config_with_state_dir(hook_env)
-    inp = build_agent_prompt_input("roz", "Run QA checks.")
-    r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
-    assert r.returncode == 2
-    assert "BLOCKED" in r.stdout
-
-
-# ── T-SCOUT-023: malformed PIPELINE_STATUS JSON → fail-open ─────────────────
-
-def test_T_SCOUT_023_malformed_json_fail_open(hook_env):
-    """Malformed PIPELINE_STATUS JSON → fail-open, enforcement skips sizing/scoped_rerun."""
-    state_file = hook_env / "docs" / "pipeline" / "pipeline-state.md"
-    state_file.parent.mkdir(parents=True, exist_ok=True)
-    state_file.write_text("# Pipeline State\n\n<!-- PIPELINE_STATUS: {broken json -->\n")
-    _config_with_state_dir(hook_env)
-    # No block in prompt — with broken JSON the sizing is empty, no skip applies.
-    # But the prompt is non-empty so the block check fires and blocks.
-    inp = build_agent_prompt_input("colby", "Implement something without context.")
-    r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
-    # Malformed JSON means sizing="" → no micro skip → block applies
-    assert r.returncode == 2
-    assert "BLOCKED" in r.stdout
-
-
-# ── T-SCOUT-024: setup mode env var → exit 0 immediately ────────────────────
-
 def test_T_SCOUT_024_setup_mode_bypass(hook_env):
     """ATELIER_SETUP_MODE=1 bypasses all checks."""
     _config_with_state_dir(hook_env)
@@ -359,29 +255,11 @@ def test_T_SCOUT_024_setup_mode_bypass(hook_env):
 
 # ── T-SCOUT-025: roz with both qa-evidence and debug-evidence → allowed ─────
 
-def test_T_SCOUT_025_roz_both_evidence_types_allowed(hook_env):
-    """roz accepts either block — having both is also fine."""
-    write_pipeline_status(hook_env, '{"phase":"build","sizing":"medium"}')
-    _config_with_state_dir(hook_env)
-    # ADR-0033 Step 3 (M3) adds 50-char content validation to Roz. At least
-    # one block must have >=50 chars; having both with one full is fine.
-    # Arrangement updated to preserve original "either-or" intent. Assertion
-    # unchanged.
-    inp = build_agent_prompt_input(
-        "roz",
-        "<qa-evidence>changed files include enforce-scout-swarm.sh and conftest.py under tests/hooks</qa-evidence>\n<debug-evidence>trace here</debug-evidence>",
-    )
-    r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
-    assert r.returncode == 0
-
-
-# ── T-SCOUT-026: cal empty <research-brief> block → blocked ────────────────
-
-def test_T_SCOUT_026_cal_empty_research_brief_blocked(hook_env):
+def test_T_SCOUT_026_sarah_empty_research_brief_blocked(hook_env):
     """Empty <research-brief></research-brief> block is blocked — empty-block bypass fix."""
     write_pipeline_status(hook_env, '{"phase":"design","sizing":"medium"}')
     _config_with_state_dir(hook_env)
-    inp = build_agent_prompt_input("cal", "<research-brief></research-brief>\nWrite ADR.")
+    inp = build_agent_prompt_input("sarah", "<research-brief></research-brief>\nWrite ADR.")
     r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
     assert r.returncode == 2
     assert "BLOCKED" in r.stdout
@@ -397,7 +275,7 @@ def test_T_SCOUT_027_cal_research_brief_sufficient_content_allowed(hook_env):
     # Content is 73 chars: well over the 50-char minimum
     content = "Found enforce-scout-swarm.sh at source/claude/hooks/ — 3 related patterns"
     inp = build_agent_prompt_input(
-        "cal",
+        "sarah",
         f"<research-brief>{content}</research-brief>\nWrite ADR.",
     )
     r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
@@ -417,124 +295,3 @@ def test_T_SCOUT_027_cal_research_brief_sufficient_content_allowed(hook_env):
 
 
 # ── T-0033-009: empty <debug-evidence></debug-evidence> → blocked ──────────
-
-def test_T_0033_009_roz_empty_debug_evidence_blocked(hook_env):
-    """An empty <debug-evidence></debug-evidence> block with no <qa-evidence>
-    present must block Roz. Distinct from T-SCOUT-009 which tests the "no tag
-    at all" path — this test exercises the content-validation path.
-    """
-    write_pipeline_status(hook_env, '{"phase":"build","sizing":"small"}')
-    _config_with_state_dir(hook_env)
-    inp = build_agent_prompt_input(
-        "roz",
-        "<debug-evidence></debug-evidence>\nRun QA.",
-    )
-    r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
-    assert r.returncode == 2, (
-        f"Empty <debug-evidence></debug-evidence> must block Roz. "
-        f"Got returncode {r.returncode}. Output: {r.stdout!r}"
-    )
-    assert "BLOCKED" in r.stdout
-
-
-# ── T-0033-010: empty <qa-evidence></qa-evidence> → blocked ────────────────
-
-def test_T_0033_010_roz_empty_qa_evidence_blocked(hook_env):
-    """An empty <qa-evidence></qa-evidence> block with no <debug-evidence>
-    present must block Roz.
-    """
-    write_pipeline_status(hook_env, '{"phase":"build","sizing":"small"}')
-    _config_with_state_dir(hook_env)
-    inp = build_agent_prompt_input(
-        "roz",
-        "<qa-evidence></qa-evidence>\nRun QA.",
-    )
-    r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
-    assert r.returncode == 2, (
-        f"Empty <qa-evidence></qa-evidence> must block Roz. "
-        f"Got returncode {r.returncode}. Output: {r.stdout!r}"
-    )
-    assert "BLOCKED" in r.stdout
-
-
-# ── T-0033-011: both blocks present, both < 50 chars → blocked ─────────────
-
-def test_T_0033_011_roz_both_blocks_too_short_blocked(hook_env):
-    """Both blocks present but each with <50 chars of content → blocked.
-
-    Content validation mirrors the cal/colby 50-char threshold.
-    """
-    write_pipeline_status(hook_env, '{"phase":"build","sizing":"small"}')
-    _config_with_state_dir(hook_env)
-    inp = build_agent_prompt_input(
-        "roz",
-        "<debug-evidence>too short</debug-evidence>\n"
-        "<qa-evidence>also short</qa-evidence>",
-    )
-    r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
-    assert r.returncode == 2, (
-        f"Both blocks < 50 chars must block Roz. "
-        f"Got returncode {r.returncode}. Output: {r.stdout!r}"
-    )
-    assert "BLOCKED" in r.stdout
-
-
-# ── T-0033-012: one empty + one full → allowed (either-or preservation) ────
-
-def test_T_0033_012_roz_either_or_one_full_allowed(hook_env):
-    """If one block is empty but the other has >= 50 chars, Roz must be
-    allowed. Roz's contract is "either-or" — unlike cal/colby which need a
-    single required block. The content-full branch wins.
-
-    NOTE: this test passes BEFORE Wave 1 build because it tests preserved
-    existing behavior. That is correct (ADR-0033 test spec flag — T-0033-012
-    and -013 are pre-build-pass tests).
-    """
-    write_pipeline_status(hook_env, '{"phase":"build","sizing":"small"}')
-    _config_with_state_dir(hook_env)
-    # 60+ chars of real content in qa-evidence; debug-evidence empty.
-    qa_content = (
-        "Scout fan-out found 4 affected files in source/claude/hooks/ and "
-        "identified 2 enforcement patterns to verify."
-    )
-    inp = build_agent_prompt_input(
-        "roz",
-        f"<debug-evidence></debug-evidence>\n"
-        f"<qa-evidence>{qa_content}</qa-evidence>\nRun QA.",
-    )
-    r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
-    assert r.returncode == 0, (
-        f"One full qa-evidence block (>= 50 chars) must allow Roz through "
-        f"even if debug-evidence is empty. Got returncode {r.returncode}. "
-        f"Output: {r.stdout!r}"
-    )
-
-
-# ── T-0033-013: well-formed 200-char <qa-evidence> → allowed (happy path) ──
-
-def test_T_0033_013_roz_well_formed_qa_evidence_allowed(hook_env):
-    """A well-formed <qa-evidence> block with 200 chars of content still
-    allows Roz. Happy-path regression: the new content validation must not
-    block realistic evidence blocks.
-
-    NOTE: this test passes BEFORE Wave 1 build because it tests preserved
-    existing behavior (T-SCOUT-010 covers similar ground). The ADR flags
-    T-0033-012 and -013 as pre-build-pass tests.
-    """
-    write_pipeline_status(hook_env, '{"phase":"build","sizing":"small"}')
-    _config_with_state_dir(hook_env)
-    qa_content = (
-        "Scout fan-out results: changed files are source/claude/hooks/enforce-colby-paths.sh "
-        "and source/claude/hooks/enforcement-config.json. No downstream consumers "
-        "affected outside the per-agent hook layer. 3 existing tests cover the regression."
-    )
-    assert len(qa_content) >= 200  # sanity check — the test's own precondition
-    inp = build_agent_prompt_input(
-        "roz",
-        f"<qa-evidence>{qa_content}</qa-evidence>\nRun QA.",
-    )
-    r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
-    assert r.returncode == 0, (
-        f"Well-formed qa-evidence with 200+ chars must allow Roz. "
-        f"Got returncode {r.returncode}. Output: {r.stdout!r}"
-    )

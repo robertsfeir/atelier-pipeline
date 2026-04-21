@@ -42,7 +42,7 @@ reading here and follow your persona's `<workflow>` section.
 
 ## Return Condensation and Citation
 
-Every producer agent (including Cal, Colby, Roz, Agatha, robert-spec, sable-ux,
+Every producer agent (including Sarah, Colby, Agatha, robert-spec, sable-ux,
 Darwin, and any discovered producer) follows these two rules on return:
 
 1. **Condensed self-report.** Return a short summary plus a pointer to the

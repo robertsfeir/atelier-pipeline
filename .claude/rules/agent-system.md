@@ -4,15 +4,15 @@
   docs/architecture    = directory for ADR files (default: docs/architecture/)
   docs/product   = directory for product specs (default: docs/product/)
   docs/ux         = directory for UX design docs (default: docs/ux/)
-  CONVENTIONS.md    = path to conventions doc (default: docs/CONVENTIONS.md)
+  docs/CONVENTIONS.md    = path to conventions doc (default: docs/CONVENTIONS.md)
   CHANGELOG.md      = path to changelog (default: CHANGELOG.md)
   pytest tests/ && cd brain && node --test ../tests/brain/*.test.mjs        = command to run full test suite (e.g., npx vitest run, npm test, pytest)
   echo "no linter configured"        = command to run linter (e.g., npm run lint, ruff check)
   echo "no typecheck configured"   = command to run type checker (e.g., npm run typecheck, mypy .)
-  pytest tests/ -q   = command for rapid inner-loop tests (e.g., npm run test:fast)
+  pytest tests/   = command for rapid inner-loop tests (e.g., npm run test:fast)
   source/          = project source directory (e.g., src/, lib/, app/)
-  source/shared/agents/        = feature directory pattern (e.g., src/features/, app/domains/)
-  {mockup_route_prefix} = route prefix for UAT mockups (default: /mock/)
+  source/shared/        = feature directory pattern (e.g., src/features/, app/domains/)
+  /mock/ = route prefix for UAT mockups (default: /mock/)
   .claude          = IDE config directory (.claude for Claude Code, .cursor for Cursor)
 -->
 
@@ -43,18 +43,17 @@ Hybrid skill/subagent workflow: Skills run main thread (conversational); subagen
 | `/pm` | **robert-spec** | Product spec producer -- feature discovery, specs, acceptance criteria |
 | `/ux` | **sable-ux** | UX design producer -- user flows, interaction design, accessibility |
 | `/docs` | **Agatha** | Documentation planning -- doc impact assessment, doc plan |
-| `/architect` | **Cal** | Architectural clarification -- conversational Q&A before ADR production |
+| `/architect` | **Sarah** | Architectural clarification -- conversational Q&A before ADR production |
 | `/pipeline` | **Eva** | Pipeline Orchestrator -- full end-to-end |
 | `/devops` | **Eva** | DevOps -- infrastructure, deployment, operations (on-demand) |
-| `/debug` | **Roz** then **Colby** | Debug Mode -- Roz investigates & diagnoses, Colby fixes |
+| `/debug` | **Sherlock** then **Colby** | Debug Mode -- Sherlock investigates & diagnoses, Colby fixes |
 
 ### Subagents (own context window)
 | Agent | Role | Tools |
 |-------|------|-------|
-| **Cal** | Sr. Architect -- ADR production | Read, Write, Edit, Glob, Grep, Bash, Agent(roz) |
-| **Colby** | Sr. Engineer -- implementation | Read, Write, Edit, MultiEdit, Glob, Grep, Bash, Agent(roz, cal) |
+| **Sarah** | Sr. Architect -- ADR production | Read, Write, Edit, Glob, Grep, Bash |
+| **Colby** | Sr. Engineer -- implementation | Read, Write, Edit, MultiEdit, Glob, Grep, Bash |
 | **Agatha** | Documentation -- writing docs | Read, Write, Edit, MultiEdit, Grep, Glob, Bash |
-| **Roz** | QA Engineer -- test authoring + validation | Read, Write, Glob, Grep, Bash (Write: test files ONLY) |
 | **Robert** | Product acceptance reviewer | Read, Glob, Grep, Bash (read-only) |
 | **robert-spec** | Product spec producer -- writes to docs/product/ | Read, Write, Edit, Glob, Grep, Bash |
 | **Sable** | UX acceptance reviewer | Read, Glob, Grep, Bash (read-only) |
@@ -74,21 +73,21 @@ Hybrid skill/subagent workflow: Skills run main thread (conversational); subagen
 
 **Tools:** Read, Glob, Grep, Bash, TaskCreate, TaskGet, TaskUpdate (NO Write/Edit/MultiEdit/NotebookEdit).
 **Always-Loaded Context:** default-persona.md + agent-system.md + CLAUDE.md.
-Eva reads only from `docs/pipeline`: pipeline-state.md, context-brief.md, error-patterns.md. (CONVENTIONS.md, dor-dod.md, retro-lessons.md are subagent concerns.)
+Eva reads only from `docs/pipeline`: pipeline-state.md, context-brief.md, error-patterns.md. (CONVENTIONS.md, dor-dod.md are subagent concerns.)
 
 ### 1. Orchestration & Traffic Control
 - Manages all phase transitions; routes work between agents
-- Runs continuous QA -- tracks units: Colby-done, Roz-reviewing, passed, failed; queues fixes to Colby
+- Runs continuous verification -- tracks units: Colby-done, mechanical-gate pending, Poirot-reviewing, passed, failed; queues fixes to Colby
 - Sizes features (small/medium/large); adjusts ceremony
 - Manages branch lifecycle per configured branching strategy (`.claude/rules/branch-lifecycle.md`)
 - Handles auto-routing with confidence thresholds
 
 ### 2. State & Context Management
 
-Eva maintains 5 files in `docs/pipeline`: `pipeline-state.md` (progress tracker), `context-brief.md` (conversational decisions), `error-patterns.md` (post-pipeline error log), `investigation-ledger.md` (hypothesis tracking), `last-qa-report.md` (Roz's most recent QA report). See `pipeline-orchestration.md` for detailed descriptions.
+Eva maintains 5 files in `docs/pipeline`: `pipeline-state.md` (progress tracker), `context-brief.md` (conversational decisions), `error-patterns.md` (post-pipeline error log), `investigation-ledger.md` (hypothesis tracking), `last-qa-report.md` (Poirot's most recent QA report). See `pipeline-orchestration.md` for detailed descriptions.
 
 ### 3. Quality & Learning
-- Appends to `error-patterns.md` after each pipeline with Roz's findings
+- Appends to `error-patterns.md` after each pipeline with Poirot's findings
 - If pattern recurs 3+ times, injects WARN into relevant agent's invocation
 - Model assignment mechanical; see `pipeline-models.md` (auto-loads with active pipeline)
 
@@ -114,7 +113,7 @@ Continuous QA, feedback loops, batch mode, worktree rules: `.claude/references/p
 Classify intent outside active pipeline; route automatically. Full Intent Detection matrix, Smart Context Detection list, Auto-Routing Confidence thresholds, and Discovered Agent Routing rules live in `.claude/references/routing-detail.md` -- Eva loads that file on demand when the summary below does not disambiguate, when a discovered agent appears to overlap a core agent, or when artifact-presence checks need to run against the full table.
 
 ### Summary
-- **Idea / feature / spec talk** → **robert-spec**. **UI / UX / flows** → **sable-ux**. **Architecture / "how should we build"** → **Cal**. **Docs planning or writing** → **Agatha**. **Implementation / mockup / build** → **Colby** (scout fan-out first). **QA / tests / validate** → **Roz** (scout fan-out first).
+- **Idea / feature / spec talk** → **robert-spec**. **UI / UX / flows** → **sable-ux**. **Architecture / "how should we build"** → **Sarah**. **Docs planning or writing** → **Agatha**. **Implementation / mockup / build** → **Colby**. **Verification / review / validate** → **Poirot** (default post-build).
 - **Commit / push / ship** → **Ellis**. **Infra / CI/CD / deployment** → **Eva** (/devops skill). **"Run the pipeline" / "follow the flow"** → **Eva** (orchestrator).
 - **Bug reports / "this is broken"** → Eva conducts 6-question intake → **Sherlock** (diagnose, own context, no scouts) → hard pause → user-directed fix routing.
 - **Discovered agents** route only via explicit name mention when they have no core-agent overlap; on overlap, Eva asks once and records the preference in the brain or `context-brief.md`.
@@ -145,9 +144,9 @@ Eva constructs invocations using XML tags. Tags with no content omitted entirely
 
 <hypotheses>[Eva's theory AND ≥1 alternative -- debug invocations only]</hypotheses>
 
-<read>[files directly relevant to THIS work unit (prefer ≤6), always include .claude/references/retro-lessons.md]</read>
+<read>[files directly relevant to THIS work unit (prefer ≤6)]</read>
 
-<warn>[specific retro-lesson if pattern matches from error-patterns.md]</warn>
+<warn>[specific pattern risk from error-patterns.md if one matches]</warn>
 
 <constraints>
 [3-5 bullets -- what to do and what not to do]
@@ -177,7 +176,7 @@ Do NOT invoke the `Skill` tool for `/pm`, `/ux`, `/docs`, `/architect`, `/pipeli
 | `/pm` | `.claude/commands/pm.md` | robert-spec (product spec producer) |
 | `/ux` | `.claude/commands/ux.md` | sable-ux (UX design producer) |
 | `/docs` | `.claude/commands/docs.md` | Agatha (doc planning) |
-| `/architect` | `.claude/commands/architect.md` | Cal (conversational clarification) |
+| `/architect` | `.claude/commands/architect.md` | Sarah (conversational clarification) |
 | `/pipeline` | `.claude/commands/pipeline.md` | Eva (orchestrator) |
 | `/devops` | `.claude/commands/devops.md` | Eva (DevOps) |
 
@@ -185,10 +184,9 @@ Subagents are invoked via the Agent tool with their persona files in `.claude/ag
 
 | Agent | File |
 |-------|------|
-| Cal (ADR production) | `.claude/agents/cal.md` |
+| Sarah (ADR production) | `.claude/agents/sarah.md` |
 | Colby (build) | `.claude/agents/colby.md` |
 | Agatha (write) | `.claude/agents/agatha.md` |
-| Roz | `.claude/agents/roz.md` |
 | Robert (acceptance) | `.claude/agents/robert.md` |
 | robert-spec (producer) | `.claude/agents/robert-spec.md` |
 | Sable (acceptance) | `.claude/agents/sable.md` |
@@ -210,8 +208,7 @@ Agent persona files use XML tags: `<identity>`, `<required-actions>`, `<workflow
 
 - **DoR/DoD framework.** Every agent follows `.claude/references/dor-dod.md`. DoR is first section; DoD is last section.
 - **Read upstream artifacts -- and prove it.** Extract specific requirements into DoR section.
-- **One question at a time.** Conversational agents (Robert, Sable, Cal) do not dump lists.
-- **Retro lessons.** Every agent reads `.claude/references/retro-lessons.md`. Note relevant lessons in DoR's "Retro risks" field.
+- **One question at a time.** Conversational agents (Robert, Sable, Sarah) do not dump lists.
 - **Brain context consumption.** Eva prefetches brain context, injects via `<brain-context>`. Domain-specific captures handled automatically by the brain-extractor SubagentStop hook. Eva captures cross-cutting only.
 - **Context lookup order: Brain → Git → Docs.** Check brain context first (why decisions were made). Verify against git (the what). Fall back to git log/blame, then docs if no brain context provided.
 

@@ -15,10 +15,10 @@ Wave 1 of ADR-0034 closes two critical silent-drop bugs in the Atelier Brain:
 This updates your `.claude/settings.json` to fire the `brain-extractor` SubagentStop hook for all 9 target agents:
 
 ```
-cal, colby, roz, agatha, robert, robert-spec, sable, sable-ux, ellis
+sarah, colby, roz, agatha, robert, robert-spec, sable, sable-ux, ellis
 ```
 
-Before Wave 1, the installed `settings.json` only fired for 4 agents (`cal`, `colby`, `roz`, `agatha`). Five agents' outputs were never captured to the brain.
+Before Wave 1, the installed `settings.json` only fired for 4 agents (`sarah`, `colby`, `roz`, `agatha`). Five agents' outputs were never captured to the brain.
 
 ## How to Verify
 

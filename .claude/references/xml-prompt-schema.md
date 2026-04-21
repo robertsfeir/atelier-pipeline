@@ -51,7 +51,7 @@ Tags with no content for a given invocation are omitted entirely, not left empty
 | `<required-actions>` | Per-invocation capture requirements (when needed beyond persona defaults) | None |
 | `<brain-context>` | Pre-fetched brain context (only when brain is available and returned results) | None |
 | `<colby-context>` | Pre-collected scout evidence for Colby (file content, patterns, brain results) | None |
-| `<qa-evidence>` | Pre-collected scout evidence for Roz (changed files, test output, brain results) | None |
+| `<qa-evidence>` | Pre-collected scout evidence for Poirot (changed files, test output, brain results) | None |
 | `<context>` | Decisions from context-brief.md | None |
 | `<hypotheses>` | Debug invocations only -- Eva's theory + alternative | None |
 | `<read>` | Comma-separated file paths to read | None |
@@ -62,14 +62,14 @@ Tags with no content for a given invocation are omitted entirely, not left empty
 ## Scout Context Tags
 
 The `<colby-context>` and `<qa-evidence>` tags carry pre-collected scout
-evidence injected by Eva before invoking Colby or Roz. When present, the
+evidence injected by Eva before invoking Colby or Poirot. When present, the
 receiving agent uses the provided content directly and skips redundant reads
 or test runs.
 
 | Tag | Consumer | Content |
 |-----|----------|---------|
 | `<colby-context>` | Colby | File content for ADR step files, grep pattern results (file:line only), brain search results for the step's feature area. When provided: do NOT re-read listed files, do NOT re-grep listed patterns, read additional files only if context is insufficient for a specific decision. |
-| `<qa-evidence>` | Roz | Full content of changed source files (≤200 lines; ±20 lines per hunk if larger), targeted test output (`pytest` or `node --test` scoped to changed files, first 100 lines), brain search results for changed file names + feature area. When provided: do NOT re-read listed files, do NOT re-run listed tests, begin analysis immediately. |
+| `<qa-evidence>` | Poirot | Full content of changed source files (≤200 lines; ±20 lines per hunk if larger), targeted test output (`pytest` or `node --test` scoped to changed files, first 100 lines), brain search results for changed file names + feature area. When provided: do NOT re-read listed files, do NOT re-run listed tests, begin analysis immediately. |
 
 Eva populates these tags via haiku scout fan-out (see `pipeline-orchestration.md`
 phase-sizing section). Tags are omitted when scouts are skipped (Micro pipelines,
@@ -107,7 +107,7 @@ these attributes:
 - `handoff` -- during phase transition context packaging
 
 **`agent`** -- source agent who captured the thought. Any of the 10 agents
-(cal, colby, roz, agatha, robert, sable, eva, poirot, ellis, distillator).
+(sarah, colby, agatha, robert, sable, eva, poirot, ellis, distillator).
 
 **`relevance`** -- relevance score from agent_search, ranging from 0.00 to 1.00.
 
@@ -139,10 +139,10 @@ The `retro-lessons.md` file uses these tags:
 
 ### Attribute Details
 
-- `<lesson id="001" agents="cal, colby, roz">` -- the `id` is a three-digit
+- `<lesson id="001" agents="sarah, colby">` -- the `id` is a three-digit
   zero-padded string, monotonically increasing. The `agents` list enables
   filtering: agents can read only lessons relevant to them.
-- `<rule agent="cal">` -- the `agent` attribute matches one of the agents
+- `<rule agent="sarah">` -- the `agent` attribute matches one of the agents
   listed in the parent `<lesson>`'s `agents` attribute. Every agent listed
   in `agents` should have a corresponding `<rule>` child.
 
@@ -174,7 +174,7 @@ their markdown header do NOT need wrapping.
 
 Tags use an `id` attribute for filtering and identification:
 - `<gate id="mandatory-gates">` -- enables grep-based lookup of specific gates
-- `<template id="cal-adr">` -- enables lookup of specific invocation templates
+- `<template id="sarah-adr">` -- enables lookup of specific invocation templates
 - `<protocol id="boot-sequence">` -- enables lookup of specific procedures
 
 The `id` attribute is kebab-case, descriptive, and unique within a file.

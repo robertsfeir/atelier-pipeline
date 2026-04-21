@@ -11,7 +11,7 @@
 # Git write operations (add, commit, push, reset, checkout --, restore, clean)
 # are allowed ONLY for Ellis. All other agents and the main thread (Eva) are blocked.
 #
-# Test suite execution is allowed ONLY for Roz and Colby. All other agents
+# Test suite execution is allowed ONLY for Poirot and Colby. All other agents
 # and the main thread (Eva) are blocked.
 
 set -euo pipefail
@@ -68,17 +68,17 @@ fi
 # Eva creates worktrees at pipeline start for session isolation.
 # Do NOT add 'worktree' to the blocked operations regex above.
 
-# Block test execution -- only Roz and Colby are allowed.
+# Block test execution -- only Poirot and Colby are allowed.
 # The anchor (^|&&|\|\||;|\||\n)\s* ensures we only match test runners that are
 # actually being invoked as commands, not referenced as string values inside echo,
 # variable assignments, or installation scripts. Without the anchor, a command like
 # `echo "run pytest to verify"` would produce a false positive and block Eva from
 # running diagnostic scripts that mention test tool names.
 if echo "$COMMAND" | grep -qE "(^|&&|\|\||;|\||\n|\()\s*(bats|pytest|jest|vitest|mocha|rspec|phpunit)\b|(^|&&|\|\||;|\||\n|\()\s*(npm|yarn|pnpm)\s+test\b|(^|&&|\|\||;|\||\n|\()\s*node\s+--test\b|(^|&&|\|\||;|\||\n|\()\s*(go|cargo|make|dotnet|gradle|mvn)\s+test\b" 2>/dev/null; then
-  if [ "$AGENT_TYPE" = "roz" ] || [ "$AGENT_TYPE" = "colby" ]; then
+  if [ "$AGENT_TYPE" = "colby" ]; then
     exit 0
   fi
-  echo "BLOCKED: Only Roz and Colby can run test suites. Route QA verification through Roz." >&2
+  echo "BLOCKED: Only Poirot and Colby can run test suites. Route QA verification through Poirot." >&2
   exit 2
 fi
 

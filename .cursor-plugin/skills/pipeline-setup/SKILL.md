@@ -18,7 +18,7 @@ Before gathering project information, understand where the pipeline installs fil
 | Location | What Goes There | Git Status | Shared With Team? |
 |----------|----------------|------------|-------------------|
 | `.cursor/rules/` | Eva persona, orchestration rules, model selection, branch lifecycle | Project-local, committed to repo | Yes -- team members get the same pipeline rules |
-| `.cursor/agents/` | Agent persona files (Cal, Colby, Roz, etc.) | Project-local, committed to repo | Yes -- consistent agent behavior across the team |
+| `.cursor/agents/` | Agent persona files (Sarah, Colby, etc.) | Project-local, committed to repo | Yes -- consistent agent behavior across the team |
 | `.cursor/commands/` | Slash command definitions (/pm, /pipeline, etc.) | Project-local, committed to repo | Yes -- same commands available to all |
 | `.cursor/references/` | Quality framework, retro lessons, invocation templates | Project-local, committed to repo | Yes -- shared knowledge base |
 | `.cursor/hooks/` | Enforcement scripts (path, sequencing, git guards) | Project-local, committed to repo | Yes -- same guardrails for everyone |
@@ -65,7 +65,7 @@ Before installing, ask the user about their project. Ask these questions convers
 2. **Test framework** -- What testing library/runner (e.g., "Vitest", "Jest", "pytest", "cargo test")
 3. **Test commands** -- The exact commands for:
    - **Lint command** -- fast lint/typecheck checks with no DB or external dependencies, used by agents during their workflow (e.g., `npm run lint && tsc --noEmit`, `black --check . && ruff check . && mypy .`).
-   - **Full test suite** -- the complete test suite including DB-dependent and integration tests, used by Roz for QA verification (e.g., `npm test`, `pytest --cov`). Runs once per work unit.
+   - **Full test suite** -- the complete test suite including DB-dependent and integration tests, used by Poirot for QA verification (e.g., `npm test`, `pytest --cov`). Runs once per work unit.
    - Running a single test file (e.g., `npx vitest run path/to/file`)
 4. **Source structure** -- Where features, components, services, and routes live (e.g., "src/features/<feature>/ for frontend, services/api/ for backend")
 5. **Database/store pattern** -- How database access is structured (e.g., "Factory functions with closures over DB client", "Prisma ORM", "raw SQL with pg")
@@ -123,7 +123,7 @@ Before asking about branching strategy, determine git availability.
 > This project does not have a git repository.
 >
 > **What still works without git:**
-> Eva (orchestrator), Robert (product), Sable (UX), Cal (architect), Colby (engineer), Roz (QA), Sentinel (security), Agatha (docs), Brain (memory), enforcement hooks
+> Eva (orchestrator), Robert (product), Sable (UX), Sarah (architect), Colby (engineer), Poirot, Sentinel (security), Agatha (docs), Brain (memory), enforcement hooks
 >
 > **What is unavailable without git:**
 > Poirot (blind review -- needs git diff), Ellis (commit manager -- needs git), CI Watch (needs git + platform CLI), branch lifecycle management
@@ -178,9 +178,8 @@ Read the template files from the plugin's templates directory. These serve as th
 plugins/atelier-pipeline/source/
   shared/                              # Platform-agnostic content (no YAML frontmatter)
     agents/
-      cal.md                           # Architect subagent content body
+      sarah.md                           # Architect subagent content body
       colby.md                         # Engineer subagent content body
-      roz.md                           # QA subagent content body
       robert.md                        # Product reviewer subagent content body
       sable.md                         # UX reviewer subagent content body
       investigator.md                  # Poirot (blind investigator) content body
@@ -190,8 +189,8 @@ plugins/atelier-pipeline/source/
     commands/
       pm.md                            # /pm -- Robert (product)
       ux.md                            # /ux -- Sable (UX design)
-      architect.md                     # /architect -- Cal (architecture)
-      debug.md                         # /debug -- Roz -> Colby -> Roz
+      architect.md                     # /architect -- Sarah (architecture)
+      debug.md                         # /debug -- Colby 
       pipeline.md                      # /pipeline -- Eva (orchestration)
       devops.md                        # /devops -- Eva (infrastructure)
       docs.md                          # /docs -- Agatha (documentation)
@@ -201,7 +200,7 @@ plugins/atelier-pipeline/source/
       invocation-templates.md          # Subagent invocation examples
       pipeline-operations.md           # Operational procedures (model selection, QA flow, feedback loops)
       agent-preamble.md               # Shared agent required actions (DoR/DoD, retro, brain)
-      qa-checks.md                     # Roz QA check procedures
+      qa-checks.md                     # Poirot verification check procedures
       branch-mr-mode.md               # Colby branch/MR procedures for MR-based strategies
     pipeline/
       pipeline-state.md               # Session recovery state template
@@ -260,9 +259,8 @@ Files are assembled from `source/shared/` (content) + `source/cursor/` (overlays
 | `source/shared/rules/agent-system.md` assembled with overlay | `.cursor/rules/agent-system.md` | Orchestration rules, routing table, quality gates |
 | `source/shared/rules/pipeline-orchestration.md` assembled with overlay | `.cursor/rules/pipeline-orchestration.md` | Pipeline operations (path-scoped) |
 | `source/shared/rules/pipeline-models.md` assembled with overlay | `.cursor/rules/pipeline-models.md` | Model selection (path-scoped) |
-| `source/shared/agents/cal.md` + `source/cursor/agents/cal.frontmatter.yml` | `.cursor/agents/cal.md` | Architect subagent persona (overlay assembly) |
+| `source/shared/agents/sarah.md` + `source/cursor/agents/sarah.frontmatter.yml` | `.cursor/agents/sarah.md` | Architect subagent persona (overlay assembly) |
 | `source/shared/agents/colby.md` + `source/cursor/agents/colby.frontmatter.yml` | `.cursor/agents/colby.md` | Engineer subagent persona (overlay assembly) |
-| `source/shared/agents/roz.md` + `source/cursor/agents/roz.frontmatter.yml` | `.cursor/agents/roz.md` | QA subagent persona (overlay assembly) |
 | `source/shared/agents/robert.md` + `source/cursor/agents/robert.frontmatter.yml` | `.cursor/agents/robert.md` | Product reviewer subagent persona (overlay assembly) |
 | `source/shared/agents/sable.md` + `source/cursor/agents/sable.frontmatter.yml` | `.cursor/agents/sable.md` | UX reviewer subagent persona (overlay assembly) |
 | `source/shared/agents/investigator.md` + `source/cursor/agents/investigator.frontmatter.yml` | `.cursor/agents/investigator.md` | Blind investigator subagent persona (overlay assembly) |
@@ -281,7 +279,7 @@ Files are assembled from `source/shared/` (content) + `source/cursor/` (overlays
 | `source/shared/references/invocation-templates.md` | `.cursor/references/invocation-templates.md` | Subagent invocation examples |
 | `source/shared/references/pipeline-operations.md` | `.cursor/references/pipeline-operations.md` | Operational procedures (model selection, QA, feedback, batch, worktree, context) |
 | `source/shared/references/agent-preamble.md` | `.cursor/references/agent-preamble.md` | Shared agent required actions |
-| `source/shared/references/qa-checks.md` | `.cursor/references/qa-checks.md` | Roz QA check procedures |
+| `source/shared/references/qa-checks.md` | `.cursor/references/qa-checks.md` | Poirot verification check procedures |
 | `source/shared/references/branch-mr-mode.md` | `.cursor/references/branch-mr-mode.md` | Colby branch/MR procedures |
 | `source/shared/references/telemetry-metrics.md` | `.cursor/references/telemetry-metrics.md` | Telemetry metric schemas, cost table, alert thresholds |
 | `source/shared/references/routing-detail.md` | `.cursor-plugin/rules/routing-detail.mdc` | Auto-routing intent detection matrix -- loaded JIT when Eva encounters edge-case routing decisions |
@@ -304,7 +302,7 @@ optional and must be installed for the pipeline to function correctly.
 | Template Source | Destination | Purpose |
 |----------------|-------------|---------|
 | `source/cursor/hooks/enforce-paths.sh` | `.cursor/hooks/enforce-paths.sh` | Blocks Write/Edit outside each agent's allowed file paths |
-| `source/cursor/hooks/enforce-sequencing.sh` | `.cursor/hooks/enforce-sequencing.sh` | Blocks out-of-order agent invocations (e.g., Ellis without Roz QA) |
+| `source/cursor/hooks/enforce-sequencing.sh` | `.cursor/hooks/enforce-sequencing.sh` | Blocks out-of-order agent invocations (e.g., Ellis without Poirot verification) |
 | `source/cursor/hooks/enforce-pipeline-activation.sh` | `.cursor/hooks/enforce-pipeline-activation.sh` | Blocks Colby/Ellis invocation when no active pipeline exists |
 | `source/cursor/hooks/enforce-git.sh` | `.cursor/hooks/enforce-git.sh` | Blocks git write operations from main thread (must go through Ellis) |
 | `source/cursor/hooks/session-hydrate.sh` | `.cursor/hooks/session-hydrate.sh` | Runs telemetry hydration at SessionStart (JSONL + state-file parsing) |
@@ -325,7 +323,7 @@ After copying, make the `.sh` files executable: `chmod +x .cursor/hooks/*.sh`
 | `architecture_dir` | string | Non-empty |
 | `product_specs_dir` | string | Non-empty |
 | `ux_docs_dir` | string | Non-empty |
-| `test_command` | string | Non-empty -- critical: Roz cannot run tests without this |
+| `test_command` | string | Non-empty -- critical: Poirot cannot run tests without this |
 | `test_patterns` | array | Non-empty -- at least one pattern required |
 
 Also check `lint_command`: if the field is absent or empty, warn (but do not block) -- Eva's quality gate will fall back to `test_command`.
@@ -343,7 +341,7 @@ Do not block installation on validation failure. The warning is informational --
 - `product_specs_dir`: the specs directory (default: `docs/product`)
 - `ux_docs_dir`: the UX docs directory (default: `docs/ux`)
 - `test_patterns`: array of patterns matching the project's test files (e.g., `[".test.", ".spec.", "/tests/", "conftest"]`)
-- `test_command`: full test suite command from Step 1 -- used by Roz for QA verification (e.g., `npm test`, `pytest`)
+- `test_command`: full test suite command from Step 1 -- used by Poirot for QA verification (e.g., `npm test`, `pytest`)
 
 **Register hooks in `.cursor/settings.json`** — merge with existing settings if the
 file already exists. Add this hooks section:
@@ -461,15 +459,15 @@ If the project already has a `AGENTS.md` file, append the pipeline section to it
 
 This project uses a multi-agent orchestration pipeline for structured development.
 
-**Agents:** Eva (orchestrator), Robert (product), Sable (UX), Cal (architect), Colby (engineer), Roz (QA), Agatha (docs), Ellis (commit)
+**Agents:** Eva (orchestrator), Robert (product), Sable (UX), Sarah (architect), Colby (engineer), Poirot, Agatha (docs), Ellis (commit)
 
 **Commands:** /pm, /ux, /architect, /debug, /pipeline, /devops, /docs
 
 **Pipeline state:** docs/pipeline/ -- Eva reads this at session start for recovery
 
 **Key rules:**
-- Roz writes tests before Colby builds (Roz-first TDD)
-- Roz verifies every Colby output (no self-review)
+- Colby writes tests when Sarah names a failure mode before Colby builds ()
+- Poirot verifies every Colby output (no self-review)
 - Ellis commits (Eva never runs git on code)
 - Full test suite between work units
 ```
@@ -492,7 +490,7 @@ Atelier Pipeline installed successfully.
 
 Files installed: 40 (mandatory)
   .cursor/rules/       -- 5 files (Eva persona, orchestration rules, pipeline operations, model selection, branch lifecycle)
-  .cursor/agents/      -- 9 files (Cal, Colby, Roz, Robert, Sable, Poirot, Distillator, Ellis, Agatha)
+  .cursor/agents/      -- 9 files (Sarah, Colby, Robert, Sable, Poirot, Distillator, Ellis, Agatha)
   .cursor/commands/    -- 7 files (/pm, /ux, /architect, /debug, /pipeline, /devops, /docs)
   .cursor/references/  -- 8 files (quality framework, retro lessons, invocation templates, pipeline operations, agent preamble, QA checks, branch/MR mode, telemetry metrics)
   .cursor/hooks/       -- 6 files (path enforcement, sequencing, git guard, DoR/DoD warning, pre-compact, config)
@@ -516,7 +514,7 @@ Compaction API: PreCompact hook installed for pipeline state preservation
 Available commands:
   /pm          -- Feature discovery and product spec (Robert)
   /ux          -- UI/UX design (Sable)
-  /architect   -- Architecture and ADR production (Cal)
+  /architect   -- Architecture and ADR production (Sarah)
   /pipeline    -- Full pipeline orchestration (Eva)
   /devops      -- Infrastructure and deployment (Eva)
   /docs        -- Documentation planning and writing (Agatha)
@@ -590,7 +588,7 @@ has no external tools to install. The feature is entirely runtime-activated via 
 After the Agent Teams offer (whether user said yes or no), offer the optional CI Watch feature:
 
 > Would you also like to enable **CI Watch** -- automated post-push CI monitoring?
-> After Ellis pushes, Eva watches your CI run and autonomously fixes failures via Roz and Colby,
+> After Ellis pushes, Eva watches your CI run and autonomously fixes failures via Poirot and Colby,
 > pausing for your approval before pushing a fix. Requires `gh` (GitHub) or `glab` (GitLab) CLI.
 
 **Platform CLI gate:** Read `platform_cli` from `.cursor/pipeline-config.json`.
@@ -619,7 +617,7 @@ After the Agent Teams offer (whether user said yes or no), offer the optional CI
 
 **If user says no:** Skip entirely. `ci_watch_enabled` remains `false` in `pipeline-config.json`. Print: "CI Watch: not enabled"
 
-**No new agent files installed** -- CI Watch uses existing Roz, Colby, and Ellis personas.
+**No new agent files installed** -- CI Watch uses existing Poirot, Colby, and Ellis personas.
 
 **Brain setup offer (always ask):**
 

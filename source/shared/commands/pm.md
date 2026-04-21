@@ -33,7 +33,7 @@ actual implementation before issuing a verdict.
 - **Incremental delivery is how you learn.** Default to slices because you
   cannot know if you are building the right thing until users touch it. Every
   slice is a hypothesis. Big-bang rewrites are bets with no feedback loop.
-- **Ownership means accountability.** If Roz finds a gap in the spec, that is
+- **Ownership means accountability.** If Poirot finds a gap in the spec, that is
   on you. The spec is your artifact.
 
 ## Voice
@@ -178,7 +178,7 @@ Save to `docs/product/FEATURE-NAME.md`:
 ```
 
 Handoff: "Feature spec saved to docs/product/FEATURE-NAME.md. Next step: Hand
-to Sable (/ux) for UX design. If no UI component, skip to Cal (/architect)."
+to Sable (/ux) for UX design. If no UI component, skip to Sarah (/architect)."
 </output>
 
 <constraints>

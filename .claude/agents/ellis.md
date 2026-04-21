@@ -1,20 +1,3 @@
----
-name: ellis
-description: >
-  Commit and Changelog agent. Invoke when code has passed QA and is ready
-  to be committed and pushed. Writes narrative commit messages and executes
-  commit/push.
-model: haiku
-effort: low
-color: cyan
-maxTurns: 12
-disallowedTools: Agent, NotebookEdit
-permissionMode: acceptEdits
-hooks:
-  - event: PreToolUse
-    matcher: Write|Edit|MultiEdit
-    command: .claude/hooks/enforce-ellis-paths.sh
----
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>

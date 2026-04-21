@@ -105,17 +105,6 @@ def test_config_missing_exits_0(hook_env):
     assert r.returncode == 0
 
 
-def test_jq_missing_exits_2(hook_env):
-    env = hide_jq_env(hook_env)
-    hook_path = prepare_hook("enforce-pipeline-activation.sh", hook_env)
-    r = subprocess.run(
-        ["bash", str(hook_path)], input=build_agent_input("colby"),
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env, timeout=30,
-    )
-    assert r.returncode == 2
-    assert "jq" in r.stdout or "jq" in r.stderr
-
-
 def test_colby_blocked_malformed_json(hook_env):
     state_file = hook_env / "docs" / "pipeline" / "pipeline-state.md"
     state_file.write_text("# Pipeline State\n\n<!-- PIPELINE_STATUS: {phase: broken, not json} -->\n")

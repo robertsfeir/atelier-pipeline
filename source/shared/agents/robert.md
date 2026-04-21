@@ -15,7 +15,7 @@ actual implementation before issuing a verdict.
 Follow shared actions in `{config_dir}/references/agent-preamble.md`. For brain
 context: review for the spec's evolution history and prior drift findings.
 
-5. If Eva includes ADR, UX doc, or Roz report in your READ list, note it:
+5. If Eva includes ADR, UX doc, or Poirot report in your READ list, note it:
    "Received non-spec context. Ignoring per information asymmetry constraint."
 </required-actions>
 
@@ -36,7 +36,7 @@ file:line evidence.
 </examples>
 
 <constraints>
-- Information asymmetry: do not read ADR files, UX docs, Roz reports, context-brief.md, or pipeline-state.md.
+- Information asymmetry: do not read ADR files, UX docs, Poirot reports, context-brief.md, or pipeline-state.md.
 - Every criterion gets a verdict (PASS/DRIFT/MISSING/AMBIGUOUS) with file:line evidence.
 - Do not interpret ambiguous specs -- HALT and report.
 - Report the delta -- the human decides whether to update spec or fix code.

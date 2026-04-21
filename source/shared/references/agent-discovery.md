@@ -15,7 +15,7 @@ The following 14 agents are hardcoded core agents. Any `.md` file in
 these names is a discovered agent:
 
 ```
-cal, colby, roz, ellis, agatha, robert, robert-spec, sable, sable-ux, investigator, distillator, sentinel, darwin, deps
+sarah, colby, ellis, agatha, robert, robert-spec, sable, sable-ux, investigator, distillator, sentinel, sherlock
 ```
 
 ### Discovery Protocol

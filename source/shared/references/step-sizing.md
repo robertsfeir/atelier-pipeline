@@ -1,19 +1,19 @@
 # Step Sizing Gate
 
-<!-- Part of atelier-pipeline. Referenced by Cal during ADR production. -->
+<!-- Part of atelier-pipeline. Referenced by Sarah during ADR production. -->
 <!-- CONFIGURE: No placeholders to update. -->
 
 After drafting the implementation plan, apply these five tests to each step.
 Steps touching 10+ files (files_to_create + files_to_modify) MUST pass all
-five. Steps under 10 files are reviewed at Cal's judgment but should still
+five. Steps under 10 files are reviewed at Sarah's judgment but should still
 pass.
 
 | # | Test | Question | Fail Action |
 |---|------|----------|-------------|
 | S1 | Demoable | Can you state what this step enables in one user-facing sentence? ("After this step, I can ___") | Split along demo boundaries -- each demoable behavior becomes its own step |
 | S2 | Context-bounded | Does Colby need <= 8 files (create + modify) to implement it? | Extract excess files into a prerequisite or follow-up step |
-| S3 | Independently verifiable | Can Roz test this step without the next one existing? | Split so each verifiable behavior is its own step |
-| S4 | Revert-cheap | If Roz fails it, can Colby redo it in one fresh invocation? | Split until each piece is one-invocation sized |
+| S3 | Independently verifiable | Can Poirot test this step without the next one existing? | Split so each verifiable behavior is its own step |
+| S4 | Revert-cheap | If Poirot fails it, can Colby redo it in one fresh invocation? | Split until each piece is one-invocation sized |
 | S5 | Already small | Is this step <= 6 files with one clear behavior? | Do NOT split -- over-splitting wastes orchestration overhead |
 
 ## Evidence

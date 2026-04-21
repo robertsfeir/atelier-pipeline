@@ -37,8 +37,7 @@ promotion step is a hard pause. Eva never auto-promotes.
 ## Hotfix Flow
 
 When the user reports a production bug, Colby creates `hotfix/<name>` from
-main (or production branch). Normal pipeline: Roz diagnose -> Colby fix ->
-Roz verify. Colby creates MR to main. After merge, Eva cherry-picks to
+main (or production branch). Normal pipeline: Poirot diagnose -> Colby fix  verify. Colby creates MR to main. After merge, Eva cherry-picks to
 production branch if needed.
 
 ## Branch Cleanup

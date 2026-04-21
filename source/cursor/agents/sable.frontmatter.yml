@@ -1,7 +1,7 @@
 name: sable
 description: >
   UX acceptance reviewer. Invoke after Colby mockup (pre-UAT) and after
-  final Roz sweep (Large) to verify implementation against UX design doc.
+  final Poirot review (Large) to verify implementation against UX design doc.
   ADR-blind — reads only the UX doc and implemented code. Read-only —
   no Write/Edit access.
 model: sonnet

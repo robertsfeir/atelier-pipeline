@@ -1,11 +1,6 @@
----
-paths:
-  - "docs/pipeline/**"
----
-
 # Pipeline Model Selection (Mechanical -- Eva Does Not Choose)
 
-Loads automatically when Eva reads `{pipeline_state_dir}/` files. Model and
+Loads automatically when Eva reads `docs/pipeline/` files. Model and
 effort assignment follows a 4-tier task-class model: the agent's task class
 determines the base `model` + `effort` pair, and a small set of promotion
 signals adjust `effort` by exactly one rung. Eva sets both parameters
@@ -28,9 +23,9 @@ signal only; it does not set the model.
 | Tier | Task class | Model | Base effort | Typical agents | Effort adjustment signal |
 |------|------------|-------|-------------|----------------|--------------------------|
 | Tier 1 | Mechanical -- no reasoning | Sonnet / Haiku | low | Ellis, Explore (haiku), Distillator, brain-extractor | -- (stays low) |
-| Tier 2 | Supporting reasoning -- review / acceptance / compliance / synthesis | Sonnet / Opus | medium | Robert (acceptance), Sable (acceptance), Sentinel, Deps, Agatha, Synthesis, Colby (rework), Colby (first-build Small), Roz (scoped rerun) | Read-only / mechanical -- -1 rung (floor low) |
-| Tier 3 | Critical-path reasoning -- creates / verifies shipped artifact | Opus | high / medium | Colby (first-build Medium+), Roz (full sweep Medium+), Poirot, Darwin | Poirot at final juncture (-> xhigh) |
-| Tier 4 | Architectural design | Opus | xhigh | Cal | (already at ceiling; `xhigh` is the ceiling value) |
+| Tier 2 | Supporting reasoning -- review / acceptance / compliance / synthesis | Sonnet / Opus | medium | Robert (acceptance), Sable (acceptance), Sentinel, Agatha, Synthesis, Colby (rework), Colby (first-build Small) | Read-only / mechanical -- -1 rung (floor low) |
+| Tier 3 | Critical-path reasoning -- creates / verifies shipped artifact | Opus | high / medium | Colby (first-build Medium+), Poirot, Darwin | Poirot at final juncture (-> xhigh) |
+| Tier 4 | Architectural design | Opus | xhigh | Sarah | (already at ceiling; `xhigh` is the ceiling value) |
 
 </model-table>
 
@@ -40,10 +35,10 @@ Per Anthropic's Opus 4.7 guidance, `effort` controls a model's propensity to
 think adaptively, not a fixed thinking budget. **Fixed thinking budgets are unsupported** in Opus 4.7.
 At `medium`, adaptive-thinking capacity is bounded
 even when the model wants to reach for more -- appropriate for coverage-oriented
-review where over-reading inflates false positives (Roz full sweep). At `high`,
+review where over-reading inflates false positives (Poirot standard review). At `high`,
 full adaptive thinking is available -- appropriate for execution with branching
 sub-decisions (Colby first-build, Poirot standard review). At `xhigh`, the
-model deliberates fully -- the default for coding and architecture (Cal,
+model deliberates fully -- the default for coding and architecture (Sarah,
 Poirot at final juncture). `max` is evaluation-only: prone to overthinking and
 degraded production output. Ceiling stays `xhigh`.
 
@@ -69,7 +64,7 @@ degraded production output. Ceiling stays `xhigh`.
 3. Tier 1 effort does not adjust -- base `low` is both floor and ceiling for
    this tier. The pattern-matching surface is bounded; more effort does not
    rescue mechanical misapplication, and demotion below `low` is impossible.
-4. Tier 4 (Cal) is already at `xhigh` base; further signals have no effect.
+4. Tier 4 (Sarah) is already at `xhigh` base; further signals have no effect.
 
 </model-table>
 
@@ -82,9 +77,9 @@ tool invocation based on this table plus the promotion signals above.
 
 | Agent | Tier | Base model | Base effort | Rationale (one line) |
 |-------|------|------------|-------------|----------------------|
-| **Cal** | 4 | opus | xhigh | Architectural deliberation dominates pattern-matching; thinking tokens pay for themselves |
+| **Sarah** | 4 | opus | xhigh | Architectural deliberation dominates pattern-matching; thinking tokens pay for themselves |
 | **Colby** | 3 (build) / 2 (rework, small first-build) | opus | high / medium | Critical-path artifact; high exposes adaptive thinking on execution sub-decisions |
-| **Roz** | 3 (sweep Medium+) / 2 (scoped rerun, small sweep) | opus | medium / medium | Coverage-oriented verification; bounded adaptive thinking avoids over-reading. Effort demoted high→medium baseline: full sweep fits bounded thinking budget (high was over-spend). |
+
 | **Poirot (investigator)** | 3 | opus | high (xhigh at final juncture) | Blind diff review; final juncture = last defense, deliberation worth it |
 | **Sherlock** | 3 | opus | high | Diagnose-only bug hunt with fresh general-purpose isolation; no final-juncture promotion (runs before fix, not at review); isolation from session context is the load-bearing property |
 | **Robert (acceptance)** | 2 | sonnet | medium | Spec-vs-implementation diff; structured review is Sonnet-capable |
@@ -130,8 +125,8 @@ For every Agent tool invocation:
    frontmatter defaults. Omitting either parameter is a violation.
 3. **Ambiguous sizing defaults to higher tier.** If Eva has not yet confirmed
    the pipeline sizing (Small / Medium / Large), she MUST treat sizing as
-   Large for tier-selection purposes only: dual-tier agents (Colby, Roz) use
-   their higher tier (Tier 3). Effort is NOT affected by ambiguous sizing --
+   Large for tier-selection purposes only: Colby uses its higher tier
+   (Tier 3) on first-build. Effort is NOT affected by ambiguous sizing --
    the Large effort-promotion signal was removed by ADR-0042. Once sizing is
    confirmed, subsequent invocations use the correct tier.
 4. **Sizing changes propagate immediately.** If Eva re-sizes a pipeline

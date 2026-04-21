@@ -17,7 +17,7 @@ structural output requirements.
 - **DoR** = first section of your output. Proves you read upstream artifacts.
 - **DoD** = last section of your output. Proves you covered everything.
 - Eva verifies both at phase transitions.
-- Roz independently verifies Colby's DoD against actual code.
+- Poirot independently verifies Colby's DoD against actual code.
 
 Both DoR and DoD are placed inside the `<output>` tag in agent persona files.
 The `<output>` tag is the structural container for everything an agent produces,
@@ -82,13 +82,13 @@ Here is the structural pattern:
 |-------|---------------|---------|
 | **Sable** (skill) | Robert's spec | User stories, personas, acceptance criteria, edge cases |
 | **Sable** (subagent) | UX doc only (no ADR, no spec) | Screens, states, interactions, a11y, copy, responsive |
-| **Cal** | Spec + UX doc + doc plan | Functional requirements, UX constraints, data concerns |
+| **Sarah** | Spec + UX doc + doc plan | Functional requirements, UX constraints, data concerns |
 | **Colby** (mockup) | Spec + UX doc | Screens, states, interactions, copy |
 | **Colby** (build) | Spec + UX doc + ADR | Acceptance criteria per step, spec edge cases, UX states |
 | **Agatha** | Spec + UX + ADR + doc plan + code | Doc plan items, spec-vs-code divergences |
 | **Robert** (subagent) | Spec only (no ADR, no UX doc) | Acceptance criteria, user stories, edge cases, NFRs |
-| **Roz** (test authoring) | ADR + spec + UX doc (when exists) + existing code | Test descriptions, function signatures, domain intent |
-| **Roz** | ADR + spec | Requirements to verify against implementation |
+| **Poirot** (test authoring) | ADR + spec + UX doc (when exists) + existing code | Test descriptions, function signatures, domain intent |
+
 | **Poirot** | Git diff only (no upstream artifacts) | Diff metadata: files changed, lines added/removed, functions modified |
 | **Distillator** | Source documents (spec, UX doc, ADR) | Source paths, token estimates, downstream consumer |
 
@@ -120,7 +120,7 @@ Here is the structural pattern:
 - Lint + typecheck pass
 - Route and nav item added
 
-**Cal:**
+**Sarah:**
 - Every spec requirement traceable to at least one ADR step's acceptance criteria
 - Failure tests >= happy path tests
 - Return shapes defined for every data access method and endpoint
@@ -170,26 +170,26 @@ Here is the structural pattern:
 - Diff analyzed completely -- no missed files
 - Changelog trailer present for user-facing changes (or explicitly skipped with reason)
 
-**Roz (test authoring):**
-- Every Cal test description has a corresponding concrete assertion
+**Poirot (test authoring):**
+- Every Sarah test description has a corresponding concrete assertion
 - Domain intent reasoning documented for non-obvious expected values
 - Ambiguous intent flagged, not silently decided
 - Test files lint and typecheck (tests may fail -- implementation doesn't exist yet)
 
 </agent-dod>
 
-<section id="roz-enforcement">
+<section id="poirot-enforcement">
 
-### Roz: DoD Enforcement
+### Poirot: DoD Enforcement
 
-Roz has a special role -- she verifies other agents' DoD claims:
+Poirot has a special role -- she verifies other agents' DoD claims:
 
-- Eva includes the requirements list in Roz's invocation
-- Roz diffs requirements against actual implementation
-- Roz greps for TODO/FIXME/HACK independently
+- Eva includes the requirements list in Poirot's invocation
+- Poirot diffs requirements against actual implementation
+- Poirot greps for TODO/FIXME/HACK independently
 - Self-reported "Done" that doesn't match code = BLOCKER
 - Requirements in the spec/ADR that Colby didn't even list in her DoR = BLOCKER (silent drop)
-- Roz does not trust coverage tables -- she verifies them
+- Poirot does not trust coverage tables -- she verifies them
 
 </section>
 
@@ -201,22 +201,21 @@ Roz has a special role -- she verifies other agents' DoD claims:
 - Include `{config_dir}/references/retro-lessons.md` in READ for every subagent invocation
 - Include upstream artifact paths directly relevant to the work unit
 - Pass context-brief excerpts via the CONTEXT field, not READ
-- For Roz: include the requirements list from the spec for independent verification
-- For Robert-subagent: include ONLY the spec and code paths. No ADR, UX doc, or Roz report.
-- For Sable-subagent: include ONLY the UX doc and code paths. No ADR, spec, or Roz report.
-- For Agatha: invoke AFTER final Roz sweep (not parallel with Colby)
+- - For Robert-subagent: include ONLY the spec and code paths. No ADR, UX doc, or Poirot report.
+- For Sable-subagent: include ONLY the UX doc and code paths. No ADR, spec, or Poirot report.
+- For Agatha: invoke AFTER final Poirot review (not parallel with Colby)
 
 **At phase transition:**
 - Read agent's DoR -- spot-check against spec for missing requirements
 - Read agent's DoD -- verify no unexplained gaps or silent drops
 - Do not advance pipeline if DoR has obvious omissions or DoD has gaps
-- Pass Colby's requirements to Roz for independent verification
+- Pass Colby's requirements to Poirot for independent verification
 
 **At pipeline end (spec/UX reconciliation):**
 - Triage DRIFT findings from Robert-subagent and Sable-subagent
 - Present delta to user -- human decides: update living artifact or fix code
 - If update: invoke Robert-skill (spec) or Sable-skill (UX doc) to correct
-- If fix: route to Colby, re-run Roz, then re-run the subagent that flagged it
+- If fix: route to Colby, re-run Poirot, then re-run the subagent that flagged it
 - Updated artifacts ship in same commit as code via Ellis
 
 </section>

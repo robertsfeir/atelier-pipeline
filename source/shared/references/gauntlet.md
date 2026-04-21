@@ -175,7 +175,7 @@ Eva waits for all completion notifications before starting Phase 2.`docs/reviews
 
 ---
 
-### Round 1 — Cal: Architectural Integrity & Composability
+### Round 1 — Sarah: Architectural Integrity & Composability
 
 **Model:** Opus
 
@@ -230,10 +230,10 @@ without cascading modification.
 - Where is the system likely to grow next? Is there a clean extension point, or
   will growth require broad refactoring?
 
-**Output file:** `docs/reviews/gauntlet-{YYYY-MM-DD}/gauntlet-findings-cal.md`
+**Output file:** `docs/reviews/gauntlet-{YYYY-MM-DD}/gauntlet-findings-sarah.md`
 
 ```
-# Cal — Architectural Integrity & Composability
+# Sarah — Architectural Integrity & Composability
 
 ## Summary
 [3-4 sentence executive assessment]
@@ -330,7 +330,7 @@ wrong, fragile, or will break at scale.
 
 ---
 
-### Round 3 — Roz: Testing Strategy & Coverage
+### Round 3 — Poirot: Testing Strategy & Coverage
 
 **Model:** Opus
 
@@ -381,10 +381,10 @@ passing tests provide false assurance.
 **Composability of tests**
 - Are test fixtures/factories composable and reusable?
 
-**Output file:** `docs/reviews/gauntlet-{YYYY-MM-DD}/gauntlet-findings-roz.md`
+**Output file:** `docs/reviews/gauntlet-{YYYY-MM-DD}/gauntlet-findings-qa.md`
 
 ```
-# Roz — Testing Strategy & Coverage
+# Poirot — Testing Strategy & Coverage
 
 ## Summary
 
@@ -1011,13 +1011,13 @@ When dropping this reference into a project that differs from the expected
 structure, Eva adapts at discovery time (Phase 0h) and announces all adaptations
 before starting Phase 1:
 
-- **No ADRs:** Cal's ADR alignment matrix is replaced with an "Undocumented
+- **No ADRs:** Sarah's ADR alignment matrix is replaced with an "Undocumented
   Decisions" section identifying architectural choices with no written record.
 - **No product specs:** Robert's acceptance criteria matrix is replaced with a
   "Reverse-Engineered Requirements" section inferred from code behavior.
 - **Backend-only project:** Sable's round is skipped; announce "Round 5 (Sable):
   N/A — no frontend detected." Include a placeholder row in the combined register.
-- **Frontend-only project:** Scope Cal and Colby to frontend architecture.
+- **Frontend-only project:** Scope Sarah and Colby to frontend architecture.
 - **No UX docs:** Sable reviews component patterns and accessibility without
   a spec baseline.
 - **Targeted scope:** All agents receive `scope: targeted` and `changed_files`

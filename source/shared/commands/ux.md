@@ -85,7 +85,7 @@ Save to `docs/ux/FEATURE-NAME-ux.md`. Starts with DoR, ends with DoD:
 ## Component Inventory
 ## Content and Copy
 ## Design Decisions and Rationale
-## Notes for Cal
+## Notes for Sarah
 ## Notes for Colby
 
 ## DoD: Verification

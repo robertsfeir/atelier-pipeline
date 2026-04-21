@@ -20,7 +20,7 @@ Before gathering project information, understand where the pipeline installs fil
 | Location | What Goes There | Git Status | Shared With Team? |
 |----------|----------------|------------|-------------------|
 | `.claude/rules/` | Eva persona, orchestration rules, model selection, branch lifecycle | Project-local, committed to repo | Yes -- team members get the same pipeline rules |
-| `.claude/agents/` | Agent persona files (Cal, Colby, Roz, etc.) | Project-local, committed to repo | Yes -- consistent agent behavior across the team |
+| `.claude/agents/` | Agent persona files (Sarah, Colby, etc.) | Project-local, committed to repo | Yes -- consistent agent behavior across the team |
 | `.claude/commands/` | Slash command definitions (/pm, /pipeline, etc.) | Project-local, committed to repo | Yes -- same commands available to all |
 | `.claude/references/` | Quality framework, retro lessons, invocation templates | Project-local, committed to repo | Yes -- shared knowledge base |
 | `.claude/hooks/` | Enforcement scripts (path, sequencing, git guards) | Project-local, committed to repo | Yes -- same guardrails for everyone |
@@ -134,7 +134,7 @@ Before installing, ask the user about their project. Ask these questions convers
 2. **Test framework** -- What testing library/runner (e.g., "Vitest", "Jest", "pytest", "cargo test")
 3. **Test commands** -- The exact commands for:
    - **Lint command** -- fast lint/typecheck checks with no DB or external dependencies, used by agents during their workflow (e.g., `npm run lint && tsc --noEmit`, `black --check . && ruff check . && mypy .`).
-   - **Full test suite** -- the complete test suite including DB-dependent and integration tests, used by Roz for QA verification (e.g., `npm test`, `pytest --cov`). Runs once per work unit.
+   - **Full test suite** -- the complete test suite including DB-dependent and integration tests, used by Poirot for QA verification (e.g., `npm test`, `pytest --cov`). Runs once per work unit.
    - Running a single test file (e.g., `npx vitest run path/to/file`)
 4. **Source structure** -- Where features, components, services, and routes live. Specifically ask for:
    - **Project source directory** -- Root directory for source code (e.g., `src/`, `lib/`, `app/`)
@@ -195,7 +195,7 @@ Before asking about branching strategy, determine git availability.
 > This project does not have a git repository.
 >
 > **What still works without git:**
-> Eva (orchestrator), Robert (product), Sable (UX), Cal (architect), Colby (engineer), Roz (QA), Sentinel (security), Agatha (docs), Brain (memory), enforcement hooks
+> Eva (orchestrator), Robert (product), Sable (UX), Sarah (architect), Colby (engineer), Poirot, Sentinel (security), Agatha (docs), Brain (memory), enforcement hooks
 >
 > **What is unavailable without git:**
 > Poirot (blind review -- needs git diff), Ellis (commit manager -- needs git), CI Watch (needs git + platform CLI), branch lifecycle management
@@ -250,9 +250,8 @@ Read the template files from the plugin's templates directory. These serve as th
 plugins/atelier-pipeline/source/
   shared/                              # Platform-agnostic content (no YAML frontmatter)
     agents/
-      cal.md                           # Architect subagent content body
+      sarah.md                           # Architect subagent content body
       colby.md                         # Engineer subagent content body
-      roz.md                           # QA subagent content body
       robert.md                        # Product reviewer subagent content body
       sable.md                         # UX reviewer subagent content body
       investigator.md                  # Poirot (blind investigator) content body
@@ -262,8 +261,8 @@ plugins/atelier-pipeline/source/
     commands/
       pm.md                            # /pm -- Robert (product)
       ux.md                            # /ux -- Sable (UX design)
-      architect.md                     # /architect -- Cal (architecture)
-      debug.md                         # /debug -- Roz -> Colby -> Roz
+      architect.md                     # /architect -- Sarah (architecture)
+      debug.md                         # /debug -- Colby 
       pipeline.md                      # /pipeline -- Eva (orchestration)
       devops.md                        # /devops -- Eva (infrastructure)
       docs.md                          # /docs -- Agatha (documentation)
@@ -273,7 +272,7 @@ plugins/atelier-pipeline/source/
       invocation-templates.md          # Subagent invocation examples
       pipeline-operations.md           # Operational procedures (model selection, QA flow, feedback loops)
       agent-preamble.md               # Shared agent required actions (DoR/DoD, retro, brain)
-      qa-checks.md                     # Roz QA check procedures
+      qa-checks.md                     # Poirot verification check procedures
       branch-mr-mode.md               # Colby branch/MR procedures for MR-based strategies
       step-sizing.md                  # ADR step sizing gate (S1-S5) and split heuristics
     pipeline/
@@ -333,9 +332,8 @@ Files are assembled from `source/shared/` (content) + `source/claude/` (overlays
 | `source/shared/rules/agent-system.md` assembled with overlay | `.claude/rules/agent-system.md` | Orchestration rules, routing table, quality gates |
 | `source/shared/rules/pipeline-orchestration.md` assembled with overlay | `.claude/rules/pipeline-orchestration.md` | Pipeline operations (path-scoped) |
 | `source/shared/rules/pipeline-models.md` assembled with overlay | `.claude/rules/pipeline-models.md` | Model selection (path-scoped) |
-| `source/shared/agents/cal.md` + `source/claude/agents/cal.frontmatter.yml` | `.claude/agents/cal.md` | Architect subagent persona (overlay assembly) |
+| `source/shared/agents/sarah.md` + `source/claude/agents/sarah.frontmatter.yml` | `.claude/agents/sarah.md` | Architect subagent persona (overlay assembly) |
 | `source/shared/agents/colby.md` + `source/claude/agents/colby.frontmatter.yml` | `.claude/agents/colby.md` | Engineer subagent persona (overlay assembly) |
-| `source/shared/agents/roz.md` + `source/claude/agents/roz.frontmatter.yml` | `.claude/agents/roz.md` | QA subagent persona (overlay assembly) |
 | `source/shared/agents/robert.md` + `source/claude/agents/robert.frontmatter.yml` | `.claude/agents/robert.md` | Product reviewer subagent persona (overlay assembly) |
 | `source/shared/agents/sable.md` + `source/claude/agents/sable.frontmatter.yml` | `.claude/agents/sable.md` | UX reviewer subagent persona (overlay assembly) |
 | `source/shared/agents/investigator.md` + `source/claude/agents/investigator.frontmatter.yml` | `.claude/agents/investigator.md` | Blind investigator subagent persona (overlay assembly) |
@@ -356,7 +354,7 @@ Files are assembled from `source/shared/` (content) + `source/claude/` (overlays
 | `source/shared/references/invocation-templates.md` | `.claude/references/invocation-templates.md` | Subagent invocation examples |
 | `source/shared/references/pipeline-operations.md` | `.claude/references/pipeline-operations.md` | Operational procedures (model selection, QA, feedback, batch, worktree, context) |
 | `source/shared/references/agent-preamble.md` | `.claude/references/agent-preamble.md` | Shared agent required actions |
-| `source/shared/references/qa-checks.md` | `.claude/references/qa-checks.md` | Roz QA check procedures |
+| `source/shared/references/qa-checks.md` | `.claude/references/qa-checks.md` | Poirot verification check procedures |
 | `source/shared/references/branch-mr-mode.md` | `.claude/references/branch-mr-mode.md` | Colby branch/MR procedures |
 | `source/shared/references/telemetry-metrics.md` | `.claude/references/telemetry-metrics.md` | Telemetry metric schemas, cost table, alert thresholds |
 | `source/shared/references/step-sizing.md` | `.claude/references/step-sizing.md` | ADR step sizing gate (S1-S5) and split heuristics |
@@ -386,16 +384,15 @@ optional and must be installed for the pipeline to function correctly.
 | Template Source | Destination | Purpose |
 |----------------|-------------|---------|
 | `source/claude/hooks/enforce-eva-paths.sh` | `.claude/hooks/enforce-eva-paths.sh` | Blocks main thread (Eva) Write/Edit outside docs/pipeline/ |
-| `source/claude/hooks/enforce-roz-paths.sh` | `.claude/hooks/enforce-roz-paths.sh` | Per-agent: Roz can only write test files + docs/pipeline/ |
-| `source/claude/hooks/enforce-cal-paths.sh` | `.claude/hooks/enforce-cal-paths.sh` | Per-agent: Cal can only write to docs/architecture/ |
+| `source/claude/hooks/enforce-sarah-paths.sh` | `.claude/hooks/enforce-sarah-paths.sh` | Per-agent: Sarah can only write to docs/architecture/ |
 | `source/claude/hooks/enforce-colby-paths.sh` | `.claude/hooks/enforce-colby-paths.sh` | Per-agent: Colby blocked from colby_blocked_paths |
 | `source/claude/hooks/enforce-agatha-paths.sh` | `.claude/hooks/enforce-agatha-paths.sh` | Per-agent: Agatha can only write to docs/ |
 | `source/claude/hooks/enforce-product-paths.sh` | `.claude/hooks/enforce-product-paths.sh` | Per-agent: Robert-spec can only write to docs/product/ |
 | `source/claude/hooks/enforce-ux-paths.sh` | `.claude/hooks/enforce-ux-paths.sh` | Per-agent: Sable-ux can only write to docs/ux/ |
 | `source/claude/hooks/enforce-ellis-paths.sh` | `.claude/hooks/enforce-ellis-paths.sh` | Per-agent: Ellis can only write to CHANGELOG.md, git config files, and CI/CD paths |
-| `source/claude/hooks/enforce-sequencing.sh` | `.claude/hooks/enforce-sequencing.sh` | Blocks out-of-order agent invocations (e.g., Ellis without Roz QA) |
+| `source/claude/hooks/enforce-sequencing.sh` | `.claude/hooks/enforce-sequencing.sh` | Blocks out-of-order agent invocations (e.g., Ellis without Poirot verification) |
 | `source/claude/hooks/enforce-pipeline-activation.sh` | `.claude/hooks/enforce-pipeline-activation.sh` | Blocks Colby/Ellis invocation when no active pipeline exists |
-| `source/claude/hooks/enforce-scout-swarm.sh` | `.claude/hooks/enforce-scout-swarm.sh` | Blocks Cal/Colby/Roz invocations missing the required scout evidence block (research-brief, colby-context, debug-evidence, qa-evidence) |
+| `source/claude/hooks/enforce-scout-swarm.sh` | `.claude/hooks/enforce-scout-swarm.sh` | Blocks Sarah/Colby/Poirot invocations missing the required scout evidence block (research-brief, colby-context, debug-evidence, qa-evidence) |
 | `source/claude/hooks/enforce-git.sh` | `.claude/hooks/enforce-git.sh` | Blocks git write operations from main thread (must go through Ellis) |
 | `source/claude/hooks/session-hydrate.sh` | `.claude/hooks/session-hydrate.sh` | Intentional no-op — superseded by atelier_hydrate MCP tool. Installed for backward-compatibility only; NOT registered in settings.json. |
 | `source/claude/hooks/pre-compact.sh` | `.claude/hooks/pre-compact.sh` | Writes compaction marker to pipeline-state.md before context is compacted (PreCompact) |
@@ -420,7 +417,7 @@ After copying, make the `.sh` files executable: `chmod +x .claude/hooks/*.sh`
 | Field | Type | Requirement |
 |-------|------|-------------|
 | `pipeline_state_dir` | string | Non-empty |
-| `test_command` | string | Non-empty -- critical: Roz cannot run tests without this |
+| `test_command` | string | Non-empty -- critical: Poirot cannot run tests without this |
 | `test_patterns` | array | Non-empty -- at least one pattern required |
 
 Also check `lint_command`: if the field is absent or empty, warn (but do not block) -- Eva's quality gate will fall back to `test_command`.
@@ -436,7 +433,7 @@ Do not block installation on validation failure. The warning is informational --
 - `pipeline_state_dir`: the pipeline state directory (default: `docs/pipeline`)
 - `colby_blocked_paths`: array of path prefixes Colby cannot write to (default includes `docs/`, `.github/`, infrastructure paths)
 - `test_patterns`: array of patterns matching the project's test files (e.g., `[".test.", ".spec.", "/tests/", "conftest"]`)
-- `test_command`: full test suite command from Step 1 -- used by Roz for QA verification (e.g., `npm test`, `pytest`)
+- `test_command`: full test suite command from Step 1 -- used by Poirot for QA verification (e.g., `npm test`, `pytest`)
 
 **Register hooks in `.claude/settings.json`** — merge with existing settings if the
 file already exists. Add this hooks section:
@@ -451,7 +448,7 @@ file already exists. Add this hooks section:
       },
       {
         "matcher": "Agent",
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-sequencing.sh"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-pipeline-activation.sh"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-scout-swarm.sh"}, {"type": "prompt", "prompt": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-brain-prefetch.sh", "if": "tool_input.subagent_type == 'cal' || tool_input.subagent_type == 'colby' || tool_input.subagent_type == 'roz'"}]
+        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-sequencing.sh"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-pipeline-activation.sh"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-scout-swarm.sh"}, {"type": "prompt", "prompt": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-brain-prefetch.sh", "if": "tool_input.subagent_type == 'sarah' || tool_input.subagent_type == 'colby' || tool_input.subagent_type == 'roz'"}]
       },
       {
         "matcher": "Bash",
@@ -487,7 +484,7 @@ file already exists. Add this hooks section:
             "type": "agent",
             "agent": "brain-extractor",
             "prompt": "Extract decisions, patterns, and lessons from the completed agent's output and capture them to the brain via agent_capture.",
-            "if": "agent_type == 'cal' || agent_type == 'colby' || agent_type == 'roz' || agent_type == 'agatha' || agent_type == 'robert' || agent_type == 'robert-spec' || agent_type == 'sable' || agent_type == 'sable-ux' || agent_type == 'ellis'"
+            "if": "agent_type == 'sarah' || agent_type == 'colby' || agent_type == 'agatha' || agent_type == 'robert' || agent_type == 'robert-spec' || agent_type == 'sable' || agent_type == 'sable-ux' || agent_type == 'ellis'"
           }
         ]
       }
@@ -573,7 +570,7 @@ alwaysApply: false
 | `source/shared/references/invocation-templates.md` | `.cursor-plugin/rules/invocation-templates.mdc` | Invocation templates -- standardized XML tag patterns for subagent invocation |
 | `source/shared/references/pipeline-operations.md` | `.cursor-plugin/rules/pipeline-operations.mdc` | Pipeline operations -- continuous QA, feedback loops, batch mode, and worktree rules |
 | `source/shared/references/agent-preamble.md` | `.cursor-plugin/rules/agent-preamble.mdc` | Agent preamble -- shared actions and protocols for all pipeline agents |
-| `source/shared/references/qa-checks.md` | `.cursor-plugin/rules/qa-checks.mdc` | QA checks -- Roz Tier 1/Tier 2 procedures, test spec review, and scoped re-run |
+| `source/shared/references/qa-checks.md` | `.cursor-plugin/rules/qa-checks.mdc` | QA checks -- Poirot Tier 1/Tier 2 procedures, test spec review, and scoped re-run |
 | `source/shared/references/branch-mr-mode.md` | `.cursor-plugin/rules/branch-mr-mode.mdc` | Branch and MR mode -- Colby branch creation and MR procedures for MR-based strategies |
 | `source/shared/references/telemetry-metrics.md` | `.cursor-plugin/rules/telemetry-metrics.mdc` | Telemetry metrics -- metric schemas, cost table, and alert thresholds |
 | `source/shared/references/xml-prompt-schema.md` | `.cursor-plugin/rules/xml-prompt-schema.mdc` | XML prompt schema -- tag vocabulary for agent persona files |
@@ -622,15 +619,15 @@ The following placeholders in template files must be replaced with project-speci
 
 This project uses a multi-agent orchestration pipeline for structured development.
 
-**Agents:** Eva (orchestrator), Robert (product), Sable (UX), Cal (architect), Colby (engineer), Roz (QA), Agatha (docs), Ellis (commit)
+**Agents:** Eva (orchestrator), Robert (product), Sable (UX), Sarah (architect), Colby (engineer), Poirot, Agatha (docs), Ellis (commit)
 
 **Commands:** /pm, /ux, /architect, /debug, /pipeline, /devops, /docs
 
 **Pipeline state:** docs/pipeline/ -- Eva reads this at session start for recovery
 
 **Key rules:**
-- Roz writes tests before Colby builds (Roz-first TDD)
-- Roz verifies every Colby output (no self-review)
+- Colby writes tests when Sarah names a failure mode before Colby builds ()
+- Poirot verifies every Colby output (no self-review)
 - Ellis commits (Eva never runs git on code)
 - Full test suite between work units
 ```
@@ -653,7 +650,7 @@ Atelier Pipeline installed successfully.
 
 Files installed: 40 (mandatory)
   .claude/rules/       -- 5 files (Eva persona, orchestration rules, pipeline operations, model selection, branch lifecycle)
-  .claude/agents/      -- 9 files (Cal, Colby, Roz, Robert, Sable, Poirot, Distillator, Ellis, Agatha)
+  .claude/agents/      -- 9 files (Sarah, Colby, Robert, Sable, Poirot, Distillator, Ellis, Agatha)
   .claude/commands/    -- 7 files (/pm, /ux, /architect, /debug, /pipeline, /devops, /docs)
   .claude/references/  -- 8 files (quality framework, retro lessons, invocation templates, pipeline operations, agent preamble, QA checks, branch/MR mode, telemetry metrics)
   .claude/hooks/       -- 6 files (path enforcement, sequencing, git guard, DoR/DoD warning, pre-compact, config)
@@ -677,7 +674,7 @@ Compaction API: PreCompact hook installed for pipeline state preservation
 Available commands:
   /pm          -- Feature discovery and product spec (Robert)
   /ux          -- UI/UX design (Sable)
-  /architect   -- Architecture and ADR production (Cal)
+  /architect   -- Architecture and ADR production (Sarah)
   /pipeline    -- Full pipeline orchestration (Eva)
   /devops      -- Infrastructure and deployment (Eva)
   /docs        -- Documentation planning and writing (Agatha)
@@ -751,7 +748,7 @@ has no external tools to install. The feature is entirely runtime-activated via 
 After the Agent Teams offer (whether user said yes or no), offer the optional CI Watch feature:
 
 > Would you also like to enable **CI Watch** -- automated post-push CI monitoring?
-> After Ellis pushes, Eva watches your CI run and autonomously fixes failures via Roz and Colby,
+> After Ellis pushes, Eva watches your CI run and autonomously fixes failures via Poirot and Colby,
 > pausing for your approval before pushing a fix. Requires `gh` (GitHub) or `glab` (GitLab) CLI.
 
 **Platform CLI gate:** Read `platform_cli` from `.claude/pipeline-config.json`.
@@ -780,7 +777,7 @@ After the Agent Teams offer (whether user said yes or no), offer the optional CI
 
 **If user says no:** Skip entirely. `ci_watch_enabled` remains `false` in `pipeline-config.json`. Print: "CI Watch: not enabled"
 
-**No new agent files installed** -- CI Watch uses existing Roz, Colby, and Ellis personas.
+**No new agent files installed** -- CI Watch uses existing Poirot, Colby, and Ellis personas.
 
 ### Step 6d: Claude Code Agent Resume Prerequisite (Experimental)
 
@@ -794,8 +791,8 @@ scratch.
 
 This is a Claude Code regression currently tracked at
 [anthropics/claude-code#42737](https://github.com/anthropics/claude-code/issues/42737).
-The atelier pipeline depends on cheap subagent resume for Cal ADR
-revisions, Colby rework cycles, and Roz scoped re-runs.
+The atelier pipeline depends on cheap subagent resume for Sarah ADR
+revisions, Colby rework cycles, and Poirot scoped re-runs.
 
 **Check `~/.claude/settings.json` for the existing env var:**
 
@@ -808,7 +805,7 @@ jq -r '.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS // empty' ~/.claude/settings.js
 **Otherwise, prompt the user:**
 
 > The atelier-pipeline relies on subagent resume for efficient multi-turn
-> agent flows (Cal ADR revisions, Colby rework cycles, Roz scoped re-runs).
+> agent flows (Sarah ADR revisions, Colby rework cycles, Poirot scoped re-runs).
 > Claude Code currently gates the `SendMessage` tool behind
 > `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`
 > (github.com/anthropics/claude-code/issues/42737).

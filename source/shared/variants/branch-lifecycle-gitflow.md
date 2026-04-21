@@ -28,7 +28,7 @@ MR body includes: ADR reference, QA status, review juncture results.
 
 ## Release Flow
 
-Eva creates `release/<version>` from develop. Roz runs full regression. Bug
+Eva creates `release/<version>` from develop. Eva runs full regression. Bug
 fixes go to the release branch. Colby creates MR from release branch to main.
 After merge to main, Eva tags the release, back-merges main to develop.
 

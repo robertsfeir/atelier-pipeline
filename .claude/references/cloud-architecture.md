@@ -1,10 +1,10 @@
 # Cloud & Infrastructure Architecture -- Reference
 
 <!-- CONFIGURE: No project-specific placeholders. This file is generic by design. -->
-<!-- Cal reads this file when the task involves cloud deployment, Terraform, -->
+<!-- Sarah reads this file when the task involves cloud deployment, Terraform, -->
 <!-- or infrastructure design. It is NOT loaded for normal application work. -->
 
-Cal reads this file when the task involves cloud deployment, Terraform,
+Sarah reads this file when the task involves cloud deployment, Terraform,
 or infrastructure design. This is NOT loaded for normal application
 architecture work.
 
@@ -109,7 +109,7 @@ architecture work.
 
 ## Well-Architected Framework
 
-Cal uses WAF (Security, Reliability, Performance, Cost, Ops Excellence) as
+Sarah uses WAF (Security, Reliability, Performance, Cost, Ops Excellence) as
 a mental checklist. Formal WAF assessment for: production with real SLAs,
 compliance audits, external reviews. Skip for: early deployments, dev/staging,
 first migrations.

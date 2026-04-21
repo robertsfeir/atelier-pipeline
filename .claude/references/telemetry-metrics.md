@@ -37,7 +37,7 @@ Captured after every Agent tool completion by Eva.
 
 ## Tier 2: Per-Unit Metrics
 
-Captured after each work unit completes Roz QA PASS. Aggregated from Tier 1.
+Captured after each work unit completes Poirot verification PASS. Aggregated from Tier 1.
 Skipped on Micro pipelines.
 
 | Field | Type | Aggregation Rule | Default When Unavailable |
@@ -46,8 +46,8 @@ Skipped on Micro pipelines.
 | `rework_cycles` | integer | Count of Colby re-invocations after first on this unit (0 = first-pass QA) | `0` |
 | `first_pass_qa` | boolean | `rework_cycles == 0` (zero re-invocations, not one) | `false` |
 | `unit_cost_usd` | float or null | Sum of Tier 1 `cost_usd` for all invocations with this `work_unit_id` | `null` when any Tier 1 cost was null |
-| `finding_counts` | object | `{roz: N, poirot: N, robert: N, sable: N, sentinel: N}` count per reviewer | `{roz: 0, poirot: 0, robert: 0, sable: 0, sentinel: 0}` |
-| `finding_convergence` | integer | Findings flagged independently by both Roz and Poirot | `0` |
+| `finding_counts` | object | `{poirot: N, robert: N, sable: N, sentinel: N}` count per reviewer | `{poirot: 0, robert: 0, sable: 0, sentinel: 0}` |
+| `finding_convergence` | integer | Findings flagged independently by both Poirot | `0` |
 | `evoscore_delta` | float | `(tests_after - tests_broken) / tests_before` for this unit; `1.0` when `tests_before == 0` | `null` when test counts unavailable |
 
 ---
@@ -206,10 +206,10 @@ Typical agent invocation counts per sizing tier. Used as the base input to the e
 
 | Sizing | Agent Invocations (typical range) | Notes |
 |--------|-----------------------------------|-------|
-| Micro | 1--2 (Colby + Roz) | No estimate shown |
-| Small | 3--5 (Cal skill + Colby + Roz + Ellis) | No estimate shown |
-| Medium | 8--15 (Robert? + Sable? + Cal + Roz test + Colby*N + Roz QA*N + Poirot + Ellis) | Estimate shown only if `token_budget_warning_threshold` is set |
-| Large | 15--30+ (full ceremony: Robert + Sable + Agatha plan + Colby mockup + Sable verify + Cal + Roz test + Colby*N + Roz QA*N + Poirot*N + Robert review + Sable review + Sentinel? + Agatha docs + Ellis) | Estimate always shown |
+| Micro | 1--2 (Colby + Poirot) | No estimate shown |
+| Small | 3--5 (Sarah skill + Colby + Poirot + Ellis) | No estimate shown |
+| Medium | 8--15 (Robert? + Sable? + Sarah + Poirot test + Colby*N + Poirot verification*N + Poirot + Ellis) | Estimate shown only if `token_budget_warning_threshold` is set |
+| Large | 15--30+ (full ceremony: Robert + Sable + Agatha plan + Colby mockup + Sable verify + Sarah + Poirot test + Colby*N + Poirot verification*N + Poirot*N + Robert review + Sable review + Sentinel? + Agatha docs + Ellis) | Estimate always shown |
 
 ### Estimate Formula
 
@@ -226,12 +226,12 @@ Where `agent_count_by_model` is derived from the agent roster table above, mappi
 
 ### Step Count Multiplier
 
-When Cal has already produced an ADR with N steps, apply these multipliers to the agent roster before computing the estimate. When step count is not yet known (estimate runs before Cal), use the sizing-tier defaults from the agent roster table above.
+When Sarah has already produced an ADR with N steps, apply these multipliers to the agent roster before computing the estimate. When step count is not yet known (estimate runs before Sarah), use the sizing-tier defaults from the agent roster table above.
 
 | Agent | Invocation count with N steps |
 |-------|-------------------------------|
 | Colby | N * 1.3 (30% rework assumption) |
-| Roz (QA) | N * 1.1 (10% scoped re-run assumption) |
+| Poirot | N * 1.1 (10% scoped re-run assumption) |
 | Poirot | ceil(N / wave_size) where `wave_size` defaults to 3 |
 
 **Default `wave_size`:** 3 (three ADR steps per wave before Poirot blind-review).

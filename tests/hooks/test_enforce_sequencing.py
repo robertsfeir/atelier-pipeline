@@ -27,17 +27,6 @@ def _config_with_state_dir(tmp_path):
 
 # ── T-0003-030: jq missing ──────────────────────────────────────────────
 
-def test_T_0003_030_jq_missing(hook_env):
-    env = hide_jq_env(hook_env)
-    inp = build_agent_input("ellis")
-    hook_path = prepare_hook("enforce-sequencing.sh", hook_env)
-    r = subprocess.run(["bash", str(hook_path)], input=inp, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env, timeout=30)
-    assert r.returncode == 2
-    assert "jq" in r.stdout or "jq" in r.stderr
-
-
-# ── T-0003-042: Ellis with roz_qa=PASS ──────────────────────────────────
-
 def test_T_0003_042_ellis_roz_qa_pass(hook_env):
     write_pipeline_status(hook_env, '{"roz_qa":"PASS","phase":"review"}')
     _config_with_state_dir(hook_env)

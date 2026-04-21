@@ -44,7 +44,7 @@ Source-of-truth documents for the technical substance (Per-Agent Assignment Tabl
 3. **Model Selection § Adaptive-thinking rationale paragraph.** New paragraph added after the tier table, summarizing Opus 4.7 effort semantics (medium/high/xhigh) and the `max` prohibition.
 4. **Model Selection § Promotion Signals table.** Three rows removed (auth/crypto, Pipeline sizing = Large, New module / service creation). Explanatory prose added below the reduced 3-row table naming each removed signal and the rationale (route to Sentinel / tier-picker / subsumed by xhigh).
 5. **Model Selection § Enforcement Rules.** Added rule: `max` effort forbidden per ADR-0042 (Anthropic Opus 4.7 adaptive-thinking guidance).
-6. **New § Scout Synthesis Layer (ADR-0042).** New subsection added after Model Selection, describing: the Sonnet/low synthesis step; per-primary-agent block names (`<research-brief>` / `<colby-context>` / `<qa-evidence>`); required field lists per shape (Cal, Colby, Roz); forbidden content; skip conditions; explicit spawn directive.
+6. **New § Scout Synthesis Layer (ADR-0042).** New subsection added after Model Selection, describing: the Sonnet/low synthesis step; per-primary-agent block names (`<research-brief>` / `<colby-context>` / `<qa-evidence>`); required field lists per shape (Sarah, Colby, Roz); forbidden content; skip conditions; explicit spawn directive.
 7. **§ Hybrid Capture Model.** "lightweight Haiku extractor" -> "lightweight Sonnet extractor".
 
 ### user-guide.md -- edits applied

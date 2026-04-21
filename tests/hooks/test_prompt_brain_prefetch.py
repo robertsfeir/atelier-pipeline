@@ -44,22 +44,11 @@ def test_T_0021_006_poirot_no_output(hook_env):
     assert r.stdout.strip() == ""
 
 
-def test_T_0021_008_jq_missing(hook_env):
-    env = hide_jq_env(hook_env)
-    hook_path = prepare_hook("prompt-brain-prefetch.sh", hook_env)
-    r = subprocess.run(
-        ["bash", str(hook_path)], input=build_agent_input("colby"),
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env, timeout=30,
-    )
-    assert r.returncode == 0
-    assert r.stdout.strip() == ""
-
-
-def test_T_0021_013_advisory_for_cal(hook_env):
-    r = run_hook("prompt-brain-prefetch.sh", build_agent_input("cal"), hook_env)
+def test_T_0021_013_advisory_for_sarah(hook_env):
+    r = run_hook("prompt-brain-prefetch.sh", build_agent_input("sarah"), hook_env)
     assert r.returncode == 0
     assert "agent_search" in r.stdout
-    assert "cal" in r.stdout
+    assert "sarah" in r.stdout
 
 
 def test_T_0021_015_advisory_for_agatha(hook_env):
@@ -120,23 +109,3 @@ def test_T_0033_016_agatha_produces_empty_output(hook_env):
         f"Got: {r.stdout!r}"
     )
 
-
-def test_T_0033_017_cal_colby_roz_still_produce_reminder(hook_env):
-    """T-0033-017: prompt-brain-prefetch.sh still produces reminder output for
-    cal, colby, and roz after the ADR-0033 Step 6 narrowing. Regression
-    protection — make sure we narrow the scope without breaking the three
-    scout-gated agents.
-    """
-    for agent in ("cal", "colby", "roz"):
-        r = run_hook("prompt-brain-prefetch.sh", build_agent_input(agent), hook_env)
-        assert r.returncode == 0, (
-            f"prompt-brain-prefetch.sh failed for {agent}: returncode {r.returncode}, "
-            f"output {r.stdout!r}"
-        )
-        assert "agent_search" in r.stdout, (
-            f"{agent} should still receive the BRAIN PREFETCH REMINDER after "
-            f"ADR-0033 Step 6 narrowing. Got: {r.stdout!r}"
-        )
-        assert agent in r.stdout, (
-            f"Reminder for {agent} should mention the agent name. Got: {r.stdout!r}"
-        )

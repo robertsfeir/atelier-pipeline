@@ -12,7 +12,7 @@ status: "Proposed"
 
 ## DoR: Source Analysis
 
-**Sources:** Brain (Cal/Eva architecture decisions), context-brief.md (Wave 3 scope), enforce-paths.sh (163-line monolith), agent persona files (12 core agents), ADR-0020/ADR-0019 (predecessors), retro-lessons.md (Lesson #003, #005)
+**Sources:** Brain (Sarah/Eva architecture decisions), context-brief.md (Wave 3 scope), enforce-paths.sh (163-line monolith), agent persona files (12 core agents), ADR-0020/ADR-0019 (predecessors), retro-lessons.md (Lesson #003, #005)
 
 **Spec challenge verified:** Claude Code frontmatter hooks receive identical input schema to global PreToolUse hooks (tool_name, tool_input.file_path). Confidence: yes -- confirmed against Claude Code documentation.
 
@@ -30,7 +30,7 @@ status: "Proposed"
 | R4 | Phase 1 lands BEFORE Phase 2 (sequential, user-mandated) | Brain Decision 4 |
 | R5 | Replace enforce-paths.sh monolith with per-agent frontmatter hooks | Brain Decision 2 |
 | R6 | Three-layer enforcement pyramid: Layer 1 tools/disallowedTools, Layer 2 frontmatter hooks, Layer 3 global hooks | Brain Decision 2 |
-| R7 | Add `permissionMode: acceptEdits` on write-heavy agents (Colby, Cal, Agatha, Ellis) | Brain Decision 1 |
+| R7 | Add `permissionMode: acceptEdits` on write-heavy agents (Colby, Sarah, Agatha, Ellis) | Brain Decision 1 |
 | R8 | Robert/Sable become write-capable subagents for spec/UX production | Brain Decision 1 |
 | R9 | Robert-spec writes to docs/product/, Sable-ux writes to docs/ux/ | Brain Decision 2 |
 | R10 | Per-agent scripts ~15-20 lines, no agent_type check, no case statement | Brain Decision 2 |
@@ -116,8 +116,8 @@ source/cursor/
 
 | Agent | Model | Tools Field |
 |-------|-------|-------------|
-| Cal | Read, Write, Edit | `tools: Read, Write, Edit, Glob, Grep, Bash, Agent(roz)` |
-| Colby | Read, Write, Edit, MultiEdit | `tools: Read, Write, Edit, MultiEdit, Glob, Grep, Bash, Agent(roz, cal)` |
+| Sarah | Read, Write, Edit | `tools: Read, Write, Edit, Glob, Grep, Bash, Agent(roz)` |
+| Colby | Read, Write, Edit, MultiEdit | `tools: Read, Write, Edit, MultiEdit, Glob, Grep, Bash, Agent(sarah)` |
 | Roz | Read, Bash (test-scoped) | `disallowedTools: Agent, Edit, MultiEdit, NotebookEdit` |
 | Ellis | Full write | `disallowedTools: Agent, NotebookEdit` |
 | Agatha | Write: docs/ | `disallowedTools: Agent, NotebookEdit` |
@@ -132,7 +132,7 @@ source/cursor/
 | Agent | Script | Enforces |
 |-------|--------|----------|
 | Roz | enforce-roz-paths.sh | Only test files (test_patterns) + docs/pipeline/ |
-| Cal | enforce-cal-paths.sh | Only docs/architecture/ |
+| Sarah | enforce-sarah-paths.sh | Only docs/architecture/ |
 | Colby | enforce-colby-paths.sh | Block colby_blocked_paths |
 | Agatha | enforce-agatha-paths.sh | Only docs/ |
 | Robert-spec | enforce-product-paths.sh | Only docs/product/ |
@@ -156,11 +156,11 @@ Each script: ~15-20 lines, hardcoded paths (no agent_type check, no case stateme
 
 | Step | What | Files |
 |------|------|-------|
-| 2a | Create 7 per-agent hook scripts (enforce-{roz,cal,colby,agatha,product,ux}-paths.sh); create enforce-eva-paths.sh for main thread; update enforcement-config.json | 8 files created, 1 modified |
+| 2a | Create 7 per-agent hook scripts (enforce-{roz,sarah,colby,agatha,product,ux}-paths.sh); create enforce-eva-paths.sh for main thread; update enforcement-config.json | 8 files created, 1 modified |
 | 2b | Write comprehensive bats tests for 7 scripts; validate against 265-test baseline | New test files |
 | 2c | Create Robert-spec and Sable-ux personas; dual-mode design (reviewer + producer); update core agent constant in agent-system.md | 2 persona files created; 1 file modified |
-| 2d | Add `permissionMode: acceptEdits` to claude overlays (Colby, Cal, Agatha, Ellis) | 4 frontmatter files modified |
-| 2e | Add `hooks:` frontmatter field to 7 agent overlays (roz, cal, colby, agatha, robert-spec, sable-ux, eva main thread) | 7 frontmatter files modified |
+| 2d | Add `permissionMode: acceptEdits` to claude overlays (Colby, Sarah, Agatha, Ellis) | 4 frontmatter files modified |
+| 2e | Add `hooks:` frontmatter field to 7 agent overlays (roz, sarah, colby, agatha, robert-spec, sable-ux, eva main thread) | 7 frontmatter files modified |
 | 2f | Tighten Eva main thread to docs/pipeline/ only via enforce-eva-paths.sh; update default-persona.md and agent-system.md routing (robert-spec, sable-ux as subagents) | 2 files modified |
 | 2g | Update all test files referencing enforce-paths.sh or old source/ paths; verify bats tests pass | ~15 test files |
 | 2h | Create SubagentStop prompt hook (prompt-compact-advisory.sh) to detect Ellis per-wave commit and advise `/compact`; update SKILL.md settings.json template | 1 file created, 1 modified |
@@ -174,7 +174,7 @@ Each script: ~15-20 lines, hardcoded paths (no agent_type check, no case stateme
 - sable-ux information asymmetry: same as robert-spec
 - Robert and Sable reviewer personas unchanged
 - Core agent constant updated: 11 core agents + robert-spec + sable-ux = 13 core agents total
-- Claude Code frontmatter overlays for write-heavy agents (Colby, Cal, Agatha, Ellis) include `permissionMode: acceptEdits`
+- Claude Code frontmatter overlays for write-heavy agents (Colby, Sarah, Agatha, Ellis) include `permissionMode: acceptEdits`
 - 7 agent overlays include `hooks:` field with event/matcher/command entries
 - enforce-eva-paths.sh restricts main thread to docs/pipeline/ only
 - /pm and /ux route to robert-spec and sable-ux subagents (not main-thread skills)
