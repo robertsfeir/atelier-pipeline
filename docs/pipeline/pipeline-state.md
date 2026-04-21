@@ -3,6 +3,29 @@
 <!-- PIPELINE_STATUS: {"phase": "idle", "sizing": null, "roz_qa": null, "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": false, "robert_reviewed": false, "brain_available": false, "stop_reason": "completed_clean"} -->
 
 ## Prior Pipeline (closed)
+**Feature:** v3.38.0 release — version bump + CHANGELOG
+**Phase:** idle
+**Stop Reason:** completed_clean
+**Sizing:** Micro
+**Opened:** 2026-04-20
+**Closed:** 2026-04-20
+**Release:** v3.38.0 (see commit log)
+
+**Scope:** Mechanical version bump using the new `scripts/release.sh` utility (dogfood).
+- Run `./scripts/release.sh 3.38.0` — updates 5 version files
+- Update `CHANGELOG.md` — rename `## [Unreleased]` block heading to `## [3.38.0] - 2026-04-20`
+- Commit with `chore(release): bump version to 3.38.0` subject
+- Push pending user confirmation (push is blast-radius — user decides)
+
+**Contents of 3.38.0 release (from Unreleased block):** new `scripts/release.sh` utility + tests, marketplace.json sync fix, Roz effort parity fix, Roz maxTurns 15→50 (from prior pipeline 1cda942).
+
+**Micro skips:** scout fan-out, brain capture T2/T3, budget estimate gate. Roz full suite as safety valve.
+
+**Status:** Ellis commit complete. Push pending user confirmation.
+
+---
+
+## Prior Pipeline (closed)
 **Feature:** Pre-release cleanup — Roz effort parity + marketplace.json sync + release script
 **Phase:** idle
 **Stop Reason:** completed_clean

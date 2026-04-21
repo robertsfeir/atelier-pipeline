@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.38.0] - 2026-04-20
+
 ### Added
 
 - `scripts/release.sh` utility that bumps all 5 version files (`.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `.cursor-plugin/plugin.json`, `.cursor-plugin/marketplace.json`, `.claude/.atelier-version`) in a single invocation given a canonical semver argument (no leading zeros, no pre-release/build metadata, no `v` prefix), and `tests/scripts/test_release.py` covering happy path, non-canonical-input rejection (parametrized across 9 cases: leading zeros, pre-release, build metadata, `v`-prefix, truncated, over-component, empty, whitespace, plain non-semver), and a nested-version-key pin test. The script validates semver, refuses missing args, is idempotent, and deliberately does NOT commit/tag/push — it prints a next-steps checklist instead. Not atomic: four independent `sed` calls followed by one plain-text overwrite; a mid-run failure leaves earlier files already mutated, and the operator must re-run. Acceptable for a hand-run release utility.
@@ -13,6 +15,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - `.claude-plugin/marketplace.json` was stale at 3.34.0 while other version files were at 3.37.0, blocking Claude Code marketplace installs of 3.35–3.37. Now synced.
 - Roz `effort` was `high` in installed `.claude/agents/roz.md`, inconsistent with `medium` in the source template and with `pipeline-models.md` Tier 3 baseline. Installed file brought back into alignment.
+- Roz `maxTurns` raised 15 → 50 (`.claude/agents/roz.md`, `source/claude/agents/roz.frontmatter.yml`, `source/cursor/agents/roz.frontmatter.yml`). Roz was truncating mid-generation on tool-heavy QA runs; 50 matches peer-agent ceiling range.
 
 ## [3.37.0] - 2026-04-20
 
