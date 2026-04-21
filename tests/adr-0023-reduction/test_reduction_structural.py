@@ -1087,12 +1087,33 @@ def test_T_0023_121_default_persona_md_boot_sequence_still_contains_steps_4_6_br
     assert re.search(r"announce.*session|session.*state.*user|announce", sbc, re.IGNORECASE)
 
 
-def test_T_0023_131_All_12_mandatory_gates_preserved_verbatim_count_numbered_items_under_Eva_NEVER_Skips():
-    """T-0023-131: All 12 mandatory gates preserved verbatim (count numbered items under 'Eva NEVER Skips')."""
+def test_T_0023_131_All_12_mandatory_gates_preserved_count_numbered_items_under_Eva_NEVER_Skips():
+    """T-0023-131: All 12 mandatory gates preserved (count numbered items under 'Eva NEVER Skips').
+
+    Strengthened post-ADR-0044: previously asserted only the section header was
+    present. Now extracts the Mandatory Gates section and counts `^\\d+\\. \\*\\*`
+    lines so the 12-gate preservation intent is actually tested. ADR-0044 collapsed
+    the per-gate "same class of violation" rhetoric; the 12-gate body count guards
+    against accidental gate loss during rhetoric trims.
+    """
     f = SHARED_RULES / "pipeline-orchestration.md"
     assert f.is_file()
     c = f.read_text()
     assert "Eva NEVER Skips" in c
+    # Extract the Mandatory Gates section: between the section header and the
+    # next top-level `## ` heading (or end of file).
+    section_match = re.search(
+        r"## Mandatory Gates -- Eva NEVER Skips These(.*?)(?=\n## |\Z)",
+        c,
+        re.DOTALL,
+    )
+    assert section_match, "Mandatory Gates section not found"
+    section = section_match.group(1)
+    numbered_gates = re.findall(r"^\d+\. \*\*", section, re.MULTILINE)
+    assert len(numbered_gates) == 12, (
+        f"Mandatory Gates section has {len(numbered_gates)} numbered gates; "
+        "expected 12. ADR-0044 preserves all 12 gates while collapsing rhetoric."
+    )
 
 
 def test_T_0023_132_All_observation_masking_receipt_formats_preserved():

@@ -112,64 +112,18 @@ Continuous QA, feedback loops, batch mode, worktree rules: `{config_dir}/referen
 
 ## AUTO-ROUTING RULES
 
-Classify intent outside active pipeline; route automatically.
+Classify intent outside active pipeline; route automatically. Full Intent Detection matrix, Smart Context Detection list, Auto-Routing Confidence thresholds, and Discovered Agent Routing rules live in `{config_dir}/references/routing-detail.md` -- Eva loads that file on demand when the summary below does not disambiguate, when a discovered agent appears to overlap a core agent, or when artifact-presence checks need to run against the full table.
 
-### Intent Detection
+### Summary
+- **Idea / feature / spec talk** → **robert-spec**. **UI / UX / flows** → **sable-ux**. **Architecture / "how should we build"** → **Cal**. **Docs planning or writing** → **Agatha**. **Implementation / mockup / build** → **Colby** (scout fan-out first). **QA / tests / validate** → **Roz** (scout fan-out first).
+- **Commit / push / ship** → **Ellis**. **Infra / CI/CD / deployment** → **Eva** (/devops skill). **"Run the pipeline" / "follow the flow"** → **Eva** (orchestrator).
+- **Bug reports / "this is broken"** → Scout swarm → **Roz** (diagnose, hard pause) → **Colby** (fix after user approval).
+- **Dependency / CVE / upgrade questions** → **Deps** (requires `deps_agent_enabled: true`). **Pipeline health / agent performance / "run Darwin"** → **Darwin** (requires `darwin_enabled: true`).
+- **Discovered agents** route only via explicit name mention when they have no core-agent overlap; on overlap, Eva asks once and records the preference in the brain or `context-brief.md`.
+- **Edge cases** (ambiguous intent, smart-context checks against `{product_specs_dir}` / `{ux_docs_dir}` / `{architecture_dir}`, discovered-agent conflict protocol) → Eva reads `{config_dir}/references/routing-detail.md`.
 
-| If the user... | Route to | Type |
-|---|---|---|
-| Describes new idea, feature concept, "what if we..." | **robert-spec** | subagent |
-| Discusses UI, UX, user flows, wireframes, design patterns | **sable-ux** | subagent |
-| Says "review this ADR", "plan this", "how should we architect..." | **Cal** | skill |
-| References feature spec without ADR | **Cal** | skill |
-| Says "plan the docs", "what docs do we need", "documentation plan" | **Agatha** (doc planning) | skill |
-| Says "mockup", "prototype", "let me see it" | Scout fan-out → **Colby** (mockup mode) [`<colby-context>`] | subagent |
-| Says "scan the codebase", "investigate paths", "map all X", "review the whole codebase" (read-only survey, no existing ADR or bug report) | Explore+haiku scouts → Sonnet reviewer | subagent |
-| Cal just finished ADR with test spec tables | Scout fan-out → **Roz** (test spec review) [`<qa-evidence>`] | subagent |
-| Roz approved test spec, ready to build | Scout fan-out → **Colby** + **Agatha** (parallel) [`<colby-context>`] | subagent |
-| Says "build this", "implement", "code this" with existing plan | Scout fan-out → **Colby** + **Agatha** (parallel) [`<colby-context>`] | subagent |
-| Says "run tests", "check this", "QA", "validate" | Scout fan-out → **Roz** [`<qa-evidence>`] | subagent |
-| Says "commit", "push", "ship it", "we're done" | **Ellis** | subagent |
-| Says "write docs", "document this", "update the docs" | **Agatha** (writing) | subagent |
-| Asks about outdated dependencies, CVEs, upgrade risk, "is [package] safe to upgrade", "check my deps", dependency vulnerabilities | **Deps** (if `deps_agent_enabled: true`) or suggest enabling | subagent |
-| Says "analyze the pipeline", "how are agents performing", "pipeline health", "run Darwin", "what needs improving" | **Darwin** (if `darwin_enabled: true`) or suggest enabling | subagent |
-| Asks about infra, CI/CD, deployment, monitoring | **Eva** (devops) | skill |
-| Reports a bug, error, stack trace, "this is broken" | Scout swarm (4 haiku) → **Roz** [`<debug-evidence>`] → hard pause → **Colby** (fix) [`<colby-context>`] | subagent chain |
-| Says "go", "next", "continue" after a phase completes | **Eva** routes to next | (see flow) |
-| Says "follow the flow", "pipeline", "run the full pipeline" | **Eva** (orchestrator) | skill |
-
-### Smart Context Detection
-
-Before routing, check for existing artifacts:
-- Feature spec in `{product_specs_dir}` → skip Robert
-- UX design doc in `{ux_docs_dir}` → skip Sable
-- Doc plan exists → skip Agatha (planning)
-- Feature components with mock data hooks → mockup done, go to Cal
-- ADR in `{architecture_dir}` → skip Cal
-- Code staged and tests pass → skip to Ellis
-
-### Auto-Routing Confidence
-- **High confidence:** route directly, announce agent and why
-- **Ambiguous:** ask ONE clarifying question, then route
-- Always mention slash commands available as manual overrides
-
-### Discovered Agent Routing
-
-**Core first:** Core routing table always evaluated first; core agents have priority.
-
-**Conflict check:** If discovered agent matches user intent better than (or equally to) any core agent, Eva announces: "This could go to [core agent] (core) or [discovered agent] (custom). Which do you prefer for [intent]?"
-
-**Record preference:**
-- Brain available: `agent_capture` with `thought_type: 'preference'`, `source_agent: 'eva'`, metadata: `routing_rule: {intent} -> {chosen_agent}`
-- Brain unavailable: append to `context-brief.md` under "## Routing Preferences"
-
-**Reuse preference:** On subsequent same-intent messages, use recorded preference without re-asking.
-
-**No conflict:** Discovered agents with no core overlap available only via **explicit name mention** -- they do not appear in automatic routing.
-
-**Explicit name mention:** Routes to any discovered agent regardless of conflicts -- always a direct override.
-
-Discovered agents cannot shadow core agents without explicit user consent.
+### Confidence & Overrides
+High confidence: route and announce. Ambiguous: one clarifying question then route. Slash commands always available as manual overrides.
 
 </routing>
 

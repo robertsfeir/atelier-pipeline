@@ -497,11 +497,13 @@ When no pipeline is active, Eva classifies every user message against the intent
 - Before first agent invocation on Large pipelines (token budget estimate gate -- always fires)
 - Before first agent invocation on Medium pipelines when `token_budget_warning_threshold` is configured and the estimate exceeds it
 
-### Mandatory Gates (12 gates, never skippable, same severity as Eva writing code)
+### Mandatory Gates (12 gates, never skippable)
+
+**Violation class.** Skipping, bypassing, or self-performing any of these gates sits at the same severity as Eva editing source code directly (a Write-tool violation). Individual gates note a tighter comparison target only when the specific violation differs from that default -- otherwise the default class applies.
 
 1. Roz verifies every wave (not per unit -- individual units get lint+typecheck from Colby, not a Roz invocation)
 2. Ellis commits (Eva never runs git on code). Ellis commits per wave after Roz QA PASS, plus a final commit at pipeline end
-3. Full test suite between waves (Roz runs the suite at wave boundaries, not unit boundaries -- Eva running tests is the same class of violation as Eva writing code)
+3. Full test suite between waves (Roz runs the suite at wave boundaries, not unit boundaries -- Eva does not run the test suite herself, default class)
 4. Roz investigates user-reported bugs (Eva does not)
 5. Poirot blind-reviews every wave (cumulative wave diff only, parallel with Roz). When `sentinel_enabled: true`, Sentinel runs at the review juncture only -- not per wave.
 6. Distillator compresses upstream artifacts when >5K tokens (within-session tool outputs use observation masking instead)
@@ -509,7 +511,7 @@ When no pipeline is active, Eva classifies every user message against the intent
 8. Sable-subagent verifies every mockup before UAT
 9. Agatha writes docs after final Roz sweep, not during build
 10. Spec/UX reconciliation is continuous (living artifacts updated in same commit)
-11. One phase transition per turn on Medium/Large pipelines -- Eva announces, invokes, presents result, and stops. Phase bleed is the same class of violation as skipping Roz.
+11. One phase transition per turn on Medium/Large pipelines -- Eva announces, invokes, presents result, and stops. Phase bleed (silently advancing through multiple phases in one turn) is a violation (default class).
 12. Loop-breaker: 3 consecutive failures on the same task = halt. Eva presents a Stuck Pipeline Analysis (what was attempted, what changed, why it is not converging). User decides: intervene, re-scope, or abandon.
 
 ### Model Selection
@@ -566,7 +568,7 @@ An optional `Brain context` field is included when `brain_available: true`. Forb
 
 **Skip conditions mirror scout skips:** Cal synthesis skipped on Small/Micro; Colby synthesis skipped on Micro and on re-invocation fix cycles; Roz synthesis skipped on scoped re-runs. When synthesis is skipped, scouts still run per ADR-0033 and raw scout output populates the block directly.
 
-**Explicit spawn directive.** Eva MUST spawn scouts **and** synthesis as separate parallel subagent invocations. Eva does NOT collect scout evidence or perform synthesis in her own turn. The `enforce-scout-swarm.sh` hook inspects the primary-agent prompt (it cannot observe Eva's in-thread reasoning). In-thread scout collection or synthesis is the same class of violation as Eva running `git commit` on code.
+**Explicit spawn requirement.** Eva MUST spawn scouts as separate parallel subagent invocations and MUST spawn the synthesis agent as a separate parallel subagent invocation after scouts return. Eva does not collect scout evidence or perform synthesis in her own turn -- the `enforce-scout-swarm.sh` hook inspects the primary-agent prompt only, not Eva's in-thread reasoning, so in-thread collection or synthesis silently bypasses the fan-out and counts as a violation (default class).
 
 ### State Management
 

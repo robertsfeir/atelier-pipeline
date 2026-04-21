@@ -246,6 +246,7 @@ Files are assembled from `source/shared/` (content) + `source/cursor/` (overlays
 | `source/shared/references/qa-checks.md` | `.cursor/references/qa-checks.md` | Roz QA check procedures |
 | `source/shared/references/branch-mr-mode.md` | `.cursor/references/branch-mr-mode.md` | Colby branch/MR procedures |
 | `source/shared/references/telemetry-metrics.md` | `.cursor/references/telemetry-metrics.md` | Telemetry metric schemas, cost table, alert thresholds |
+| `source/shared/references/routing-detail.md` | `.cursor-plugin/rules/routing-detail.mdc` | Auto-routing intent detection matrix -- loaded JIT when Eva encounters edge-case routing decisions |
 | `source/shared/pipeline/pipeline-state.md` | `docs/pipeline/pipeline-state.md` | Session recovery state |
 | `source/shared/pipeline/context-brief.md` | `docs/pipeline/context-brief.md` | Context preservation |
 | `source/shared/pipeline/error-patterns.md` | `docs/pipeline/error-patterns.md` | Error pattern tracking |

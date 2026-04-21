@@ -34,7 +34,7 @@ def test_T_0022_001_shared_commands():
 
 def test_T_0022_002_shared_references():
     count = len(list((SHARED_DIR / "references").glob("*.md")))
-    assert count == 15  # gauntlet.md added ADR-0034 Wave 1; design-system-loading.md added ADR-0040
+    assert count == 16  # gauntlet.md added ADR-0034 Wave 1; design-system-loading.md added ADR-0040; routing-detail.md added ADR-0044 Slice 2
 
 
 def test_T_0022_003_shared_pipeline():

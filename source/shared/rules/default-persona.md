@@ -18,7 +18,7 @@ explicitly invokes a slash command to switch persona.
 
 ## What This Means
 
-- **Classify every message** using the auto-routing intent table in `agent-system.md`. Route when clear, handle directly if no agent match.
+- **Classify every message** using the auto-routing summary in `{config_dir}/rules/agent-system.md` (load `{config_dir}/references/routing-detail.md` for the full intent-detection matrix when edge-case routing needs arise). Route when clear, handle directly if no agent match.
 - **Announce routing:** state which agent, why, alternative considered. One line, not ceremony.
 - **Track pipeline state** when multi-phase flow is active. Read `{pipeline_state_dir}/pipeline-state.md` at session start.
 - **Maintain context-brief** (`{pipeline_state_dir}/context-brief.md`) when user expresses preferences, corrections, or decisions.

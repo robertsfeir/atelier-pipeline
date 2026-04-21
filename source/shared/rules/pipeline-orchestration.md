@@ -110,8 +110,13 @@ Micro: `Telemetry: {invocation_count} invocations, {total_duration_min} min`. Co
 
 Eva manages phase transitions. Some phases are skippable based on sizing
 (see agent-system.md). These twelve gates are NEVER skippable. No exceptions.
-No "it's just a small fix." No "I'll run tests later." Violating these is
-the same severity as Eva editing source code.
+No "it's just a small fix." No "I'll run tests later."
+
+**Violation class.** Skipping, bypassing, or self-performing any of the twelve
+gates below is the same severity as Eva editing source code (Write tool
+violation). Individual gates note a tighter comparison target in parentheses
+only when the specific violation differs from the default (e.g., gate 5's
+"invocation error" tag). Otherwise the default class applies.
 
 1. **Roz verifies every wave.** After all units in a wave are built, Roz
    QA reviews the wave's cumulative changes. Individual units get
@@ -123,8 +128,8 @@ the same severity as Eva editing source code.
    or `git push` on code changes. Eva hands the diff to Ellis. Ellis
    analyzes the full diff, writes a narrative commit message, and gets user
    approval before the **final commit and push**. Per-wave commits during
-   the build phase auto-advance after Roz QA PASS. Eva running `git commit`
-   is the same class of violation as Eva using the Write tool on source files.
+   the build phase auto-advance after Roz QA PASS. Eva running `git commit` is
+   a violation (default class).
 
    At pipeline end, Eva includes `worktree_path`, `branch_name`, and
    `main_repo_path` in Ellis's invocation `<constraints>` for worktree
@@ -141,10 +146,8 @@ the same severity as Eva editing source code.
 3. **Full test suite between waves.** After merging wave changes, Roz
    runs the full test suite (`{test_command}`) on the integrated codebase.
    Individual units within a wave get lint+typecheck only. Roz runs the
-   full suite at wave boundaries, not unit boundaries. Eva invokes Roz
-   for this verification -- Eva does not run the test suite herself. Eva
-   running test commands is the same class of violation as Eva using the
-   Write tool on source files.
+   full suite at wave boundaries, not unit boundaries. Eva invokes Roz for
+   this verification -- Eva does not run the test suite herself (default class).
 
    Note (Agent Teams): When Agent Teams is active, Teammates run lint but
    NOT the full test suite. Roz runs the full test suite on the integrated
@@ -165,12 +168,12 @@ the same severity as Eva editing source code.
 5. **Poirot blind-reviews every wave (parallel with Roz).** After all
    units in a wave are built, Eva invokes Poirot with the wave's cumulative
    `git diff` -- no spec, no ADR, no context. This runs in PARALLEL with
-   Roz's wave QA. Eva triages findings from both agents before routing
-   fixes to Colby. Skipping Poirot is the same class of violation as
-   skipping Roz. "It's a small change" is not an excuse. If Eva invokes
-   Poirot with anything beyond the raw diff, that is an invocation error
-   -- same severity as embedding a root cause theory in a TASK field.
-   Sentinel runs at the review juncture only, not per-wave (see gate 7).
+   Roz's wave QA. Eva triages findings from both agents before routing fixes to Colby.
+   Skipping Poirot is a violation (default class -- "it's a small change"
+   is not an excuse). Invoking Poirot with anything beyond the raw diff is
+   an invocation error (tighter class: same as embedding a root-cause
+   theory in a TASK field). Sentinel runs at the review juncture only, not
+   per-wave (see gate 7).
 
    Note (Agent Teams): When Agent Teams is active, Poirot blind-reviews the
    cumulative wave diff after all Teammates' worktrees are merged into the
@@ -199,8 +202,7 @@ the same severity as Eva editing source code.
    Robert-subagent receives ONLY the spec and implementation code -- no ADR,
    no UX doc, no Roz report. On Small: Eva invokes Robert-subagent only
    if Roz flags doc impact AND an existing spec is found for the feature.
-   Skipping Robert-subagent on Medium/Large is the same class of violation
-   as skipping Poirot.
+   Skipping Robert-subagent on Medium/Large is a violation (default class).
 
 8. **Sable-subagent verifies every mockup before UAT.** After Colby builds
    a mockup, Eva invokes Sable-subagent to verify the mockup against the
@@ -221,20 +223,18 @@ the same severity as Eva editing source code.
     or Sable-subagent flags DRIFT, Eva presents the delta to the user.
     Human decides: update the living artifact or fix the code. Eva invokes
     Robert-skill (spec update) or Sable-skill (UX doc update) as directed.
-    Updated artifacts ship in the same commit as code. No deferred cleanup.
-    "We'll update the spec later" is the same class of violation as
-    skipping Roz.
+    Updated artifacts ship in the same commit as code. No deferred cleanup --
+    "we'll update the spec later" is a violation (default class).
 
 11. **One phase transition per turn (Medium/Large).** On Medium and Large
     pipelines, Eva performs exactly one phase transition per response. She
     announces the transition, invokes the agent, presents the result, and
     stops. She does not chain multiple phase transitions in a single
     response. On Small pipelines, Eva may chain transitions when no user
-    decision is required between them. "Auto-advance" means logging status
-    and moving to the next phase -- it does not mean skipping the pause
-    between response boundaries. Phase bleed (silently advancing through
-    multiple phases in one turn) is the same class of violation as
-    skipping Roz.
+    decision is required between them. "Auto-advance" means logging status and moving to the next phase -- it does
+    not mean skipping the pause between response boundaries. Phase bleed
+    (silently advancing through multiple phases in one turn) is a violation
+    (default class).
 
 12. **Loop-breaker: 3 failures = halt.** If a subagent (Colby or Roz)
     fails the same task 3 times (3 consecutive Roz FAIL verdicts on the
@@ -607,7 +607,7 @@ Eva fans out Explore+haiku agents in parallel before invoking Cal, Roz, or Colby
 
 **Invocation:** `Agent(subagent_type: "Explore", model: "haiku")`. Facts only — no design opinions. Dedup rule: each file read by at most one scout.
 
-**Explicit spawn requirement:** Eva MUST spawn scouts as separate parallel subagent invocations. Eva MUST spawn the synthesis agent as a separate parallel subagent invocation after scouts return for Cal, Colby, or Roz. Eva does NOT collect scout evidence in her own turn. Eva does NOT synthesize in her own turn. Performing either task in-thread silently bypasses the fan-out and the scout-swarm hook cannot detect the bypass (the hook inspects the primary-agent prompt; it does not observe Eva's in-thread reasoning). In-thread scout collection or synthesis is the same class of violation as Eva running `git commit` on code.
+**Explicit spawn requirement.** Eva MUST spawn scouts as separate parallel subagent invocations and MUST spawn the synthesis agent as a separate parallel subagent invocation after scouts return for Cal, Colby, or Roz. In-thread scout collection or synthesis silently bypasses the fan-out -- the scout-swarm hook inspects the primary-agent prompt only, not Eva's reasoning -- and is a violation (default class).
 
 #### Per-Agent Configuration
 
@@ -777,7 +777,7 @@ After Sable completes the UX doc, Colby builds a **mockup** (real UI, mock data)
 - ADRs are immutable. Cal writes a new ADR to supersede; original marked "Superseded by ADR-NNN."
 - All commits follow Conventional Commits with narrative body. {changelog_file} in Keep a Changelog format.
 - **No mock data in production code paths.** Mock data only on mockup routes for UAT. Cal flags wiring in ADR. Colby never promotes without real APIs. Roz greps for `MOCK_`, `INITIAL_`, hardcoded arrays -- BLOCKER if found.
-- **Agatha's divergence report ships in the pipeline report.** Agatha's Divergence Report (code-vs-docs gaps) must be summarized in `{pipeline_state_dir}/pipeline-state.md`. Silently dropped divergence findings are the same class of violation as skipping spec reconciliation.
+- **Agatha's divergence report ships in the pipeline report.** Agatha's Divergence Report (code-vs-docs gaps) must be summarized in `{pipeline_state_dir}/pipeline-state.md`. Silently dropped divergence findings are a violation (same class as skipping spec reconciliation).
 
 </gate>
 
