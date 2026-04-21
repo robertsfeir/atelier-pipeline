@@ -24,8 +24,8 @@ signal only; it does not set the model.
 |------|------------|-------|-------------|----------------|--------------------------|
 | Tier 1 | Mechanical -- no reasoning | Sonnet / Haiku | low | Ellis, Explore (haiku), Distillator, brain-extractor | -- (stays low) |
 | Tier 2 | Supporting reasoning -- review / acceptance / compliance / synthesis | Sonnet / Opus | medium | Robert (acceptance), Sable (acceptance), Sentinel, Agatha, Synthesis, Colby (rework), Colby (first-build Small) | Read-only / mechanical -- -1 rung (floor low) |
-| Tier 3 | Critical-path reasoning -- creates / verifies shipped artifact | Opus | high / medium | Colby (first-build Medium+), Poirot, Darwin | Poirot at final juncture (-> xhigh) |
-| Tier 4 | Architectural design | Opus | xhigh | Sarah | (already at ceiling; `xhigh` is the ceiling value) |
+| Tier 3 | Critical-path reasoning -- creates / verifies shipped artifact | Opus | high / medium | Colby (first-build Medium+), Poirot, Darwin | (no further promotion -- `high` is ceiling) |
+| Tier 4 | Architectural design | Opus | high | Sarah | (already at ceiling; `high` is the ceiling value) |
 
 </model-table>
 
@@ -37,10 +37,8 @@ At `medium`, adaptive-thinking capacity is bounded
 even when the model wants to reach for more -- appropriate for coverage-oriented
 review where over-reading inflates false positives (Poirot standard review). At `high`,
 full adaptive thinking is available -- appropriate for execution with branching
-sub-decisions (Colby first-build, Poirot standard review). At `xhigh`, the
-model deliberates fully -- the default for coding and architecture (Sarah,
-Poirot at final juncture). `max` is evaluation-only: prone to overthinking and
-degraded production output. Ceiling stays `xhigh`.
+sub-decisions (Colby first-build, Poirot standard review). `max` is evaluation-only: prone to overthinking and
+degraded production output. Ceiling stays `high`. `xhigh` and `max` are forbidden on production workloads -- both cause excessive context burn without quality gain.
 
 <model-table id="promotion-signals">
 
@@ -48,7 +46,6 @@ degraded production output. Ceiling stays `xhigh`.
 
 | Signal | Applies to tier | Effect |
 |--------|-----------------|--------|
-| Poirot at final-juncture blind review | 3 only | +1 rung (high -> xhigh) |
 | Task is read-only evidence collection (no ADR, no code) | 2 | -1 rung (floor low) |
 | Task is mechanical (format, rename, config-only) | 2, 3 | -1 rung (floor low) |
 
@@ -57,14 +54,14 @@ degraded production output. Ceiling stays `xhigh`.
 1. Promotions stack to a maximum of one rung above base per signal. If two
    signals both apply, effort still goes up exactly one rung (not two). The
    table is not additive; signals are existence-checks, not scores.
-2. **Floor: `low`. Ceiling: `xhigh`.** Effort is never below `low` and never
-   above `xhigh`. Demotions cannot take effort below the floor; promotions
-   cannot take it above the ceiling. **`max` is forbidden** (see Enforcement
+2. **Floor: `low`. Ceiling: `high`.** Effort is never below `low` and never
+   above `high`. Demotions cannot take effort below the floor; promotions
+   cannot take it above the ceiling. **`xhigh` and `max` are forbidden** (see Enforcement
    Rule 5).
 3. Tier 1 effort does not adjust -- base `low` is both floor and ceiling for
    this tier. The pattern-matching surface is bounded; more effort does not
    rescue mechanical misapplication, and demotion below `low` is impossible.
-4. Tier 4 (Sarah) is already at `xhigh` base; further signals have no effect.
+4. Tier 4 (Sarah) is already at `high` base; further signals have no effect.
 
 </model-table>
 
@@ -77,10 +74,10 @@ tool invocation based on this table plus the promotion signals above.
 
 | Agent | Tier | Base model | Base effort | Rationale (one line) |
 |-------|------|------------|-------------|----------------------|
-| **Sarah** | 4 | opus | xhigh | Architectural deliberation dominates pattern-matching; thinking tokens pay for themselves |
+| **Sarah** | 4 | opus | high | Architectural deliberation dominates pattern-matching; `high` is sufficient for ADR-scale deliberation |
 | **Colby** | 3 (build) / 2 (rework, small first-build) | opus | high / medium | Critical-path artifact; high exposes adaptive thinking on execution sub-decisions |
 
-| **Poirot (investigator)** | 3 | opus | high (xhigh at final juncture) | Blind diff review; final juncture = last defense, deliberation worth it |
+| **Poirot (investigator)** | 3 | opus | high | Blind diff review; `high` is ceiling, no further promotion |
 | **Sherlock** | 3 | opus | high | Diagnose-only bug hunt with fresh general-purpose isolation; no final-juncture promotion (runs before fix, not at review); isolation from session context is the load-bearing property |
 | **Robert (acceptance)** | 2 | sonnet | medium | Spec-vs-implementation diff; structured review is Sonnet-capable |
 | **robert-spec (producer)** | 2 | opus | medium | Spec authoring requires generative capability |
@@ -106,7 +103,7 @@ For every Agent tool invocation:
 2. Look up the base `model` + base `effort` in the Per-Agent Assignment Table.
 3. Apply promotion signals from the Promotion Signals table; effort moves by
    at most one rung regardless of how many signals fire.
-4. Clamp to the floor (`low`) and ceiling (`xhigh`). `max` is forbidden.
+4. Clamp to the floor (`low`) and ceiling (`high`). `xhigh` and `max` are forbidden.
 5. Set `model` and `effort` explicitly on the Agent tool call. Omission is a
    violation of the enforcement gate below.
 
@@ -133,10 +130,9 @@ For every Agent tool invocation:
    mid-flight (e.g., Small escalates to Medium after discovering scope), all
    subsequent invocations use the new sizing's tier / signal lookup.
    Already-completed invocations are not re-run.
-5. **max effort is forbidden.** Per Anthropic's Opus 4.7 adaptive-thinking
-   guidance, `max` is evaluation-only: prone to overthinking and degraded
-   output on production workloads. Ceiling is `xhigh`. Eva MUST NOT invoke
-   any agent at `effort: max`. Hypothetical invocations with `max` in a draft
-   prompt are a configuration error, same class as omitting `effort`.
+5. **`xhigh` and `max` effort are forbidden.** Per Anthropic's Opus 4.7 adaptive-thinking
+   guidance and tokenizer regression research, both `xhigh` and `max` cause excessive
+   context burn on production workloads without quality gain. Ceiling is `high`. Eva MUST NOT invoke
+   any agent at `effort: xhigh` or `effort: max`. Hypothetical invocations with either value are a configuration error, same class as omitting `effort`.
 
 </gate>

@@ -23,17 +23,14 @@ reading here and follow your persona's `<workflow>` section.
    requirement, edge case, and acceptance criterion. If the artifact is
    vague, note it in DoR rather than silently interpreting.
 
-3. **Review retro lessons** from `.claude/references/retro-lessons.md`.
-   Note relevant lessons in DoR under "Retro risks."
-
-4. **Review brain context** if provided in your invocation via the
+3. **Review brain context** if provided in your invocation via the
    `<brain-context>` tag. Check for relevant prior decisions, patterns,
    and lessons. Factor them into your approach. (Agents operating under
    information asymmetry constraints -- Poirot, Distillator -- skip this.)
    Brain capture is handled mechanically by the brain-extractor hook after
    you complete -- you do not call `agent_capture` directly.
 
-5. **DoD last.** Coverage verification showing every DoR item with status
+4. **DoD last.** Coverage verification showing every DoR item with status
    Done or Deferred with explicit reason per `.claude/references/dor-dod.md`.
 
 </preamble>
@@ -53,7 +50,7 @@ Darwin, and any discovered producer) follows these two rules on return:
    observation-masking protocol
    (`.claude/rules/pipeline-orchestration.md`) is wasted. Each persona's
    `<output>` section defines the exact one-liner format; emit that format,
-   nothing more.
+   nothing more. Terse returns are not just polite -- they are load-bearing. Every extra sentence crosses the subagent context firewall and burns Eva's context budget.
 
 2. **`file:line` citations for code claims.** Any claim about existing
    code (a bug, a pattern, a contract shape, an integration point) includes

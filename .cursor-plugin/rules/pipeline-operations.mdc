@@ -35,11 +35,8 @@ Eva captures cross-cutting concerns only (best-effort).
 
 Sarah's ADR steps become work units grouped into waves. Colby writes tests when Sarah names a failure mode per wave, Colby implements per unit, QA runs per wave.
 
-**Pre-build test authoring (per wave, not per unit):**
-1. Eva invokes Poirot in Test Authoring Mode for ALL units in the wave at once
-2. Poirot reads Sarah's test spec for all wave units + existing code + product spec
-3. Poirot writes test files for the entire wave -- concrete assertions per unit
-4. Tests are expected to fail -- they define the target state for the wave
+**Test authoring (Colby, when ADR names a failure mode):**
+Colby writes tests only when Sarah's ADR step explicitly names a failure mode or acceptance criterion that is verifiable in code. Colby does not write structural pinning tests. Tests are written as part of the build unit -- not in a separate pre-build pass.
 
 **Build (per unit within wave):**
 1. Eva invokes Colby for each unit sequentially (or via Agent Teams in parallel)
@@ -142,13 +139,12 @@ issues in this module that you've missed 3 times. Extra scrutiny warranted."
 | UAT feedback (spec change) | Robert -> Sable -> re-mockup -> Sable-subagent verify |
 | UAT feedback (UX flow change) | Sable -> re-mockup -> Sable-subagent verify |
 | Sable-subagent mockup DRIFT | Colby mockup fix -> Sable-subagent re-verify |
-| Poirot test spec gaps | Sarah subagent (revise)  (re-review) |
 | Poirot code QA (minor) | Colby fix  scoped re-run |
 | Poirot code QA (structural) | Sarah subagent (revise) -> Colby  full run |
 | Robert-subagent spec DRIFT | Hard pause -> human decides -> Robert-skill updates spec OR Colby fixes code |
 | Sable-subagent UX DRIFT | Hard pause -> human decides -> Sable-skill updates UX doc OR Colby fixes code |
 | CI/CD issue | Colby (config) or Sarah subagent (architectural) |
-| User reports a bug | Poirot (investigate + diagnose) -> Colby (fix)  (verify) |
+| User reports a bug | Sherlock (investigate + diagnose) -> hard pause -> Colby (fix) -> Poirot (verify) |
 | CI failure (watched) | Poirot (CI investigate) -> Colby (CI fix)  (CI verify) -> hard pause -> Ellis (push fix) -> re-watch |
 
 </section>
@@ -162,6 +158,24 @@ user if they want to loop that agent back in:
 - Sarah questions Robert's spec -> "Want me to check with Robert on this?"
 - Sable's design implies arch changes -> "Sarah should weigh in. Loop him in?"
 - Poirot finds a spec gap -> "This traces back to the spec. Want Robert to clarify?"
+
+</section>
+
+<section id="context-hygiene-compact">
+
+## Context Hygiene
+
+Claude Code's tokenizer has a ~1.35x code/JSON regression in Claude 4.x. Long pipeline sessions accumulate context fast.
+
+**When to run `/compact`:**
+- After any agent returns with a large artifact (ADR, full spec, long diff)
+- When Eva's response quality feels sluggish or repetitive
+- Between waves on Large pipelines
+- Before invoking Sarah or Colby on a Medium+ pipeline
+
+**How it works:** `/compact` compresses prior messages using a summary. Pipeline state is preserved in `docs/pipeline/pipeline-state.md` for recovery. After `/compact`, Eva re-reads pipeline-state.md to restore context.
+
+**Automatic compaction:** Claude Code's runtime also compacts automatically. This is expected behavior -- not a sign of failure. Eva recovers via pipeline-state.md.
 
 </section>
 

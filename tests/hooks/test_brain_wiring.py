@@ -97,7 +97,7 @@ def test_T_0021_064_preamble_step_order():
     text = (SHARED_REFS / "agent-preamble.md").read_text()
     assert "DoR first" in text
     assert "upstream artifacts" in text
-    assert "retro lessons" in text
+    assert "retro lessons" not in text, "retro-lessons.md was deleted in v4.0; step must be removed"
     assert re.search(r"brain context", text, re.IGNORECASE)
     assert "DoD last" in text
     dor = text.index("DoR first")
