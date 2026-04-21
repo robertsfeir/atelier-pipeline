@@ -3,6 +3,29 @@
 <!-- PIPELINE_STATUS: {"phase": "idle", "sizing": null, "roz_qa": null, "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": false, "robert_reviewed": false, "brain_available": false, "stop_reason": "completed_clean"} -->
 
 ## Prior Pipeline (closed)
+**Feature:** Update ADR-0042 Roz structural hash baseline (pre-push fix)
+**Phase:** idle
+**Stop Reason:** completed_clean
+**Sizing:** Micro
+**Opened:** 2026-04-20
+**Closed:** 2026-04-20
+**Commit:** (see commit log)
+
+**Scope:** Test-fixture maintenance. Update two hex strings in `tests/fixtures/adr_0042_baselines.py`:
+- `CHANGED_AGENT_STRUCTURAL_HASHES["roz"]["claude"]`: `e46543d4…3f2` → `c4ab9a22…b34`
+- `CHANGED_AGENT_STRUCTURAL_HASHES["roz"]["cursor"]`: `3ce2d101…a2b` → `298e317e…17c`
+
+**Rationale:** ADR-0042's T_0042_019[roz] test locks a structural hash over Roz's frontmatter (stripping model:/effort: lines). The Roz maxTurns 15→50 bump landed in commit 1cda942 legitimately changed the hash. Update the baseline to match.
+
+**Why now (before push):** We committed 3.38.0 locally as ff3b645. Pushing would ship a red test to CI. Fix the baseline first so the release commit arrives green.
+
+**Micro skips:** scout fan-out, brain capture T2/T3, budget estimate gate. Roz full suite as safety valve (T_0042_019[roz] flip from red to green is the primary signal).
+
+**Status:** Ellis commit complete. Push pending user confirmation (all four commits together: 1cda942, 8fd1e4f, ff3b645, this commit).
+
+---
+
+## Prior Pipeline (closed)
 **Feature:** v3.38.0 release — version bump + CHANGELOG
 **Phase:** idle
 **Stop Reason:** completed_clean

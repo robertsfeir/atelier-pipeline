@@ -49,9 +49,10 @@ MDC_WRAPPER_SNAPSHOT = (
 # Verifies no non-model/effort fields were modified during the ADR-0042 edits.
 # ---------------------------------------------------------------------------
 CHANGED_AGENT_STRUCTURAL_HASHES: dict[str, dict[str, str]] = {
+    # Updated 2026-04-20: baseline refreshed after commit 1cda942 bumped maxTurns 15->50.
     "roz": {
-        "claude": "e46543d4683476f57291ecde3169f8a83aca9ea750d2b696d83feaca99df63f2",
-        "cursor": "3ce2d1013033687c7535e56714473d7b0efca28a08be799cc30ec52c27d4aa2b",
+        "claude": "c4ab9a22f5a08c9579db7ed3d69a57002c85ae9cd9ae5dd9dfadaa2cf9866b34",
+        "cursor": "298e317e4157f37f06446d53994af6be49ec673530a3d65dff5a27fe303d617c",
     },
     "robert": {
         "claude": "fcb2c32933ceec272d881af7109e8d0da445fbb5bcbe564d5a5b2819cd67b1db",
