@@ -5,6 +5,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.41.0] - 2026-04-21
+
+### Added
+
+- **ADR-0045: Sherlock subagent** — New blind-investigator agent (`source/shared/agents/sherlock.md` + Claude/Cursor overlays + installed mirrors) dedicated to bug investigation. Sherlock owns the Investigation Mode block previously in Roz's persona, receives all user-reported bug work via Mandatory Gate 4 rewrite, and returns structured case files (symptom → evidence → root cause at `file:line`) without fixing anything. Roz returns to test authorship and QA-pass verification only.
+- **ADR-0045 slice 4 — instruction-budget amputation**: Removed 5 slash commands (`debug`, `darwin`, `deps`, `create-agent`, `telemetry-hydrate` × 5 install locations), 2 agent personas (`darwin`, `deps` × 5 install locations), 3 skill directories (`skills/dashboard`, `skills/pipeline-overview`, `skills/load-design`), and 2 Cursor skill mirrors. Dropped `darwin_enabled` and `deps_agent_enabled` flags from `pipeline-config.json`. Agent roster, routing summary, no-skill-tool tables, and per-agent model table updated across all mirrors.
+- **50-case pytest suite** `tests/adr-0045/test_adr_0045.py` covering Sherlock file presence, persona structure, route-table entries, deleted-artifact absence, and Mandatory Gate 4 content; most cases green.
+
+### Changed
+
+- **Mandatory Gate 4** (`pipeline-orchestration.md` + mirror): rewritten to route all user-reported bug investigation through Sherlock. Eva invokes Sherlock first; Sherlock returns case file; hard pause; user approves; Colby fixes; Roz verifies green.
+- **Eva user-bug-flow protocol** (`default-persona.md` + mirror): updated to invoke Sherlock rather than routing directly to Roz/Colby.
+- **`skills/pipeline-setup/SKILL.md`**: Step 1a folds design-system path detection; Steps 6d/6e/6f (darwin/deps/dashboard setup) removed and renumbered. Cursor mirror updated to match.
+- **`skills/pipeline-uninstall/SKILL.md`**: darwin/deps references dropped.
+
 ## [3.40.0] - 2026-04-21
 
 ### Added
