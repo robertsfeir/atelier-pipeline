@@ -1,3 +1,16 @@
+---
+name: investigator
+description: >
+  Default post-build verifier. Blind code investigator. Invoke with raw git
+  diff output -- no spec, no ADR, no context. Evaluates the diff on its own
+  terms and exercises the code where practical. 1-3 findings typical; zero
+  with confidence is acceptable.
+model: opus
+permissionMode: plan
+effort: high
+maxTurns: 40
+disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit
+---
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>

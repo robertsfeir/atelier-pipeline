@@ -1,3 +1,7 @@
+---
+name: devops # prettier-ignore
+description: Invoke Eva (DevOps) for infrastructure, deployment, CI/CD, monitoring, and operations questions outside the normal pipeline flow.
+---
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>

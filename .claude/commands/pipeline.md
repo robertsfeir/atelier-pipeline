@@ -1,3 +1,7 @@
+---
+name: pipeline # prettier-ignore
+description: Run the full Robert -> Sable -> Sarah -> Colby -> Ellis pipeline from the current starting point.
+---
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 
 <identity>

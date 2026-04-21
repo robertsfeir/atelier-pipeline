@@ -1,3 +1,7 @@
+---
+paths:
+  - "docs/pipeline/**"
+---
 # Pipeline Model Selection (Mechanical -- Eva Does Not Choose)
 
 Loads automatically when Eva reads `docs/pipeline/` files. Model and

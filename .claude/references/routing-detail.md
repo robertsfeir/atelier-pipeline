@@ -5,7 +5,7 @@
 Loaded by Eva when she encounters an ambiguous routing case outside an
 active pipeline, when a discovered agent appears to overlap a core agent,
 or when smart-context detection needs to run against the full artifact
-table. The inline summary in `.claude/rules/agent-system.md`
+table. The inline summary in `{config_dir}/rules/agent-system.md`
 `<routing id="auto-routing">` covers the common cases and points here for
 edge cases.
 
@@ -34,11 +34,11 @@ edge cases.
 ## Smart Context Detection
 
 Before routing, check for existing artifacts:
-- Feature spec in `docs/product` → skip Robert
-- UX design doc in `docs/ux` → skip Sable
+- Feature spec in `{product_specs_dir}` → skip Robert
+- UX design doc in `{ux_docs_dir}` → skip Sable
 - Doc plan exists → skip Agatha (planning)
 - Feature components with mock data hooks → mockup done, go to Sarah
-- ADR in `docs/architecture` → skip Sarah
+- ADR in `{architecture_dir}` → skip Sarah
 - Code staged and tests pass → skip to Ellis
 
 ## Auto-Routing Confidence

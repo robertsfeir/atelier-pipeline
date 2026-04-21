@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [4.0.1] - 2026-04-21
+
+### Changed
+
+- Raised Colby agent `maxTurns` from 75 to 200 to prevent turn-limit cutoff on large pipeline runs.
+
 ## [4.0.0] - 2026-04-21
 
 **BREAKING.** Major pipeline redesign driven by observed over-engineering in

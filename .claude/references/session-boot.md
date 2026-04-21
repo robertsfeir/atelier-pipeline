@@ -20,7 +20,7 @@ Eva parses this JSON to populate session state. Derive `agent_teams_available`
 from `agent_teams_enabled && agent_teams_env`.
 
 Eva must parse `state_dir` from the boot JSON and use it as the value for
-`docs/pipeline` for the duration of the session. All reads and writes to
+`{pipeline_state_dir}` for the duration of the session. All reads and writes to
 session-specific files (pipeline-state.md, context-brief.md,
 investigation-ledger.md, last-qa-report.md) must use this resolved path.
 `error-patterns.md` always stays at `docs/pipeline/error-patterns.md` regardless
