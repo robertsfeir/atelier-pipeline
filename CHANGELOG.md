@@ -87,6 +87,21 @@ post-build exercised-behavior contract.
 - **`docs/guide/user-guide.md`** and **`docs/guide/technical-reference.md`**
   updated for v4.0 agent roster, verification model, and scout sizing gate.
 
+- **`pipeline-orchestration.md` shrunk from 43.7k → 24.9k chars.** JIT-only
+  sections (investigation discipline, concurrent-session detection, state file
+  descriptions, phase sizing rules, budget estimate gate, worktree-per-session
+  protocol, telemetry capture) extracted to dedicated reference files:
+  `pipeline-phases.md`, `worktree-isolation.md`, and `telemetry-metrics.md`.
+  The always-loaded file now stays under the 40k performance threshold.
+- **Effort ceiling lowered from `xhigh` → `high` pipeline-wide.** Per
+  Anthropic tokenizer regression research (Claude 4.x ~1.35x code/JSON
+  overhead), `xhigh` causes excessive context burn on production workloads
+  without quality gain. Sarah drops from `xhigh` → `high`; Poirot's
+  final-juncture promotion (high→xhigh) removed. Both `xhigh` and `max` are
+  now forbidden (ceiling is `high`). Stale `retro-lessons.md` reference
+  removed from `agent-preamble.md`; `/compact` context hygiene guidance added
+  to `pipeline-operations.md`.
+
 ### Migration notes
 
 Downstream projects installing atelier-pipeline pull a breaking change:
