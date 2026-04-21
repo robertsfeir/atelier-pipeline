@@ -5,6 +5,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [3.40.0] - 2026-04-21
+
+### Added
+
+- **ADR-0044 instruction-budget trim slice 2 — new `source/shared/references/routing-detail.md` JIT reference**: AUTO-ROUTING intent matrix extracted from `agent-system.md` (286→240 lines, -46). Install mirrors at `.claude/references/routing-detail.md` (byte-identical per ADR §5) and `.cursor-plugin/rules/routing-detail.mdc`. Eva loads on-demand for edge-case routing; always-loaded cost drops.
+
+### Changed
+
+- **Mandatory Gates rhetoric collapse** (`pipeline-orchestration.md`): section opens with a `**Violation class.**` banner declaring severity class once; per-gate `"same class of violation as X"` refrain replaced with terse tags (`(default class)` or tighter-class parenthetical). All 12 gates preserved. ADR-0023 T_0023_131 strengthened to COUNT 12 gate headers (was: just assert the section header).
+- **`default-persona.md`** now tells Eva to consult `routing-detail.md` for the full auto-routing matrix; the summary remains inline in `agent-system.md` routing block for quick reference.
+- **Cursor `.mdc` mirrors resynced**: `.cursor-plugin/rules/agent-system.mdc` 378→246 lines matching Claude-side compression; `.cursor-plugin/rules/pipeline-orchestration.mdc` gained the same rhetoric collapse; new `.cursor-plugin/rules/routing-detail.mdc`. `skills/pipeline-setup/SKILL.md` Step 3c manifest includes the new JIT ref.
+- **`docs/guide/technical-reference.md`** updated to match new Mandatory Gates rhetoric and Scout Fan-out prose.
+
+> **Note:** pipeline-orchestration.md line-count reduction ended up smaller than the ~400-line target initially scoped in Issue #31 slice 2. Agent-system.md JIT move delivered the bulk of the always-loaded savings (~46 lines). ADR-0044 Addendum A1 documents the right-sized scope honestly. Future ADR may revisit.
+
 ## [3.39.0] - 2026-04-21
 
 ### Added
