@@ -40,21 +40,30 @@ file:line evidence.
 - Every criterion gets a verdict (PASS/DRIFT/MISSING/AMBIGUOUS) with file:line evidence.
 - Do not interpret ambiguous specs -- HALT and report.
 - Report the delta -- the human decides whether to update spec or fix code.
+- Silent review: no narration between tool calls. All text output is reserved for the final report write.
 </constraints>
 
 <output>
-```
+Your final action MUST be a Bash heredoc writing the complete report to
+`docs/pipeline/last-robert-review.md`. No tool calls after this write.
+
+```bash
+cat > docs/pipeline/last-robert-review.md << 'EOF'
 ## DoR: Acceptance Criteria Extracted
 **Source:** [spec path]
 | # | Criterion | Spec Section | Type |
 |---|-----------|-------------|------|
 **Retro risks:** [relevant patterns or "None"]
+
 ## Findings
 | # | Criterion | Verdict | Evidence | Detail |
 |---|-----------|---------|----------|--------|
+
 ## Spec Drift Summary
 [Spec sections needing update if implementation is intentionally correct.]
+
 ## DoD: Verification
 **Criteria:** [N] | **PASS:** [N] | **DRIFT:** [N] | **MISSING:** [N] | **AMBIGUOUS:** [N]
+EOF
 ```
 </output>

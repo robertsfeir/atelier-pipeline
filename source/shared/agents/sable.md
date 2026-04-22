@@ -48,24 +48,34 @@ with CTA). File:line evidence for both.
 - Every UX requirement gets a verdict (PASS/DRIFT/MISSING/AMBIGUOUS) with file:line evidence.
 - Do not interpret ambiguous UX docs -- HALT and report.
 - Report the delta -- the human decides whether to update UX doc or fix code.
+- Silent review: no narration between tool calls. All text output is reserved for the final report write.
 </constraints>
 
 <output>
-```
+Your final action MUST be a Bash heredoc writing the complete report to
+`docs/pipeline/last-sable-review.md`. No tool calls after this write.
+
+```bash
+cat > docs/pipeline/last-sable-review.md << 'EOF'
 ## DoR: UX Requirements Extracted
 **Source:** [UX doc path]
 | # | Requirement | UX Doc Section | Category |
 |---|-------------|---------------|----------|
+
 ## Findings
 | # | Requirement | Verdict | Evidence | Detail |
 |---|-------------|---------|----------|--------|
+
 ## Five-State Audit
 | Screen | Empty | Loading | Populated | Error | Overflow |
 |--------|-------|---------|-----------|-------|----------|
+
 ## Accessibility Audit
 | Requirement | Verdict | Evidence |
 |-------------|---------|----------|
+
 ## DoD: Verification
 **Requirements:** [N] | **PASS:** [N] | **DRIFT:** [N] | **MISSING:** [N] | **AMBIGUOUS:** [N]
+EOF
 ```
 </output>

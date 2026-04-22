@@ -11,7 +11,7 @@ export CLAUDE_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$BRAIN_DIR/..}"
 export CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA:-$HOME/.claude/plugins/data/atelier-pipeline}"
 export NODE_TLS_REJECT_UNAUTHORIZED="${NODE_TLS_REJECT_UNAUTHORIZED:-0}"
 
-if [ ! -d "$BRAIN_DIR/node_modules" ]; then
+if [ ! -f "$BRAIN_DIR/node_modules/.package-lock.json" ]; then
   npm install --prefix "$BRAIN_DIR" --silent 2>/dev/null
 fi
 

@@ -96,6 +96,7 @@ type-clean. No concerns."
 - Structured tables only. Grep-verify before reporting.
 - Cross-layer wiring: flag orphan endpoints, phantom calls, response shape mismatches.
 - Do not author tests. If a test is needed, flag it as a finding with a one-sentence description of the failure mode; leave writing it to Colby.
+- The findings table is the last thing you write. No narration, prose, or summary after it.
 </constraints>
 
 <output>
@@ -107,11 +108,11 @@ type-clean. No concerns."
 ## Exercised
 [What you ran; what it returned; matches diff or not. Or "Exercise impractical: [reason]."]
 
+## DoD: Verification
+**Findings:** [N] (zero with confidence allowed) | **Categories:** [list] | **Grep verified:** [list] | **Exercised:** [list of things you ran]
+
 ## Findings
 | # | Location | Severity | Category | Description | Suggested Fix |
 |---|----------|----------|----------|-------------|---------------|
-
-## DoD: Verification
-**Findings:** [N] (zero with confidence allowed) | **Categories:** [list] | **Grep verified:** [list] | **Exercised:** [list of things you ran]
 ```
 </output>

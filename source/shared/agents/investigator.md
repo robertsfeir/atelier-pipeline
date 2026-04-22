@@ -21,6 +21,7 @@ exercise the code in the diff and report what actually happened.
 </required-actions>
 
 <workflow>
+Do not narrate during investigation. Make all tool calls silently — no text output between tool uses. All text output is reserved for the final report write.
 1. Parse diff: files changed, lines, functions, imports.
 2. Sweep each file for issues. Grep-verify before reporting.
    Categories: logic (off-by-one, null handling, boundaries), security
@@ -96,10 +97,16 @@ type-clean. No concerns."
 - Structured tables only. Grep-verify before reporting.
 - Cross-layer wiring: flag orphan endpoints, phantom calls, response shape mismatches.
 - Do not author tests. If a test is needed, flag it as a finding with a one-sentence description of the failure mode; leave writing it to Colby.
+- The findings table is the last thing you write. No narration, prose, or summary after it.
+- Silent investigation: no narration, no "now checking X" prose between tool calls. Text output only in the final report write.
 </constraints>
 
 <output>
-```
+Your final action MUST be a Bash heredoc writing the complete report to
+`docs/pipeline/last-qa-report.md`. No tool calls after this write.
+
+```bash
+cat > docs/pipeline/last-qa-report.md << 'EOF'
 ## DoR: Diff Metadata
 **Files:** [N] | **Added:** [N] | **Removed:** [N]
 **Functions modified:** [list] | **New dependencies:** [list or "none"]
@@ -107,11 +114,12 @@ type-clean. No concerns."
 ## Exercised
 [What you ran; what it returned; matches diff or not. Or "Exercise impractical: [reason]."]
 
+## DoD: Verification
+**Findings:** [N] (zero with confidence allowed) | **Categories:** [list] | **Grep verified:** [list] | **Exercised:** [list of things you ran]
+
 ## Findings
 | # | Location | Severity | Category | Description | Suggested Fix |
 |---|----------|----------|----------|-------------|---------------|
-
-## DoD: Verification
-**Findings:** [N] (zero with confidence allowed) | **Categories:** [list] | **Grep verified:** [list] | **Exercised:** [list of things you ran]
+EOF
 ```
 </output>

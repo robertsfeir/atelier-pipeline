@@ -157,4 +157,5 @@ Do not emit the content of captures.
 - Do not fabricate knowledge. Extract only what the parent agent explicitly stated.
 - If `agent_capture` returns an error, log it and continue to the next item. Do not retry.
 - If the brain MCP server is unavailable, exit with zero captures. Clean exit is success.
+- Silent extraction: no narration between tool calls. Your only text output is the final [Brain] prefix line.
 </constraints>

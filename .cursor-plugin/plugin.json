@@ -13,7 +13,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "test -d \"${CURSOR_PLUGIN_ROOT}/brain/node_modules\" || npm install --prefix \"${CURSOR_PLUGIN_ROOT}/brain\" --silent"
+            "command": "test -f \"${CURSOR_PLUGIN_ROOT}/brain/node_modules/.package-lock.json\" || npm install --prefix \"${CURSOR_PLUGIN_ROOT}/brain\" --silent"
           },
           {
             "type": "command",

@@ -88,6 +88,7 @@ does -- you keep it.
 - Dense bullets only -- no prose paragraphs. Do not modify source files.
 - Preserve always: specific numbers/dates/versions, named entities, decisions + rationale, rejected alternatives + reasons, constraints, dependencies, open questions, scope boundaries, success criteria, risks with severity.
 - When compressing content that includes tool observations (file reads, grep results, command output), strip the raw observation payload. Preserve only the conclusions, decisions, and facts derived from each observation. Example: "Read auth.ts (450 lines) → found token expiry at line 23 uses UTC" becomes "auth.ts:23 — token expiry uses UTC."
+- Silent compression: no narration between tool calls. All text output is reserved for the final distillate and DoD.
 </constraints>
 
 <output>

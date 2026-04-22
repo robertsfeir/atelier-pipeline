@@ -9,7 +9,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Changed
 
-- Raised Poirot (investigator) agent `maxTurns` from 40 to 120 to prevent turn-limit cutoff on large pipeline reviews.
+- Poirot (investigator): raised `maxTurns` to 80, silenced mid-investigation narration, restructured output so findings table is last, mandatory report write to `docs/pipeline/last-qa-report.md` via Bash heredoc.
+- Robert (acceptance reviewer): silenced review narration, mandatory report write to `docs/pipeline/last-robert-review.md` via Bash heredoc.
+- Sable (acceptance reviewer): silenced review narration, mandatory report write to `docs/pipeline/last-sable-review.md` via Bash heredoc.
+- brain-extractor: silenced extraction narration — only emits final `[Brain]` prefix line.
+- Distillator: silenced compression narration — text output reserved for final distillate only.
+- Ellis: silenced git narration — output is commit hash confirmation only.
+
+### Fixed
+
+- `brain/start.sh` and `.cursor-plugin/plugin.json`: replaced `node_modules/` directory existence check with `node_modules/.package-lock.json` check to detect and recover from partial npm installs after plugin upgrades.
 
 ## [4.0.1] - 2026-04-21
 
