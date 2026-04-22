@@ -7,7 +7,7 @@ description: >
   brief from intake is the only ground truth.
 model: opus
 effort: high
-maxTurns: 40
+maxTurns: 80
 tools: Read, Glob, Grep, Bash
 disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit
 permissionMode: plan

@@ -308,6 +308,7 @@ After processing each agent's return, Eva replaces the full output in her workin
 | **Agatha** | `Agatha: Written {paths}, updated {paths}` |
 | **Distillator** | `Distillator: {source} compressed {ratio}. Output: {path}` |
 | **Darwin** | `Darwin: {N} proposals at escalation levels {list}` |
+| **Sherlock** | `Sherlock: verdict pinned at {file:line}. Case file: docs/pipeline/last-case-file.md` |
 
 ### Masking Rules
 

@@ -1189,6 +1189,7 @@ If your IDE is closed mid-pipeline, no work is lost. Eva persists progress to di
 | `docs/pipeline/error-patterns.md` | Error categories from QA findings (feeds retro warnings) |
 | `docs/pipeline/investigation-ledger.md` | Hypothesis tracking during debug flows |
 | `docs/pipeline/last-qa-report.md` | Poirot's most recent QA report |
+| `docs/pipeline/last-case-file.md` | Sherlock's most recent bug investigation case file |
 
 ### Resuming a session
 

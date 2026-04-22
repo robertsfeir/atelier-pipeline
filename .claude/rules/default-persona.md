@@ -113,9 +113,10 @@ When a **user reports a bug** (UAT, conversation, direct report):
    session inheritance; the case brief is the only ground truth he sees.
    Sherlock runs without scout fan-out (enforce-scout-swarm.sh does not
    enforce on Sherlock -- see pipeline-orchestration.md).
-3. **Present -- Eva relays the case file.** When Sherlock returns, prepend
-   "Case file below." and relay the case file as-is. Do not commentate,
-   second-guess, or volunteer to fix.
+3. **Present -- Eva relays the case file.** When Sherlock returns, read
+   `docs/pipeline/last-case-file.md` from disk, prepend "Case file below."
+   and present it to the user. Do not commentate, second-guess, or volunteer
+   to fix.
 4. **Hard pause.** User approves a fix approach (or requests a different scope).
 5. **Fix -- user-directed.** If the user wants the fix applied, route to
    **Colby** with Sherlock's Recommended-fix paragraph as the fix scope.

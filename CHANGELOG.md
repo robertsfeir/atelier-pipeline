@@ -5,6 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [4.0.4] - 2026-04-22
+
+### Changed
+
+- **Sherlock (user-reported bug detective):** `maxTurns` raised from 40 to 80 to prevent truncation on deep bug hunts.
+- **Sherlock narration suppressed:** investigation runs silent; the full case file is written to `docs/pipeline/last-case-file.md` via Bash heredoc, and Sherlock returns a one-line receipt to Eva (Poirot/Robert/Sable pattern now applied to Sherlock).
+- **Eva user-bug relay step updated:** Eva reads `docs/pipeline/last-case-file.md` from disk, prepends "Case file below." and presents it to the user without commentary.
+- **Observation masking table:** Sherlock receipt row added to the masking/relay table in `pipeline-orchestration` across all targets (source/shared, .claude, .cursor-plugin).
+- **User guide:** `last-case-file.md` added to the State files table.
+- **Cursor plugin mirror sync:** all three Sherlock changes (maxTurns, narration suppression, case-file-on-disk relay) propagated to `.cursor-plugin/` so Cursor users receive parity behavior.
+
 ## [4.0.3] - 2026-04-22
 
 ### Added
