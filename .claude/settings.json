@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Edit"
+      "Edit",
+      "Bash(git push origin main)"
     ]
   },
   "hooks": {

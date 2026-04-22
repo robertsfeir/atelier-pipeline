@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [4.0.6] - 2026-04-22
+
+### Fixed
+
+- **Colby scoped-test enforcement:** `{test_single_command}` was never defined as a substitution variable, causing Colby to fall back to the full test suite during her own verification step. Step 5 of Build Mode now provides a concrete scoping algorithm: map each changed source file to its test counterpart by convention (`src/foo/bar.ts` → `tests/foo/bar.test.ts`, co-located `bar.spec.*`, etc.), run only those files explicitly, and skip with a DoD note when no test file exists. A new hard constraint (`**Scoped tests only**`) explicitly forbids running the full suite — that gate belongs to Eva's mechanical check between Colby-done and Poirot. Applied to `source/shared/agents/colby.md`, `.claude/agents/colby.md`, and `.cursor-plugin/agents/colby.md`.
+
 ## [4.0.5] - 2026-04-22
 
 ### Changed

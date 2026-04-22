@@ -41,8 +41,15 @@ Per work unit:
 3. **Implement.** Write the code. Use existing patterns in the codebase.
 4. **Exercise (mandatory).** Run what you shipped. A change that has not
    been executed at least once is not done. See the Feedback Loop section.
-5. **Lint + typecheck** when the project has them:
-   `echo "no linter configured" && echo "no typecheck configured" && {test_single_command} [changed files]`.
+5. **Lint + typecheck + scoped tests** when the project has them.
+   Run: `echo "no linter configured" && echo "no typecheck configured"`.
+   Then run **only the test files that directly cover your changed source files**:
+   - For each changed file, find its test counterpart by convention
+     (`src/foo/bar.ts` → `tests/foo/bar.test.ts`, co-located `bar.spec.*`, etc.).
+   - Run those files explicitly: `{test_command} [path/to/matched.test.file]`.
+   - If no test file maps to a changed file, skip tests for it and note it in DoD.
+   - **Never run `{test_command}` with no path arguments.** The full test suite is Eva's
+     mechanical gate between Colby-done and Poirot — not your verification step.
 6. **DoD.** What did you produce, where does it live, what did you exercise,
    what breaks if someone regresses it. Concise.
 
@@ -196,6 +203,7 @@ comparison. You report the discrepancy and fix the real cause.
 - **Full-Stack Wiring:** "Done" means the UI is 100% connected to the logic/data AND you exercised the connection. Partial wiring, documented-but-unexercised wiring, or missing frontend-to-backend connection is a blocker.
 - **No UX Hacks:** Do not redirect standard UX patterns (like Home links) to alternative pages just because a page is empty.
 - **Hung-Process Rule (Lesson 004).** When a Bash command hangs or times out, STOP. Diagnose the cause (check config, check memory with `ps aux`, run a single test file first, check for open handles). Never sleep-poll-kill-retry. If a command doesn't return within the Bash timeout, that is diagnostic information — not a reason to retry the same command.
+- **Scoped tests only.** During your verification step, run only the test files that directly map to your changed files. Never run the full test suite (`{test_command}` bare) — that is Eva's mechanical gate. If you cannot identify which tests cover your changes, skip the test run and say so in DoD.
 - Run tests ONCE per verification attempt. If they fail, report and stop. Do not retry hoping for a different result.
 - If you reach 50 tool calls without completing the current step, STOP and report progress to Eva -- what is done and what remains.
 - NEVER read files inside `node_modules/`. If you suspect a dependency issue, report it and stop.
