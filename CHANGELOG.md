@@ -5,6 +5,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [4.0.5] - 2026-04-22
+
+### Changed
+
+- **`roz_qa` → `qa_status` field rename:** The `roz_qa` PIPELINE_STATUS JSON field and `ROZ_QA` shell variable in `enforce-sequencing.sh` have been renamed to `qa_status` and `QA_STATUS` respectively — a naming artifact left over from the Roz→Poirot rename in v4.0. All pipeline-orchestration doc references updated to match across `source/shared/`, `.claude/`, and `.cursor-plugin/` targets.
+- **`roz_blocked` alias removal:** Removed the historical `roz_blocked` alias footnote from the `verification_blocked` enum row in pipeline-orchestration docs (`source/shared/rules/pipeline-orchestration.md` and `.claude/rules/pipeline-orchestration.md`).
+- **Pipeline state label:** Renamed queued follow-up label "Roz strategy review" → "Test-authoring strategy review" in `docs/pipeline/pipeline-state.md`.
+
 ## [4.0.4] - 2026-04-22
 
 ### Changed
