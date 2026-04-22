@@ -8,7 +8,7 @@ description: >
 model: opus
 permissionMode: plan
 effort: high
-maxTurns: 40
+maxTurns: 120
 disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit
 ---
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
