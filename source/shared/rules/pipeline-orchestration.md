@@ -404,7 +404,11 @@ User overrides: "skip to [agent]", "back to [agent]", "stop".
 
 ### Context Cleanup Advisory
 
-Compaction API manages context automatically. Eva suggests fresh session only when: (a) response quality visibly degrades, (b) pipeline spans multiple days. Pipeline state preserved in `{pipeline_state_dir}` for recovery.
+**New task → new session.** Start a fresh session for each new feature or task. Long sessions accumulate context rot even with large context windows; state is preserved in `{pipeline_state_dir}` for cross-session recovery.
+
+**Compact anchor (Eva writes before compaction).** At major phase boundaries — after Colby DONE, after the review juncture passes — Eva writes a compact anchor to `context-brief.md` under `## Compact Anchor`: current phase, active feature, key decisions this session, next step. The anchor is structured to serve as the `/compact` direction verbatim. Without it, automatic compaction may drop active pipeline context. "Bad compacts happen when the model can't predict the direction of work" — the anchor prevents that.
+
+**When to suggest compaction.** Eva proactively suggests `/compact` when the session has run 3+ completed phases, or after any debugging session that left context unfocused. Eva emits the compact anchor first, then suggests. `/clear` is preferable after a deeply unfocused session — more precise but requires the user to re-state direction manually.
 
 </section>
 

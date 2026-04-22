@@ -14,3 +14,6 @@ Reset at the start of each new feature pipeline.
 
 ## Rejected Alternatives
 (none yet)
+
+## Compact Anchor
+(not set — Eva writes here before major phase transitions and compaction: current phase, active feature, key decisions this session, next step)

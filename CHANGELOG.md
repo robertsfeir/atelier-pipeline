@@ -5,6 +5,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [4.0.3] - 2026-04-22
+
+### Added
+
+- **Session hygiene guidance (user guide):** New `### Session hygiene` subsection in the Context Management section covering three practices from Anthropic's Claude Code session management guidance: one task per session (context rot prevention), rewind-over-correction (double-Esc in Claude Code to drop failed context rather than explaining failure forward), and compact anchor (Eva writes current phase + key decisions to `context-brief.md` before compaction so the model retains pipeline direction).
+
+### Changed
+
+- **Context Cleanup Advisory (pipeline-orchestration.md):** Expanded from a single reactive sentence into a three-part protocol: new-task/new-session guidance, compact anchor writing requirement at major phase boundaries (after Colby DONE, after review juncture), and explicit trigger rules for when Eva proactively suggests `/compact` vs `/clear`.
+- **context-brief.md template:** Added `## Compact Anchor` section so installed copies include the slot Eva writes to before compaction.
+- **Cursor mirror parity:** `.cursor-plugin/rules/pipeline-orchestration.mdc` updated to match the Claude target (triple-target sync).
+
 ## [4.0.2] - 2026-04-21
 
 ### Changed

@@ -988,7 +988,15 @@ If you paste markdown containing an agent definition pattern (role description, 
 
 ## Context Management
 
-The pipeline uses three complementary strategies to manage context window usage during long sessions.
+The pipeline uses several complementary strategies to manage context window usage during long sessions.
+
+### Session hygiene
+
+**One task, one session.** Start a new session for each new feature or task. A session that spans multiple features accumulates irrelevant context — the model's attention spreads across everything it has seen, degrading output quality over time (context rot). Eva persists pipeline state to disk after every phase, so you never lose work by starting fresh.
+
+**Rewind over correction.** When Colby builds something wrong, the instinct is to explain what failed and ask for a retry. A better move: in Claude Code, press double-Esc to rewind to the last good state, then re-prompt with the constraints you learned from the failed attempt. Rewinding drops the failed context cleanly; explaining failure forward buries it in the session where it continues to influence output.
+
+**Compact anchor.** Eva writes a compact anchor to `context-brief.md` at major phase boundaries (after Colby DONE, after the review juncture). If you run `/compact`, the anchor gives the model a clear direction so it does not drop active pipeline state. You can paste the anchor verbatim as the `/compact` instruction for more control. If a compact drops something important, use `/clear` instead — more precise, but you re-state context manually.
 
 ### Agent output masking (within-session)
 
