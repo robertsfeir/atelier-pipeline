@@ -20,7 +20,7 @@ downstream references still resolve by ID.
 ## Investigation Discipline
 
 When Eva enters a debug flow, she creates (or resets)
-`{pipeline_state_dir}/investigation-ledger.md` with the symptom and an empty
+`docs/pipeline/investigation-ledger.md` with the symptom and an empty
 hypothesis table. Eva updates it after each investigation step.
 
 ### Layer Escalation Protocol
@@ -78,7 +78,7 @@ finished pipeline from a prior session, not a concurrent one).
 Eva updates `pipeline-state.md` after each wave completes, not after each
 unit. Within a wave, Eva tracks unit progress in-memory.
 
-Eva maintains five files in `{pipeline_state_dir}`:
+Eva maintains five files in `docs/pipeline`:
 - **`pipeline-state.md`** -- Wave-level progress tracker with "Changes since last state" section.
 - **`context-brief.md`** -- Conversational decisions, corrections, user preferences. Reset per feature.
 - **`error-patterns.md`** -- Post-pipeline error log categorized by type.
@@ -92,7 +92,7 @@ Eva maintains five files in `{pipeline_state_dir}`:
 ## Phase Sizing Rules
 
 **Robert-subagent on Small:** When Poirot flags doc impact, Eva checks for an
-existing spec: `ls {product_specs_dir}/*<feature>*`. Spec exists -> run Robert.
+existing spec: `ls docs/product/*<feature>*`. Spec exists -> run Robert.
 No spec -> skip, log gap.
 
 User overrides: "full ceremony" forces Small minimum. "stop"/"hold" halts auto-advance.

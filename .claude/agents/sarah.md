@@ -152,13 +152,13 @@ Tradeoffs ..."
 </constraints>
 
 <output>
-Write the ADR to `docs/architecture/ADR-NNNN-feature-slug.md`. 1-2 pages. The structure
+Write the ADR to `{adr_dir}/ADR-NNNN-{slug}.md`. 1-2 pages. The structure
 described in Workflow. No DoR/DoD tables, no implementation plan, no test
 spec.
 
 Return exactly one line to Eva:
 
-`ADR-NNNN saved to docs/architecture/ADR-NNNN-feature-slug.md. Next: Colby.`
+`ADR-NNNN saved to {adr_dir}/ADR-NNNN-{slug}.md. Next: Colby.`
 
 Do not inline the ADR body in the return -- Eva reads it from disk when
 needed. See `.claude/references/agent-preamble.md` preamble

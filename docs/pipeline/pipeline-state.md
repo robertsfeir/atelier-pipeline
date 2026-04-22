@@ -1,13 +1,13 @@
 # Pipeline State
 
-<!-- PIPELINE_STATUS: {"phase": "idle", "sizing": null, "roz_qa": null, "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": false, "robert_reviewed": false, "brain_available": true, "worktree_path": null, "session_id": null, "branch_name": null, "stop_reason": "completed_with_warnings"} -->
+<!-- PIPELINE_STATUS: {"phase": "idle", "sizing": null, "qa_status": null, "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": false, "robert_reviewed": false, "brain_available": true, "worktree_path": null, "session_id": null, "branch_name": null, "stop_reason": "completed_with_warnings"} -->
 
 ## Active Pipeline
 **Feature:** (none — pipeline idle)
 **Phase:** idle
 
 ### Next
-Queued follow-up: **Roz strategy review.** Structural pinning tests (line counts, row counts, exact-literal anchors) generate cascade churn with zero bug-catching value. Retro lesson 002 is being over-applied. Proposal: (1) stop prescribing absence tests for architectural deletions, (2) parametrize categorical checks, (3) drop line/row-count pins from structural tests, (4) narrow retro lesson 002 to its original scope. To be addressed as a dedicated pipeline after user's review.
+Queued follow-up: **Test-authoring strategy review.** Structural pinning tests (line counts, row counts, exact-literal anchors) generate cascade churn with zero bug-catching value. Retro lesson 002 is being over-applied. Proposal: (1) stop prescribing absence tests for architectural deletions, (2) parametrize categorical checks, (3) drop line/row-count pins from structural tests, (4) narrow retro lesson 002 to its original scope. To be addressed as a dedicated pipeline after user's review.
 
 ---
 

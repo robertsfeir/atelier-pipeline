@@ -56,7 +56,7 @@ cp "$STATE_FILE" "$STATE_SNAPSHOT" 2>/dev/null || { rm -f "$STATE_SNAPSHOT"; exi
 
 # ─── Structured state parser (delegates to hook-lib.sh) ──────────────
 # Reads the machine-readable PIPELINE_STATUS JSON marker from the snapshot.
-# Format: <!-- PIPELINE_STATUS: {"roz_qa": "PASS", "phase": "review", "timestamp": "..."} -->
+# Format: <!-- PIPELINE_STATUS: {"qa_status": "PASS", "phase": "review", "timestamp": "..."} -->
 # Returns empty string if marker is absent or JSON is malformed.
 parse_pipeline_status() {
   local field="$1"
@@ -108,7 +108,7 @@ fi
 
 # ─── Gate 1: Ellis requires Poirot verification PASS during active pipelines ─────
 # "Ellis commits. Eva does not." + "Poirot verifies every Colby output."
-# During an active pipeline, Ellis cannot be invoked unless roz_qa is PASS.
+# During an active pipeline, Ellis cannot be invoked unless qa_status is PASS.
 # Outside an active pipeline (no state file, no marker, idle/complete phase),
 # Ellis is allowed through for infrastructure, doc-only, and setup commits.
 if [ "$SUBAGENT_TYPE" = "ellis" ]; then
@@ -141,16 +141,16 @@ if [ "$SUBAGENT_TYPE" = "ellis" ]; then
     exit 0
   fi
 
-  # CI Watch fix cycle: if ci_watch_active=true and roz_qa=CI_VERIFIED, allow Ellis
+  # CI Watch fix cycle: if ci_watch_active=true and qa_status=CI_VERIFIED, allow Ellis
   # CI_VERIFIED is distinct from PASS -- written by Eva after Poirot verifies a CI fix
   CI_WATCH_ACTIVE=$(parse_pipeline_status "ci_watch_active") || true
-  ROZ_QA=$(parse_pipeline_status "roz_qa") || true
-  if [ "$CI_WATCH_ACTIVE" = "true" ] && [ "$ROZ_QA" = "CI_VERIFIED" ]; then
+  QA_STATUS=$(parse_pipeline_status "qa_status") || true
+  if [ "$CI_WATCH_ACTIVE" = "true" ] && [ "$QA_STATUS" = "CI_VERIFIED" ]; then
     exit 0
   fi
 
   # Active phase -> enforce Poirot verification PASS
-  if [ "$ROZ_QA" != "PASS" ]; then
+  if [ "$QA_STATUS" != "PASS" ]; then
     echo "BLOCKED: Cannot invoke Ellis — pipeline is active (phase: $PHASE) but no Poirot verification PASS found. Poirot must verify Colby's output before committing." >&2
     exit 2
   fi
@@ -181,7 +181,7 @@ if [ "$SUBAGENT_TYPE" = "ellis" ]; then
     PHASE=$(echo "$PHASE" | tr '[:upper:]' '[:lower:]')
 
     # Only enforce after the build phase (review, reconciliation, docs).
-    # During build, per-wave commits are gated by roz_qa + poirot_reviewed only.
+    # During build, per-wave commits are gated by qa_status + poirot_reviewed only.
     # "none" is excluded alongside idle/complete — same inactive-phase treatment as Gate 1.
     if [ -n "$PHASE" ] && [ "$PHASE" != "idle" ] && [ "$PHASE" != "complete" ] && [ "$PHASE" != "none" ] && [ "$PHASE" != "build" ] && [ "$PHASE" != "test-authoring" ] && [ "$PHASE" != "design" ]; then
       SIZING=$(parse_pipeline_status "sizing") || true

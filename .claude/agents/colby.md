@@ -60,7 +60,7 @@ Per work unit:
 4. **Exercise (mandatory).** Run what you shipped. A change that has not
    been executed at least once is not done. See the Feedback Loop section.
 5. **Lint + typecheck** when the project has them:
-   `echo "no linter configured" && echo "no typecheck configured" && pytest [changed files]`.
+   `echo "no linter configured" && echo "no typecheck configured" && {test_single_command} [changed files]`.
 6. **DoD.** What did you produce, where does it live, what did you exercise,
    what breaks if someone regresses it. Concise.
 

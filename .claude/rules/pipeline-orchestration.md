@@ -246,7 +246,7 @@ PIPELINE_STATUS JSON comment (`"stop_reason": "{value}"`).
 |-------|-------------------|
 | `completed_clean` | Ellis final commit/push succeeds with no accepted drift or divergence |
 | `completed_with_warnings` | Pipeline completes but Agatha divergence or Robert/Sable DRIFT was accepted (not fixed) |
-| `verification_blocked` | Poirot BLOCKER that the user chose not to fix, mechanical-gate failure the user abandons, or gate 12 loop-breaker fires and user abandons. (Historical alias: `roz_blocked` for pipelines written pre-v4.0 -- read-compatible only.) |
+| `verification_blocked` | Poirot BLOCKER that the user chose not to fix, mechanical-gate failure the user abandons, or gate 12 loop-breaker fires and user abandons. |
 | `user_cancelled` | User explicitly says "stop", "cancel", or "abandon" during an active pipeline |
 | `hook_violation` | A PreToolUse hook blocks an agent action that cannot be retried, and user abandons |
 | `budget_threshold_reached` | User declines to proceed after token budget estimate gate |
@@ -271,7 +271,7 @@ At every terminal transition (phase -> idle), Eva writes pipeline-state.md:
 
 And updates PIPELINE_STATUS JSON:
 ```json
-{"phase": "idle", "sizing": null, "roz_qa": null, "telemetry_captured": false, "stop_reason": "{stop_reason_value}"}
+{"phase": "idle", "sizing": null, "qa_status": null, "telemetry_captured": false, "stop_reason": "{stop_reason_value}"}
 ```
 
 ### T3 Telemetry Capture
@@ -454,7 +454,7 @@ Opt-in, session-scoped. Monitors CI after Ellis pushes. Platform commands, polli
 **On CI Pass:** Notify user, set `ci_watch_active: false`, capture brain pattern.
 
 **On CI Failure:** Pull logs (200 lines/job)  diagnoses (autonomous) -> Colby fixes (autonomous)  verifies (autonomous) -> **HARD PAUSE**: present summary + fix + verdict + retry count.
-- User approves: Ellis pushes, increment retry, `roz_qa: CI_VERIFIED` (single-use), re-launch watch for new SHA. Reset `roz_qa` after Ellis consumes.
+- User approves: Ellis pushes, increment retry, `qa_status: CI_VERIFIED` (single-use), re-launch watch for new SHA. Reset `qa_status` after Ellis consumes.
 - User rejects or Ellis blocked: stop watch, user handles manually.
 
 **Timeout/Exhaustion/Failure:** 30 min -> prompt keep/abandon. Retry exhaustion -> stop + cumulative summary. Colby or Poirot failure -> stop immediately, user handles. New push while active -> replace watch, reset retry. One watch at a time.

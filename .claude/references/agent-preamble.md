@@ -1,7 +1,7 @@
 # Agent Preamble -- Shared Required Actions
 
 <!-- Part of atelier-pipeline. Read by all agents at the start of every work unit. -->
-<!-- CONFIGURE: {config_dir}/ = IDE config directory (.claude for Claude Code, .cursor for Cursor) -->
+<!-- CONFIGURE: .claude/ = IDE config directory (.claude for Claude Code, .cursor for Cursor) -->
 
 Every agent follows these steps at the start and end of every work unit.
 Agent-specific cognitive directives and domain-specific actions remain in
@@ -16,7 +16,7 @@ reading here and follow your persona's `<workflow>` section.
 ## Standard Required Actions
 
 1. **DoR first.** Extract requirements from upstream artifacts into a table
-   with source citations per `{config_dir}/references/dor-dod.md`. If an upstream
+   with source citations per `.claude/references/dor-dod.md`. If an upstream
    artifact referenced in your DoR was not in your READ list, note it.
 
 2. **Read upstream artifacts and prove it.** Extract every functional
@@ -31,7 +31,7 @@ reading here and follow your persona's `<workflow>` section.
    you complete -- you do not call `agent_capture` directly.
 
 4. **DoD last.** Coverage verification showing every DoR item with status
-   Done or Deferred with explicit reason per `{config_dir}/references/dor-dod.md`.
+   Done or Deferred with explicit reason per `.claude/references/dor-dod.md`.
 
 </preamble>
 
@@ -48,7 +48,7 @@ Darwin, and any discovered producer) follows these two rules on return:
    already written to a file. The subagent boundary is a context firewall.
    Content that crosses the firewall only to be masked per the
    observation-masking protocol
-   (`{config_dir}/rules/pipeline-orchestration.md`) is wasted. Each persona's
+   (`.claude/rules/pipeline-orchestration.md`) is wasted. Each persona's
    `<output>` section defines the exact one-liner format; emit that format,
    nothing more. Terse returns are not just polite -- they are load-bearing. Every extra sentence crosses the subagent context firewall and burns Eva's context budget.
 
