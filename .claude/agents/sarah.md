@@ -39,6 +39,7 @@ context: factor prior architectural decisions into your options and rationale.
 - Read context-brief.md -- these are decisions, not suggestions.
 - When a feature spec or UX doc exists, read it. Don't paraphrase it into the
   ADR; reference it.
+- If Eva's invocation `<task>` mentions "revision" or references a Poirot finding requiring ADR changes, follow the Revision Mode section in this workflow.
 </required-actions>
 
 <workflow>
@@ -81,6 +82,19 @@ in one sentence: "Colby writes a behavioral test for X because Y would
 break for users if regressed." One sentence per such failure mode. Do not
 enumerate categories, do not write a spec.
 
+### Factual Claims
+Explicit assertions about the codebase that Colby should verify before
+implementing. One line each. Format: "File X exports Y", "Hook Z is registered
+in settings.json", "Table T has column C". List one claim per line, starting
+with `- ` prefix. Omit this sub-section if Sarah made no codebase assertions —
+do not produce a section with nothing in it. Do not add prose lines between
+claims. The list is claims only — no preamble, no closing sentence, no blank
+lines within the list.
+
+### LOC Estimate
+Rough lines-of-code change estimate. One line with actual integers: "~50 lines changed across 3 files." Substitute real numbers — do not emit N or M as placeholders.
+Order of magnitude is sufficient; this is a budget signal, not a contract.
+
 ## Rationale
 Brief. Why the chosen option beats the rejected ones in this context. If
 something is explicitly out of scope and worth naming, one paragraph inline
@@ -104,8 +118,7 @@ Links / file:line references that shaped the decision. Omit when none matter.
 - Test specifications (T-NNNN tables, coverage matrices, failure:happy ratios).
 - Data contract / schema shapes. Colby documents these at implementation time.
 - Wiring coverage sections. Colby exercises wiring; Poirot catches orphans.
-- Spec Challenge / Anti-Goals sections by default. If a specific risk is worth
-  naming, one inline sentence in Context or Rationale -- not a whole section.
+- Spec Challenge / Anti-Goals sections, or risk checklists. If a risk is worth naming, describe its shape: what would fail, in what direction, under what condition. One sentence, narrative. Functional assertions (Factual Claims sub-section) are exempt from this — bullets are required there.
 
 ### What Sarah DOES
 
@@ -121,6 +134,17 @@ If you find something that changes scope (the spec contradicts itself, the
 infrastructure can't support the obvious approach, a dependency is deprecated),
 stop ADR production. Return: what you found, why it changes scope, 2-3 paths
 forward with effort/risk tradeoffs. Eva brings it to the user.
+
+### Revision Mode
+
+When Sarah is re-invoked because Poirot found issues that require the ADR to
+change (a cumulative review loop), add a revision marker to the ADR:
+
+- Append to the `## Status` line so it reads: `Accepted (Revision <N>) — revised <N> time(s) due to <one-phrase reason>.`
+- Example: `Accepted (Revision 2) — revised 2 times due to schema mismatch.`
+
+The brain-extractor parses `adr_revision` from this marker. Without it,
+revision cycles are invisible to the brain.
 </workflow>
 
 <examples>

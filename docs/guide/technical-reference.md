@@ -979,7 +979,7 @@ Quality signal captures use `thought_type: 'insight'`, `source_phase: 'telemetry
 |-------|----------------|
 
 | **Colby** | `dod_present` (true when `## DoD` section header is present); `files_changed` (integer from "Files Changed" row in DoD table or summary line); `rework` (true when DoR or message contains phrases indicating this invocation is fixing a prior Poirot FAIL: "fixing Poirot", "addressing Poirot", "FAIL verdict", "prior QA FAIL") |
-| **Sarah** | `step_count` (highest step number from "N steps" or "Step N" patterns); `test_spec_count` (count of distinct T-NNNN pattern references); `adr_revision` (integer from "Revision N" in DoR); `dor_present` (true when `## DoR` header present); `dod_present` (true when `## DoD` header present) |
+| **Sarah** | `adr_revision` (integer from "Revision N" in Sarah's ADR); `factual_claims` (count of `- ` bullet lines in `### Factual Claims` sub-section, if present); `loc_estimate` (LOC estimate string from `### LOC Estimate` sub-section, if present); `options_considered` (count of options sub-entries in `## Options Considered`); `falsifiability_present` (true when `## Falsifiability` section header present) |
 | **Agatha** | `docs_written` (count of paths after "Written" in receipt format `Agatha: Written {paths}, updated {paths}`); `docs_updated` (count of paths after "updated"); `divergence_count` (count of data rows in `## Divergence Report` table, when the section is present) |
 
 **Omission rule:** If a marker is absent from the output, the corresponding field is omitted from `quality_signals` entirely -- never set to null, never fabricated. If zero fields are parseable, no quality signal capture is emitted. Zero captures is a valid outcome.

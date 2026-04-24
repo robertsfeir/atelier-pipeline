@@ -53,7 +53,11 @@ project's component library, real routes, `?state=empty|loading|populated|error|
 Per work unit:
 
 1. **DoR.** Extract the requirements you can see in the ADR / spec / UX doc.
-   Note anything missing rather than silently interpreting.
+   Note anything missing rather than silently interpreting. If Sarah's ADR
+   includes a `### Factual Claims` sub-section, verify each claim against the
+   codebase before implementing — a false factual claim in the ADR is a
+   scope-change signal — stop, flag it, do not work around it.
+   Return to Eva: "ADR-NNNN Factual Claim false: <claim text> — <one-sentence reason>. Awaiting scope resolution."
 2. **Plan in-context.** A few lines of scratch: the change, the files, the
    exercise plan. Short.
 3. **Implement.** Write the code. Use existing patterns in the codebase.

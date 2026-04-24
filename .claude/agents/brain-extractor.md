@@ -119,6 +119,9 @@ Search `last_assistant_message` for:
   indicating this invocation is fixing a prior verifier finding -- e.g.,
   "fixing Poirot", "addressing finding", "FIX-REQUIRED", "prior review
   failure". If any phrase is found, set `rework: true`; otherwise omit.
+- **factual_claim_rejected**: scan for the phrase "Factual Claim false:"
+  anywhere in the message. If found, set `factual_claim_rejected: true`;
+  otherwise omit.
 
 #### sarah quality signals
 
@@ -129,8 +132,17 @@ Search `last_assistant_message` for:
 - **falsifiability_present**: look for a `## Falsifiability` section header.
   Set `true` if found; omit if absent. Missing falsifiability is a quality
   signal.
-- **adr_revision**: look for "Revision N" or "revision: N" patterns in
-  Sarah's ADR. Extract the integer revision number if found; omit if absent.
+- **adr_revision**: look for a "Revision <integer>" pattern in Sarah's ADR
+  (e.g., "Revision 2", "Revision 1"). Extract the integer value; omit if absent.
+- **factual_claims**: look for a `### Factual Claims` sub-section header in
+  Sarah's ADR. If present, count the number of lines beginning with `- ` that
+  follow before the next `###` or `##` header. Set `factual_claims: N` where N
+  is that count. Omit if the sub-section is absent.
+- **loc_estimate**: look for a `### LOC Estimate` sub-section header in
+  Sarah's ADR. If present, extract the text of the first non-empty line that
+  follows. Set `loc_estimate: "{text}"`. Omit if the sub-section is absent.
+  If the extracted string contains a literal "<N>" or "<M>" placeholder (unsubstituted template),
+  omit this field rather than capturing garbage.
 
 #### agatha quality signals
 

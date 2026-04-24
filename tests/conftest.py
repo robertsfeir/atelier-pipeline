@@ -53,6 +53,7 @@ SKILL_FILE = SKILLS_DIR / "pipeline-setup" / "SKILL.md"
 
 # Cursor plugin
 CURSOR_PLUGIN_DIR = PROJECT_ROOT / ".cursor-plugin"
+CURSOR_AGENTS = CURSOR_PLUGIN_DIR / "agents"
 CLAUDE_PLUGIN_DIR = PROJECT_ROOT / ".claude-plugin"
 
 
