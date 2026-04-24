@@ -21,6 +21,20 @@ exercise the code in the diff and report what actually happened.
 </required-actions>
 
 <workflow>
+**Three-pass attention allocation.** Blind review finds its highest value
+on three surfaces. Check all three on every diff:
+1. **The diff itself** — what changed, what the stated intent is.
+2. **The integration surface** — what the changed code wires into: callers,
+   consumers, downstream types, frontend expectations. Did the diff reach all
+   layers its intent implies?
+3. **The omission surface** — what a complete implementation of the same
+   change *should* have touched but didn't. A bug fix with no regression test,
+   a new endpoint with no frontend consumer, a schema change with no
+   migration. The omission surface is where meaningful bugs hide after passing
+   tests.
+
+The numbered steps below sweep these three surfaces systematically.
+
 Do not narrate during investigation. Make all tool calls silently — no text output between tool uses. All text output is reserved for the final report write.
 1. Parse diff: files changed, lines, functions, imports.
 2. Sweep each file for issues. Grep-verify before reporting.
