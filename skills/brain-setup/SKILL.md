@@ -106,6 +106,16 @@ Or use `printenv VAR_NAME` for individual checks.
 
 If **any variable is missing**, skip Step 4 entirely. Go directly to Step 5 Case 2. Print: "Skipping connectivity check until environment variables are configured."
 
+### Step 0 (Path A): Pre-load Brain MCP Tool Schemas
+
+Brain MCP tool schemas are deferred — the first call to any `atelier_*` or `agent_*` tool without its schema loaded fails with `InputValidationError`. Run ToolSearch once before any brain call to load the schemas up front:
+
+```
+ToolSearch query: select:mcp__plugin_atelier-pipeline_atelier-brain__atelier_stats,mcp__plugin_atelier-pipeline_atelier-brain__agent_capture,mcp__plugin_atelier-pipeline_atelier-brain__agent_search,mcp__plugin_atelier-pipeline_atelier-brain__atelier_relation,mcp__plugin_atelier-pipeline_atelier-brain__atelier_browse,mcp__plugin_atelier-pipeline_atelier-brain__atelier_trace
+```
+
+Proceed to Step 4 only after ToolSearch returns.
+
 ### Step 4: Test Connectivity
 
 (Only reached when all environment variables from Step 3 are SET.)
@@ -204,6 +214,16 @@ Done. No further action.
 <procedure id="first-time-setup">
 
 ## Path B: First-Time Setup
+
+### Step 0: Pre-load Brain MCP Tool Schemas
+
+Brain MCP tool schemas are deferred — the first call to any `atelier_*` or `agent_*` tool without its schema loaded fails with `InputValidationError`. Run ToolSearch once before any brain call to load the schemas up front:
+
+```
+ToolSearch query: select:mcp__plugin_atelier-pipeline_atelier-brain__atelier_stats,mcp__plugin_atelier-pipeline_atelier-brain__agent_capture,mcp__plugin_atelier-pipeline_atelier-brain__agent_search,mcp__plugin_atelier-pipeline_atelier-brain__atelier_relation,mcp__plugin_atelier-pipeline_atelier-brain__atelier_browse,mcp__plugin_atelier-pipeline_atelier-brain__atelier_trace
+```
+
+Proceed to Step 1 only after ToolSearch returns.
 
 ### Step 1: Personal or Shared
 

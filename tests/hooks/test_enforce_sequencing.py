@@ -28,7 +28,7 @@ def _config_with_state_dir(tmp_path):
 # ── T-0003-030: jq missing ──────────────────────────────────────────────
 
 def test_T_0003_042_ellis_roz_qa_pass(hook_env):
-    write_pipeline_status(hook_env, '{"roz_qa":"PASS","phase":"review"}')
+    write_pipeline_status(hook_env, '{"qa_status":"PASS","phase":"review"}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 0
@@ -37,7 +37,7 @@ def test_T_0003_042_ellis_roz_qa_pass(hook_env):
 # ── T-0003-043: Ellis with roz_qa=FAIL ──────────────────────────────────
 
 def test_T_0003_043_ellis_roz_qa_fail(hook_env):
-    write_pipeline_status(hook_env, '{"roz_qa":"FAIL","phase":"review"}')
+    write_pipeline_status(hook_env, '{"qa_status":"FAIL","phase":"review"}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 2
@@ -67,7 +67,7 @@ def test_T_0003_045_malformed_json_fail_open(hook_env):
 # ── T-0003-046: Agatha during build phase blocked ───────────────────────
 
 def test_T_0003_046_agatha_build_blocked(hook_env):
-    write_pipeline_status(hook_env, '{"roz_qa":"","phase":"build"}')
+    write_pipeline_status(hook_env, '{"qa_status":"","phase":"build"}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("agatha"), hook_env)
     assert r.returncode == 2
@@ -78,7 +78,7 @@ def test_T_0003_046_agatha_build_blocked(hook_env):
 # ── T-0003-047: Agatha during review phase allowed ──────────────────────
 
 def test_T_0003_047_agatha_review_allowed(hook_env):
-    write_pipeline_status(hook_env, '{"roz_qa":"PASS","phase":"review"}')
+    write_pipeline_status(hook_env, '{"qa_status":"PASS","phase":"review"}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("agatha"), hook_env)
     assert r.returncode == 0
@@ -107,14 +107,14 @@ def test_T_0003_057_freeform_text_fails_open(hook_env):
 
 
 def test_T_0013_051_ellis_ci_verified(hook_env):
-    write_pipeline_status(hook_env, '{"roz_qa":"CI_VERIFIED","phase":"review","ci_watch_active":true,"ci_watch_retry_count":1}')
+    write_pipeline_status(hook_env, '{"qa_status":"CI_VERIFIED","phase":"review","ci_watch_active":true,"ci_watch_retry_count":1}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 0
 
 
 def test_T_0013_052_ellis_ci_watch_empty_roz_qa(hook_env):
-    write_pipeline_status(hook_env, '{"roz_qa":"","phase":"review","ci_watch_active":true,"ci_watch_retry_count":0}')
+    write_pipeline_status(hook_env, '{"qa_status":"","phase":"review","ci_watch_active":true,"ci_watch_retry_count":0}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 2
@@ -122,7 +122,7 @@ def test_T_0013_052_ellis_ci_watch_empty_roz_qa(hook_env):
 
 
 def test_T_0013_053_ellis_ci_watch_inactive_fail(hook_env):
-    write_pipeline_status(hook_env, '{"roz_qa":"FAIL","phase":"build","ci_watch_active":false}')
+    write_pipeline_status(hook_env, '{"qa_status":"FAIL","phase":"build","ci_watch_active":false}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 2
@@ -130,14 +130,14 @@ def test_T_0013_053_ellis_ci_watch_inactive_fail(hook_env):
 
 
 def test_T_0013_054_ellis_ci_watch_inactive_pass(hook_env):
-    write_pipeline_status(hook_env, '{"roz_qa":"PASS","phase":"review","ci_watch_active":false}')
+    write_pipeline_status(hook_env, '{"qa_status":"PASS","phase":"review","ci_watch_active":false}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 0
 
 
 def test_T_0013_055_regression_gate1(hook_env):
-    write_pipeline_status(hook_env, '{"roz_qa":"","phase":"build"}')
+    write_pipeline_status(hook_env, '{"qa_status":"","phase":"build"}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 2
@@ -151,7 +151,7 @@ def test_two_hook_chain_ellis_active_phase_no_roz_qa(hook_env):
     Confirms that removing Ellis from enforce-pipeline-activation.sh did not create a gap —
     enforce-sequencing.sh Gate 1 is the authoritative guard for roz_qa enforcement.
     """
-    write_pipeline_status(hook_env, '{"phase":"build","roz_qa":"","sizing":"small"}')
+    write_pipeline_status(hook_env, '{"phase":"build","qa_status":"","sizing":"small"}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 2
@@ -159,7 +159,7 @@ def test_two_hook_chain_ellis_active_phase_no_roz_qa(hook_env):
 
 
 def test_T_0013_056_regression_gate2_agatha(hook_env):
-    write_pipeline_status(hook_env, '{"roz_qa":"","phase":"build","ci_watch_active":true}')
+    write_pipeline_status(hook_env, '{"qa_status":"","phase":"build","ci_watch_active":true}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("agatha"), hook_env)
     assert r.returncode == 2
@@ -168,7 +168,7 @@ def test_T_0013_056_regression_gate2_agatha(hook_env):
 
 
 def test_T_0013_057_extended_json_parses(hook_env):
-    write_pipeline_status(hook_env, '{"roz_qa":"PASS","phase":"review","ci_watch_active":false,"ci_watch_retry_count":0,"ci_watch_commit_sha":"abc123"}')
+    write_pipeline_status(hook_env, '{"qa_status":"PASS","phase":"review","ci_watch_active":false,"ci_watch_retry_count":0,"ci_watch_commit_sha":"abc123"}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 0
@@ -177,14 +177,14 @@ def test_T_0013_057_extended_json_parses(hook_env):
 def test_T_0013_058_malformed_json_ci_watch_fail_open(hook_env):
     state_file = hook_env / "docs" / "pipeline" / "pipeline-state.md"
     state_file.parent.mkdir(parents=True, exist_ok=True)
-    state_file.write_text('# Pipeline State\n\n<!-- PIPELINE_STATUS: {"roz_qa":"CI_VERIFIED","ci_watch_active":true, broken -->\n')
+    state_file.write_text('# Pipeline State\n\n<!-- PIPELINE_STATUS: {"qa_status":"CI_VERIFIED","ci_watch_active":true, broken -->\n')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 0
 
 
 def test_T_0013_059_ci_verified_requires_active(hook_env):
-    write_pipeline_status(hook_env, '{"roz_qa":"CI_VERIFIED","phase":"review","ci_watch_active":false}')
+    write_pipeline_status(hook_env, '{"qa_status":"CI_VERIFIED","phase":"review","ci_watch_active":false}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 2
@@ -197,7 +197,7 @@ def test_gate1_phase_none_ellis_allowed(hook_env):
     phase:none means Ellis is running outside a pipeline context —
     enforce-sequencing.sh should not block it on roz_qa grounds.
     """
-    write_pipeline_status(hook_env, '{"phase":"none","roz_qa":""}')
+    write_pipeline_status(hook_env, '{"phase":"none","qa_status":""}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 0
@@ -209,7 +209,7 @@ def test_gate1_phase_none_ellis_allowed(hook_env):
 
 
 def test_T_GATE3_001_telemetry_missing(hook_env):
-    write_pipeline_status(hook_env, '{"roz_qa":"PASS","phase":"review","sizing":"medium"}')
+    write_pipeline_status(hook_env, '{"qa_status":"PASS","phase":"review","sizing":"medium"}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 2
@@ -217,21 +217,21 @@ def test_T_GATE3_001_telemetry_missing(hook_env):
 
 
 def test_T_GATE3_002_telemetry_captured(hook_env):
-    write_pipeline_status(hook_env, '{"roz_qa":"PASS","phase":"review","sizing":"medium","telemetry_captured":"true","poirot_reviewed":"true","robert_reviewed":"true"}')
+    write_pipeline_status(hook_env, '{"qa_status":"PASS","phase":"review","sizing":"medium","telemetry_captured":"true","poirot_reviewed":"true","robert_reviewed":"true"}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 0
 
 
 def test_T_GATE3_003_micro_no_telemetry(hook_env):
-    write_pipeline_status(hook_env, '{"roz_qa":"PASS","phase":"review","sizing":"micro"}')
+    write_pipeline_status(hook_env, '{"qa_status":"PASS","phase":"review","sizing":"micro"}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 0
 
 
 def test_T_GATE3_004_ci_watch_no_telemetry(hook_env):
-    write_pipeline_status(hook_env, '{"roz_qa":"CI_VERIFIED","phase":"review","sizing":"medium","ci_watch_active":"true"}')
+    write_pipeline_status(hook_env, '{"qa_status":"CI_VERIFIED","phase":"review","sizing":"medium","ci_watch_active":"true"}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 0
@@ -242,7 +242,7 @@ def test_gate3_phase_none_no_telemetry_required(hook_env):
 
     phase:none means no active pipeline, so telemetry capture is not applicable.
     """
-    write_pipeline_status(hook_env, '{"roz_qa":"PASS","phase":"none","sizing":"medium"}')
+    write_pipeline_status(hook_env, '{"qa_status":"PASS","phase":"none","sizing":"medium"}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 0
@@ -254,7 +254,7 @@ def test_gate3_phase_none_no_telemetry_required(hook_env):
 
 
 def test_T_GATE4_001_poirot_missing(hook_env):
-    write_pipeline_status(hook_env, '{"roz_qa":"PASS","phase":"build","sizing":"small","telemetry_captured":"true"}')
+    write_pipeline_status(hook_env, '{"qa_status":"PASS","phase":"build","sizing":"small","telemetry_captured":"true"}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 2
@@ -263,21 +263,21 @@ def test_T_GATE4_001_poirot_missing(hook_env):
 
 
 def test_T_GATE4_002_poirot_reviewed(hook_env):
-    write_pipeline_status(hook_env, '{"roz_qa":"PASS","phase":"build","sizing":"small","telemetry_captured":"true","poirot_reviewed":"true"}')
+    write_pipeline_status(hook_env, '{"qa_status":"PASS","phase":"build","sizing":"small","telemetry_captured":"true","poirot_reviewed":"true"}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 0
 
 
 def test_T_GATE4_003_micro_no_poirot(hook_env):
-    write_pipeline_status(hook_env, '{"roz_qa":"PASS","phase":"review","sizing":"micro"}')
+    write_pipeline_status(hook_env, '{"qa_status":"PASS","phase":"review","sizing":"micro"}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 0
 
 
 def test_T_GATE4_004_ci_watch_no_poirot(hook_env):
-    write_pipeline_status(hook_env, '{"roz_qa":"CI_VERIFIED","phase":"review","sizing":"small","ci_watch_active":"true"}')
+    write_pipeline_status(hook_env, '{"qa_status":"CI_VERIFIED","phase":"review","sizing":"small","ci_watch_active":"true"}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 0
@@ -288,7 +288,7 @@ def test_gate4_phase_none_no_poirot_required(hook_env):
 
     phase:none means no active pipeline, so Poirot review is not applicable.
     """
-    write_pipeline_status(hook_env, '{"roz_qa":"PASS","phase":"none","sizing":"small"}')
+    write_pipeline_status(hook_env, '{"qa_status":"PASS","phase":"none","sizing":"small"}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 0
@@ -307,7 +307,7 @@ def test_T_GATE5_001_robert_missing_medium(hook_env):
     product_dir.mkdir(parents=True, exist_ok=True)
     (product_dir / "feature-x.md").write_text("# Feature X\n\nSpec body.\n")
 
-    write_pipeline_status(hook_env, '{"roz_qa":"PASS","phase":"review","sizing":"medium","telemetry_captured":"true","poirot_reviewed":"true"}')
+    write_pipeline_status(hook_env, '{"qa_status":"PASS","phase":"review","sizing":"medium","telemetry_captured":"true","poirot_reviewed":"true"}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 2
@@ -316,28 +316,28 @@ def test_T_GATE5_001_robert_missing_medium(hook_env):
 
 
 def test_T_GATE5_002_robert_reviewed_medium(hook_env):
-    write_pipeline_status(hook_env, '{"roz_qa":"PASS","phase":"review","sizing":"medium","telemetry_captured":"true","poirot_reviewed":"true","robert_reviewed":"true"}')
+    write_pipeline_status(hook_env, '{"qa_status":"PASS","phase":"review","sizing":"medium","telemetry_captured":"true","poirot_reviewed":"true","robert_reviewed":"true"}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 0
 
 
 def test_T_GATE5_003_small_exempt(hook_env):
-    write_pipeline_status(hook_env, '{"roz_qa":"PASS","phase":"review","sizing":"small","telemetry_captured":"true","poirot_reviewed":"true"}')
+    write_pipeline_status(hook_env, '{"qa_status":"PASS","phase":"review","sizing":"small","telemetry_captured":"true","poirot_reviewed":"true"}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 0
 
 
 def test_T_GATE5_004_build_phase_exempt(hook_env):
-    write_pipeline_status(hook_env, '{"roz_qa":"PASS","phase":"build","sizing":"medium","telemetry_captured":"true","poirot_reviewed":"true"}')
+    write_pipeline_status(hook_env, '{"qa_status":"PASS","phase":"build","sizing":"medium","telemetry_captured":"true","poirot_reviewed":"true"}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 0
 
 
 def test_T_GATE5_005_large_with_robert(hook_env):
-    write_pipeline_status(hook_env, '{"roz_qa":"PASS","phase":"review","sizing":"large","telemetry_captured":"true","poirot_reviewed":"true","robert_reviewed":"true"}')
+    write_pipeline_status(hook_env, '{"qa_status":"PASS","phase":"review","sizing":"large","telemetry_captured":"true","poirot_reviewed":"true","robert_reviewed":"true"}')
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
     assert r.returncode == 0
@@ -370,7 +370,7 @@ def test_gate0b_investigator_missing_worktree_path_blocked(hook_env):
     when pipeline state carries a non-null worktree_path."""
     write_pipeline_status(
         hook_env,
-        '{"phase":"review","roz_qa":"PASS","worktree_path":"/Users/x/projects/atelier-pipeline-ac008bc4"}',
+        '{"phase":"review","qa_status":"PASS","worktree_path":"/Users/x/projects/atelier-pipeline-ac008bc4"}',
     )
     _config_with_state_dir(hook_env)
     # Prompt references a generic investigation task but omits the worktree path
@@ -387,7 +387,7 @@ def test_gate0b_investigator_with_worktree_path_allowed(hook_env):
     worktree = "/Users/x/projects/atelier-pipeline-ac008bc4"
     write_pipeline_status(
         hook_env,
-        f'{{"phase":"review","roz_qa":"PASS","worktree_path":"{worktree}"}}',
+        f'{{"phase":"review","qa_status":"PASS","worktree_path":"{worktree}"}}',
     )
     _config_with_state_dir(hook_env)
     prompt = f"Investigate the failing enforcement hook in worktree {worktree}. Start at source/claude/hooks/enforce-sequencing.sh."
@@ -404,7 +404,7 @@ def test_gate0b_investigator_basename_only_blocked(hook_env):
     worktree = "/Users/x/projects/atelier-pipeline-ac008bc4"
     write_pipeline_status(
         hook_env,
-        f'{{"phase":"review","roz_qa":"PASS","worktree_path":"{worktree}"}}',
+        f'{{"phase":"review","qa_status":"PASS","worktree_path":"{worktree}"}}',
     )
     _config_with_state_dir(hook_env)
     # Prompt mentions only the basename, not the full absolute worktree path.
@@ -437,7 +437,7 @@ def test_gate5_no_product_specs_ellis_allowed(hook_env):
 
     write_pipeline_status(
         hook_env,
-        '{"roz_qa":"PASS","phase":"review","sizing":"medium","telemetry_captured":"true","poirot_reviewed":"true"}',
+        '{"qa_status":"PASS","phase":"review","sizing":"medium","telemetry_captured":"true","poirot_reviewed":"true"}',
     )
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
@@ -454,7 +454,7 @@ def test_gate5_product_specs_exist_ellis_still_blocked(hook_env):
 
     write_pipeline_status(
         hook_env,
-        '{"roz_qa":"PASS","phase":"review","sizing":"medium","telemetry_captured":"true","poirot_reviewed":"true"}',
+        '{"qa_status":"PASS","phase":"review","sizing":"medium","telemetry_captured":"true","poirot_reviewed":"true"}',
     )
     _config_with_state_dir(hook_env)
     r = run_hook("enforce-sequencing.sh", build_agent_input("ellis"), hook_env)
@@ -478,7 +478,7 @@ def test_gate0b_investigator_no_worktree_path_fail_open(hook_env):
     worktree path that does not exist."""
     write_pipeline_status(
         hook_env,
-        '{"phase":"review","roz_qa":"PASS"}',
+        '{"phase":"review","qa_status":"PASS"}',
     )
     _config_with_state_dir(hook_env)
     prompt = "Investigate the failing enforcement hook. Look at source/claude/hooks/enforce-sequencing.sh."

@@ -64,7 +64,9 @@ function registerAgentCapture(srv, pool, apiKey, capturedBy, cfg) {
       importance: z.number().min(0).max(1).describe("Importance score 0-1"),
       trigger_event: z.string().optional().describe("What triggered this capture"),
       supersedes_id: z.string().uuid().optional().describe("UUID of thought this supersedes"),
-      scope: z.array(z.string()).optional().describe("ltree scope paths"),
+      scope: z.array(z.string()).optional().describe(
+        "ltree scope paths. Pass an array of dot-separated namespace strings, e.g. ['pipeline.adr-0006', 'project.myproject']. Each element is one ltree path — do NOT use brace syntax ({a,b}). Labels may contain ASCII letters (case-sensitive), digits, underscores, and hyphens (hyphens require PostgreSQL >= 16 / ltree 1.2)."
+      ),
       metadata: z.record(z.string(), z.unknown()).optional().describe("Additional metadata"),
       decided_by: z.object({
         agent: z.string(),

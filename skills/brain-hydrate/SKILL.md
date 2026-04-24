@@ -25,6 +25,16 @@ This skill reads existing project artifacts and git history, extracts reasoning 
 
 Before extracting anything, scan the project and present an inventory.
 
+### Step 0: Pre-load Brain MCP Tool Schemas
+
+Brain MCP tool schemas are deferred — the first call to any `atelier_*` or `agent_*` tool without its schema loaded fails with `InputValidationError`. Run ToolSearch once before any brain call to load the schemas up front:
+
+```
+ToolSearch query: select:mcp__plugin_atelier-pipeline_atelier-brain__atelier_stats,mcp__plugin_atelier-pipeline_atelier-brain__agent_capture,mcp__plugin_atelier-pipeline_atelier-brain__agent_search,mcp__plugin_atelier-pipeline_atelier-brain__atelier_relation,mcp__plugin_atelier-pipeline_atelier-brain__atelier_browse,mcp__plugin_atelier-pipeline_atelier-brain__atelier_trace
+```
+
+Proceed to Step 1 only after ToolSearch returns.
+
 ### Step 1: Verify Brain is Live
 
 1. Call `atelier_stats` to confirm the brain is reachable and `brain_enabled: true`.
@@ -427,6 +437,10 @@ These rules are mandatory:
 5. **Cap single-run extraction.** Maximum 100 thoughts per hydration run. If the scan estimates more, batch: "Found ~150 extractable thoughts. I'll capture the first 100 (highest importance). Run again for the remainder."
 
 6. **Always verify at the end.** Call `atelier_stats` after hydration to confirm thought count increased as expected.
+
+7. **Use the correct `scope` format for `agent_capture`.** `agent_capture` takes `scope` as an **array** of dot-separated ltree strings, e.g. `["pipeline.adr-0006", "project.atelier"]` — not a bare string. Each array element is one ltree path; segments are dot-separated (`org.product.feature`). Labels may contain ASCII letters (case-sensitive), digits, underscores, and hyphens (hyphens require PostgreSQL >= 16 / ltree 1.2). Do NOT use PostgreSQL brace syntax (`{a,b}`) — that is the wire format, not the input format.
+
+   **`agent_search` and `atelier_browse`** take `scope` as a **bare string** (a single ltree path), not an array. Pass `"pipeline.adr-0006"`, not `["pipeline.adr-0006"]`.
 
 </gate>
 
