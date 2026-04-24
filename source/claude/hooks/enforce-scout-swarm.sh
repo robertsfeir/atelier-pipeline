@@ -35,6 +35,29 @@ AGENT_ID=$(echo "$INPUT" | jq -r '.agent_id // empty')
 
 SUBAGENT_TYPE=$(echo "$INPUT" | jq -r '.tool_input.subagent_type // empty')
 
+# ─── Explore file-dump scout format contract ────────────────────────────
+# Applies regardless of pipeline sizing. An Explore scout that has a <read>
+# block (file-reading scout) MUST include the '=== FILE:' delimiter format
+# contract in its prompt so the downstream Sonnet extractor can parse output.
+# Search/question scouts (no <read> block) are allowed through.
+if [ "$SUBAGENT_TYPE" = "Explore" ]; then
+  PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // empty')
+  if [ -n "$PROMPT" ]; then
+    if echo "$PROMPT" | grep -qE '^[[:space:]]*<read[>[:space:]]'; then
+      if ! echo "$PROMPT" | sed -n '/<output>/,/<\/output>/p' | grep -qF '=== FILE:'; then
+        echo "BLOCKED: Explore file-reading scout missing output format contract. Add <output> block with '=== FILE: {path} ===' delimiter to the scout prompt (see skills/brain-hydrate/SKILL.md §Scout Invocation Template)." >&2
+        exit 2
+      fi
+      # Post-pass guard: {FILES} placeholder was never substituted by Eva.
+      if echo "$PROMPT" | grep -qF '{FILES}'; then
+        echo "BLOCKED: Explore scout prompt contains unsubstituted {FILES} placeholder. Eva must replace {FILES} with the actual file paths from Phase 1 inventory before invoking the scout." >&2
+        exit 2
+      fi
+    fi
+  fi
+  exit 0
+fi
+
 # Only enforce for sarah and colby. Poirot is gone (v4.0); other agents have
 # no scout evidence contract.
 case "$SUBAGENT_TYPE" in

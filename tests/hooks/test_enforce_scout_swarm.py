@@ -4,7 +4,7 @@ Tests that the hook blocks invocations of cal, roz, and colby when the
 required scout evidence block is absent from the prompt, and allows through
 when the block is present or skip conditions apply.
 
-Test IDs: T-SCOUT-001 through T-SCOUT-025
+Test IDs: T-SCOUT-001 through T-SCOUT-025, T-EXPLORE-001 through T-EXPLORE-007
 """
 
 import json
@@ -295,3 +295,118 @@ def test_T_SCOUT_027_cal_research_brief_sufficient_content_allowed(hook_env):
 
 
 # ── T-0033-009: empty <debug-evidence></debug-evidence> → blocked ──────────
+
+
+# ── Explore file-dump scout enforcement ─────────────────────────────────────
+#
+# Applies regardless of pipeline sizing. Explore scouts that carry a <read>
+# block (file-reading scouts) MUST include '=== FILE:' inside an <output>
+# block so the downstream extractor can parse the result.
+# Search/question scouts (no <read> block) are always allowed through.
+#
+# T-EXPLORE-001 through T-EXPLORE-007
+
+
+# ── T-EXPLORE-001: search scout (no <read> tag) → allowed ───────────────────
+
+def test_T_EXPLORE_001_search_scout_no_read_allowed(hook_env):
+    """Explore with a plain search task and no <read> block → exit 0."""
+    _config_with_state_dir(hook_env)
+    inp = build_agent_prompt_input(
+        "Explore",
+        "Search the codebase for usages of enforce-scout-swarm.sh and summarise findings.",
+    )
+    r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
+    assert r.returncode == 0
+
+
+# ── T-EXPLORE-002: file-dump scout with format contract → allowed ────────────
+
+def test_T_EXPLORE_002_file_dump_scout_with_contract_allowed(hook_env):
+    """Explore with <read> block AND '=== FILE:' inside <output> block → exit 0."""
+    _config_with_state_dir(hook_env)
+    prompt = (
+        "Read the following files and output each with the required delimiter.\n"
+        "<read>\nsource/claude/hooks/enforce-scout-swarm.sh\n</read>\n"
+        "<output>\n=== FILE: source/claude/hooks/enforce-scout-swarm.sh ===\n{content}\n</output>"
+    )
+    inp = build_agent_prompt_input("Explore", prompt)
+    r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
+    assert r.returncode == 0
+
+
+# ── T-EXPLORE-003: file-dump scout missing format contract → blocked ─────────
+
+def test_T_EXPLORE_003_file_dump_scout_missing_contract_blocked(hook_env):
+    """Explore with <read> block but no <output> block → exit 2, 'output format contract' in message."""
+    _config_with_state_dir(hook_env)
+    prompt = (
+        "Read the following files.\n"
+        "<read>\nsource/claude/hooks/enforce-scout-swarm.sh\n</read>\n"
+        "Summarise what you find."
+    )
+    inp = build_agent_prompt_input("Explore", prompt)
+    r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
+    assert r.returncode == 2
+    assert "BLOCKED" in r.stdout
+    assert "output format contract" in r.stdout
+
+
+# ── T-EXPLORE-004: '=== FILE:' only in <read>, not in <output> → blocked ────
+
+def test_T_EXPLORE_004_file_marker_only_in_read_blocked(hook_env):
+    """'=== FILE:' inside <read> block but no <output> block → exit 2 (scoping check)."""
+    _config_with_state_dir(hook_env)
+    # The '=== FILE:' string appears inside the <read> block, not inside <output>.
+    # The hook must require it inside <output>; this must still be blocked.
+    prompt = (
+        "<read>\n=== FILE: source/claude/hooks/enforce-scout-swarm.sh\n</read>\n"
+        "Summarise what you find."
+    )
+    inp = build_agent_prompt_input("Explore", prompt)
+    r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
+    assert r.returncode == 2
+    assert "BLOCKED" in r.stdout
+
+
+# ── T-EXPLORE-005: unsubstituted {FILES} placeholder → blocked ──────────────
+
+def test_T_EXPLORE_005_unsubstituted_files_placeholder_blocked(hook_env):
+    """Prompt has <read> block, format contract in <output>, but {FILES} still present → exit 2."""
+    _config_with_state_dir(hook_env)
+    prompt = (
+        "Read the following files.\n"
+        "<read>\n{FILES}\n</read>\n"
+        "<output>\n=== FILE: {path} ===\n{content}\n</output>"
+    )
+    inp = build_agent_prompt_input("Explore", prompt)
+    r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
+    assert r.returncode == 2
+    assert "BLOCKED" in r.stdout
+    assert "unsubstituted" in r.stdout
+
+
+# ── T-EXPLORE-006: regression — sarah still enforced on Medium ───────────────
+
+def test_T_EXPLORE_006_regression_sarah_enforced_medium(hook_env):
+    """Explore enforcement did not break sarah enforcement on Medium pipeline."""
+    write_pipeline_status(hook_env, '{"phase":"design","sizing":"medium"}')
+    _config_with_state_dir(hook_env)
+    inp = build_agent_prompt_input("sarah", "Write an ADR for the new feature.")
+    r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
+    assert r.returncode == 2
+    assert "BLOCKED" in r.stdout
+    assert "research-brief" in r.stdout
+
+
+# ── T-EXPLORE-007: regression — colby still enforced on Medium ──────────────
+
+def test_T_EXPLORE_007_regression_colby_enforced_medium(hook_env):
+    """Explore enforcement did not break colby enforcement on Medium pipeline."""
+    write_pipeline_status(hook_env, '{"phase":"build","sizing":"medium"}')
+    _config_with_state_dir(hook_env)
+    inp = build_agent_prompt_input("colby", "Implement the feature per ADR-0042.")
+    r = run_hook("enforce-scout-swarm.sh", inp, hook_env)
+    assert r.returncode == 2
+    assert "BLOCKED" in r.stdout
+    assert "colby-context" in r.stdout

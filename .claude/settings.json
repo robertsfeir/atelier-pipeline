@@ -31,8 +31,7 @@
           },
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-scout-swarm.sh",
-            "if": "tool_input.subagent_type == 'sarah' || tool_input.subagent_type == 'colby'"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-scout-swarm.sh"
           },
           {
             "type": "prompt",

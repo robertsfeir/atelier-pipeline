@@ -29,6 +29,7 @@ tool invocation. `duration_ms = end_time - start_time`.
 | 2a | scout-research-brief | Explore+haiku (x3) | Pre-Sarah research scouts (medium+large) |
 | 2b | codebase-investigation | Explore+haiku (xN) → Sonnet reviewer | Ad-hoc codebase scan: partition by area, collect evidence, synthesize |
 | 2c | scout-synthesis | Sonnet | Post-scout filter/rank/trim before primary agent |
+| 2d | brain-hydrate-scout | Explore+haiku | Brain hydration file-content scout |
 | 3 | colby-mockup | Colby | UI mockup with mock data |
 | 4 | colby-build | Colby | Build unit; **CI Watch variant:** scope to CI fix |
 | 10 | ellis-commit | Ellis | Wave commit |
@@ -158,6 +159,38 @@ Poirot synthesis fills `<qa-evidence>`:
 - Brain context field omitted when `brain_available: false`.
 </constraints>
 <output>The named block (Sarah/Colby/Poirot), populated per shape above.</output>
+</template>
+
+<template id="brain-hydrate-scout">
+### Brain Hydrate Scout (Explore+haiku, Phase 2a of brain-hydrate skill)
+One scout per artifact category. Eva copies this template verbatim into every scout Agent call and fills `{FILES}` from the Phase 1 inventory for that category. The `=== FILE:` delimiter format is required — the downstream Sonnet extractor and `enforce-scout-swarm.sh` both depend on it.
+
+**Invocation:** `Agent(subagent_type: "Explore", model: "haiku")` with the prompt below.
+
+```
+<task>Read the files listed in <read> below. Return the full content of every file exactly as-is. Do not summarize, paraphrase, or omit any part of any file. Do not add commentary, headings, or analysis. Raw file dumps only.</task>
+<read>
+{FILES}
+</read>
+<constraints>
+- No prose, no summaries, no opinions.
+- Every file in <read> must appear in output exactly once.
+- Reproduce each file completely — no truncation.
+</constraints>
+<output>
+For each file, output using this exact delimiter format:
+
+=== FILE: {path} ===
+[full file content]
+=== END FILE ===
+
+Repeat for every file in <read>.
+</output>
+```
+
+`{FILES}` is replaced with the Phase 1 file paths for the category (one path per line). See `skills/brain-hydrate/SKILL.md §Scout Invocation Template` for Phase 1 inventory rules and category-to-block-element mapping.
+
+**Post-scout:** Sonnet subagent receives all scout outputs concatenated by category block element (`<adrs>`, `<specs>`, `<ux-docs>`, `<pipeline-artifacts>`, `<git-history>`). See brain-hydrate SKILL.md §Phase 2b.
 </template>
 
 <template id="colby-mockup">

@@ -89,7 +89,7 @@ The user may exclude sources ("skip git history", "only ADRs") or adjust the tim
 
 After the user approves the scan inventory, Eva fans out Explore+haiku scouts in parallel. Each scout reads one category of artifact files and returns raw content in a named inline block. This keeps all file reading off the main thread and off Opus.
 
-**Invocation pattern:** `Agent(subagent_type: "Explore", model: "haiku")`. Facts only -- no extraction, no opinions. Each scout returns raw file content with clear delimiters per file.
+**Invocation pattern:** `Agent(subagent_type: "Explore", model: "haiku")`. Eva must use the Scout Invocation Template below when building the prompt — copy it verbatim and fill `{FILES}` with the Phase 1 file paths for that category. Facts only -- no extraction, no opinions. Each scout returns raw file content with clear delimiters per file.
 
 **Dedup rule:** Each file is read by exactly one scout. No file appears in more than one scout's file set.
 
@@ -118,6 +118,33 @@ Each scout returns content using file delimiters:
 ```
 
 The Sonnet subagent parses these delimiters to process each file individually against the extraction rules.
+
+### Scout Invocation Template
+
+Eva copies this template verbatim into every Explore+haiku scout Agent call. Fill `{FILES}` with the Phase 1 file paths for the category being read (one path per line). Do not paraphrase or abbreviate any part of this template — the `=== FILE:` delimiter format in `<output>` is what the downstream Sonnet extractor and the `enforce-scout-swarm.sh` hook both require.
+
+```
+<task>Read the files listed in <read> below. Return the full content of every file exactly as-is. Do not summarize, paraphrase, or omit any part of any file. Do not add commentary, headings, or analysis. Raw file dumps only.</task>
+<read>
+{FILES}
+</read>
+<constraints>
+- No prose, no summaries, no opinions.
+- Every file in <read> must appear in output exactly once.
+- Reproduce each file completely — no truncation.
+</constraints>
+<output>
+For each file, output using this exact delimiter format:
+
+=== FILE: {path} ===
+[full file content]
+=== END FILE ===
+
+Repeat for every file in <read>.
+</output>
+```
+
+The `{FILES}` placeholder is the exact file paths from Phase 1 inventory for this scout's category — one absolute or repo-relative path per line. Eva determines the file list from Phase 1 counts before fan-out.
 
 ### Skip Conditions
 
