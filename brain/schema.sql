@@ -23,7 +23,8 @@ CREATE TYPE source_agent AS ENUM (
   'eva', 'cal', 'robert', 'sable', 'colby',
   'roz', 'poirot', 'agatha', 'distillator', 'ellis',
   'robert-spec', 'sable-ux',
-  'sentinel', 'darwin', 'deps', 'brain-extractor'
+  'sentinel', 'darwin', 'deps', 'brain-extractor',
+  'sarah', 'sherlock'
 );
 
 CREATE TYPE source_phase AS ENUM (

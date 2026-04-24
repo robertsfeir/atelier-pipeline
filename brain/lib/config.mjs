@@ -31,6 +31,10 @@ const SOURCE_AGENTS = [
   "darwin",
   "deps",
   "brain-extractor",
+  // # non-pipeline-extracted: sarah submits no automatic agent_capture calls; source_agent used for manual captures
+  "sarah",
+  // # non-extracted: sherlock runs in fresh general-purpose isolation, read-only
+  "sherlock",
 ];
 const SOURCE_PHASES = [
   "design", "build", "qa", "review", "reconciliation", "setup", "handoff", "devops", "telemetry", "ci-watch", "pipeline",

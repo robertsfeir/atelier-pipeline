@@ -339,7 +339,7 @@ async function handleTelemetryAgents(req, res, pool) {
      WHERE thought_type = 'insight'
        AND source_phase = 'telemetry'
        AND metadata->>'telemetry_tier' = '1'
-       -- SOURCE_AGENTS includes non-telemetry agents (eva, poirot, distillator) — these
+       -- SOURCE_AGENTS includes non-telemetry agents (eva, poirot, distillator, sherlock) — these
        -- never match T1 rows but the over-inclusion is harmless; use SOURCE_AGENTS for
        -- single-source-of-truth.
        AND metadata->>'agent_name' IN (${agentPlaceholders})${scopeClause}

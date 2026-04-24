@@ -307,19 +307,20 @@ describe('ADR-0034 Wave 1 — enum boundary', () => {
     );
   });
 
-  // T-0034-061 (Roz): SOURCE_AGENTS total count is exactly 16
-  it('T-0034-061: SOURCE_AGENTS has exactly 16 entries', () => {
+  // T-0034-061 (Roz): SOURCE_AGENTS total count is exactly 18
+  it('T-0034-061: SOURCE_AGENTS has exactly 18 entries', () => {
     const EXPECTED_AGENTS = [
       'eva', 'cal', 'robert', 'sable', 'colby',
       'roz', 'agatha', 'ellis',
       'poirot', 'distillator',
       'robert-spec', 'sable-ux',
       'sentinel', 'darwin', 'deps', 'brain-extractor',
+      'sarah', 'sherlock',
     ];
     assert.strictEqual(
       SOURCE_AGENTS.length,
-      16,
-      `SOURCE_AGENTS has ${SOURCE_AGENTS.length} entries, expected 16. ` +
+      18,
+      `SOURCE_AGENTS has ${SOURCE_AGENTS.length} entries, expected 18. ` +
       `Actual: [${SOURCE_AGENTS.join(', ')}]. ` +
       `Expected: [${EXPECTED_AGENTS.join(', ')}]`
     );
