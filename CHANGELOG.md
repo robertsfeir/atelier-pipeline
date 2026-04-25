@@ -5,6 +5,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [4.0.7] - 2026-04-24
+
+### Added
+
+- **Brain Unit 2 — ADR metadata contract:** Brain extractor now wires producer/consumer contracts for ADR metadata. Sarah and Colby write structured ADR revision markers (`Revision <N>`); brain-extractor reads and captures `adr_revision` counts, `factual_claim_count`, and `loc_estimate` as typed quality signals. Closes the gap where revision cycles were invisible to the brain.
+
+### Fixed
+
+- **Brain source_agent enum:** Added `sarah` and `sherlock` as valid `source_agent` enum values in the brain schema and REST API. Previously, captures from these agents were silently rejected.
+- **Brain MCP preload:** `atelier_hydrate` MCP tool is now pre-loaded in the brain-hydrate skill so it is available without a ToolSearch roundtrip. Scope format documentation corrected to match actual dot-separated namespace format. Fifteen `roz_qa` → `qa_status` field-name drift tests corrected.
+- **Brain-hydrate scout format contract:** Explore+haiku scouts now receive a verbatim invocation template (task/read/constraints/output) inside their prompt, mandating `=== FILE: {path} ===` / `=== END FILE ===` delimiters. Template mirrored to `source/shared/references/invocation-templates.md` as `brain-hydrate-scout`. `enforce-scout-swarm.sh` extended with an Explore enforcement block that blocks scouts missing the format contract in their `<output>` section; removed the `if` filter from `settings.json` that was making the new block dead code.
+
+### Changed
+
+- **Poirot — three-pass attention allocation:** Blind review workflow now opens with an explicit three-surface rule: (1) the diff itself, (2) the integration surface (callers, consumers, downstream types), (3) the omission surface (what a correct implementation *should* have touched but didn't). The omission surface is where meaningful bugs hide after tests pass.
+- **Sarah — risk shapes:** The `## Rationale` ADR template now directs Sarah to state risk shapes inline: what would fail, in what direction, under what condition. Example included. Replaces vague category labels ("Performance risk") with narrative failure descriptions.
+- **Sarah — revision feedback classifier:** Revision Mode now instructs Sarah to classify incoming feedback before revising: implementation-specific feedback routes to Colby's Factual Claims section; design-level feedback warrants ADR revision. Mixed feedback is separated before acting.
+
 ## [4.0.6] - 2026-04-22
 
 ### Fixed
