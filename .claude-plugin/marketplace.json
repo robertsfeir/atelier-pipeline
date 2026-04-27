@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "atelier-pipeline",
-      "version": "4.0.7",
+      "version": "4.0.8",
       "source": "./",
       "description": "Multi-agent orchestration for AI-powered IDEs — quality gates, wave-based QA, and persistent institutional memory"
     }

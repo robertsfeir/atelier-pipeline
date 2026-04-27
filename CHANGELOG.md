@@ -5,6 +5,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [4.0.8] - 2026-04-27
+
+### Changed
+
+- **Opus 4.7 pipeline tuning — Phase 1 (literal-instruction surfaces):** Tightened six literal-instruction surfaces across agent personas and orchestration rules. Sentinel's minimum-findings floor replaced with Poirot's zero-with-confidence model (padded reports are worse than an honest zero); the fix is applied to both the `<constraints>` block and the DoD output template. Agatha's workflow promoted from advisory bullets to six directive numbered steps with an explicit `Written {paths}, updated {paths}.` return-line format. robert-spec and sable-ux workflows expanded from 4-line sketches to full subagent-mode procedures with output format blocks and explicit return lines. Sarah's exploration ceiling (`~8 files`) reinforced with a concrete fallback condition at the identity level. Eva's invocation template `<read>` advisory clarified from `prefer ≤6` to `typically ≤6; include more when the decision clearly requires it`.
+- **Opus 4.7 pipeline tuning — Phase 2 (maxTurns recalibration):** Recalibrated turn budgets against Opus 4.7's ~2x call efficiency across both Claude Code and Cursor agent trees: Colby 200→120, Agatha 60→40, Poirot 80→50, Sherlock 80→50, Sarah 45→30. Cursor tree aligned to Claude tree (cursor tree had drifted to different values).
+- **Opus 4.7 pipeline tuning — Phase 3 (Sentinel model demotion):** Sentinel demoted from `opus` to `sonnet`. Pattern-matching SAST with `effort: low` suppresses Opus reasoning; Sonnet matches the actual workload. Per-agent table in `pipeline-models.md` updated with rationale.
+- **Opus 4.7 pipeline tuning — Phase 4 (explicit model IDs):** Pinned explicit versioned model IDs across all 26 frontmatter files (13 Claude Code + 13 Cursor): `claude-opus-4-7`, `claude-sonnet-4-6`, `claude-haiku-4-5-20251001`. Generic aliases (`opus`, `sonnet`, `haiku`) eliminated. `skills/brain-hydrate/SKILL.md` model assignment table aligned. Structural pytest added (`tests/test_frontmatter_model_ids.py`) that fails CI when any frontmatter declares a generic alias — prevents silent alias drift from invalidating the recalibrated turn budgets.
+- **Opus 4.7 pipeline tuning — Phase 5 (web-search regression):** Documented Opus 4.7's known agentic web-search regression in `pipeline-models.md`. No pipeline agent tool list includes `WebSearch` or `WebFetch`; Eva's auto-routing must not synthesize these tools in.
+
 ## [4.0.7] - 2026-04-24
 
 ### Added
