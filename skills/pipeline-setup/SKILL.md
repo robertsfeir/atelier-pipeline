@@ -9,6 +9,28 @@ This skill installs the full Atelier Pipeline multi-agent orchestration system i
 
 > **Heads-up (Claude Code < 2.1.89):** Agent persona frontmatter declares an `effort` field (values: `low`, `medium`, `high`, `xhigh`) in addition to `model`. Claude Code runtimes older than **2.1.89** ignore the `effort` field silently -- the pipeline still functions, but effort-based promotion signals are not honoured by the runtime. See **ADR-0041** for the full effort-tier model. If your team is on an older Claude Code build, either upgrade or treat the `effort` field as documentation-only. Cursor users: the `effort` field is passed through as metadata; refer to Cursor release notes for runtime support.
 
+<contract>
+  <requires>
+    - `CLAUDE_PLUGIN_ROOT` (Claude Code) or `CURSOR_PROJECT_DIR` (Cursor) environment variable set by the runtime.
+    - Plugin `source/` tree present at `${CLAUDE_PLUGIN_ROOT}/source/` (shared, claude, cursor overlays).
+    - Write access to project root (`.claude/`, `docs/`, `CLAUDE.md`).
+    - `jq` available on `PATH` for hook registration in `settings.json`.
+  </requires>
+  <produces>
+    - `.claude/rules/`, `.claude/agents/`, `.claude/commands/`, `.claude/references/`, `.claude/hooks/` populated from source overlays.
+    - `.claude/pipeline-config.json` with branching strategy, project name, and feature flags.
+    - `.claude/settings.json` with hook registrations (PreToolUse, SubagentStart, SubagentStop, SessionStart, PreCompact, PostCompact, StopFailure).
+    - `.claude/.atelier-version` plugin version marker.
+    - `docs/pipeline/` state files (`pipeline-state.md`, `context-brief.md`, `error-patterns.md`, `investigation-ledger.md`).
+    - `CLAUDE.md` with pipeline section appended.
+    - Cursor only: `.cursor-plugin/rules/*.mdc` reference wrappers.
+  </produces>
+  <invalidates>
+    - Any prior install's `.claude/rules/`, `.claude/agents/`, `.claude/commands/`, `.claude/references/`, and `.claude/hooks/` contents (overwritten from source on re-sync; live state files in `docs/pipeline/` and `.claude/pipeline-config.json` are preserved).
+    - Deprecated `quality-gate.sh`, orphan brain-capture hooks, orphan `session-hydrate.sh` registration, and stale `atelier-brain` `.mcp.json` entries (Steps 0–0d).
+  </invalidates>
+</contract>
+
 <procedure id="setup">
 
 ## Setup Procedure

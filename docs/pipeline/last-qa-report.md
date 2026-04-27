@@ -1,19 +1,24 @@
-## DoR: Diff Metadata
-**Files:** 12 created/modified | **Added:** ~140 lines (new agents + frontmatter) | **Removed:** N/A (rename refactor)
-**Functions modified:** `enforce-scout-swarm.sh` SUBAGENT_TYPE check; `.claude/settings.json` sequencing exemption | **New dependencies:** none
+## DoR: Diff Metadata (Scoped Re-run)
+**Files:** 1 | **Added:** 16 | **Removed:** 0
+**Functions modified:** none (documentation only -- single-line correction inside the `<contract>` block of `skills/brain-hydrate/SKILL.md`)
+**New dependencies:** none
+
+**Scope:** Re-verify finding #1 from prior report: `<requires>` precondition listing `synthesis` as a Phase 2a fan-out dependency.
 
 ## Exercised
-- Ran `pytest tests/hooks/test_enforce_scout_swarm.py -x -q` → **26 passed**. Scout/T-EXPLORE tests all green under the new "scout" subagent_type string.
-- Read all eight new/changed source files (scout/synthesis personas + frontmatter, both Claude and Cursor source overlays, both assembled .claude/agents files, the hook, settings.json).
-- Greped the entire repo for residual `Explore` and `general-purpose` strings to find missed call sites.
+Documentation-only fix -- no executable surface. Verification by grep:
+
+- Confirmed `synthesis` is removed from the `<requires>` block (line 15 now reads "`scout` agent persona present in `.claude/agents/`" only).
+- Confirmed `synthesis` no longer appears anywhere in the contract block (`grep -nE "synthesis" skills/brain-hydrate/SKILL.md` returns 0 hits in lines 10-24).
+- Confirmed Phase 2a fan-out still uses only `scout` (line 108: `Agent(subagent_type: "scout")`).
+- Re-checked the rest of the contract for collateral damage: `Phase 1 Step 0` cross-reference resolves cleanly to line 44 (`### Step 0: Pre-load Brain MCP Tool Schemas`); `Phase 3 progress and final-summary report` resolves to line 378 (`## Phase 3: Progress & Summary`); `atelier_stats` / `brain_enabled: true` check resolves to line 56.
+- XML well-formedness preserved: `<contract>` opens line 10, closes line 24; `<requires>`, `<produces>`, `<invalidates />` all balanced.
 
 ## DoD: Verification
-**Findings:** 4 (1 BLOCKER, 2 FIX-REQUIRED, 1 NIT) | **Categories:** cross-layer wiring, omission surface (cursor parity), guidance/code drift, persona-file structural correctness | **Grep verified:** `subagent_type`, `Explore`, `general-purpose`, `scout|synthesis` across `source/`, `.claude/`, `.cursor-plugin/`, `skills/`, `tests/` | **Exercised:** pytest suite for the hook (26/26 pass)
+**Findings:** 0 | **Categories:** documentation accuracy, cross-reference integrity | **Grep verified:** synthesis removal, scout retention, Phase 1 Step 0 anchor, Phase 3 anchor, atelier_stats anchor | **Exercised:** static fact-check (documentation diff has no executable surface)
 
 ## Findings
 | # | Location | Severity | Category | Description | Suggested Fix |
 |---|----------|----------|----------|-------------|---------------|
-| 1 | `.cursor-plugin/agents/` (no `scout.md`, no `synthesis.md`); cursor source frontmatter exists but never assembled into the cursor plugin tree | BLOCKER | Cross-layer wiring (Cursor target) | The diff creates `source/cursor/agents/scout.frontmatter.yml` and `synthesis.frontmatter.yml` but the assembled Cursor plugin directory `.cursor-plugin/agents/` still contains only the legacy 12 agents. Any Cursor user invoking `Agent(subagent_type: "scout")` or `"synthesis"` per the new templates will fail because no agent is registered. The "triple target" convention in CLAUDE.md is broken — Claude side was assembled, Cursor side was not. | Run the Cursor-side assembly step (frontmatter overlay + shared body merge) so `.cursor-plugin/agents/scout.md` and `synthesis.md` exist. Confirm both ship in the next plugin release before declaring DoD. |
-| 2 | `.cursor-plugin/skills/brain-hydrate/SKILL.md` lines 82, 449, 453 (and surrounding prose) | FIX-REQUIRED | Cross-layer wiring / drift | Cursor mirror of brain-hydrate still says `Agent(subagent_type: "Explore", model: "haiku")` and refers to "Haiku (Explore subagent)". The diff updated `skills/brain-hydrate/SKILL.md` but the cursor-plugin copy is now stale and out of sync. Cursor users following this skill will invoke a non-registered `Explore` type. | Re-sync `.cursor-plugin/skills/brain-hydrate/SKILL.md` from `skills/brain-hydrate/SKILL.md` so all `Explore` invocation strings become `scout` and the model parameter is dropped per ADR-0048. |
-| 3 | `source/shared/references/gauntlet.md:133`, `source/shared/references/routing-detail.md:22` (and their `.claude/` mirrors at the same paths) | FIX-REQUIRED | Omission surface (rename incomplete) | Two operational guidance docs Eva reads still tell her to fan out "Explore+haiku scouts" / "Explore+Haiku scouts". The rename swept invocation-templates.md, pipeline-phases.md, pipeline-models.md, and brain-hydrate, but missed gauntlet and routing-detail. If Eva follows these doc strings literally on a /devops scan or a debug-route classification, she will invoke `subagent_type: "Explore"` and bypass the new registered scout. | Replace "Explore+haiku scouts" with "scout subagents" (no model param per ADR-0048) in both files in `source/shared/references/` and re-mirror to `.claude/references/`. |
-| 4 | `source/shared/agents/scout.md:39`, `source/shared/agents/synthesis.md:37`, `.claude/agents/scout.md:53`, `.claude/agents/synthesis.md:50` | NIT | Persona-file structural correctness | Both new personas end with a stray `</output>` closing tag with no matching `<output>` opening tag. The body has `<identity>`, `<workflow>`, `<constraints>`, but no `<output>` section — yet the file closes with `</output>` as if one were deleted mid-edit. Compare to peer personas (sentinel.md, distillator.md) which pair `<output>...</output>` cleanly. Cosmetic today, but the agent-system XML schema is referenced by `.claude/references/xml-prompt-schema.md` and downstream tooling may complain. | Either delete the orphan `</output>` line, or add a proper `<output>` section describing what scout/synthesis emits (the workflow already says it — promote that prose into a real `<output>` block). |
+
+0 findings. Fix is correct and surgical -- the `synthesis` token was removed from the precondition without disturbing any adjacent claim. No new issues introduced. The brain-hydrate contract now accurately reflects that Phase 2a fan-out depends on `scout` only, and the Phase 2b extraction subagent (invoked as `Agent(model: "sonnet")` per line 203) is correctly omitted from the persona-file precondition because it does not require a named persona file.

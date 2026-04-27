@@ -7,6 +7,24 @@ description: Use when users want to remove the atelier-pipeline multi-agent orch
 
 This skill removes the Atelier Pipeline multi-agent orchestration system from the user's project. It is careful, transparent, and non-destructive by default.
 
+<contract>
+  <requires>
+    - Pipeline previously installed via `/pipeline-setup` (at least one of `.claude/rules/`, `.claude/agents/`, `.claude/hooks/`, `.claude/pipeline-config.json`, or `docs/pipeline/` exists).
+    - Write access to project root and explicit user "yes" confirmation before any removal.
+  </requires>
+  <produces>
+    - Removal of core pipeline files in `.claude/rules/`, `.claude/agents/` (core only), `.claude/commands/`, `.claude/references/`, `.claude/hooks/`, and `docs/pipeline/`.
+    - Removal of `.claude/pipeline-config.json` and `.claude/.atelier-version`.
+    - `.claude/settings.json` with pipeline hook registrations stripped (file deleted if empty).
+    - `CLAUDE.md` with the "Pipeline System (Atelier Pipeline)" section stripped (file deleted if empty).
+  </produces>
+  <invalidates>
+    - `brain-setup` `<requires>`: `.claude/` is no longer guaranteed to exist after uninstall.
+    - `brain-hydrate` `<requires>`: pipeline state directory and agent personas the hydration scout fan-out depends on are gone.
+    - Any user-created discovered agents in `.claude/agents/` lose their orchestration host (files preserved, but no longer functional).
+  </invalidates>
+</contract>
+
 <procedure id="uninstall">
 
 ## Uninstall Procedure

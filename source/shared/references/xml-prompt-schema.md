@@ -206,7 +206,29 @@ that benefit from unambiguous boundaries get wrapped.
 | `<gate>` | Security constraints, guardrails, mandatory rules (reused from rules vocabulary) | `id` (kebab-case) |
 | `<error-handling>` | Error conditions table with messages and recovery guidance | `id` (kebab-case) |
 | `<protocol>` | A routing decision or conditional execution path (reused from rules vocabulary) | `id` (kebab-case) |
+| `<contract>` | Declarative preconditions and outputs for a skill (skill files only) | None |
 | `<section>` | General-purpose semantic section (shared across all file types) | `id` (kebab-case) |
+
+### `<contract>` (skill files only)
+
+Per ADR-0052, skill files declare a `<contract>` block near the top of the file
+(after the YAML frontmatter, before `<procedure>`). It is read on the main
+thread at skill invocation and surface-checked before procedural steps run.
+Contracts are not enforced by a hook -- Claude reads them the same way it
+reads `<gate>` blocks. The skill's own first procedural step (e.g.,
+`atelier_stats` health check) remains the runtime fail-loud layer.
+
+The contract contains three child elements, each holding a bulleted list:
+
+| Child | Purpose |
+|-------|---------|
+| `<requires>` | Preconditions: files, env vars, prior-skill markers, MCP availability |
+| `<produces>` | Artifacts written by this skill (file paths, config keys, DB rows) |
+| `<invalidates>` | What this skill makes stale (other skills' `<requires>`, cached state) |
+
+`<contract>` is valid in skill files (`skills/*/SKILL.md`) only. Agent
+persona files use `<output>`; command files use `<output>`; rules and
+references do not declare contracts.
 
 ## Agent Conversion Template
 

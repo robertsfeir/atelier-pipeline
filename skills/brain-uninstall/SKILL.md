@@ -7,6 +7,22 @@ description: Use when users want to remove or disconnect the Atelier Brain persi
 
 This skill guides the user through removing or disconnecting the Atelier Brain persistent memory layer. Run this conversationally -- ask questions one at a time, not as a list. Present what will be removed BEFORE doing anything destructive.
 
+<contract>
+  <requires>
+    - At least one brain config file exists: `.claude/brain-config.json` (shared) or `${CLAUDE_PLUGIN_DATA}/brain-config.json` (personal).
+    - Explicit user "yes" confirmation before any destructive action (config removal, container/volume removal, database drop, table drop).
+    - For full-uninstall paths: matching tooling reachable for the chosen strategy (`docker` for Docker, `pg_isready` + `dropdb` for local, `psql` with credentials for remote).
+  </requires>
+  <produces>
+    - Removal of `.claude/brain-config.json` and/or `${CLAUDE_PLUGIN_DATA}/brain-config.json`.
+    - Optionally (Path B, per user choice): stopped/removed Docker container `brain-db`, deleted `brain-data` volume, dropped local database, or dropped public schema on remote.
+  </produces>
+  <invalidates>
+    - `brain-hydrate` `<requires>`: brain is no longer reachable / `brain_enabled` no longer true after disconnect.
+    - Pre-approved brain MCP tools in `permissions.allow` remain in `settings.json` but are inert until a new brain is configured (not removed by this skill).
+  </invalidates>
+</contract>
+
 <protocol id="config-detection">
 
 ## Detection: Locate Config

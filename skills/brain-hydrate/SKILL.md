@@ -7,6 +7,22 @@ description: Use when users want to bootstrap the brain with existing project kn
 
 This skill reads existing project artifacts and git history, extracts reasoning and decisions, and captures them as brain thoughts with proper types, importance scores, and relations. Run this conversationally -- present the scan results, get approval, then execute.
 
+<contract>
+  <requires>
+    - Brain configured via `/brain-setup`: `.claude/brain-config.json` (or personal equivalent) present with valid `database_url`, `openrouter_api_key`, and `scope`.
+    - Brain reachable: `atelier_stats` returns successfully and `brain_enabled: true`.
+    - Brain MCP tool schemas pre-loaded via ToolSearch (Phase 1 Step 0) before any `atelier_*` / `agent_*` call.
+    - Pipeline installed: `scout` agent persona present in `.claude/agents/` (required for the Phase 2a fan-out).
+    - At least one extractable source on disk: ADRs, feature specs, UX docs, `error-patterns.md`, `context-brief.md`, or git history.
+  </requires>
+  <produces>
+    - Up to 100 brain thoughts per run captured via `agent_capture` (types: `decision`, `rejection`, `preference`, `lesson`, `correction`, `insight`).
+    - Brain relations created via `atelier_relation` (`evolves_from`, `triggered_by`, `supports`, `contradicts`).
+    - Phase 3 progress and final-summary report on the main thread (counts per source type, breakdown, top themes).
+  </produces>
+  <invalidates />
+</contract>
+
 <gate id="extraction-principles">
 
 ## Core Principle

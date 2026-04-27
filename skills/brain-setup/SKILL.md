@@ -7,6 +7,24 @@ description: Use when users want to set up or connect to the Atelier Brain -- th
 
 This skill guides the user through setting up the Atelier Brain persistent memory layer. Run this conversationally -- ask questions one at a time, not as a list.
 
+<contract>
+  <requires>
+    - Pipeline installed via `/pipeline-setup` (`.claude/` directory exists with `settings.json`).
+    - PostgreSQL access via one of: Docker (`docker --version` + running daemon), local PostgreSQL (`pg_isready` succeeds), or a reachable remote PostgreSQL host with `pgvector` and `ltree` extensions available.
+    - `OPENROUTER_API_KEY` and `ATELIER_BRAIN_DB_PASSWORD` set in the environment (or willingness to set them after Path A auto-fix reports them missing).
+    - `python3` (preferred) or `node` available on `PATH` for inline file mutations (Eva cannot use Write/Edit on `.claude/`).
+  </requires>
+  <produces>
+    - `.claude/brain-config.json` (shared) or `${CLAUDE_PLUGIN_DATA}/brain-config.json` (personal) with `database_url`, `openrouter_api_key`, `scope`, and optional `brain_name` -- secrets stored as `${ENV_VAR}` placeholders only.
+    - `brain_config.brain_enabled = true` in the brain database via `PUT /api/config`.
+    - `permissions.allow` in `.claude/settings.json` extended with the 8 atelier-brain MCP tool names.
+    - Brain MCP tool schemas pre-loaded via ToolSearch for the current session.
+  </produces>
+  <invalidates>
+    - Stale `atelier-brain` entry in project-level `.mcp.json` (removed in Step 0; the plugin now owns MCP registration).
+  </invalidates>
+</contract>
+
 <protocol id="mcp-migration">
 
 ## Step 0: Remove Stale atelier-brain MCP Entry

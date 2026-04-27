@@ -1,22 +1,31 @@
 # Pipeline State
 
-<!-- PIPELINE_STATUS: {"phase": "build", "sizing": "micro", "qa_status": null, "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": false, "robert_reviewed": false, "brain_available": true, "worktree_path": "../atelier-pipeline-cf75e37c", "session_id": "cf75e37c", "branch_name": "session/cf75e37c", "stop_reason": null} -->
+<!-- PIPELINE_STATUS: {"phase": "idle", "sizing": "small", "qa_status": null, "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": true, "robert_reviewed": false, "brain_available": true, "worktree_path": null, "session_id": "11e70d16", "branch_name": null, "stop_reason": "completed_clean"} -->
 
 ## Active Pipeline
-**Feature:** brain-hydrate improvements — items 3 & 5
-**Phase:** build
-**Sizing:** Micro
-**Session:** cf75e37c
-**Branch:** session/cf75e37c
-**Worktree:** ../atelier-pipeline-cf75e37c
-
-### Next
-Colby: add ToolSearch pre-load step to brain-hydrate skill (item 3) + expand scope format docs in tools.mjs and skill (item 5).
+**Feature:** Issue #45 steps 1-2 — brain-context trust framing (agent-preamble) + scope enforcement (prefetch hook)
+**Phase:** idle
+**Sizing:** Small
+**Stop Reason:** completed_clean
+**Session:** 11e70d16
+**Commits:** e3e2586 (feat) · fd586df (chore: v4.0.14)
+**Release:** v4.0.14
 
 ---
 
-### Next
-Queued follow-up: **Test-authoring strategy review.** Structural pinning tests (line counts, row counts, exact-literal anchors) generate cascade churn with zero bug-catching value. Retro lesson 002 is being over-applied. Proposal: (1) stop prescribing absence tests for architectural deletions, (2) parametrize categorical checks, (3) drop line/row-count pins from structural tests, (4) narrow retro lesson 002 to its original scope. To be addressed as a dedicated pipeline after user's review.
+## Prior Pipeline (closed)
+**Feature:** Issue #44 — Colby Stop verification hook (typecheck + auto-format)
+**Phase:** idle
+**Sizing:** Small
+**Stop Reason:** completed_clean
+**Session:** 57bc01ce
+**Commit:** 652fcce
+**Release:** (no version bump — internal tooling)
+
+---
+
+### Parked (brain-hydrate items 3 & 5)
+Deferred: brain-hydrate skill ToolSearch pre-load (item 3) + scope format docs in tools.mjs (item 5). Resume in a separate session.
 
 ---
 
