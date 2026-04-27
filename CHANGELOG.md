@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [4.0.9] - 2026-04-27
+
+### Added
+
+- **Scout and synthesis registered subagents (ADR-0048):** `scout` and `synthesis` are now registered custom subagents with explicit versioned model IDs pinned in frontmatter, closing the last model-alias gap left by ADR-0047 Phase 4. Scout invocations change from `Agent(subagent_type: "Explore", model: "haiku")` to `Agent(subagent_type: "scout")` — the `model` parameter is dropped and Anthropic's resolution order falls through to the scout frontmatter (`claude-haiku-4-5-20251001`). Synthesis invocations change from `Agent(subagent_type: "general-purpose", model: "sonnet", effort: "low")` to `Agent(subagent_type: "synthesis", effort: "low")` — frontmatter pins `claude-sonnet-4-6`. Both subagents are registered across Claude Code and Cursor plugin targets. `enforce-scout-swarm.sh` and `.claude/settings.json` updated from `Explore` to `scout`. Invocation templates, pipeline-phases, pipeline-models, gauntlet, routing-detail, brain-hydrate skill, and pipeline-setup skill updated across all three targets (source, .claude/, .cursor-plugin/).
+
 ## [4.0.8] - 2026-04-27
 
 ### Changed
