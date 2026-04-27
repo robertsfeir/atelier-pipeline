@@ -163,6 +163,44 @@ See `.claude/references/invocation-templates.md` for detailed examples per agent
 
 </protocol>
 
+<protocol id="sendmessage-resume">
+
+## In-Session Resume (Sarah and Poirot Only)
+
+Per ADR-0049, Eva resumes a previously spawned Sarah or Poirot subagent via `SendMessage` instead of spawning a fresh Agent when the follow-up continues the same logical work unit. This skips the re-read cost on the two highest-context, most-often-revisited agents. **Scope is in-session only** -- session boundaries (compaction, restart, crash) discard captured `agentId` values and the next invocation starts fresh. No `agentId` is ever persisted to `pipeline-state.md` or any other file on disk.
+
+**Capture (mechanical, applies to every Sarah/Poirot Agent invocation):**
+
+When Eva invokes Sarah or Poirot via the Agent tool, she captures the `agentId` returned in the tool result and holds it in her own session context, keyed by agent name. Only the most recent `agentId` per agent is retained; an older `agentId` is overwritten when a new fresh Agent spawn occurs for the same agent. Capture also occurs on every successful `SendMessage` reply (the same `agentId` is reaffirmed live).
+
+**Continuation rule (use `SendMessage`, not `Agent`):**
+
+Use `SendMessage` against the captured `agentId` when ALL of the following hold:
+
+1. The target agent is **Sarah** or **Poirot** (no other agents qualify).
+2. A captured `agentId` exists in the current session for that agent.
+3. The follow-up matches a recognized continuation trigger:
+   - **Sarah:** ADR revision routed back from a Poirot structural finding (the "Poirot code QA (structural) -> Sarah subagent (revise)" feedback-loop row in `pipeline-operations.md`); any `<task>` Eva would otherwise mark "revision" per Sarah's Revision Mode.
+   - **Poirot:** scoped re-run on a unit after Colby fixes a finding (the "Poirot code QA (minor) -> Colby fix scoped re-run" feedback-loop row, and the continuous-QA rule "Eva invokes Poirot for a scoped rerun on the affected unit(s) only" after fix routing).
+
+**Fresh-spawn cases (use `Agent`, NOT `SendMessage`):**
+
+- Different feature, different ADR, different wave's blind review.
+- Devil's-advocate mode (once per pipeline -- by design a fresh perspective).
+- No captured `agentId` for the target agent in the current session.
+- Any agent other than Sarah or Poirot (Colby, Ellis, Robert, Sable, Agatha, Sentinel, Sherlock, Distillator, scouts, synthesis, discovered agents).
+- After any session boundary -- compaction, restart, or crash discards captured `agentId` values.
+
+**Discard:**
+
+Captured `agentId` values are transient session memory only. Eva never writes them to `pipeline-state.md`, `context-brief.md`, or any other file. On session boundary the values are gone; the next invocation for that agent is a fresh `Agent` spawn.
+
+**Failure mode (rollout watch):**
+
+If a `SendMessage` call returns a stale-agent error (the runtime no longer holds that context), Eva discards the captured `agentId` for that agent and retries as a fresh `Agent` spawn. If a continuation trigger misclassifies and Eva sends a follow-up to the wrong captured agent, the wrong-context surface is caught by Poirot blind review on the resulting diff -- discipline lives in the trigger rule above, not in `SendMessage` itself.
+
+</protocol>
+
 ---
 
 <gate id="no-skill-tool">

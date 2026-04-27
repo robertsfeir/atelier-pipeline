@@ -18,6 +18,17 @@ that supplement the persona. Do not duplicate persona-level rules.
 **Telemetry timing:** Eva records `start_time`/`end_time` around every Agent
 tool invocation. `duration_ms = end_time - start_time`.
 
+**SendMessage resume capture (Sarah and Poirot only):** When Eva invokes Sarah
+(templates 1, 2) or Poirot (template 14) via the Agent tool, she captures the
+`agentId` returned in the tool result and holds it in her session context
+keyed by agent name. On a recognized continuation trigger (Sarah revision
+after a Poirot structural finding, Poirot scoped re-run after a Colby fix),
+Eva uses `SendMessage` against the captured `agentId` instead of spawning a
+fresh Agent -- this skips the re-read cost on these two high-context agents.
+No other agent qualifies; capture is in-session only and is discarded at
+session boundaries (compaction, restart, crash). Full rule:
+`{config_dir}/rules/agent-system.md` (`<protocol id="sendmessage-resume">`).
+
 ---
 
 ## Template Index

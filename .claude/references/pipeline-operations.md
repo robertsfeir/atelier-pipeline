@@ -139,13 +139,19 @@ issues in this module that you've missed 3 times. Extra scrutiny warranted."
 | UAT feedback (spec change) | Robert -> Sable -> re-mockup -> Sable-subagent verify |
 | UAT feedback (UX flow change) | Sable -> re-mockup -> Sable-subagent verify |
 | Sable-subagent mockup DRIFT | Colby mockup fix -> Sable-subagent re-verify |
-| Poirot code QA (minor) | Colby fix  scoped re-run |
-| Poirot code QA (structural) | Sarah subagent (revise) -> Colby  full run |
+| Poirot code QA (minor) | Colby fix  scoped re-run *(Poirot via `SendMessage` -- see SendMessage Resume below)* |
+| Poirot code QA (structural) | Sarah subagent (revise) -> Colby  full run *(Sarah via `SendMessage` -- see SendMessage Resume below)* |
 | Robert-subagent spec DRIFT | Hard pause -> human decides -> Robert-skill updates spec OR Colby fixes code |
 | Sable-subagent UX DRIFT | Hard pause -> human decides -> Sable-skill updates UX doc OR Colby fixes code |
 | CI/CD issue | Colby (config) or Sarah subagent (architectural) |
 | User reports a bug | Sherlock (investigate + diagnose) -> hard pause -> Colby (fix) -> Poirot (verify) |
 | CI failure (watched) | Poirot (CI investigate) -> Colby (CI fix)  (CI verify) -> hard pause -> Ellis (push fix) -> re-watch |
+
+### SendMessage Resume (Sarah and Poirot only)
+
+The two italicized rows above (Poirot scoped re-run, Sarah ADR revision) are the **only** recognized continuation triggers for in-session `SendMessage` resume per ADR-0049. When Eva holds a captured `agentId` for the target agent in the current session AND the trigger matches one of those two rows, she uses `SendMessage` against the captured `agentId` instead of spawning a fresh Agent. All other rows in this table use fresh `Agent` spawns. Session boundaries (compaction, restart, crash) discard captured `agentId` values and the next invocation reverts to fresh-spawn behavior.
+
+Full rule and capture/discard semantics live in `.claude/rules/agent-system.md` (`<protocol id="sendmessage-resume">`). Resume scope is in-session only -- nothing is persisted to `pipeline-state.md`.
 
 </section>
 
