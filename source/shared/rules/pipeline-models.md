@@ -83,7 +83,7 @@ tool invocation based on this table plus the promotion signals above.
 | **robert-spec (producer)** | 2 | opus | medium | Spec authoring requires generative capability |
 | **Sable (acceptance)** | 2 | sonnet | medium | UX-vs-implementation diff; structured review is Sonnet-capable |
 | **sable-ux (producer)** | 2 | opus | medium | UX doc authoring requires generative capability |
-| **Sentinel** | 2 | opus | low | Pattern-matching on Semgrep output; excess thinking produces false positives. Mechanical task signal -- effort demoted medium→low. |
+| **Sentinel** | 2 | sonnet | low | Pattern-matching SAST with effort: low suppresses Opus reasoning; Sonnet matches the actual workload. Mechanical task signal -- effort demoted medium→low. |
 | **Agatha** | 2 | opus | medium | Documentation authoring; conceptual reasoning. Always Tier 2 (no runtime override) |
 | **Synthesis** (new) | 2 | sonnet | low | Filter/rank/trim of scout output; no judgment, no opinions |
 | **Ellis** | 1 | sonnet | low | Commit-message composition; Sonnet/low cheaper per successful pass than Haiku rework |

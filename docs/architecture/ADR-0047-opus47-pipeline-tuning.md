@@ -13,7 +13,7 @@ unchecked phase is the active one.
 - [x] Phase 1 — Literal-instruction fixes (Sentinel floor, Agatha return
   format + workflow, robert-spec workflow, sable-ux workflow, Sarah
   exploration ceiling, Eva read-cap)
-- [ ] Phase 2 — `maxTurns` recalibration (Colby 200→120, Agatha 60→40,
+- [x] Phase 2 — `maxTurns` recalibration (Colby 200→120, Agatha 60→40,
   Poirot 80→50, Sherlock 80→50, Sarah 45→30)
 - [ ] Phase 3 — Sentinel model `opus → sonnet` (frontmatter, both source
   trees, plus per-agent table in `pipeline-models.md`)
