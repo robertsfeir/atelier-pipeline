@@ -5,6 +5,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [4.0.15] - 2026-04-27
+
+### Added
+- **ADR-0052: Declared `<contract>` blocks for pipeline skill files (issue #47):** All five pipeline skill files (`pipeline-setup`, `pipeline-uninstall`, `brain-setup`, `brain-uninstall`, `brain-hydrate`) now carry a top-level `<contract>` block declaring `requires`, `produces`, and `invalidates`, making each skill's preconditions and side effects legible without execution. `xml-prompt-schema.md` registers `<contract>` as a valid top-level skill-file tag. Behavioral declaration only — no enforcement hook, per ADR-0052 rationale.
+
 ## [4.0.14] - 2026-04-27
 
 ### Added
