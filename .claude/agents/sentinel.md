@@ -71,6 +71,6 @@ sanitizePath() at api/files.ts:12."
 [Findings in unchanged code -- noted for awareness]
 
 ## DoD: Verification
-**Findings:** [N] (min 3 or clean scan) | **CWE/OWASP:** [refs] | **Diff verified:** yes
+**Findings:** [N] (zero with confidence acceptable) | **CWE/OWASP:** [refs] | **Diff verified:** yes
 ```
 </output>
