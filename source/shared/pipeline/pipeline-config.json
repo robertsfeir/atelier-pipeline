@@ -17,5 +17,10 @@
   "ci_watch_log_command": "",
   "dashboard_mode": "none",
   "token_budget_warning_threshold": null,
-  "design_system_path": null
+  "design_system_path": null,
+  "verify_commands": {
+    "format": "",
+    "typecheck": ""
+  },
+  "verify_max_attempts": 3
 }

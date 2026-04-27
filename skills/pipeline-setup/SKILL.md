@@ -394,6 +394,7 @@ optional and must be installed for the pipeline to function correctly.
 | `source/claude/hooks/pre-compact.sh` | `.claude/hooks/pre-compact.sh` | Writes compaction marker to pipeline-state.md before context is compacted (PreCompact) |
 | `source/claude/hooks/log-agent-start.sh` | `.claude/hooks/log-agent-start.sh` | Logs agent start events to JSONL telemetry file (SubagentStart) |
 | `source/claude/hooks/log-agent-stop.sh` | `.claude/hooks/log-agent-stop.sh` | Logs agent stop events to JSONL telemetry file (SubagentStop) |
+| `source/claude/hooks/enforce-colby-stop-verify.sh` | `.claude/hooks/enforce-colby-stop-verify.sh` | Runs verify_commands.format + verify_commands.typecheck after Colby stops; exits 2 on typecheck failure to re-engage Colby (SubagentStop, ADR-0050). **Claude Code only -- Cursor does not support SubagentStop** (see `source/cursor/agents/brain-extractor.frontmatter.yml`); Cursor installs intentionally omit this hook. |
 | `source/claude/hooks/post-compact-reinject.sh` | `.claude/hooks/post-compact-reinject.sh` | Re-injects pipeline-state.md and context-brief.md after compaction (PostCompact) |
 | `source/claude/hooks/log-stop-failure.sh` | `.claude/hooks/log-stop-failure.sh` | Appends error entry to error-patterns.md on agent failure (StopFailure) |
 | `source/claude/hooks/prompt-brain-prefetch.sh` | `.claude/hooks/prompt-brain-prefetch.sh` | Brain prefetch prompt injection (Prompt) |
@@ -405,6 +406,37 @@ optional and must be installed for the pipeline to function correctly.
 | `source/shared/hooks/hook-lib.sh` | `.claude/hooks/hook-lib.sh` | Shared hook utility library — JSON parsers, agent type extraction, deny/allow emitters (sourced by enforcement and telemetry hooks) |
 | `source/shared/hooks/pipeline-state-path.sh` | `.claude/hooks/pipeline-state-path.sh` | Per-worktree session state path resolver — session_state_dir() and error_patterns_path() (sourced by session-boot, post-compact-reinject, prompt-compact-advisory) |
 | `source/claude/hooks/enforcement-config.json` | `.claude/hooks/enforcement-config.json` | Project-specific paths and agent rules |
+
+#### ADR-0050 verify_commands keys (`enforce-colby-stop-verify.sh`, opt-in)
+
+The Claude Code-only `enforce-colby-stop-verify.sh` hook (SubagentStop) reads
+three keys from `.claude/pipeline-config.json` (or `.cursor/pipeline-config.json`,
+checked first). All three are opt-in -- absent or empty values turn the
+behavior off without warnings.
+
+| Key | Type | Default | Meaning |
+|-----|------|---------|---------|
+| `verify_commands.format` | string | (missing) | Auto-format command run after every Colby stop. **Empty string = no-op** (skip the format step). **Missing key = silent skip** (same as empty). Format failures are logged to stderr but never block. |
+| `verify_commands.typecheck` | string | (missing) | Typecheck command run after format. **Empty string = no-op** (skip the typecheck step). **Missing key = silent skip**. On non-zero exit the hook prints the last ~40 lines of output on stderr and exits 2 to re-engage Colby. |
+| `verify_max_attempts` | integer | `3` | Maximum number of consecutive **typecheck failures** in a single session before the hook stops re-engaging Colby and exits 0 with a warning. The counter increments on failure only; a successful typecheck deletes the counter file (full reset). Format failures never touch the counter. |
+
+If both `verify_commands.format` and `verify_commands.typecheck` are missing
+or empty, the hook exits 0 immediately -- the project is treated as not
+opted in. To opt in to typecheck-only enforcement, set
+`verify_commands.typecheck` and leave `verify_commands.format` empty (or
+omit it entirely).
+
+Example (`pipeline-config.json` fragment):
+
+```json
+{
+  "verify_commands": {
+    "format": "npm run format",
+    "typecheck": "npm run typecheck"
+  },
+  "verify_max_attempts": 3
+}
+```
 
 After copying, make the `.sh` files executable: `chmod +x .claude/hooks/*.sh`
 
@@ -473,6 +505,10 @@ file already exists. Add this hooks section:
           {
             "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/log-agent-stop.sh"
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-colby-stop-verify.sh"
           },
           {
             "type": "prompt",

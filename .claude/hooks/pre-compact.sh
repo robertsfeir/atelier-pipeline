@@ -7,7 +7,13 @@
 # (ADR-0012, retro lesson #003): no brain calls, no subagent invocations,
 # no test runs. Exits 0 always -- never blocks compaction.
 
-STATE_FILE="${CURSOR_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$PWD}}/docs/pipeline/pipeline-state.md"
+PROJECT_ROOT="${CURSOR_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$PWD}}"
+STATE_FILE="$PROJECT_ROOT/docs/pipeline/pipeline-state.md"
+
+# Clean up ADR-0050 Colby verify-attempt counter files (session-scoped temp state).
+# These accumulate across compaction boundaries if not pruned. Best-effort: ignore
+# errors so this never blocks compaction.
+rm -f "$PROJECT_ROOT/docs/pipeline/.colby-verify-attempts-"* 2>/dev/null || true
 
 # No-op if pipeline-state.md does not exist (non-pipeline sessions)
 if [ ! -f "$STATE_FILE" ]; then
