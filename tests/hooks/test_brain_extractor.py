@@ -401,23 +401,27 @@ EXPECTED_9_AGENTS = [
 
 
 def test_T_0033_028_extractor_frontmatter_model_is_haiku_alias():
-    """brain-extractor.frontmatter.yml must use the stable `model: sonnet`
-    alias rather than a dated string.
+    """brain-extractor.frontmatter.yml must pin to the explicit Sonnet 4.6
+    model ID `claude-sonnet-4-6` per ADR-0047's explicit-ID convention.
 
-    Per ADR-0042, the brain-extractor model was changed from `haiku` to
-    `sonnet` (see CHANGED_AGENT_EXPECTED in adr_0042_baselines.py). The
-    stable-alias requirement from ADR-0033 Step 5 (m5) still holds --
-    avoid dated model strings like `claude-sonnet-4-5-20251001`.
+    History:
+    - ADR-0024/ADR-0033 originally assigned `haiku` (stable alias).
+    - ADR-0042 superseded that to `sonnet` (still a stable alias).
+    - ADR-0047 supersedes ADR-0033 Step 5 (m5)'s stable-alias rule for
+      brain-extractor: pipeline agents are now pinned to explicit model
+      IDs rather than dated strings or stable aliases. The current pin is
+      `claude-sonnet-4-6`.
 
     The test function name is preserved for history; the assertion now
-    reflects the ADR-0042 supersession.
+    reflects the ADR-0047 explicit-ID convention.
     """
     assert EXTRACTOR_FRONTMATTER.exists(), "brain-extractor.frontmatter.yml not found"
     fm = parse_frontmatter(EXTRACTOR_FRONTMATTER)
     model = fm.get("model")
-    assert model == "sonnet", (
-        f"brain-extractor model should be exactly 'sonnet' (stable alias). "
-        f"Got {model!r}. ADR-0042 supersedes ADR-0024/ADR-0033's haiku "
-        f"assignment -- brain-extractor now uses Sonnet."
+    assert model == "claude-sonnet-4-6", (
+        f"brain-extractor model should be exactly 'claude-sonnet-4-6' "
+        f"(explicit Sonnet 4.6 model ID per ADR-0047). Got {model!r}. "
+        f"ADR-0047 supersedes ADR-0033 Step 5 (m5)'s stable-alias rule "
+        f"and ADR-0042's `sonnet` assignment for the brain-extractor."
     )
 

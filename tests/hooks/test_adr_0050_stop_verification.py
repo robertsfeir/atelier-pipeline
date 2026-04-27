@@ -21,6 +21,8 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 HOOK_SOURCE = PROJECT_ROOT / "source" / "claude" / "hooks" / "enforce-colby-stop-verify.sh"
+SHARED_HOOKS_DIR = PROJECT_ROOT / "source" / "shared" / "hooks"
+HOOK_LIB_FILES = ["hook-lib.sh"]
 
 
 def _prepare_env(tmp_path: Path, pipeline_config: dict | None) -> Path:
@@ -30,6 +32,13 @@ def _prepare_env(tmp_path: Path, pipeline_config: dict | None) -> Path:
     dst = hooks_dir / "enforce-colby-stop-verify.sh"
     shutil.copy2(HOOK_SOURCE, dst)
     dst.chmod(dst.stat().st_mode | stat.S_IEXEC)
+
+    # Copy shared library files so the hook's SCRIPT_DIR-relative source resolves
+    # in the isolated tmp env (mirrors conftest.prepare_hook's HOOK_LIB_FILES loop).
+    for lib_name in HOOK_LIB_FILES:
+        lib_src = SHARED_HOOKS_DIR / lib_name
+        if lib_src.exists():
+            shutil.copy2(lib_src, hooks_dir / lib_name)
 
     (tmp_path / "docs" / "pipeline").mkdir(parents=True, exist_ok=True)
 

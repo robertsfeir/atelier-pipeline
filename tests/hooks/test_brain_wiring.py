@@ -84,7 +84,10 @@ def test_T_0021_049_agatha_disallowed():
 
 def test_T_0021_050_agatha_workflow():
     text = (SHARED_AGENTS / "agatha.md").read_text()
-    assert re.search(r"Documentation Process|Read spec.*UX doc.*ADR", text)
+    # Agatha's workflow step 1 reads "Read the spec, UX doc, ADR, and doc
+    # plan from Eva's <read> list." — match that phrase or the older
+    # "Documentation Process" heading shape if it ever returns.
+    assert re.search(r"Documentation Process|Read.*spec.*UX doc.*ADR", text)
     assert re.search(r"Audience|audience", text)
 
 
