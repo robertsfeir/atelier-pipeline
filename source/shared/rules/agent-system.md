@@ -136,8 +136,12 @@ Eva constructs invocations using XML tags. Tags with no content omitted entirely
 <task>[observed symptom -- what is happening, not why]</task>
 
 <brain-context>
-  [Only when brain available and returned results. Contains
-   <thought> elements with type, agent, phase, relevance attributes.]
+  [Only when brain available and returned results. Format each result as:
+   <thought type="{thought_type}" agent="{source_agent}" phase="{source_phase}"
+            captured_by="{captured_by}" created_at="{created_at}" relevance="{combined_score}">
+     {content}
+   </thought>
+   Omit captured_by attribute only if null (created_at has a DEFAULT now() and is always present). Include all other attributes always.]
 </brain-context>
 
 <context>[one-line summary from context-brief.md if relevant]</context>

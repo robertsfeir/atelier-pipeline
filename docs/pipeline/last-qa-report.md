@@ -1,24 +1,33 @@
-## DoR: Diff Metadata (Scoped Re-run)
-**Files:** 1 | **Added:** 16 | **Removed:** 0
-**Functions modified:** none (documentation only -- single-line correction inside the `<contract>` block of `skills/brain-hydrate/SKILL.md`)
+## DoR: Diff Metadata
+**Files:** 1 (scoped re-run on prior FIX-REQUIRED) | **Added:** ~18 | **Removed:** ~2
+**Functions modified:** none (documentation/contract only)
 **New dependencies:** none
 
-**Scope:** Re-verify finding #1 from prior report: `<requires>` precondition listing `synthesis` as a Phase 2a fan-out dependency.
+Files changed in fix wave:
+- `source/shared/references/xml-prompt-schema.md:109-126` -- agent count corrected from "10" to "18" with full enum enumeration; two new subsections added for `captured_by` and `created_at`
 
 ## Exercised
-Documentation-only fix -- no executable surface. Verification by grep:
-
-- Confirmed `synthesis` is removed from the `<requires>` block (line 15 now reads "`scout` agent persona present in `.claude/agents/`" only).
-- Confirmed `synthesis` no longer appears anywhere in the contract block (`grep -nE "synthesis" skills/brain-hydrate/SKILL.md` returns 0 hits in lines 10-24).
-- Confirmed Phase 2a fan-out still uses only `scout` (line 108: `Agent(subagent_type: "scout")`).
-- Re-checked the rest of the contract for collateral damage: `Phase 1 Step 0` cross-reference resolves cleanly to line 44 (`### Step 0: Pre-load Brain MCP Tool Schemas`); `Phase 3 progress and final-summary report` resolves to line 378 (`## Phase 3: Progress & Summary`); `atelier_stats` / `brain_enabled: true` check resolves to line 56.
-- XML well-formedness preserved: `<contract>` opens line 10, closes line 24; `<requires>`, `<produces>`, `<invalidates />` all balanced.
+Static-only verification, sufficient for a documentation/contract diff.
+- **Verified the agent count claim against ground truth:** read `brain/lib/config.mjs:18-38` (the `SOURCE_AGENTS` enum). Counted 18 entries: eva, cal, robert, sable, colby, roz, agatha, ellis, poirot, distillator, robert-spec, sable-ux, sentinel, darwin, deps, brain-extractor, sarah, sherlock. The diff's enumeration matches the enum exactly in name and order. Count of 18 is correct.
+- **Verified the no-capture-path subset against the enum's own comments:** the diff lists 9 agents as having no automatic capture path (eva, poirot, distillator, sentinel, darwin, deps, brain-extractor, sarah, sherlock). Each one is annotated as "non-extracted" or equivalent in `config.mjs:19-37`. Subset is accurate.
+- **Verified schema citations in new subsections:** `captured_by` references `brain/schema.sql:100` (column exists, TEXT, nullable). `created_at` cites `DEFAULT now()` -- matches `brain/schema.sql:105`. Both accurate.
+- **Verified position and prose consistency:** new subsections sit between `agent` and `relevance`, matching the table-row order on line 85. The captured_by null-handling text ("treat null as 'unknown origin'") is consistent with the emission rule in `agent-system.md:144` ("Omit captured_by attribute only if null") -- same null model, expressed at two layers.
+- **Wider sweep for stale agent-count claims:** grep across `source/`, `.claude/`, `docs/` for "10 agents". Only one source-tree hit remains in the **installed copy** `.claude/references/xml-prompt-schema.md:109` -- expected per the source-only convention; Eva queues `/pipeline-setup` to sync. Not a Colby regression. All other "9 agents" hits across ADRs and docs refer to unrelated scopes (brain-extractor mapping table, Cursor port discovery, SubagentStop hook config) and are accurate in their own contexts.
+- **Wider sweep for stale `<thought>` attribute lists:** grep for `type, agent, phase, relevance` without `captured_by` across `source/`. Zero source-tree hits remain. Contract is fully consistent across `agent-system.md`, `invocation-templates.md`, `xml-prompt-schema.md`, and `agent-preamble.md`.
 
 ## DoD: Verification
-**Findings:** 0 | **Categories:** documentation accuracy, cross-reference integrity | **Grep verified:** synthesis removal, scout retention, Phase 1 Step 0 anchor, Phase 3 anchor, atelier_stats anchor | **Exercised:** static fact-check (documentation diff has no executable surface)
+**Findings:** 0 | **Categories:** documentation drift, schema accuracy, contract consistency | **Grep verified:** "10 agents" / "9 agents" across source+installed+docs; pre-fix `<thought>` attribute strings across `source/`; SOURCE_AGENTS enum read end-to-end | **Exercised:** new subsections re-read in context; schema citations verified against `brain/schema.sql:100,105`; agent enumeration verified against `brain/lib/config.mjs:18-38`; position/order verified against table-row at line 85
+
+## Status
+**PASS.**
+
+Both fixes are clean and complete. The `### <thought> Attribute Values` section now has full coverage for all six attributes the table row advertises (`type`, `phase`, `agent`, `captured_by`, `created_at`, `relevance`). The agent-count correction is grounded in the live `SOURCE_AGENTS` enum, and the no-capture-path subset is correctly classified per the enum's inline comments. No new findings.
 
 ## Findings
 | # | Location | Severity | Category | Description | Suggested Fix |
 |---|----------|----------|----------|-------------|---------------|
 
-0 findings. Fix is correct and surgical -- the `synthesis` token was removed from the precondition without disturbing any adjacent claim. No new issues introduced. The brain-hydrate contract now accurately reflects that Phase 2a fan-out depends on `scout` only, and the Phase 2b extraction subagent (invoked as `Agent(model: "sonnet")` per line 203) is correctly omitted from the persona-file precondition because it does not require a named persona file.
+(no findings)
+
+## Side note (informational, not a finding -- restated from prior wave)
+The installed copy `.claude/references/xml-prompt-schema.md` is now drifted from `source/shared/references/xml-prompt-schema.md` across all three lines touched in this fix series (line 85 table row, line 109 agent enumeration, lines 117-126 new subsections). Eva should queue `/pipeline-setup` before this contract lands in live agent context. Not a Colby concern (source-only convention).

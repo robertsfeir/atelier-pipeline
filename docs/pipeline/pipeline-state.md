@@ -1,8 +1,22 @@
 # Pipeline State
 
-<!-- PIPELINE_STATUS: {"phase": "idle", "sizing": "small", "qa_status": null, "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": true, "robert_reviewed": false, "brain_available": true, "worktree_path": null, "session_id": "11e70d16", "branch_name": null, "stop_reason": "completed_clean"} -->
+<!-- PIPELINE_STATUS: {"phase": "commit", "sizing": "micro", "qa_status": "pass", "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": true, "robert_reviewed": false, "brain_available": true, "worktree_path": null, "session_id": "current", "branch_name": null, "stop_reason": null} -->
 
 ## Active Pipeline
+**Feature:** Issue #45 item 5 — provenance surfacing on prefetched brain thoughts
+**Phase:** build (Colby)
+**Sizing:** Micro
+**Session:** current
+
+### Scope
+Three source files — no code changes, all behavioral/formatting:
+1. `source/shared/rules/agent-system.md:139-140` — expand `<thought>` attribute comment to include `captured_by`, `created_at`
+2. `source/shared/references/invocation-templates.md` (Shared Protocols section) — add concrete `<thought>` format example
+3. `source/shared/references/agent-preamble.md` step 3 — extend credibility-weighting guidance to name `captured_by` + `created_at`
+
+---
+
+## Prior Pipeline (closed)
 **Feature:** Issue #45 steps 1-2 — brain-context trust framing (agent-preamble) + scope enforcement (prefetch hook)
 **Phase:** idle
 **Sizing:** Small

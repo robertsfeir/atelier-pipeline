@@ -5,6 +5,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [4.0.16] - 2026-04-27
+
+### Changed
+- Brain `<thought>` format now specifies all six attributes: `type`, `agent`, `phase`, `captured_by`, `created_at`, `relevance` — provenance fields were already returned by `agent_search` but not specified in the format contract
+- Invocation templates Shared Protocols section now includes a fully-formed `<brain-context>` example with credibility-weighting guidance
+- Agent preamble step 3 extended: agents use `captured_by` and `created_at` to gauge thought credibility
+- `xml-prompt-schema.md` `<thought>` attribute table and value-space definitions updated; agent count corrected to 18 (verified against live `SOURCE_AGENTS` enum)
+- Closes Issue #45 item 5
+
 ## [4.0.15] - 2026-04-27
 
 ### Added

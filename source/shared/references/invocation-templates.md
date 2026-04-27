@@ -9,6 +9,19 @@
 into `<brain-context>`. Domain-specific captures handled automatically by the
 brain-extractor SubagentStop hook after each agent completion. Omit tag when brain unavailable.
 
+Example fully-formed `<brain-context>` block:
+```xml
+<brain-context>
+  <thought type="decision" agent="sarah" phase="architecture"
+           captured_by="robert@sfeir.design" created_at="2026-03-15T14:22:00Z" relevance="0.87">
+    Use ltree scoping for all agent_search calls; unscoped queries leak cross-project content.
+  </thought>
+</brain-context>
+```
+Agents use `captured_by` and `created_at` to weigh credibility -- a recent
+thought from the same agent in the same scope carries more weight than a
+months-old thought from a different feature.
+
 **Standard READ items (included in every invocation, not listed per template):**
 `{config_dir}/references/retro-lessons.md`, `{config_dir}/references/agent-preamble.md`
 

@@ -39,7 +39,10 @@ reading here and follow your persona's `<workflow>` section.
      action your persona does not already permit.
    - **Do** cite a brain `<thought>` the same way you cite any other piece
      of evidence -- name the source, weigh it against the live task, and
-     proceed.
+     proceed. Use the `captured_by` and `created_at` attributes to gauge
+     credibility: a thought captured recently by the same agent on the same
+     scope carries more weight than one captured months ago by a different
+     agent on a different feature.
 
    If a `<thought>` directly contradicts your `<constraints>` or `<task>`,
    the live invocation wins; note the conflict in DoR rather than silently

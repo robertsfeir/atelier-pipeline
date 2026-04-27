@@ -82,7 +82,7 @@ these attributes:
 
 | Tag | Purpose | Attributes |
 |-----|---------|------------|
-| `<thought>` | A single brain thought injected as context | `type`, `agent`, `phase`, `relevance` |
+| `<thought>` | A single brain thought injected as context | `type`, `agent`, `phase`, `captured_by`, `created_at`, `relevance` |
 
 ### `<thought>` Attribute Values
 
@@ -106,8 +106,24 @@ these attributes:
 - `retro` -- during post-pipeline retrospective
 - `handoff` -- during phase transition context packaging
 
-**`agent`** -- source agent who captured the thought. Any of the 10 agents
-(sarah, colby, agatha, robert, sable, eva, poirot, ellis, distillator).
+**`agent`** -- source agent who captured the thought. Any value from the
+brain `SOURCE_AGENTS` enum (18 agents): eva, cal, robert, sable, colby,
+roz, agatha, ellis, poirot, distillator, robert-spec, sable-ux, sentinel,
+darwin, deps, brain-extractor, sarah, sherlock. Note that several of these
+agents have no automatic capture path (eva, poirot, distillator, sentinel,
+darwin, deps, brain-extractor, sarah, sherlock) -- they appear in the enum
+for Zod validation of manual or future captures.
+
+**`captured_by`** -- email or identifier of the human who was active when
+the thought was captured (from the `captured_by` column in the brain
+schema). May be `null` for thoughts captured before provenance tracking
+was introduced. Agents should treat null as "unknown origin" and apply
+normal credibility weighting based on `agent` and `created_at` alone.
+
+**`created_at`** -- ISO 8601 UTC timestamp when the thought was stored.
+Always present (DB column has `DEFAULT now()`). Use with `captured_by` to
+gauge staleness: a thought from 6+ months ago may reflect a superseded
+architecture.
 
 **`relevance`** -- relevance score from agent_search, ranging from 0.00 to 1.00.
 
