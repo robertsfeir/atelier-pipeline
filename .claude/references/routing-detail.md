@@ -19,7 +19,7 @@ edge cases.
 | References feature spec without ADR | **Sarah** | skill |
 | Says "plan the docs", "what docs do we need", "documentation plan" | **Agatha** (doc planning) | skill |
 | Says "mockup", "prototype", "let me see it" | Scout fan-out → **Colby** (mockup mode) [`<colby-context>`] | subagent |
-| Says "scan the codebase", "investigate paths", "map all X", "review the whole codebase" (read-only survey, no existing ADR or bug report) | Explore+haiku scouts → Sonnet reviewer | subagent |
+| Says "scan the codebase", "investigate paths", "map all X", "review the whole codebase" (read-only survey, no existing ADR or bug report) | scout subagents → synthesis | subagent |
 | Sarah just finished ADR with test spec tables | Scout fan-out → **Poirot** (test spec review) [`<qa-evidence>`] | subagent |
 | Poirot approved test spec, ready to build | Scout fan-out → **Colby** + **Agatha** (parallel) [`<colby-context>`] | subagent |
 | Says "build this", "implement", "code this" with existing plan | Scout fan-out → **Colby** + **Agatha** (parallel) [`<colby-context>`] | subagent |

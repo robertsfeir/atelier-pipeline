@@ -1,0 +1,12 @@
+name: scout
+description: >
+  Read-only file/grep/read scout. Returns raw evidence with no synthesis.
+  File-reading scouts emit the '=== FILE: {path} ===' delimiter format
+  required by the brain-hydrate Sonnet extractor and the
+  enforce-scout-swarm.sh hook. Subagent only -- never a skill.
+model: claude-haiku-4-5-20251001
+permissionMode: plan
+effort: low
+maxTurns: 30
+tools: Read, Glob, Grep, Bash
+disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit

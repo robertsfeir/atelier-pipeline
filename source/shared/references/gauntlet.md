@@ -130,7 +130,7 @@ before touching code.
 
 ### 0f. Map application structure
 
-Fan out 4 Explore+Haiku scouts in parallel to collect raw evidence cheaply.
+Fan out 4 scout subagents in parallel to collect raw evidence cheaply.
 Each scout returns facts only — no design opinions.
 
 | Scout | What it collects |

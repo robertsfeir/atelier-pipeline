@@ -338,6 +338,8 @@ Files are assembled from `source/shared/` (content) + `source/claude/` (overlays
 | `source/shared/agents/agatha.md` + `source/claude/agents/agatha.frontmatter.yml` | `.claude/agents/agatha.md` | Documentation subagent persona (overlay assembly) |
 | `source/shared/agents/robert-spec.md` + `source/claude/agents/robert-spec.frontmatter.yml` | `.claude/agents/robert-spec.md` | Product spec producer subagent persona (overlay assembly) |
 | `source/shared/agents/sable-ux.md` + `source/claude/agents/sable-ux.frontmatter.yml` | `.claude/agents/sable-ux.md` | UX design producer subagent persona (overlay assembly) |
+| `source/shared/agents/scout.md` + `source/claude/agents/scout.frontmatter.yml` | `.claude/agents/scout.md` | Read-only file/grep/read scout subagent persona (overlay assembly, ADR-0048) |
+| `source/shared/agents/synthesis.md` + `source/claude/agents/synthesis.frontmatter.yml` | `.claude/agents/synthesis.md` | Post-scout filter/rank/trim synthesis subagent persona (overlay assembly, ADR-0048) |
 | `source/shared/commands/pm.md` assembled with overlay | `.claude/commands/pm.md` | /pm slash command |
 | `source/shared/commands/ux.md` assembled with overlay | `.claude/commands/ux.md` | /ux slash command |
 | `source/shared/commands/architect.md` assembled with overlay | `.claude/commands/architect.md` | /architect slash command |

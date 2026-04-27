@@ -20,7 +20,7 @@ downstream references still resolve by ID.
 ## Investigation Discipline
 
 When Eva enters a debug flow, she creates (or resets)
-`docs/pipeline/investigation-ledger.md` with the symptom and an empty
+`{pipeline_state_dir}/investigation-ledger.md` with the symptom and an empty
 hypothesis table. Eva updates it after each investigation step.
 
 ### Layer Escalation Protocol
@@ -78,7 +78,7 @@ finished pipeline from a prior session, not a concurrent one).
 Eva updates `pipeline-state.md` after each wave completes, not after each
 unit. Within a wave, Eva tracks unit progress in-memory.
 
-Eva maintains five files in `docs/pipeline`:
+Eva maintains five files in `{pipeline_state_dir}`:
 - **`pipeline-state.md`** -- Wave-level progress tracker with "Changes since last state" section.
 - **`context-brief.md`** -- Conversational decisions, corrections, user preferences. Reset per feature.
 - **`error-patterns.md`** -- Post-pipeline error log categorized by type.
@@ -92,7 +92,7 @@ Eva maintains five files in `docs/pipeline`:
 ## Phase Sizing Rules
 
 **Robert-subagent on Small:** When Poirot flags doc impact, Eva checks for an
-existing spec: `ls docs/product/*<feature>*`. Spec exists -> run Robert.
+existing spec: `ls {product_specs_dir}/*<feature>*`. Spec exists -> run Robert.
 No spec -> skip, log gap.
 
 User overrides: "full ceremony" forces Small minimum. "stop"/"hold" halts auto-advance.
@@ -134,9 +134,9 @@ Any -> assumptions mode. None -> question mode (default).
 
 ### Scout Fan-out Protocol
 
-Eva fans out Explore+haiku agents in parallel before invoking Sarah or Colby. Scouts collect raw evidence cheaply. The main agent receives it as a named inline block and skips the collection phase entirely.
+Eva fans out scout agents in parallel before invoking Sarah or Colby. Scouts collect raw evidence cheaply. The main agent receives it as a named inline block and skips the collection phase entirely.
 
-**Invocation:** `Agent(subagent_type: "Explore", model: "haiku")`. Facts only — no design opinions. Dedup rule: each file read by at most one scout.
+**Invocation:** `Agent(subagent_type: "scout")`. Facts only — no design opinions. Dedup rule: each file read by at most one scout. The `model` parameter is omitted; resolution falls through to the scout frontmatter (`claude-haiku-4-5-20251001`) per ADR-0048.
 
 **Explicit spawn requirement.** Eva MUST spawn scouts as separate parallel subagent invocations and MUST spawn the synthesis agent as a separate parallel subagent invocation after scouts return for Sarah or Colby. In-thread scout collection or synthesis silently bypasses the fan-out -- the scout-swarm hook inspects the primary-agent prompt only, not Eva's reasoning -- and is a violation (default class).
 
@@ -149,9 +149,9 @@ Eva fans out Explore+haiku agents in parallel before invoking Sarah or Colby. Sc
 | **Colby** | `<colby-context>` | Existing-code (files the ADR step will modify), Patterns (grep for similar constructs, file:line only), Brain (`agent_search` query derived from ADR step description) | Micro pipelines; Re-invocation fix cycle |
 | **brain-hydrate** | `<hydration-content>` | ADR scout (reads `docs/architecture/ADR-*.md` or `docs/adrs/ADR-*.md`), Spec scout (reads `docs/product/*.md`), UX scout (reads `docs/ux/*.md`), Pipeline scout (reads error-patterns + retro-lessons + context-brief), Git scout (runs `git log`, filters significant commits) | Per-source type skip when user excludes that source type from scope or scan finds 0 files for that category |
 
-All scouts are `Agent(subagent_type: "Explore", model: "haiku")`. Explore agents inherit project MCP servers — the Brain scout calls `agent_search` directly, no custom agent needed. Eva collects all scout results and populates the named block before invoking the agent.
+All scouts are `Agent(subagent_type: "scout")`. The scout subagent inherits project MCP servers — the Brain scout calls `agent_search` directly, no custom agent needed. Eva collects all scout results and populates the named block before invoking the agent. Per ADR-0048, scout model pinning is owned by the scout frontmatter (`claude-haiku-4-5-20251001`); the `model` parameter is omitted from invocations.
 
-**Synthesis step (Medium+ pipelines, applies to Sarah, Colby, and Poirot):** After scouts return for a primary agent (Sarah / Colby / Poirot), Eva invokes a single Sonnet synthesis agent per Template 2c (scout-synthesis) before invoking the primary agent. Synthesis filters/ranks/trims scout output into the compact named block (`<research-brief>` for Sarah, `<colby-context>` for Colby, `<qa-evidence>` for Poirot) — synthesis replaces the raw scout dump in the block. Skip conditions mirror the scout skip table (Sarah: Small/Micro; Colby: Micro + re-invocation fix cycle; Poirot: scoped re-run). The brain-hydrate flow is a batch hydration pipeline, not a primary-agent invocation — it does not use the synthesis step.
+**Synthesis step (Medium+ pipelines, applies to Sarah, Colby, and Poirot):** After scouts return for a primary agent (Sarah / Colby / Poirot), Eva invokes a single synthesis agent per Template 2c (scout-synthesis) before invoking the primary agent. Synthesis filters/ranks/trims scout output into the compact named block (`<research-brief>` for Sarah, `<colby-context>` for Colby, `<qa-evidence>` for Poirot) — synthesis replaces the raw scout dump in the block. Synthesis is invoked as `Agent(subagent_type: "synthesis", effort: "low")`; the model parameter is omitted and resolution falls through to the synthesis frontmatter (`claude-sonnet-4-6`) per ADR-0048. Skip conditions mirror the scout skip table (Sarah: Small/Micro; Colby: Micro + re-invocation fix cycle; Poirot: scoped re-run). The brain-hydrate flow is a batch hydration pipeline, not a primary-agent invocation — it does not use the synthesis step.
 
 **Note:** Brain scout only fires when `brain_available: true`. When brain is unavailable, the Brain scout row is skipped and the `<brain>` element is omitted from the context block.
 

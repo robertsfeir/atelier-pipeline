@@ -87,9 +87,9 @@ The user may exclude sources ("skip git history", "only ADRs") or adjust the tim
 
 ## Phase 2a: Scout Fan-Out
 
-After the user approves the scan inventory, Eva fans out Explore+haiku scouts in parallel. Each scout reads one category of artifact files and returns raw content in a named inline block. This keeps all file reading off the main thread and off Opus.
+After the user approves the scan inventory, Eva fans out scout subagents in parallel. Each scout reads one category of artifact files and returns raw content in a named inline block. This keeps all file reading off the main thread and off Opus.
 
-**Invocation pattern:** `Agent(subagent_type: "Explore", model: "haiku")`. Eva must use the Scout Invocation Template below when building the prompt — copy it verbatim and fill `{FILES}` with the Phase 1 file paths for that category. Facts only -- no extraction, no opinions. Each scout returns raw file content with clear delimiters per file.
+**Invocation pattern:** `Agent(subagent_type: "scout")`. Eva must use the Scout Invocation Template below when building the prompt — copy it verbatim and fill `{FILES}` with the Phase 1 file paths for that category. Facts only -- no extraction, no opinions. Each scout returns raw file content with clear delimiters per file. Per ADR-0048, the scout model pinning is owned by the scout frontmatter (`claude-haiku-4-5-20251001`); the `model` parameter is omitted from the invocation.
 
 **Dedup rule:** Each file is read by exactly one scout. No file appears in more than one scout's file set.
 
@@ -121,7 +121,7 @@ The Sonnet subagent parses these delimiters to process each file individually ag
 
 ### Scout Invocation Template
 
-Eva copies this template verbatim into every Explore+haiku scout Agent call. Fill `{FILES}` with the Phase 1 file paths for the category being read (one path per line). Do not paraphrase or abbreviate any part of this template — the `=== FILE:` delimiter format in `<output>` is what the downstream Sonnet extractor and the `enforce-scout-swarm.sh` hook both require.
+Eva copies this template verbatim into every scout Agent call. Fill `{FILES}` with the Phase 1 file paths for the category being read (one path per line). Do not paraphrase or abbreviate any part of this template — the `=== FILE:` delimiter format in `<output>` is what the downstream synthesis/extractor agent and the `enforce-scout-swarm.sh` hook both require.
 
 ```
 <task>Read the files listed in <read> below. Return the full content of every file exactly as-is. Do not summarize, paraphrase, or omit any part of any file. Do not add commentary, headings, or analysis. Raw file dumps only.</task>
@@ -487,10 +487,10 @@ These rules are mandatory:
 | Component | Model | Rationale |
 |-----------|-------|-----------|
 | Phase 1 (scan) | claude-opus-4-7 (main thread) | Lightweight, conversational -- just Glob, shell inventory, stats |
-| Phase 2a (scouts) | claude-haiku-4-5-20251001 (Explore subagent) | File reading only, no reasoning needed |
+| Phase 2a (scouts) | claude-haiku-4-5-20251001 (scout subagent) | File reading only, no reasoning needed |
 | Phase 2b (extraction) | claude-sonnet-4-6 (subagent) | Synthesis quality sufficient for structured extraction rules |
 | Phase 3 (summary) | claude-opus-4-7 (main thread) | Format and present results |
 
-Scouts use `model: "claude-haiku-4-5-20251001"` via `Agent(subagent_type: "Explore", model: "claude-haiku-4-5-20251001")`. The capture subagent uses `model: "claude-sonnet-4-6"` via `Agent(model: "claude-sonnet-4-6")`.
+Scouts are invoked as `Agent(subagent_type: "scout")` with no `model` parameter; per ADR-0048 the model pinning (`claude-haiku-4-5-20251001`) is owned by the scout frontmatter at `source/{claude,cursor}/agents/scout.frontmatter.yml`. The Phase 2b extraction subagent (which calls `agent_capture` directly per ADR-0027) is invoked as `Agent(model: "sonnet")` and is intentionally distinct from the post-scout `synthesis` subagent registered by ADR-0048 — synthesis is read-only filter/rank/trim and cannot call `agent_capture`.
 
 </section>

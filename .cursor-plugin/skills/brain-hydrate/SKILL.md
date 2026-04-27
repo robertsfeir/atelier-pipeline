@@ -77,9 +77,9 @@ The user may exclude sources ("skip git history", "only ADRs") or adjust the tim
 
 ## Phase 2a: Scout Fan-Out
 
-After the user approves the scan inventory, Eva fans out Explore+haiku scouts in parallel. Each scout reads one category of artifact files and returns raw content in a named inline block. This keeps all file reading off the main thread and off Opus.
+After the user approves the scan inventory, Eva fans out scout subagents in parallel. Each scout reads one category of artifact files and returns raw content in a named inline block. This keeps all file reading off the main thread and off Opus.
 
-**Invocation pattern:** `Agent(subagent_type: "Explore", model: "haiku")`. Facts only -- no extraction, no opinions. Each scout returns raw file content with clear delimiters per file.
+**Invocation pattern:** `Agent(subagent_type: "scout")`. Facts only -- no extraction, no opinions. Each scout returns raw file content with clear delimiters per file.
 
 **Dedup rule:** Each file is read by exactly one scout. No file appears in more than one scout's file set.
 
@@ -446,10 +446,10 @@ These rules are mandatory:
 | Component | Model | Rationale |
 |-----------|-------|-----------|
 | Phase 1 (scan) | Opus (main thread) | Lightweight, conversational -- just Glob, shell inventory, stats |
-| Phase 2a (scouts) | Haiku (Explore subagent) | File reading only, no reasoning needed |
+| Phase 2a (scouts) | Haiku (scout subagent) | File reading only, no reasoning needed |
 | Phase 2b (extraction) | Sonnet (subagent) | Synthesis quality sufficient for structured extraction rules |
 | Phase 3 (summary) | Opus (main thread) | Format and present results |
 
-Scouts use `model: "haiku"` via `Agent(subagent_type: "Explore", model: "haiku")`. The capture subagent uses `model: "sonnet"` via `Agent(model: "sonnet")`.
+Scouts are invoked as `Agent(subagent_type: "scout")` with no `model` parameter — model pinning is owned by the scout frontmatter. The capture subagent uses `model: "sonnet"` via `Agent(model: "sonnet")`.
 
 </section>

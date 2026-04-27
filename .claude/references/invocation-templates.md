@@ -10,7 +10,7 @@ into `<brain-context>`. Domain-specific captures handled automatically by the
 brain-extractor SubagentStop hook after each agent completion. Omit tag when brain unavailable.
 
 **Standard READ items (included in every invocation, not listed per template):**
-`.claude/references/retro-lessons.md`, `.claude/references/agent-preamble.md`
+`{config_dir}/references/retro-lessons.md`, `{config_dir}/references/agent-preamble.md`
 
 **Persona constraints apply:** Templates list only task-specific constraints
 that supplement the persona. Do not duplicate persona-level rules.
@@ -26,9 +26,10 @@ tool invocation. `duration_ms = end_time - start_time`.
 |---|-------------|-------|---------|
 | 1 | sarah-adr | Sarah | ADR production (standard) |
 | 2 | sarah-adr-large | Sarah | ADR production with research brief (medium/large) |
-| 2a | scout-research-brief | Explore+haiku (x3) | Pre-Sarah research scouts (medium+large) |
-| 2b | codebase-investigation | Explore+haiku (xN) → Sonnet reviewer | Ad-hoc codebase scan: partition by area, collect evidence, synthesize |
-| 2c | scout-synthesis | Sonnet | Post-scout filter/rank/trim before primary agent |
+| 2a | scout-research-brief | scout (x3) | Pre-Sarah research scouts (medium+large) |
+| 2b | codebase-investigation | scout (xN) → synthesis | Ad-hoc codebase scan: partition by area, collect evidence, synthesize |
+| 2c | scout-synthesis | synthesis | Post-scout filter/rank/trim before primary agent |
+| 2d | brain-hydrate-scout | scout | Brain hydration file-content scout |
 | 3 | colby-mockup | Colby | UI mockup with mock data |
 | 4 | colby-build | Colby | Build unit; **CI Watch variant:** scope to CI fix |
 | 10 | ellis-commit | Ellis | Wave commit |
@@ -80,7 +81,7 @@ Note: darwin-edit-proposal uses colby-build with Darwin proposal in CONTEXT.
 </template>
 
 <template id="scout-research-brief">
-### Scout Research Brief (Explore+haiku, pre-Sarah, Medium+Large)
+### Scout Research Brief (scout, pre-Sarah, Medium+Large)
 Three scouts launched in parallel by Eva. Each receives one focused prompt.
 
 **Patterns scout:**
@@ -102,19 +103,21 @@ Three scouts launched in parallel by Eva. Each receives one focused prompt.
 </template>
 
 <template id="codebase-investigation">
-### Codebase Investigation (Explore+haiku → Sonnet)
-Ad-hoc read-only surveys (security mapping, architecture reviews, dependency tracing). No ADR, no code changes. Eva fans out parallel area scouts — `Agent(subagent_type: "Explore", model: "haiku")`, one concern per scout, facts only, `findings: [{file, line, description}]`. Passes evidence to `Agent(model: "sonnet")` via named `<scout-evidence>` blocks. Synthesis produces structured findings table with file:line evidence. DoR/DoD.
+### Codebase Investigation (scout → synthesis)
+Ad-hoc read-only surveys (security mapping, architecture reviews, dependency tracing). No ADR, no code changes. Eva fans out parallel area scouts — `Agent(subagent_type: "scout")`, one concern per scout, facts only, `findings: [{file, line, description}]`. Passes evidence to `Agent(subagent_type: "synthesis", effort: "low")` via named `<scout-evidence>` blocks. Synthesis produces structured findings table with file:line evidence. DoR/DoD.
 </template>
 
 <template id="scout-synthesis">
-### Scout Synthesis (Sonnet filter/rank/trim, post-scout, pre-primary-agent)
+### Scout Synthesis (synthesis filter/rank/trim, post-scout, pre-primary-agent)
 <task>Filter, rank, and trim scout outputs into the named block for the primary agent. Emit only the required field names per the output shape. No opinions, no design proposals.</task>
-Eva invokes ONE Sonnet agent after scouts complete. Synthesis reads all
+Eva invokes ONE synthesis agent after scouts complete. Synthesis reads all
 scout outputs and produces the compact block consumed by Sarah/Colby/Poirot.
 Does NOT form opinions. Filters, ranks, trims only.
 
-**Invocation:** `Agent(subagent_type: "general-purpose", model: "sonnet", effort: "low")`
-with the synthesis output-shape prompt embedded inline. When a dedicated `synthesis` persona is registered in a future ADR, switch to `subagent_type: "synthesis"`.
+**Invocation:** `Agent(subagent_type: "synthesis", effort: "low")` with the
+synthesis output-shape prompt embedded inline. The `model` parameter is
+omitted; resolution falls through to the synthesis frontmatter
+(`claude-sonnet-4-6`) per ADR-0048.
 
 Block populated: `<research-brief>` (Sarah) / `<colby-context>` (Colby) / `<qa-evidence>` (Poirot).
 
@@ -158,6 +161,40 @@ Poirot synthesis fills `<qa-evidence>`:
 - Brain context field omitted when `brain_available: false`.
 </constraints>
 <output>The named block (Sarah/Colby/Poirot), populated per shape above.</output>
+</template>
+
+<template id="brain-hydrate-scout">
+### Brain Hydrate Scout (scout, Phase 2a of brain-hydrate skill)
+One scout per artifact category. Eva copies this template verbatim into every scout Agent call and fills `{FILES}` from the Phase 1 inventory for that category. The `=== FILE:` delimiter format is required — the downstream Sonnet extractor and `enforce-scout-swarm.sh` both depend on it.
+
+**Invocation:** `Agent(subagent_type: "scout")` with the prompt below. The
+`model` parameter is omitted; resolution falls through to the scout
+frontmatter (`claude-haiku-4-5-20251001`) per ADR-0048.
+
+```
+<task>Read the files listed in <read> below. Return the full content of every file exactly as-is. Do not summarize, paraphrase, or omit any part of any file. Do not add commentary, headings, or analysis. Raw file dumps only.</task>
+<read>
+{FILES}
+</read>
+<constraints>
+- No prose, no summaries, no opinions.
+- Every file in <read> must appear in output exactly once.
+- Reproduce each file completely — no truncation.
+</constraints>
+<output>
+For each file, output using this exact delimiter format:
+
+=== FILE: {path} ===
+[full file content]
+=== END FILE ===
+
+Repeat for every file in <read>.
+</output>
+```
+
+`{FILES}` is replaced with the Phase 1 file paths for the category (one path per line). See `skills/brain-hydrate/SKILL.md §Scout Invocation Template` for Phase 1 inventory rules and category-to-block-element mapping.
+
+**Post-scout:** Sonnet subagent receives all scout outputs concatenated by category block element (`<adrs>`, `<specs>`, `<ux-docs>`, `<pipeline-artifacts>`, `<git-history>`). See brain-hydrate SKILL.md §Phase 2b.
 </template>
 
 <template id="colby-mockup">
@@ -316,7 +353,7 @@ Poirot's CI diagnosis + failure logs. Scope to the specific CI failure.
 ### Darwin (Pipeline Analysis)
 Requires brain and 5+ pipelines of Tier 3 telemetry data.
 <task>Analyze pipeline telemetry and propose structural improvements.</task>
-<read>docs/pipeline/error-patterns.md, .claude/references/telemetry-metrics.md, [flagged agent personas]</read>
+<read>docs/pipeline/error-patterns.md, {config_dir}/references/telemetry-metrics.md, [flagged agent personas]</read>
 <constraints>
 - Per-agent fitness: thriving/struggling/failing. Escalation ladder for struggling/failing.
 - Every proposal: evidence, layer, escalation level, risk, expected impact
