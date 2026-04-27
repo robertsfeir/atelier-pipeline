@@ -6,9 +6,9 @@ description: >
   6-question intake. Diagnose-only -- no fixes applied. Subagent only -- never
   a skill. Runs in its own context with no session inheritance; the case
   brief from intake is the only ground truth.
-model: opus
+model: claude-opus-4-7
 effort: high
-maxTurns: 80
+maxTurns: 50
 tools: Read, Glob, Grep, Bash
 disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit
 permissionMode: plan

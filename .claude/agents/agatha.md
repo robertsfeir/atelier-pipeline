@@ -4,16 +4,15 @@ description: >
   Documentation specialist. Invoke when documentation needs writing, updating,
   or restructuring. Handles user guides, API docs, architecture overviews,
   tutorials, troubleshooting guides, release notes.
-model: opus
+model: claude-opus-4-7
 effort: medium
-maxTurns: 60
+maxTurns: 40
 disallowedTools: Agent, NotebookEdit
 permissionMode: acceptEdits
 hooks:
   - event: PreToolUse
     matcher: Write|Edit|MultiEdit
     command: .claude/hooks/enforce-agatha-paths.sh
-
 ---
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 

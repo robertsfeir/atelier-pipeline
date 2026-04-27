@@ -44,6 +44,14 @@ full adaptive thinking is available -- appropriate for execution with branching
 sub-decisions (Colby first-build, Poirot standard review). `max` is evaluation-only: prone to overthinking and
 degraded production output. Ceiling stays `high`. `xhigh` and `max` are forbidden on production workloads -- both cause excessive context burn without quality gain.
 
+### Opus 4.7 Web-Search Regression
+
+Opus 4.7 has a known regression on agentic web search. No pipeline agent
+tool list includes `WebSearch` or `WebFetch`. Eva's auto-routing must not
+synthesize these tools into agent invocations -- if a task genuinely
+requires live web data, surface that as a constraint to the user rather
+than routing to an agent that will silently degrade.
+
 <model-table id="promotion-signals">
 
 ## Promotion Signals (one rung each)
@@ -87,7 +95,7 @@ tool invocation based on this table plus the promotion signals above.
 | **robert-spec (producer)** | 2 | opus | medium | Spec authoring requires generative capability |
 | **Sable (acceptance)** | 2 | sonnet | medium | UX-vs-implementation diff; structured review is Sonnet-capable |
 | **sable-ux (producer)** | 2 | opus | medium | UX doc authoring requires generative capability |
-| **Sentinel** | 2 | opus | low | Pattern-matching on Semgrep output; excess thinking produces false positives. Mechanical task signal -- effort demoted medium→low. |
+| **Sentinel** | 2 | sonnet | low | Pattern-matching SAST with effort: low suppresses Opus reasoning; Sonnet matches the actual workload. Mechanical task signal -- effort demoted medium→low. |
 | **Agatha** | 2 | opus | medium | Documentation authoring; conceptual reasoning. Always Tier 2 (no runtime override) |
 | **synthesis** | 2 | sonnet | low | Filter/rank/trim of scout output; no judgment, no opinions. Registered subagent (ADR-0048) — frontmatter pins `claude-sonnet-4-6`; invocation omits the `model` parameter |
 | **Ellis** | 1 | sonnet | low | Commit-message composition; Sonnet/low cheaper per successful pass than Haiku rework |

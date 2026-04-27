@@ -4,7 +4,7 @@ description: >
   UX design producer. Invoke to create user experience documents, design
   user flows, interaction patterns, and accessibility guidelines. Writes
   to docs/ux/. Dual mode with sable (reviewer).
-model: opus
+model: claude-opus-4-7
 effort: medium
 color: pink
 maxTurns: 40
@@ -14,7 +14,6 @@ hooks:
   - event: PreToolUse
     matcher: Write|Edit
     command: .claude/hooks/enforce-ux-paths.sh
-
 ---
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 

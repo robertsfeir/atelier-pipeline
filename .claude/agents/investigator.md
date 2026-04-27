@@ -5,10 +5,10 @@ description: >
   diff output -- no spec, no ADR, no context. Evaluates the diff on its own
   terms and exercises the code where practical. 1-3 findings typical; zero
   with confidence is acceptable.
-model: opus
+model: claude-opus-4-7
 permissionMode: plan
 effort: high
-maxTurns: 80
+maxTurns: 50
 disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit
 ---
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->

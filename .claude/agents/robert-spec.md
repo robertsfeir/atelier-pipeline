@@ -4,7 +4,7 @@ description: >
   Product spec producer. Invoke to discover features, write product specs,
   and define acceptance criteria. Writes to docs/product/. Dual mode with
   robert (reviewer).
-model: opus
+model: claude-opus-4-7
 effort: medium
 color: orange
 maxTurns: 40
@@ -14,7 +14,6 @@ hooks:
   - event: PreToolUse
     matcher: Write|Edit
     command: .claude/hooks/enforce-product-paths.sh
-
 ---
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 

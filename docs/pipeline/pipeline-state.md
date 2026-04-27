@@ -1,10 +1,19 @@
 # Pipeline State
 
-<!-- PIPELINE_STATUS: {"phase": "idle", "sizing": null, "qa_status": null, "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": false, "robert_reviewed": false, "brain_available": true, "worktree_path": null, "session_id": null, "branch_name": null, "stop_reason": "completed_with_warnings"} -->
+<!-- PIPELINE_STATUS: {"phase": "build", "sizing": "micro", "qa_status": null, "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": false, "robert_reviewed": false, "brain_available": true, "worktree_path": "../atelier-pipeline-cf75e37c", "session_id": "cf75e37c", "branch_name": "session/cf75e37c", "stop_reason": null} -->
 
 ## Active Pipeline
-**Feature:** (none — pipeline idle)
-**Phase:** idle
+**Feature:** brain-hydrate improvements — items 3 & 5
+**Phase:** build
+**Sizing:** Micro
+**Session:** cf75e37c
+**Branch:** session/cf75e37c
+**Worktree:** ../atelier-pipeline-cf75e37c
+
+### Next
+Colby: add ToolSearch pre-load step to brain-hydrate skill (item 3) + expand scope format docs in tools.mjs and skill (item 5).
+
+---
 
 ### Next
 Queued follow-up: **Test-authoring strategy review.** Structural pinning tests (line counts, row counts, exact-literal anchors) generate cascade churn with zero bug-catching value. Retro lesson 002 is being over-applied. Proposal: (1) stop prescribing absence tests for architectural deletions, (2) parametrize categorical checks, (3) drop line/row-count pins from structural tests, (4) narrow retro lesson 002 to its original scope. To be addressed as a dedicated pipeline after user's review.
@@ -378,3 +387,6 @@ Sarah (ADR-0044 with research brief) → Roz test spec review → Colby build �
 <!-- COMPACTION: 2026-04-21T20:56:22Z -->
 <!-- COMPACTION: 2026-04-22T01:52:42Z -->
 <!-- COMPACTION: 2026-04-24T19:43:44Z -->
+<!-- COMPACTION: 2026-04-24T20:38:58Z -->
+<!-- COMPACTION: 2026-04-24T21:36:21Z -->
+<!-- COMPACTION: 2026-04-27T11:56:47Z -->
