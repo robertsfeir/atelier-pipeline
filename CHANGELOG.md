@@ -5,6 +5,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [4.0.17] - 2026-04-27
+
+### Added
+- **ADR-0050 staged:** `docs/architecture/ADR-0050-colby-stop-verification-hook.md` committed — documents the enforce-colby-stop-verify.sh design decision (previously untracked)
+
+### Changed
+- **enforce-scout-swarm.sh `if` guard (source template):** `skills/pipeline-setup/SKILL.md` Agent-matcher JSON block now carries `"if": "tool_input.subagent_type == 'sarah' || tool_input.subagent_type == 'colby' || tool_input.subagent_type == 'scout'"` so future installs scope the hook correctly
+- **enforce-scout-swarm.sh hook comment:** installed hook header comment updated to document the `sarah || colby || scout` gate
+- `.claude/` reference and rule files updated: `agent-preamble.md`, `dor-dod.md`, `invocation-templates.md`, `xml-prompt-schema.md`, `agent-system.md`, `default-persona.md`, `pipeline-orchestration.md`, `pipeline-operations.md`, `colby.md`, `enforce-colby-stop-verify.sh`, `prompt-brain-prefetch.sh`
+
 ## [4.0.16] - 2026-04-27
 
 ### Changed

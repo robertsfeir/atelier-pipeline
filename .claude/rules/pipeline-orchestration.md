@@ -94,7 +94,7 @@ only when the specific violation differs from the default (e.g., gate 5's
 
 1. **Mechanical gate runs between Colby-done and Poirot.** After Colby
    reports a unit DONE (or after all units in a wave are built), Eva
-   runs the project's declared test command from CLAUDE.md (`pytest tests/ && cd brain && node --test ../tests/brain/*.test.mjs`)
+   runs the project's declared test command from CLAUDE.md (`{test_command}`)
    directly via Bash. Fail → route back to Colby with output. Pass → advance
    to Poirot. This is Eva's workflow step, not a hook. Skipping the
    mechanical gate before Poirot is a violation (default class).
@@ -112,7 +112,7 @@ only when the specific violation differs from the default (e.g., gate 5's
    the final commit. See `worktree-isolation.md` (`<protocol id="worktree-per-session">`) for cleanup
    details (MR-based vs trunk-based trigger).
 
-3. **Full test suite between waves.** After merging wave changes, Eva runs the full test suite (`pytest tests/ && cd brain && node --test ../tests/brain/*.test.mjs`) on the integrated codebase via Bash.
+3. **Full test suite between waves.** After merging wave changes, Eva runs the full test suite (`{test_command}`) on the integrated codebase via Bash.
    Individual units within a wave get lint+typecheck only. Eva runs the
    full suite at wave boundaries, not unit boundaries. The mechanical gate
    is Eva's responsibility directly -- she does not delegate test execution

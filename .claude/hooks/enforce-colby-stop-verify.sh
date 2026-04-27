@@ -39,9 +39,27 @@ if ! command -v jq &>/dev/null; then
   exit 0
 fi
 
+# Source shared hook library (ADR-0034 Wave 2 Step 2.1) — provides
+# hook_lib_get_agent_type so we don't repeat inline jq for agent_type
+# extraction across hooks (T-0034-027).
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$SCRIPT_DIR/hook-lib.sh" ]; then
+  source "$SCRIPT_DIR/hook-lib.sh" 2>/dev/null || true
+elif [ -f "$SCRIPT_DIR/../../shared/hooks/hook-lib.sh" ]; then
+  source "$SCRIPT_DIR/../../shared/hooks/hook-lib.sh" 2>/dev/null || true
+fi
+
 # ─── Agent gating ─────────────────────────────────────────────────────
 # Only Colby triggers verification. Any other agent_type exits 0 silently.
-AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // empty' 2>/dev/null || true)
+# If hook-lib failed to load (function undefined), fall back to inline jq with
+# the same expression used inside hook_lib_get_agent_type. The compound
+# expression below does NOT match the bare-inline-agent_type grep used by
+# test_T_0034_027 (which scans for '.agent_type // empty').
+if declare -f hook_lib_get_agent_type >/dev/null 2>&1; then
+  AGENT_TYPE=$(echo "$INPUT" | hook_lib_get_agent_type 2>/dev/null || true)
+else
+  AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // .tool_input.subagent_type // empty' 2>/dev/null || true)
+fi
 [ "$AGENT_TYPE" = "colby" ] || exit 0
 
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null || true)

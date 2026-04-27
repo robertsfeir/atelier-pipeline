@@ -373,7 +373,7 @@ Acceptance criteria (from ADR step):
 - [criterion N]
 
 Constraints:
-- Run lint after implementation: echo "no linter configured"
+- Run lint after implementation: {lint_command}
 - Do NOT run the full test suite -- Eva runs it after merge
 - Do NOT commit -- Eva merges and routes to Ellis
 - Do NOT modify files outside your assigned scope above

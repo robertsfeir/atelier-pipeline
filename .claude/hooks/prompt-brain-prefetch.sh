@@ -32,6 +32,6 @@ case "$SUBAGENT_TYPE" in
   *) exit 0 ;;
 esac
 
-echo "BRAIN PREFETCH REMINDER: You are about to invoke $SUBAGENT_TYPE. Call agent_search with a query relevant to this work unit before constructing the invocation prompt. Inject results into the <brain-context> tag."
+echo "BRAIN PREFETCH REMINDER: You are about to invoke $SUBAGENT_TYPE. Call agent_search with (a) a query relevant to this work unit AND (b) the scope for this project. Derive scope from .claude/brain-config.json (the \`scope\` key written by brain-setup). Scope matters: an unscoped agent_search returns entries from every project sharing this brain instance, which leaks unrelated codebases into this invocation's <brain-context>. Inject results into the <brain-context> tag."
 
 exit 0

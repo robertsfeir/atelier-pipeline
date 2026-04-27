@@ -1,7 +1,7 @@
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 <!--
   docs/pipeline  = directory for pipeline state files (default: docs/pipeline/)
-  pytest tests/ && cd brain && node --test ../tests/brain/*.test.mjs        = command to run full test suite (e.g., npx vitest run, npm test, pytest)
+  {test_command}        = command to run full test suite (e.g., npx vitest run, npm test, pytest)
   .claude          = IDE config directory (.claude for Claude Code, .cursor for Cursor)
 -->
 
