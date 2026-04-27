@@ -10,7 +10,7 @@ session-recovery signal — at session start Eva reads this checklist to
 determine what is active, what is done, and what to do next. The first
 unchecked phase is the active one.
 
-- [ ] Phase 1 — Literal-instruction fixes (Sentinel floor, Agatha return
+- [x] Phase 1 — Literal-instruction fixes (Sentinel floor, Agatha return
   format + workflow, robert-spec workflow, sable-ux workflow, Sarah
   exploration ceiling, Eva read-cap)
 - [ ] Phase 2 — `maxTurns` recalibration (Colby 200→120, Agatha 60→40,

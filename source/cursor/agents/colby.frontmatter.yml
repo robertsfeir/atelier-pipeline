@@ -7,7 +7,7 @@ description: >
 model: opus
 effort: high
 color: green
-maxTurns: 75
+maxTurns: 120
 tools: Read, Write, Edit, MultiEdit, Glob, Grep, Bash
 mcpServers:
   - atelier-brain

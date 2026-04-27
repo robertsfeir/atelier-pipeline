@@ -5,7 +5,7 @@ description: >
   tutorials, troubleshooting guides, release notes.
 model: opus
 effort: medium
-maxTurns: 60
+maxTurns: 40
 disallowedTools: Agent, NotebookEdit
 permissionMode: acceptEdits
 hooks:

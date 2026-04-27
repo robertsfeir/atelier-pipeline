@@ -7,5 +7,5 @@ description: >
 model: opus
 permissionMode: plan
 effort: high
-maxTurns: 80
+maxTurns: 50
 disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit

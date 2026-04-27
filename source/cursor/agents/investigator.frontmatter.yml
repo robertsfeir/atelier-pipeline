@@ -6,5 +6,5 @@ description: >
   with confidence is acceptable.
 model: opus
 effort: high
-maxTurns: 40
+maxTurns: 50
 disallowedTools: Agent, Write, Edit, MultiEdit, NotebookEdit

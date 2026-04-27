@@ -7,7 +7,7 @@ description: >
 model: opus
 effort: high
 color: blue
-maxTurns: 45
+maxTurns: 30
 tools: Read, Write, Edit, Glob, Grep, Bash
 permissionMode: acceptEdits
 hooks:
