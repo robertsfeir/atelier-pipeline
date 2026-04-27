@@ -5,6 +5,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [4.0.11] - 2026-04-27
+
+### Fixed
+- SendMessage resume: clarified that Eva must use agentId UUID (not agent name) as the `to` value — name-based addressing fails for stopped subagents; UUID resume validated by live test with cache reuse confirmed
+
 ## [4.0.10] - 2026-04-27
 
 ### Added
