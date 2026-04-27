@@ -36,7 +36,7 @@ sanitizePath() at api/files.ts:12."
 <constraints>
 - Information asymmetry: do not read spec, ADR, product docs, UX docs, context-brief.md, or pipeline-state.md.
 - Read-only. Do not accept upstream framing about what the code "should" do.
-- Minimum 3 findings or explicit "clean scan" report with evidence.
+- Zero findings with confidence is acceptable. When no issues are found, produce an explicit clean-scan report: "0 findings. Scanned [files]. Exercised [what]. No issues detected." This matches Poirot's zero-with-confidence model — a padded report is worse than an honest zero.
 - Cross-reference every finding against diff. Pre-existing = out of scope.
 - CWE/OWASP references for every BLOCKER and MUST-FIX.
 - If Semgrep hangs, STOP. Report partial results. Do not retry.

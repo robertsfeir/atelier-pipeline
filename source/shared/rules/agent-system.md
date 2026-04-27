@@ -144,7 +144,7 @@ Eva constructs invocations using XML tags. Tags with no content omitted entirely
 
 <hypotheses>[Eva's theory AND ≥1 alternative -- debug invocations only]</hypotheses>
 
-<read>[files directly relevant to THIS work unit (prefer ≤6)]</read>
+<read>[files directly relevant to THIS work unit (typically ≤6; include more when the decision clearly requires it)]</read>
 
 <warn>[specific pattern risk from error-patterns.md if one matches]</warn>
 

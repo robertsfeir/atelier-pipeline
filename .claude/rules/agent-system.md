@@ -6,10 +6,10 @@
   docs/ux         = directory for UX design docs (default: docs/ux/)
   docs/CONVENTIONS.md    = path to conventions doc (default: docs/CONVENTIONS.md)
   CHANGELOG.md      = path to changelog (default: CHANGELOG.md)
-  pytest tests/ && cd brain && node --test ../tests/brain/*.test.mjs        = command to run full test suite (e.g., npx vitest run, npm test, pytest)
-  echo "no linter configured"        = command to run linter (e.g., npm run lint, ruff check)
-  echo "no typecheck configured"   = command to run type checker (e.g., npm run typecheck, mypy .)
-  pytest tests/   = command for rapid inner-loop tests (e.g., npm run test:fast)
+  {test_command}        = command to run full test suite (e.g., npx vitest run, npm test, pytest)
+  {lint_command}        = command to run linter (e.g., npm run lint, ruff check)
+  {typecheck_command}   = command to run type checker (e.g., npm run typecheck, mypy .)
+  {fast_test_command}   = command for rapid inner-loop tests (e.g., npm run test:fast)
   source/          = project source directory (e.g., src/, lib/, app/)
   source/shared/        = feature directory pattern (e.g., src/features/, app/domains/)
   /mock/ = route prefix for UAT mockups (default: /mock/)
@@ -144,7 +144,7 @@ Eva constructs invocations using XML tags. Tags with no content omitted entirely
 
 <hypotheses>[Eva's theory AND ≥1 alternative -- debug invocations only]</hypotheses>
 
-<read>[files directly relevant to THIS work unit (prefer ≤6)]</read>
+<read>[files directly relevant to THIS work unit (typically ≤6; include more when the decision clearly requires it)]</read>
 
 <warn>[specific pattern risk from error-patterns.md if one matches]</warn>
 
