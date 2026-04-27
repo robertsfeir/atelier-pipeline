@@ -40,6 +40,14 @@ full adaptive thinking is available -- appropriate for execution with branching
 sub-decisions (Colby first-build, Poirot standard review). `max` is evaluation-only: prone to overthinking and
 degraded production output. Ceiling stays `high`. `xhigh` and `max` are forbidden on production workloads -- both cause excessive context burn without quality gain.
 
+### Opus 4.7 Web-Search Regression
+
+Opus 4.7 has a known regression on agentic web search. No pipeline agent
+tool list includes `WebSearch` or `WebFetch`. Eva's auto-routing must not
+synthesize these tools into agent invocations -- if a task genuinely
+requires live web data, surface that as a constraint to the user rather
+than routing to an agent that will silently degrade.
+
 <model-table id="promotion-signals">
 
 ## Promotion Signals (one rung each)

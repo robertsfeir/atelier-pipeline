@@ -17,10 +17,10 @@ unchecked phase is the active one.
   Poirot 80→50, Sherlock 80→50, Sarah 45→30)
 - [x] Phase 3 — Sentinel model `opus → sonnet` (frontmatter, both source
   trees, plus per-agent table in `pipeline-models.md`)
-- [ ] Phase 4 — Pin explicit model IDs across all frontmatter
+- [x] Phase 4 — Pin explicit model IDs across all frontmatter
   (`claude-opus-4-7`, `claude-sonnet-4-6`, `claude-haiku-4-5-20251001`) and
   align `skills/brain-hydrate/SKILL.md` model assignment table
-- [ ] Phase 5 — Web-search regression note in `pipeline-models.md`
+- [x] Phase 5 — Web-search regression note in `pipeline-models.md`
 
 Each phase ends with a single commit (template below) and a session clear.
 Phases are independent within their own commits but ordered: Phase 1's
