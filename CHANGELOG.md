@@ -5,6 +5,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [4.0.10] - 2026-04-27
+
+### Added
+- ADR-0049: in-session SendMessage resume for Sarah and Poirot — Eva captures agentId on every invocation and uses SendMessage (instead of a fresh Agent spawn) for ADR revisions and scoped re-runs, skipping the re-read cost on the two highest-context agents
+- CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 is now a mandatory part of every pipeline-setup install, ensuring SendMessage is always available
+
+### Fixed
+- pipeline-setup: stale `roz` reference in hook registration template corrected to `poirot`
+- pipeline-setup: Step 6d agent-resume prerequisite simplified to always-apply (removed [Y/n] prompt)
+
 ## [4.0.9] - 2026-04-27
 
 ### Added

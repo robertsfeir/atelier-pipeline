@@ -436,6 +436,9 @@ file already exists. Add this hooks section:
 
 ```json
 {
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
   "hooks": {
     "PreToolUse": [
       {
@@ -444,7 +447,7 @@ file already exists. Add this hooks section:
       },
       {
         "matcher": "Agent",
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-sequencing.sh"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-pipeline-activation.sh"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-scout-swarm.sh"}, {"type": "prompt", "prompt": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-brain-prefetch.sh", "if": "tool_input.subagent_type == 'sarah' || tool_input.subagent_type == 'colby' || tool_input.subagent_type == 'roz'"}]
+        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-sequencing.sh"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-pipeline-activation.sh"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-scout-swarm.sh"}, {"type": "prompt", "prompt": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-brain-prefetch.sh", "if": "tool_input.subagent_type == 'sarah' || tool_input.subagent_type == 'colby' || tool_input.subagent_type == 'poirot'"}]
       },
       {
         "matcher": "Bash",
@@ -798,17 +801,7 @@ jq -r '.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS // empty' ~/.claude/settings.js
 
 **If the value is already `1`, skip to the Brain setup offer.** (Idempotency.)
 
-**Otherwise, prompt the user:**
-
-> The atelier-pipeline relies on subagent resume for efficient multi-turn
-> agent flows (Sarah ADR revisions, Colby rework cycles, Poirot scoped re-runs).
-> Claude Code currently gates the `SendMessage` tool behind
-> `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`
-> (github.com/anthropics/claude-code/issues/42737).
->
-> Add this env var to `~/.claude/settings.json`? [Y/n]
-
-**If user says yes**, apply idempotently via jq:
+**Otherwise, always apply idempotently via jq:**
 
 ```bash
 jq '. + {env: ((.env // {}) + {CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1"})}' \
@@ -816,13 +809,8 @@ jq '. + {env: ((.env // {}) + {CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1"})}' \
   mv ~/.claude/settings.json.tmp ~/.claude/settings.json
 ```
 
-Confirm: "`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` is set. Restart Claude
+Confirm: "`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` is set in `~/.claude/settings.json`. Restart Claude
 Code for the change to take effect."
-
-**If user says no**, print: "Subagent resume will spawn a fresh agent each
-time. The pipeline still works but pays a context-rebuild cost on every
-follow-up. Enable later by re-running pipeline-setup or adding the env var
-manually."
 
 **No installation manifest expansion** -- this is a user-settings mutation,
 not a pipeline file install.
