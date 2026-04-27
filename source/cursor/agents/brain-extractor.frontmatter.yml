@@ -9,7 +9,7 @@ description: >
   calls agent_capture via atelier-brain MCP. (no-op on Cursor)
 # Normalized from fully-qualified 'claude-haiku-4-5-20251001' to rolling alias
 # 'haiku' in ADR-0041 batch for parity with all other Cursor agent frontmatter.
-model: sonnet
+model: claude-sonnet-4-6
 effort: low
 maxTurns: 5
 tools:

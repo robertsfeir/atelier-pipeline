@@ -3,7 +3,7 @@ description: >
   Commit and Changelog agent. Invoke when code has passed QA and is ready
   to be committed and pushed. Writes narrative commit messages and executes
   commit/push.
-model: sonnet
+model: claude-sonnet-4-6
 effort: low
 color: cyan
 maxTurns: 12

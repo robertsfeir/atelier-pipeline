@@ -5,7 +5,7 @@ description: >
   last_assistant_message, extracts decisions, patterns, lessons, and seeds,
   then performs a second pass to capture structured quality signals per
   agent_type, calls agent_capture via atelier-brain MCP.
-model: sonnet
+model: claude-sonnet-4-6
 effort: low
 maxTurns: 5
 tools:

@@ -486,11 +486,11 @@ These rules are mandatory:
 
 | Component | Model | Rationale |
 |-----------|-------|-----------|
-| Phase 1 (scan) | Opus (main thread) | Lightweight, conversational -- just Glob, shell inventory, stats |
-| Phase 2a (scouts) | Haiku (Explore subagent) | File reading only, no reasoning needed |
-| Phase 2b (extraction) | Sonnet (subagent) | Synthesis quality sufficient for structured extraction rules |
-| Phase 3 (summary) | Opus (main thread) | Format and present results |
+| Phase 1 (scan) | claude-opus-4-7 (main thread) | Lightweight, conversational -- just Glob, shell inventory, stats |
+| Phase 2a (scouts) | claude-haiku-4-5-20251001 (Explore subagent) | File reading only, no reasoning needed |
+| Phase 2b (extraction) | claude-sonnet-4-6 (subagent) | Synthesis quality sufficient for structured extraction rules |
+| Phase 3 (summary) | claude-opus-4-7 (main thread) | Format and present results |
 
-Scouts use `model: "haiku"` via `Agent(subagent_type: "Explore", model: "haiku")`. The capture subagent uses `model: "sonnet"` via `Agent(model: "sonnet")`.
+Scouts use `model: "claude-haiku-4-5-20251001"` via `Agent(subagent_type: "Explore", model: "claude-haiku-4-5-20251001")`. The capture subagent uses `model: "claude-sonnet-4-6"` via `Agent(model: "claude-sonnet-4-6")`.
 
 </section>

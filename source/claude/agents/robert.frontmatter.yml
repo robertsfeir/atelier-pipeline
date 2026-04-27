@@ -4,7 +4,7 @@ description: >
   implementation against product spec. ADR-blind — reads only the spec
   and implemented code. Flags spec drift and doc accuracy. Read-only —
   no Write/Edit access.
-model: sonnet
+model: claude-sonnet-4-6
 permissionMode: plan
 effort: medium
 color: orange

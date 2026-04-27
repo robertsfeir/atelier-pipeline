@@ -15,7 +15,7 @@ unchecked phase is the active one.
   exploration ceiling, Eva read-cap)
 - [x] Phase 2 — `maxTurns` recalibration (Colby 200→120, Agatha 60→40,
   Poirot 80→50, Sherlock 80→50, Sarah 45→30)
-- [ ] Phase 3 — Sentinel model `opus → sonnet` (frontmatter, both source
+- [x] Phase 3 — Sentinel model `opus → sonnet` (frontmatter, both source
   trees, plus per-agent table in `pipeline-models.md`)
 - [ ] Phase 4 — Pin explicit model IDs across all frontmatter
   (`claude-opus-4-7`, `claude-sonnet-4-6`, `claude-haiku-4-5-20251001`) and
