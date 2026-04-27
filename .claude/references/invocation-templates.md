@@ -25,6 +25,12 @@ keyed by agent name. On a recognized continuation trigger (Sarah revision
 after a Poirot structural finding, Poirot scoped re-run after a Colby fix),
 Eva uses `SendMessage` against the captured `agentId` instead of spawning a
 fresh Agent -- this skips the re-read cost on these two high-context agents.
+**Address by UUID, not name.** The `to` value passed to `SendMessage` MUST be
+the captured `agentId` UUID string (e.g. `"a0f21b3784edcb4d4"`) returned in
+the Agent tool result -- not the agent name. Name-based addressing
+(`"sarah"`, `"poirot"`) only resolves for currently-running teammates and
+returns "not currently addressable" for stopped subagents, which is exactly
+the resume target. UUID is the only valid `to` value for resume.
 No other agent qualifies; capture is in-session only and is discarded at
 session boundaries (compaction, restart, crash). Full rule:
 `.claude/rules/agent-system.md` (`<protocol id="sendmessage-resume">`).

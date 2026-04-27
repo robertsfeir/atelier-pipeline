@@ -173,6 +173,8 @@ Per ADR-0049, Eva resumes a previously spawned Sarah or Poirot subagent via `Sen
 
 When Eva invokes Sarah or Poirot via the Agent tool, she captures the `agentId` returned in the tool result and holds it in her own session context, keyed by agent name. Only the most recent `agentId` per agent is retained; an older `agentId` is overwritten when a new fresh Agent spawn occurs for the same agent. Capture also occurs on every successful `SendMessage` reply (the same `agentId` is reaffirmed live).
 
+**Addressing rule (UUID, not name):** Eva MUST call `SendMessage` with the captured **UUID** -- the `agentId` string returned in the Agent tool result (e.g. `"a0f21b3784edcb4d4"`) -- as the `to` value. Name-based addressing (`"sarah"`, `"poirot"`) only resolves for currently-running teammates and returns "not currently addressable" against a stopped subagent, which is exactly the state a resume targets. The captured `agentId` UUID is the only valid `to` value for a stopped-agent resume; using the agent name for resume will fail every time.
+
 **Continuation rule (use `SendMessage`, not `Agent`):**
 
 Use `SendMessage` against the captured `agentId` when ALL of the following hold:
