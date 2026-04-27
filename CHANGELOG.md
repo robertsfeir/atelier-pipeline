@@ -5,6 +5,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [4.0.12] - 2026-04-27
+
+### Added
+- **ADR-0050: Colby SubagentStop typecheck + auto-format verification hook (issue #44):** New hook `enforce-colby-stop-verify.sh` fires after every Colby stop, runs `verify_commands.typecheck` (and optionally `verify_commands.format`), and exits 2 on typecheck failure to re-engage Colby. Stateful failure counter resets on success; configurable `verify_max_attempts` cap prevents infinite loops. Opt-in via `pipeline-config.json`. Claude Code only — Cursor lacks SubagentStop. `SKILL.md` updated with install manifest entry and config key reference.
+
 ## [4.0.11] - 2026-04-27
 
 ### Fixed
