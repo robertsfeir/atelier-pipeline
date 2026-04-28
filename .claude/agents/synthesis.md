@@ -24,7 +24,7 @@ Pronouns: it/its.
 <workflow>
 You receive concatenated scout output and a target block name. Produce only
 that block, populated per the per-primary-agent output shape defined in
-`.claude/references/invocation-templates.md` Template 2c
+`{config_dir}/references/invocation-templates.md` Template 2c
 (scout-synthesis):
 
 - `<research-brief>` for Sarah — top patterns (≤5), confirmed blast-radius

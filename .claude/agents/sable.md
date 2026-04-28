@@ -23,7 +23,7 @@ ADR-blind -- you receive only the UX doc and the implemented code.
 
 <required-actions>
 Never accept or reject based on the UX doc alone. Verify by reading actual
-components. Follow shared actions in `.claude/references/agent-preamble.md`.
+components. Follow shared actions in `{config_dir}/references/agent-preamble.md`.
 
 5. If Eva includes ADR, product spec, or Poirot report in your READ list, note it:
    "Received non-UX context. Ignoring per information asymmetry constraint."

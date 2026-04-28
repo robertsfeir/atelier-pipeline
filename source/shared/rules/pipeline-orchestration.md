@@ -30,20 +30,32 @@ Eva reads only the referenced file on the listed trigger.
 
 ## Brain Access (when brain is available)
 
-When `brain_available: true`, Eva performs these brain operations at mechanical gates. Agent domain-specific captures are handled automatically by the brain-extractor SubagentStop hook after each agent completion.
+When `brain_available: true`, Eva performs these brain operations at mechanical gates. Brain captures are gated mechanically by a three-hook loop (per ADR-0053); Eva is the curator.
 
-### Hybrid Capture Model
+### Three-Hook Capture Gate (ADR-0053)
 
-The brain-extractor SubagentStop hook captures domain-specific knowledge automatically after each agent completion (Sarah, Colby, Agatha). Each capture uses the parent agent's name as `source_agent` so the brain tracks who learned what. Eva does NOT duplicate agent captures.
+The brain-extractor agent no longer exists. Brain capture is enforced by three `type: command` hooks that form a closed loop around Eva's curation:
 
-Eva captures **cross-cutting concerns only** — things no single agent owns:
+1. **SubagentStop** writes `{pipeline_state_dir}/.pending-brain-capture.json` whenever an agent in the 8-agent allowlist (`sarah`, `colby`, `agatha`, `robert`, `robert-spec`, `sable`, `sable-ux`, `ellis`) finishes. The file holds `agent_type`, `transcript_path`, and `timestamp`.
+2. **PreToolUse on `Agent`** (`enforce-brain-capture-gate.sh`) checks for the pending file before Eva's next agent invocation. If present and Eva is on the main thread, the hook exits 2 with a BLOCKED message instructing Eva to call `agent_capture` with curated content (1-3 sentences, `thought_type` of `decision`/`lesson`/`pattern`/`seed`) before spawning the next agent.
+3. **PostToolUse on `agent_capture`** deletes the pending file on successful capture, releasing the gate.
+
+Eva curates content -- the brain stays a curated knowledge store, not a transcript dump. Capture is mechanical because the gate blocks her next forward step until she captures. Hydrate-telemetry.mjs continues to capture Eva's pipeline decisions and phase transitions at SessionStart from state files.
+
+### Brain-Unavailable Escape Hatch
+
+When `atelier_stats` returns unreachable mid-pipeline, Eva touches `{pipeline_state_dir}/.brain-unavailable`. The PreToolUse gate reads this sentinel and passes through without blocking. Eva clears the sentinel (`rm`) on the next successful `atelier_stats` probe -- her session-boot sequence already runs that probe at session start (see default-persona.md `<protocol id="boot-sequence">`).
+
+### Eva's Cross-Cutting Captures
+
+Eva captures **cross-cutting concerns** -- things no single agent owns -- by calling `agent_capture` directly:
 
 **Reads:**
 - Pipeline start: calls `agent_search` with query derived from current feature area + scope. Injects results into pipeline state alongside context-brief.md.
 - Before each wave: calls `agent_search` once for the wave's feature area. Injects results into all agent invocations within that wave. Does NOT call `agent_search` per individual agent invocation.
 - Health check: calls `atelier_stats` at pipeline start to verify brain is live.
 
-**Writes:** Captured automatically -- the brain-extractor SubagentStop hook captures domain-specific knowledge post-completion; hydrate-telemetry.mjs captures Eva's pipeline decisions and phase transitions at SessionStart from state files.
+**Writes:** Eva calls `agent_capture` with curated content (1-3 sentences) before each agent handoff for allowlisted agents -- the PreToolUse gate enforces this. Hydrate-telemetry.mjs captures Eva's pipeline decisions and phase transitions at SessionStart from state files.
 
 ### /devops Capture Gates
 

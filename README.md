@@ -8,17 +8,13 @@ Multi-agent orchestration for AI-powered IDEs. Quality gates, continuous QA, and
 
 ## What It Does
 
-Atelier Pipeline has two core systems and two optional ones:
+Atelier Pipeline has two core systems:
 
-**Multi-Agent Orchestration.** Eleven specialized agent personas with clear responsibilities, strict boundaries, and independent quality verification. Eva orchestrates, Robert handles product, Sable designs UX, Cal architects, Colby builds, Roz tests, Poirot blind-reviews, Agatha documents, Ellis commits, Distillator compresses, and Sentinel audits security. Custom agents can be added via agent discovery. Specs get written, designs get validated, tests get authored before code, every change passes independent wave-based QA, and nothing ships without review. Works with Claude Code and Cursor.
+**Multi-Agent Orchestration.** Eleven specialized agent personas with clear responsibilities, strict boundaries, and independent quality verification. Eva orchestrates, Robert handles product, Sable designs UX, Sarah architects, Colby builds, Poirot blind-reviews every wave, Agatha documents, Ellis commits, Distillator compresses cross-phase artifacts, Sherlock investigates user-reported bugs, and Sentinel audits security (opt-in). Custom agents can be added via agent discovery. Specs get written, designs get validated, every change passes Eva's mechanical test gate plus Poirot blind review, and nothing ships without review. Works with Claude Code and Cursor.
 
 **Atelier Brain.** A persistent memory layer backed by PostgreSQL and vector embeddings that gives your agents institutional memory across sessions. Without it, every time you close a terminal you lose the architectural decisions that shaped your implementation, the user corrections that steered scope, the rejected alternatives that explain why you didn't go a different way, and the QA lessons that prevent recurring bugs. The brain captures all of this during pipeline runs and surfaces it automatically when agents need context. It includes write-time conflict detection, TTL-based knowledge decay, and background consolidation that synthesizes raw observations into higher-level insights. The pipeline works without the brain -- but with it, session 12 of a feature build has the same context as session 1.
 
 > **The brain is essentially free to run.** It uses OpenRouter for embeddings (`text-embedding-3-small` at $0.02/1M tokens) and occasional conflict detection (`gpt-4o-mini`). Real-world cost: **3,500+ thoughts stored over one month of heavy daily use for $0.06 total** in OpenRouter fees. Extrapolated, that's **under $0.72/year**. Fund $1.00 on OpenRouter and you're covered for a long time.
-
-**Darwin (optional).** A self-evolving pipeline engine that queries telemetry from the brain, evaluates agent fitness, and proposes structural improvements to the pipeline itself. Enable with `darwin_enabled: true` in pipeline config. Requires the brain.
-
-**Deps (optional).** Predictive dependency management. Scans manifests for outdated packages, checks CVEs, and predicts upgrade breakage risk before you touch a version number. Enable with `deps_agent_enabled: true` in pipeline config.
 
 For full documentation, see the [User Guide](docs/guide/user-guide.md) and [Technical Reference](docs/guide/technical-reference.md).
 
@@ -164,7 +160,7 @@ The plugin provides five skills:
 
 ## The Pipeline
 
-Eva sizes every request and runs the right amount of process. A large feature gets the full pipeline; a bug fix gets Colby, Roz, and Ellis.
+Eva sizes every request and runs the right amount of process. A large feature gets the full pipeline; a bug fix gets Colby, the mechanical test gate, Poirot, and Ellis.
 
 ### Full pipeline (Large)
 
@@ -177,24 +173,20 @@ flowchart TD
     AGATHA_PLAN --> COLBY_MOCK
     COLBY_MOCK --> SABLE_V(Sable — Verify):::sable
     SABLE_V --> UAT([User UAT]):::user
-    UAT --> CAL(Cal — ADR + Tests):::cal
-    CAL --> ROZ_SPEC(Roz — Spec Review):::roz
-    ROZ_SPEC --> ROZ_WRITE(Roz — Write Tests):::roz
+    UAT --> SARAH(Sarah — ADR):::sarah
 
-    ROZ_WRITE --> BUILD
+    SARAH --> BUILD
 
     subgraph BUILD [Wave Build Cycle - repeats]
-        COLBY_B(Colby — Build Units):::colby --> QA_SPLIT
-        QA_SPLIT(Roz — Wave QA):::roz --> ELLIS_W(Ellis — Commit):::ellis
-        POIROT_W(Poirot — Blind Review):::poirot --> ELLIS_W
-        COLBY_B --> POIROT_W
+        COLBY_B(Colby — Build Units):::colby --> GATE(Eva — Mechanical Test Gate):::gate
+        GATE --> POIROT_W(Poirot — Blind Review):::poirot
+        POIROT_W --> ELLIS_W(Ellis — Wave Commit):::ellis
     end
 
     ELLIS_W --> REVIEW
 
     subgraph REVIEW [Review Juncture - parallel]
-        ROZ_F(Roz — Final QA):::roz
-        POIROT_F(Poirot — Review):::poirot
+        POIROT_F(Poirot — Final Review):::poirot
         ROBERT_F(Robert — Acceptance):::robert
         SABLE_F(Sable — UX):::sable
         SENTINEL_F(Sentinel — Security):::sentinel
@@ -205,9 +197,8 @@ flowchart TD
     RECONCILE --> ELLIS_F(Ellis — Final Commit):::ellis
     ELLIS_F --> DONE([Shipped]):::user
 
-    classDef cal fill:#3b82f6,stroke:#2563eb,color:#fff,font-weight:bold
+    classDef sarah fill:#3b82f6,stroke:#2563eb,color:#fff,font-weight:bold
     classDef colby fill:#22c55e,stroke:#16a34a,color:#fff,font-weight:bold
-    classDef roz fill:#eab308,stroke:#ca8a04,color:#000,font-weight:bold
     classDef ellis fill:#06b6d4,stroke:#0891b2,color:#fff,font-weight:bold
     classDef robert fill:#f97316,stroke:#ea580c,color:#fff,font-weight:bold
     classDef sable fill:#ec4899,stroke:#db2777,color:#fff,font-weight:bold
@@ -229,8 +220,8 @@ Not every feature runs every phase. Eva adjusts:
 | Size | When | What runs |
 |------|------|-----------|
 | **Micro** | Rename, typo, import fix (≤2 files, mechanical only) | Colby -> test suite -> Ellis |
-| **Small** | Bug fix, <3 files, "quick fix" | Colby -> Roz -> Ellis (+ Agatha if doc impact) |
-| **Medium** | 2-4 ADR steps, typical feature | Robert -> Cal -> wave build/QA cycle -> review juncture -> Agatha -> Ellis |
+| **Small** | Bug fix, <3 files, "quick fix" | Colby -> mechanical test gate -> Poirot -> Ellis (+ Agatha if doc impact) |
+| **Medium** | 2-4 ADR steps, typical feature | Robert -> Sarah -> wave build (Colby + mechanical gate + Poirot) -> review juncture -> Agatha -> Ellis |
 | **Large** | 5+ ADR steps, new system | Full pipeline above |
 
 ### Changelog
@@ -244,16 +235,14 @@ See [CHANGELOG.md](CHANGELOG.md) for the full release history.
 | **Eva** | Pipeline Orchestrator / DevOps | Skill (main thread) |
 | **Robert** | Chief Product Officer | Skill + Subagent |
 | **Sable** | Senior UI/UX Designer | Skill + Subagent |
-| **Cal** | Senior Software Architect | Skill + Subagent |
+| **Sarah** | Senior Software Architect | Skill + Subagent |
 | **Colby** | Senior Software Engineer | Subagent |
-| **Roz** | QA Engineer | Subagent |
-| **Poirot** | Blind Code Investigator | Subagent |
+| **Poirot** | Blind Code Investigator (default post-build verifier) | Subagent |
+| **Sherlock** | Sr. Detective -- user-reported bug diagnose-only hunt | Subagent |
 | **Agatha** | Documentation Specialist | Skill + Subagent |
 | **Ellis** | Commit and Changelog Manager | Subagent |
 | **Distillator** | Compression Engine | Subagent |
 | **Sentinel** | Security Auditor (opt-in) | Subagent |
-| **Darwin** | Pipeline Evolution Engine (opt-in) | Subagent |
-| **Deps** | Dependency Management (opt-in) | Subagent |
 
 **Skills** run in the main conversation thread (Claude Code or Cursor) for conversational work. **Subagents** run in their own context windows for focused execution. Some agents have both modes -- conversational for authoring, subagent for verification. Custom agents can be added via [agent discovery](#agent-discovery) without modifying core pipeline files.
 
@@ -286,13 +275,11 @@ These are installed into your project by `/pipeline-setup`:
 |---------|-------|---------|
 | `/pm` | Robert | Feature discovery and product spec |
 | `/ux` | Sable | UI/UX design and interaction patterns |
-| `/architect` | Cal | Architecture clarification and ADR production |
-| `/debug` | Roz -> Colby -> Roz | Investigation, fix, verification chain |
+| `/architect` | Sarah | Architecture clarification and ADR production |
+| `/debug` | Sherlock -> Colby -> Poirot | Investigation, fix, blind verification chain |
 | `/pipeline` | Eva | Full pipeline orchestration |
 | `/devops` | Eva | Infrastructure and deployment |
 | `/docs` | Agatha | Documentation planning and writing |
-| `/deps` | Deps | Dependency scanning and CVE checking |
-| `/darwin` | Darwin | Pipeline health analysis and improvement proposals |
 
 ## Atelier Brain
 
@@ -323,23 +310,23 @@ your-project/
       pipeline-models.md         # Model selection tables (path-scoped)
       branch-lifecycle.md        # Branch lifecycle rules (selected strategy variant)
     agents/                      # Loaded when subagents are invoked
-      cal.md                     # Architect
+      sarah.md                   # Architect
       colby.md                   # Engineer
-      roz.md                     # QA
       robert.md                  # Product reviewer
+      robert-spec.md             # Product spec producer
       sable.md                   # UX reviewer
-      investigator.md            # Poirot (blind investigator)
+      sable-ux.md                # UX design producer
+      investigator.md            # Poirot (blind code investigator)
+      sherlock.md                # User-reported bug detective
       distillator.md             # Compression engine
       ellis.md                   # Commit manager
       agatha.md                  # Documentation
       sentinel.md                # Security audit (opt-in)
-      darwin.md                  # Pipeline evolution (opt-in)
-      deps.md                    # Dependency management (opt-in)
     commands/                    # Loaded when user types slash command
-      pm.md                      # /pm (Robert)
-      ux.md                      # /ux (Sable)
-      architect.md               # /architect (Cal)
-      debug.md                   # /debug (Roz -> Colby -> Roz)
+      pm.md                      # /pm (robert-spec)
+      ux.md                      # /ux (sable-ux)
+      architect.md               # /architect (Sarah)
+      debug.md                   # /debug (Sherlock -> Colby -> Poirot)
       pipeline.md                # /pipeline (Eva)
       devops.md                  # /devops (Eva)
       docs.md                    # /docs (Agatha)
@@ -350,7 +337,6 @@ your-project/
       pipeline-operations.md     # Continuous QA, feedback loops, batch mode
       agent-preamble.md          # Shared agent behaviors
       xml-prompt-schema.md       # XML tag vocabulary for persona files
-      qa-checks.md               # Roz QA check procedures
       branch-mr-mode.md          # Colby branch/MR procedures
     hooks/                       # Mechanical enforcement (PreToolUse + SubagentStop + PreCompact)
       enforce-paths.sh           # Blocks Write/Edit outside agent's allowed paths
@@ -367,7 +353,7 @@ your-project/
       context-brief.md           # Cross-session context
       error-patterns.md          # Error pattern tracking
       investigation-ledger.md    # Debug hypothesis tracking
-      last-qa-report.md          # Roz's most recent QA report
+      last-qa-report.md          # Poirot's most recent QA report
 ```
 
 **Requires:** `jq` for hook enforcement (`brew install jq` on macOS, `apt install jq` on Linux).
@@ -376,8 +362,7 @@ your-project/
 
 ## Key Principles
 
-- **Roz-First TDD.** Roz writes tests before Colby builds. Colby cannot modify Roz's assertions.
-- **Wave-based QA.** Each wave is a work unit with its own test-build-review cycle. Roz writes tests and reviews at wave boundaries; Poirot reviews the cumulative wave diff; Ellis commits once per wave.
+- **Wave-based QA.** Each wave is a work unit with its own build-test-review cycle. Colby builds, Eva runs the mechanical test gate, Poirot blind-reviews the cumulative wave diff, Ellis commits once per wave.
 - **DoR/DoD.** Every agent proves it read upstream artifacts (DoR) and covers all requirements (DoD).
 - **Twelve mandatory gates.** Eva enforces twelve quality gates that are never skipped, covering sequencing, test-before-ship, documentation, and wave-level pipeline discipline.
 - **Six enforcement hooks.** Three PreToolUse hooks (path enforcement, sequencing, git ops), one SubagentStop hook (DoR/DoD warnings), one PreCompact hook (compaction marker), and one config file. Behavioral guidance tells agents what to do; hooks ensure they can't do what they shouldn't.
@@ -401,8 +386,6 @@ During setup, you configure project-specific values:
 - Branching strategy (trunk-based, GitHub Flow, GitLab Flow, GitFlow)
 - Sentinel security agent (opt-in)
 - Agent Teams parallel execution (opt-in, experimental)
-- Darwin pipeline evolution engine (opt-in)
-- Deps dependency management (opt-in)
 
 The orchestration patterns and quality gates are stack-agnostic.
 

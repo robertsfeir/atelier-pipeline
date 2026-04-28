@@ -22,7 +22,7 @@ signal only; it does not set the model.
 
 | Tier | Task class | Model | Base effort | Typical agents | Effort adjustment signal |
 |------|------------|-------|-------------|----------------|--------------------------|
-| Tier 1 | Mechanical -- no reasoning | Sonnet / Haiku | low | Ellis, scout (haiku), Distillator, brain-extractor | -- (stays low) |
+| Tier 1 | Mechanical -- no reasoning | Sonnet / Haiku | low | Ellis, scout (haiku), Distillator | -- (stays low) |
 | Tier 2 | Supporting reasoning -- review / acceptance / compliance / synthesis | Sonnet / Opus | medium | Robert (acceptance), Sable (acceptance), Sentinel, Agatha, Synthesis, Colby (rework), Colby (first-build Small) | Read-only / mechanical -- -1 rung (floor low) |
 | Tier 3 | Critical-path reasoning -- creates / verifies shipped artifact | Opus | high / medium | Colby (first-build Medium+), Poirot, Darwin | (no further promotion -- `high` is ceiling) |
 | Tier 4 | Architectural design | Opus | high | Sarah | (already at ceiling; `high` is the ceiling value) |
@@ -96,7 +96,6 @@ tool invocation based on this table plus the promotion signals above.
 | **synthesis** | 2 | sonnet | low | Filter/rank/trim of scout output; no judgment, no opinions. Registered subagent (ADR-0048) — frontmatter pins `claude-sonnet-4-6`; invocation omits the `model` parameter |
 | **Ellis** | 1 | sonnet | low | Commit-message composition; Sonnet/low cheaper per successful pass than Haiku rework |
 | **Distillator** | 1 | sonnet | low | Structured compression; Sonnet/low preserves load-bearing facts Haiku drops |
-| **brain-extractor** (hook) | 1 | sonnet | low | Mechanical extraction from SubagentStop payload; Sonnet/low less error-prone than Haiku |
 | **scout** | 1 | haiku | low | File/grep/read only; no synthesis. Registered subagent (ADR-0048) — frontmatter pins `claude-haiku-4-5-20251001`; invocation omits the `model` parameter |
 
 </model-table>

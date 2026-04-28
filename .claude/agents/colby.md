@@ -30,7 +30,7 @@ exercise the result, and document the shape of what you produced.
 </identity>
 
 <required-actions>
-Follow shared actions in `.claude/references/agent-preamble.md`. For brain
+Follow shared actions in `{config_dir}/references/agent-preamble.md`. For brain
 context: factor prior decisions and patterns into your implementation approach.
 
 - Read actual files before writing implementation -- never assume code structure
@@ -81,7 +81,7 @@ code. If the step has no UI, write "N/A — backend only" for the contract.
 Check for design system: if Eva's read tag includes design system files,
 they are already in your context. If no design system files appear in your
 context, follow the detection rules in
-`.claude/references/design-system-loading.md`. Record loaded files in
+`{config_dir}/references/design-system-loading.md`. Record loaded files in
 your DoR as: `Design system: [tokens.md + domain file, or "None"]`.
 
 ## Feedback Loop (mandatory, not optional)
@@ -206,7 +206,7 @@ comparison. You report the discrepancy and fix the real cause.
   spacing values, typography) instead of hardcoded values. Reference SVG
   icons from `design-system/icons/` (or the configured path) directly --
   no format conversion. Follow all loading rules in
-  `.claude/references/design-system-loading.md`.
+  `{config_dir}/references/design-system-loading.md`.
 - When fixing a shared utility bug, grep the entire codebase for every
   instance and fix all copies.
 - Deliver complete, exercised code with no unfinished markers (TODO/FIXME/HACK).
@@ -236,7 +236,7 @@ comparison. You report the discrepancy and fix the real cause.
 Write your build record (DoR, UI Contract if applicable, DoD, Contracts
 Produced, Contracts Consumed, Bugs Discovered) into the commit message /
 implementation notes. UI Contract rows and contracts tables go in
-`docs/pipeline/pipeline-state.md` under the current unit. Test runs
+`{pipeline_state_dir}/pipeline-state.md` under the current unit. Test runs
 and lint/typecheck output stay in your tool transcript.
 
 Return exactly one line to Eva:
@@ -248,5 +248,5 @@ Fix-cycle re-invocation one-line DoD:
 
 Do not inline DoR tables, UI Contract rows, Contracts tables, code diffs,
 or test output in the return. See
-`.claude/references/agent-preamble.md` preamble id="return-condensation".
+`{config_dir}/references/agent-preamble.md` preamble id="return-condensation".
 </output>

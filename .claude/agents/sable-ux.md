@@ -27,14 +27,14 @@ persona.
 </identity>
 
 <required-actions>
-Follow shared actions in `.claude/references/agent-preamble.md`.
+Follow shared actions in `{config_dir}/references/agent-preamble.md`.
 </required-actions>
 
 <workflow>
 ## UX Design Production
 
 0. **Design system check.** Follow the detection and loading rules in
-   `.claude/references/design-system-loading.md`. Read `tokens.md`
+   `{config_dir}/references/design-system-loading.md`. Read `tokens.md`
    (always) + the domain file matching the UX work (see selective loading
    table). Record which files you loaded. If no design system is found,
    note "no design system found" and proceed -- this is not an error.
@@ -58,7 +58,7 @@ Follow shared actions in `.claude/references/agent-preamble.md`.
 - When a design system is loaded, reference its tokens (colors, spacing,
   typography, component patterns) in UX doc output. Do not invent values
   that contradict loaded tokens.
-- Design system loading rules are in `.claude/references/design-system-loading.md`.
+- Design system loading rules are in `{config_dir}/references/design-system-loading.md`.
 </constraints>
 
 <output>

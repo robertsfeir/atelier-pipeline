@@ -1,18 +1,45 @@
 # Pipeline State
 
-<!-- PIPELINE_STATUS: {"phase": "commit", "sizing": "micro", "qa_status": "pass", "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": true, "robert_reviewed": false, "brain_available": true, "worktree_path": null, "session_id": "current", "branch_name": null, "stop_reason": null} -->
+<!-- PIPELINE_STATUS: {"phase": "idle", "sizing": null, "qa_status": null, "telemetry_captured": true, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": false, "robert_reviewed": false, "brain_available": true, "worktree_path": null, "session_id": "current", "branch_name": null, "stop_reason": "completed_clean"} -->
 
 ## Active Pipeline
-**Feature:** Issue #45 item 5 — provenance surfacing on prefetched brain thoughts
-**Phase:** build (Colby)
-**Sizing:** Micro
-**Session:** current
+**Feature:** ADR-0053 — Mechanical Brain Capture via Three-Hook Gate
+**Phase:** idle — ADR accepted, awaiting Colby build in fresh session
+**Sizing:** Small
+**Stop Reason:** completed_clean (architecture phase done; session closed intentionally for fresh context)
 
-### Scope
-Three source files — no code changes, all behavioral/formatting:
-1. `source/shared/rules/agent-system.md:139-140` — expand `<thought>` attribute comment to include `captured_by`, `created_at`
-2. `source/shared/references/invocation-templates.md` (Shared Protocols section) — add concrete `<thought>` format example
-3. `source/shared/references/agent-preamble.md` step 3 — extend credibility-weighting guidance to name `captured_by` + `created_at`
+### Scope (Colby's build — next session)
+
+Per ADR-0053 (`docs/architecture/ADR-0053-mechanical-brain-capture-gate.md`):
+
+1. **Remove** `type: agent` brain-extractor entry from `.claude/settings.json` SubagentStop block
+2. **Remove** `source/claude/agents/brain-extractor.md` and `source/cursor/agents/brain-extractor.md`
+3. **New** `source/claude/hooks/enforce-brain-capture-pending.sh` — SubagentStop command hook; writes `docs/pipeline/.pending-brain-capture.json` for 8-agent allowlist; exits 0 always (no blocking)
+4. **New** `source/claude/hooks/enforce-brain-capture-gate.sh` — PreToolUse on Agent; blocks if pending file exists and `.brain-unavailable` absent; main-thread only; fail-open on missing config
+5. **New** `source/claude/hooks/clear-brain-capture-pending.sh` — PostToolUse on `agent_capture` MCP tool; deletes pending file idempotently; logs to telemetry
+6. **Update** `source/claude/hooks/enforcement-config.json` or settings.json source templates to register all three hooks
+7. **Update** `source/shared/references/pipeline-orchestration.md` — add escape hatch protocol: when `atelier_stats` returns unreachable, Eva touches `docs/pipeline/.brain-unavailable`; gate honors that sentinel; cleared on next successful brain ping
+8. **Tests** — pytest covering: (a) PreToolUse blocks Agent when pending file exists, (b) PostToolUse on agent_capture deletes pending file, (c) `.brain-unavailable` sentinel suppresses block
+9. **Sync** — run pipeline-setup to sync installed `.claude/` copies from source
+
+**Allowlist** (same as old type:agent if: clause): `sarah`, `colby`, `agatha`, `robert`, `robert-spec`, `sable`, `sable-ux`, `ellis`
+
+**Pending file structure:**
+```json
+{"agent_type": "colby", "transcript_path": "/path/to/transcript", "timestamp": "2026-04-28T15:44:00Z"}
+```
+
+**LOC estimate (Sarah):** ~280 lines added, ~80 lines removed (brain-extractor files).
+
+---
+
+## Prior Pipeline (closed)
+**Feature:** Issue #45 item 5 — provenance surfacing on prefetched brain thoughts
+**Phase:** idle
+**Sizing:** Micro
+**Stop Reason:** completed_clean
+**Commit:** c27594b (chore: v4.0.16)
+**Release:** v4.0.16
 
 ---
 
@@ -413,3 +440,4 @@ Sarah (ADR-0044 with research brief) → Roz test spec review → Colby build �
 <!-- COMPACTION: 2026-04-24T20:38:58Z -->
 <!-- COMPACTION: 2026-04-24T21:36:21Z -->
 <!-- COMPACTION: 2026-04-27T11:56:47Z -->
+<!-- COMPACTION: 2026-04-28T15:35:34Z -->

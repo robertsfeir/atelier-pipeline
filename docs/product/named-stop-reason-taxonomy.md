@@ -3,7 +3,7 @@
 | # | Requirement | Source |
 |---|-------------|--------|
 | 1 | Closed enum of named stop reasons written by Eva on every terminal pipeline transition | ADR-0028, R1 |
-| 2 | Minimum enum values: `completed_clean`, `roz_blocked`, `user_cancelled`, `hook_violation`, `budget_threshold_reached`, `brain_unavailable`, `session_crashed`, `scope_changed` | ADR-0028, R2 |
+| 2 | Minimum enum values: `completed_clean`, `verification_blocked`, `user_cancelled`, `hook_violation`, `budget_threshold_reached`, `brain_unavailable`, `session_crashed`, `scope_changed` | ADR-0028, R2 |
 | 3 | `stop_reason` field added to pipeline-state.md template | ADR-0028, R3 |
 | 4 | Eva writes `stop_reason` on every terminal transition | ADR-0028, R4 |
 | 5 | T3 telemetry gains a `stop_reason` field | ADR-0028, R5 |
@@ -28,17 +28,17 @@ Every pipeline run ends in a terminal state, but Eva currently records only `pha
 
 This gap has three consequences:
 
-1. **Session recovery ambiguity.** When Eva boots into a stale pipeline, she cannot distinguish "user cancelled mid-build" from "session crashed during QA" from "Roz blocked and user never returned." These require different recovery strategies.
+1. **Session recovery ambiguity.** When Eva boots into a stale pipeline, she cannot distinguish "user cancelled mid-build" from "session crashed during QA" from "verification blocked and user never returned." These require different recovery strategies.
 
 2. **Telemetry blindness.** T3 per-pipeline captures record cost, duration, and rework rate, but not outcome. A pipeline that cost $5 and completed cleanly is indistinguishable from one that cost $5 and was abandoned due to scope change.
 
-3. **Pattern detection gaps.** If 3 of the last 5 pipelines ended with `roz_blocked`, that is a signal Darwin should surface. Today that signal is invisible.
+3. **Pattern detection gaps.** If 3 of the last 5 pipelines ended with `verification_blocked`, that is a signal a future fitness-analysis pass should surface. Today that signal is invisible.
 
 ## Personas
 
 **Eva (orchestrator):** Writes `stop_reason` at every terminal pipeline transition.
 
-**Darwin:** Queries T3 metadata for stop reason distribution to surface patterns like "3 of last 5 pipelines ended with roz_blocked."
+**Fitness analysis (future):** Queries T3 metadata for stop reason distribution to surface patterns like "3 of last 5 pipelines ended with verification_blocked."
 
 **Pipeline operators:** See the stop reason in the Pipeline Complete report so they know how the pipeline ended at a glance.
 
@@ -52,13 +52,13 @@ The following values are the complete, closed set. Eva writes exactly one of the
 |-------|-------------------|
 | `completed_clean` | Pipeline reaches Ellis final commit/push successfully |
 | `completed_with_warnings` | Pipeline completes but accepted Agatha divergence or Robert/Sable DRIFT was not fixed |
-| `roz_blocked` | Roz BLOCKER that the user chose not to fix, or loop-breaker (gate 12) fired and user abandoned |
+| `verification_blocked` | Poirot BLOCKER that the user chose not to fix, mechanical-gate failure the user abandons, or loop-breaker (gate 12) fired and user abandoned |
 | `user_cancelled` | User explicitly says "stop", "cancel", "abandon" during an active pipeline |
 | `hook_violation` | A PreToolUse hook blocks an agent action that cannot be retried, and user abandons |
 | `budget_threshold_reached` | User declines to proceed after seeing the token budget estimate gate |
-| `brain_unavailable` | Pipeline requires brain (e.g., Darwin auto-trigger) and brain is down; user abandons |
+| `brain_unavailable` | Pipeline requires brain and brain is down; user abandons |
 | `session_crashed` | Inferred at next session boot when a stale pipeline has no `stop_reason` |
-| `scope_changed` | Cal discovers scope-changing information and user decides to re-plan rather than continue |
+| `scope_changed` | Sarah discovers scope-changing information and user decides to re-plan rather than continue |
 | `legacy_unknown` | Read-only sentinel for pre-ADR-0028 pipelines that lack the field (never written by Eva) |
 
 ## Acceptance Criteria
@@ -70,7 +70,7 @@ The following values are the complete, closed set. Eva writes exactly one of the
 
 **Enum completeness:**
 - AC-4: Eva MUST write a value from the defined enum at every terminal transition. No terminal transition to idle MUST exist in Eva's orchestration rules without a corresponding `stop_reason` write.
-- AC-5: The enum MUST contain exactly the 10 values listed above: `completed_clean`, `completed_with_warnings`, `roz_blocked`, `user_cancelled`, `hook_violation`, `budget_threshold_reached`, `brain_unavailable`, `session_crashed`, `scope_changed`, `legacy_unknown`.
+- AC-5: The enum MUST contain exactly the 10 values listed above: `completed_clean`, `completed_with_warnings`, `verification_blocked`, `user_cancelled`, `hook_violation`, `budget_threshold_reached`, `brain_unavailable`, `session_crashed`, `scope_changed`, `legacy_unknown`.
 - AC-6: Eva MUST NOT invent stop reason values at runtime. New values require a new superseding ADR.
 
 **Session recovery:**

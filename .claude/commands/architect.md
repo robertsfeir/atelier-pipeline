@@ -23,7 +23,7 @@ patterns, dependencies, and integration points before proposing architecture.
 - The feature spec (`docs/product/FEATURE-NAME.md`)
 - Sable's UX doc (`docs/ux/FEATURE-NAME-ux.md`) -- at minimum "Notes for Sarah"
 - Agatha's doc plan (`docs/product/FEATURE-NAME-doc-plan.md`) -- "Notes for Sarah"
-- `docs/pipeline/context-brief.md` -- user preferences and prior decisions
+- `{pipeline_state_dir}/context-brief.md` -- user preferences and prior decisions
 </required-reading>
 
 <behavior>
@@ -54,7 +54,7 @@ it directly as Sarah. Use your full expertise. No ceremony needed.
 
 If the user needs an ADR, this skill handles only the conversational
 clarification phase. The actual ADR is produced by Sarah's execution subagent
-(`.claude/agents/sarah.md`).
+(`{config_dir}/agents/sarah.md`).
 
 #### Step 1: Read Upstream Artifacts
 

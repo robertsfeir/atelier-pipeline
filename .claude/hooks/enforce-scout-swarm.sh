@@ -1,12 +1,24 @@
 #!/bin/bash
 # enforce-scout-swarm.sh -- PreToolUse hook on Agent
 #
-# Sizing-gated. Only enforces on Medium/Large pipelines. Micro/Small skip
-# entirely — their ceremony cost exceeds the value of pre-collected scout
-# evidence.
+# Performance: This hook has an `if` conditional in settings.json:
+#   "if": "tool_input.subagent_type == 'sarah'
+#       || tool_input.subagent_type == 'colby'
+#       || tool_input.subagent_type == 'scout'"
+# Claude Code evaluates this before spawning the process, skipping every
+# Agent invocation for agents this hook would no-op on (agatha, ellis,
+# robert, sable, robert-spec, sable-ux, poirot, sentinel, sherlock,
+# distillator, brain-extractor, discovered agents). When the `if` passes,
+# this script runs and enforces:
+#   - sarah:  <research-brief> evidence block contract
+#   - colby:  <colby-context>  evidence block contract
+#   - scout:  file-dump format contract ('=== FILE:' delimiter,
+#             {FILES} placeholder substitution)
 #
-# When enforcing: blocks invocations of sarah or colby when the required
-# scout evidence block is absent from the prompt.
+# Sizing-gated for sarah/colby. Only enforces on Medium/Large pipelines.
+# Micro/Small skip entirely — their ceremony cost exceeds the value of
+# pre-collected scout evidence. Scout format contract is enforced
+# regardless of pipeline sizing.
 #
 # Required blocks per agent:
 #   sarah  → <research-brief>

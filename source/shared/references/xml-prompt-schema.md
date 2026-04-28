@@ -106,13 +106,18 @@ these attributes:
 - `retro` -- during post-pipeline retrospective
 - `handoff` -- during phase transition context packaging
 
-**`agent`** -- source agent who captured the thought. Any value from the
-brain `SOURCE_AGENTS` enum (18 agents): eva, cal, robert, sable, colby,
-roz, agatha, ellis, poirot, distillator, robert-spec, sable-ux, sentinel,
-darwin, deps, brain-extractor, sarah, sherlock. Note that several of these
-agents have no automatic capture path (eva, poirot, distillator, sentinel,
-darwin, deps, brain-extractor, sarah, sherlock) -- they appear in the enum
-for Zod validation of manual or future captures.
+**`agent`** -- source agent who captured the thought. Current roster
+(13 agents): eva, robert, robert-spec, sable, sable-ux, sarah, colby,
+agatha, ellis, poirot, distillator, sherlock, sentinel. Captures are
+mechanically gated (ADR-0053): a PreToolUse hook on `Agent` blocks Eva's
+next invocation until she calls `agent_capture` with curated content for
+allowlisted agents (sarah, colby, agatha, robert, robert-spec, sable,
+sable-ux, ellis). Information-asymmetry agents (poirot, distillator,
+sentinel, sherlock) and Eva-as-orchestrator captures use direct
+`agent_capture` calls outside the gate. Older brain rows may carry legacy
+`source_agent` values (cal, roz, darwin, deps, brain-extractor) from
+agents removed in earlier ADRs; treat those as historical and do not
+re-emit.
 
 **`captured_by`** -- email or identifier of the human who was active when
 the thought was captured (from the `captured_by` column in the brain

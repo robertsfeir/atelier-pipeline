@@ -11,7 +11,7 @@
 | 7 | Single hard pause before push only (not before fix) | User decision |
 | 8 | Configurable max retries, default 3, set at install | User decision |
 | 9 | Watch dies with session — no cross-session persistence | User decision |
-| 10 | On failure: Roz diagnose → Colby fix → Roz verify → pause → Ellis push | Issue #16 |
+| 10 | On failure: Poirot diagnose → Colby fix → Poirot verify → pause → Ellis push | Issue #16 |
 
 **Retro risks:** Brain context shows prior project had 6+ CI failure cycles from local/CI divergence. CI watch addresses post-push failures but does not replace pre-push gates (`make ci-full` pattern). Both are needed.
 
@@ -20,7 +20,7 @@
 # Feature Spec: CI Watch (Self-Healing CI)
 
 **Author:** Robert (CPO) | **Date:** 2026-03-29
-**Status:** Reconciled (v3.7.0) -- Updated to match implementation per ADR-0013
+**Status:** Planned -- spec captured pre-implementation. Agent assignments below (Poirot for diagnosis, Colby for fix) reflect the current agent roster and may be revisited at design time.
 **Issue:** #16
 
 ## The Problem
@@ -68,11 +68,11 @@ Ellis pushes → Eva launches background CI watch
 Ellis pushes → Eva launches background CI watch
   → CI fails
   → Eva pulls failure logs
-  → Roz investigates failure logs (autonomous)
-  → Colby fixes based on Roz diagnosis (autonomous)
-  → Roz verifies fix (autonomous)
+  → Poirot investigates failure logs (autonomous)
+  → Colby fixes based on Poirot diagnosis (autonomous)
+  → Poirot verifies fix (autonomous)
   → Eva notifies user: "CI failed. Auto-fix ready."
-     Shows: failure summary, what changed, Roz verdict
+     Shows: failure summary, what changed, Poirot verdict
   → HARD PAUSE — user reviews
   → User approves → Ellis pushes fix → back to watch (retry count +1)
   → User rejects → Done, user handles manually
@@ -116,10 +116,10 @@ Ellis pushes → Eva launches background CI watch
 | No CI run found for pushed commit | Polling loop detects no runs for the commit SHA. Watch stops with notification: "No CI run found for commit [sha]. Does this repo have CI configured?" Implemented via the polling pseudocode's "no run found" branch. |
 | CI passes on retry but a different check fails | Each retry watches the full CI run, not individual checks. A partial pass is still a fail. |
 | Multiple pushes in quick succession | Each Ellis push replaces the active watch. Only one watch per session. |
-| Roz or Colby fails during auto-fix | Stop the loop. Report: "Auto-fix failed at [agent] phase. Manual intervention needed." Show the agent's error output. |
+| Poirot or Colby fails during auto-fix | Stop the loop. Report: "Auto-fix failed at [agent] phase. Manual intervention needed." Show the agent's error output. |
 | User is mid-conversation when CI result arrives | Notification is non-intrusive -- `run_in_background` notifications naturally append to the conversation when the background task completes, without interrupting current work. |
 | Branch protection blocks push | Ellis reports the block. Eva sets `ci_watch_active: false` in PIPELINE_STATUS, stops the fix cycle, and notifies the user: "Push blocked by branch protection. Handle CI failure manually." |
-| Flaky test (passes on re-run without code change) | First retry: Roz may diagnose as flaky and Colby's "fix" is a re-push. This is acceptable — the retry mechanism handles it naturally. |
+| Flaky test (passes on re-run without code change) | First retry: Poirot may diagnose as flaky and Colby's "fix" is a re-push. This is acceptable — the retry mechanism handles it naturally. |
 
 ## Acceptance Criteria
 
@@ -130,7 +130,7 @@ Ellis pushes → Eva launches background CI watch
 | 3 | Offered as opt-in during `/pipeline-setup` Step 6c | Setup flow observation |
 | 4 | After Ellis pushes, background process monitors CI via polling (`gh run list` / `glab ci list`) every 30 seconds | Process observation |
 | 5 | CI pass → user notified with run link | Notification observation |
-| 6 | CI fail → failure logs pulled, Roz → Colby → Roz runs autonomously | Agent invocation observation |
+| 6 | CI fail → failure logs pulled, Poirot → Colby → Poirot runs autonomously | Agent invocation observation |
 | 7 | Hard pause before Ellis pushes fix — user must approve | Conversation observation |
 | 8 | Retry loop respects `ci_watch_max_retries` | Counter verification |
 | 9 | 30-minute timeout prompts user | Timer verification |
@@ -143,7 +143,7 @@ Ellis pushes → Eva launches background CI watch
 ### In Scope
 - CI watch trigger after Ellis push
 - Background non-blocking monitoring
-- Auto-fix loop (Roz → Colby → Roz → pause → Ellis)
+- Auto-fix loop (Poirot → Colby → Poirot → pause → Ellis)
 - Configurable retry limit
 - 30-minute timeout with user prompt
 - GitHub Actions and GitLab CI support
@@ -177,7 +177,7 @@ Ellis pushes → Eva launches background CI watch
 | Platform configured in `pipeline-config.json` | Internal | Gated — CI Watch requires platform to be set |
 | Background agent/process support in Claude Code | Platform feature | Medium — verify `run_in_background` behavior with long-running watches |
 | Ellis subagent (push trigger) | Internal, exists | None |
-| Roz subagent (diagnosis) | Internal, exists | None |
+| Poirot subagent (diagnosis) | Internal, exists | None |
 | Colby subagent (fix) | Internal, exists | None |
 
 ## Risks and Open Questions
@@ -186,8 +186,8 @@ Ellis pushes → Eva launches background CI watch
 |------|------------|
 | `run_in_background` behavior for long polling is unproven | Polling loop uses short individual commands (30s intervals, 60s timeout each) rather than a long-running blocking process. If `run_in_background` has limits, the polling approach degrades gracefully. Dead-watch detection (35+ minutes without reporting) catches silent failures. |
 | Background agent lifetime tied to session -- user may close before fix completes | Documented limitation. Fix-in-progress is lost. User can re-trigger. |
-| Failure log truncation may lose critical context | 200-line tail is a starting default. Roz can request more if diagnosis is inconclusive. |
-| Auto-fix may introduce regressions not caught by CI | Roz verifies before pause. User reviews at hard pause. Two safety layers. |
+| Failure log truncation may lose critical context | 200-line tail is a starting default. Poirot can request more if diagnosis is inconclusive. |
+| Auto-fix may introduce regressions not caught by CI | Poirot verifies before pause. User reviews at hard pause. Two safety layers. |
 | 3 consecutive polling errors may indicate transient network issue | Error streak counter resets on any successful poll. Only 3 consecutive errors trigger connection-lost abort -- isolated failures are tolerated. |
 
 ## Timeline Estimate

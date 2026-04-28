@@ -6,8 +6,11 @@
 ## Shared Protocols (apply to all templates below)
 
 **Brain-context injection:** Eva prefetches via `agent_search` and injects
-into `<brain-context>`. Domain-specific captures handled automatically by the
-brain-extractor SubagentStop hook after each agent completion. Omit tag when brain unavailable.
+into `<brain-context>`. Captures are gated mechanically by the three-hook
+loop (ADR-0053): SubagentStop marks the pending capture for allowlisted
+agents, PreToolUse on `Agent` blocks Eva's next invocation until she calls
+`agent_capture` with curated content, PostToolUse on `agent_capture` clears
+the marker. Omit `<brain-context>` when brain unavailable.
 
 Example fully-formed `<brain-context>` block:
 ```xml

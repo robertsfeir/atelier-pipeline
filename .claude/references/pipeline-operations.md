@@ -8,8 +8,8 @@ Eva reads this file at pipeline start for detailed operational procedures.
 
 All subagent invocations use XML tags. Eva constructs prompts with `<task>`,
 `<brain-context>`, `<context>`, `<hypotheses>`, `<read>`, `<warn>`,
-`<constraints>`, and `<output>` tags. See `.claude/references/xml-prompt-schema.md`
-and `.claude/references/invocation-templates.md` for the full tag vocabulary
+`<constraints>`, and `<output>` tags. See `{config_dir}/references/xml-prompt-schema.md`
+and `{config_dir}/references/invocation-templates.md` for the full tag vocabulary
 and per-agent examples.
 
 </section>
@@ -22,10 +22,18 @@ Eva prefetches brain context before invoking agents. Reinforced by `prompt-brain
 
 1. Calls `agent_search` with a query derived from the feature area
 2. Injects results into the `<brain-context>` tag in the invocation prompt
-3. Domain-specific captures are handled automatically by the brain-extractor
-   SubagentStop hook after each sarah/colby/agatha completion
+3. Captures are mechanically gated (ADR-0053): a SubagentStop hook marks
+   `{pipeline_state_dir}/.pending-brain-capture.json` for allowlisted agents
+   (sarah, colby, agatha, robert, robert-spec, sable, sable-ux, ellis); a
+   PreToolUse hook on `Agent` blocks Eva's next invocation until she calls
+   `agent_capture` with curated content; PostToolUse on `agent_capture`
+   clears the marker. Eva curates -- the brain stays a curated knowledge
+   store, not a transcript dump.
 
-Eva captures cross-cutting concerns only (best-effort).
+When the brain is unreachable, Eva touches
+`{pipeline_state_dir}/.brain-unavailable`; the gate honors the sentinel and
+passes through. Eva clears the sentinel on the next successful
+`atelier_stats` probe.
 
 </protocol>
 
@@ -57,7 +65,7 @@ Colby writes tests only when Sarah's ADR step explicitly names a failure mode or
 5. **Eva invokes Ellis for a per-wave commit** on the feature branch after wave QA
    PASS. Ellis uses wave commit mode. Per-wave commits auto-advance after Poirot verification PASS -- no user approval required. The final commit and push requires
    user approval (hard pause).
-6. Eva updates `docs/pipeline/pipeline-state.md` after each wave completes
+6. Eva updates `{pipeline_state_dir}/pipeline-state.md` after each wave completes
 
 **Post-build pipeline tail (after all waves complete -- review juncture):**
 7. Eva invokes the review juncture: Poirot final review + Poirot + Robert-subagent
@@ -73,7 +81,7 @@ Colby writes tests only when Sarah's ADR step explicitly names a failure mode or
 9. Eva invokes Robert-subagent in doc review mode to verify Agatha's output
 10. If Robert-subagent or Sable-subagent flagged DRIFT: hard pause. Human
     decides fix code or update spec/UX.
-11. Final delivery (strategy-dependent, see `.claude/rules/branch-lifecycle.md`):
+11. Final delivery (strategy-dependent, see `{config_dir}/rules/branch-lifecycle.md`):
     - **Trunk-based:** Eva invokes Ellis in standard mode. Ellis commits and
       pushes to main. Hard pause before push to remote.
     - **MR-based strategies (GitHub Flow, GitLab Flow, GitFlow):** Eva invokes
@@ -151,7 +159,7 @@ issues in this module that you've missed 3 times. Extra scrutiny warranted."
 
 The two italicized rows above (Poirot scoped re-run, Sarah ADR revision) are the **only** recognized continuation triggers for in-session `SendMessage` resume per ADR-0049. When Eva holds a captured `agentId` for the target agent in the current session AND the trigger matches one of those two rows, she uses `SendMessage` against the captured `agentId` instead of spawning a fresh Agent. All other rows in this table use fresh `Agent` spawns. Session boundaries (compaction, restart, crash) discard captured `agentId` values and the next invocation reverts to fresh-spawn behavior.
 
-Full rule and capture/discard semantics live in `.claude/rules/agent-system.md` (`<protocol id="sendmessage-resume">`). Resume scope is in-session only -- nothing is persisted to `pipeline-state.md`.
+Full rule and capture/discard semantics live in `{config_dir}/rules/agent-system.md` (`<protocol id="sendmessage-resume">`). Resume scope is in-session only -- nothing is persisted to `pipeline-state.md`.
 
 </section>
 
@@ -179,7 +187,7 @@ Claude Code's tokenizer has a ~1.35x code/JSON regression in Claude 4.x. Long pi
 - Between waves on Large pipelines
 - Before invoking Sarah or Colby on a Medium+ pipeline
 
-**How it works:** `/compact` compresses prior messages using a summary. Pipeline state is preserved in `docs/pipeline/pipeline-state.md` for recovery. After `/compact`, Eva re-reads pipeline-state.md to restore context.
+**How it works:** `/compact` compresses prior messages using a summary. Pipeline state is preserved in `{pipeline_state_dir}/pipeline-state.md` for recovery. After `/compact`, Eva re-reads pipeline-state.md to restore context.
 
 **Automatic compaction:** Claude Code's runtime also compacts automatically. This is expected behavior -- not a sign of failure. Eva recovers via pipeline-state.md.
 
@@ -295,7 +303,7 @@ Wave: N of M, Unit: K of L
 maxTurns: 25
 ```
 
-Teammates run Colby's persona (`.claude/agents/colby.md`). They run lint
+Teammates run Colby's persona (`{config_dir}/agents/colby.md`). They run lint
 after implementation. They do NOT run the full test suite and do NOT commit.
 
 After all TaskCompleted events arrive for the wave, Eva merges each worktree
@@ -344,8 +352,8 @@ read-only review in a future version.
 ### Teammate Identity
 
 Teammates are Colby instances. They are NOT a new agent type. Teammates load
-Colby's persona from `.claude/agents/colby.md` and project rules from
-`.claude/rules/`. No new persona file exists for Teammates. Teammates match
+Colby's persona from `{config_dir}/agents/colby.md` and project rules from
+`{config_dir}/rules/`. No new persona file exists for Teammates. Teammates match
 the `enforce-colby-paths.sh` per-agent hook and have full write access to the
 codebase (same as a standard Colby subagent invocation).
 
@@ -482,7 +490,7 @@ wait for user input
 - **Multiple failed jobs:** concatenate logs with a job header line (`--- Job: {job_name} ---`) between each; total cap at 400 lines (200 per job, up to 2 jobs; if more than 2 jobs fail, take the first 2 failing jobs' logs).
 - Logs are passed to Poirot in the CONTEXT field of the CI-investigation invocation, not written to disk.
 
-### CI Watch State Fields (PIPELINE_STATUS marker in `docs/pipeline/pipeline-state.md`)
+### CI Watch State Fields (PIPELINE_STATUS marker in `{pipeline_state_dir}/pipeline-state.md`)
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -493,7 +501,7 @@ wait for user input
 
 **Watch replacement:** When Ellis pushes again while a watch is active, Eva sets `ci_watch_active: false` on the old watch and starts a new watch for the new commit SHA. Only one watch is active at a time.
 
-### Telemetry Accumulator Fields (PIPELINE_STATUS marker in `docs/pipeline/pipeline-state.md`)
+### Telemetry Accumulator Fields (PIPELINE_STATUS marker in `{pipeline_state_dir}/pipeline-state.md`)
 
 Eva writes telemetry accumulator fields to PIPELINE_STATUS at each phase transition, piggybacking
 on existing pipeline-state.md updates. This enables session recovery: if Eva restarts mid-pipeline,

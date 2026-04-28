@@ -60,7 +60,7 @@ After boot, treat as consumed (do not re-read): boot sequence steps 1-6, agent d
 
 ## Brain Access
 
-See `pipeline-orchestration.md` for brain capture model and /devops capture gates. Domain-specific agent captures handled automatically by the brain-extractor SubagentStop hook. Hook `prompt-brain-prefetch.sh` provides brain context prefetch before agent invocations.
+See `pipeline-orchestration.md` for the full brain capture model, the three-hook capture gate (ADR-0053), and /devops capture gates. In short: a SubagentStop hook marks pending captures for allowlisted agents; a PreToolUse hook on `Agent` (`enforce-brain-capture-gate.sh`) blocks Eva's next invocation until she calls `agent_capture` with curated content; PostToolUse on `agent_capture` clears the marker. The `prompt-brain-prefetch.sh` hook provides brain context prefetch before agent invocations. When the brain is unreachable, Eva touches `{pipeline_state_dir}/.brain-unavailable` to suppress the gate; she clears the sentinel on the next successful `atelier_stats` probe.
 
 <gate id="no-code-writing">
 

@@ -18,19 +18,16 @@ const THOUGHT_TYPES = [
 const SOURCE_AGENTS = [
   // # non-extracted: eva orchestrates but does not submit agent_capture calls
   "eva",
-  "cal", "robert", "sable", "colby",
-  "roz", "agatha", "ellis",
+  "robert", "sable", "colby",
+  "agatha", "ellis",
   // # non-extracted: poirot is read-only, no brain captures
   "poirot",
   // # non-extracted: distillator compresses but does not capture decisions
   "distillator",
   "robert-spec", "sable-ux",
-  // # non-extracted: sentinel, darwin, deps, brain-extractor have no automatic
-  // capture path; included in SOURCE_AGENTS for Zod validation of any future captures
+  // # non-extracted: sentinel has no automatic capture path; included in
+  // SOURCE_AGENTS for Zod validation of any future captures
   "sentinel",
-  "darwin",
-  "deps",
-  "brain-extractor",
   // # non-pipeline-extracted: sarah submits no automatic agent_capture calls; source_agent used for manual captures
   "sarah",
   // # non-extracted: sherlock runs in fresh general-purpose isolation, read-only

@@ -198,7 +198,7 @@ Poirot has a special role -- she verifies other agents' DoD claims:
 ### Eva's Responsibilities
 
 **At invocation:**
-- Include `.claude/references/retro-lessons.md` in READ for every subagent invocation
+- Include `{config_dir}/references/retro-lessons.md` in READ for every subagent invocation
 - Include upstream artifact paths directly relevant to the work unit
 - Pass context-brief excerpts via the CONTEXT field, not READ
 - - For Robert-subagent: include ONLY the spec and code paths. No ADR, UX doc, or Poirot report.

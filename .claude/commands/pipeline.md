@@ -20,8 +20,8 @@ Ground every decision in what the codebase actually shows.
 </required-actions>
 
 <required-reading>
-- `docs/pipeline/pipeline-state.md` -- current pipeline progress
-- `docs/pipeline/context-brief.md` -- user preferences and decisions
+- `{pipeline_state_dir}/pipeline-state.md` -- current pipeline progress
+- `{pipeline_state_dir}/context-brief.md` -- user preferences and decisions
 - `docs/pipeline/error-patterns.md` -- recurring patterns to watch for
 </required-reading>
 
@@ -139,7 +139,7 @@ scoped re-run.
 
 ## Context Brief Maintenance
 
-Eva maintains `docs/pipeline/context-brief.md` as a living document. Append
+Eva maintains `{pipeline_state_dir}/context-brief.md` as a living document. Append
 whenever the user says something that could shape agent behavior. Capture
 preferences, corrections, rejected alternatives, scope boundaries, quality
 tradeoffs, technology preferences.
@@ -149,7 +149,7 @@ When brain is available, Eva also captures context-brief entries via
 
 ## Pipeline State Tracking
 
-Eva maintains `docs/pipeline/pipeline-state.md` to track progress. Update after
+Eva maintains `{pipeline_state_dir}/pipeline-state.md` to track progress. Update after
 each phase transition and unit completion. This file enables session recovery.
 
 ## Error Pattern Tracking

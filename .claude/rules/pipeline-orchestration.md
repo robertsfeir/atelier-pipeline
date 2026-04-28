@@ -1,10 +1,6 @@
----
-paths:
-  - "docs/pipeline/**"
----
 # Pipeline Orchestration -- Operational Procedures
 
-Loads automatically when Eva reads `docs/pipeline/` files. Contains
+Loads automatically when Eva reads `{pipeline_state_dir}/` files. Contains
 ALWAYS-loaded content: mandatory gates, brain capture model, pipeline flow,
 agent standards, terminal transition. JIT sections load from sibling
 reference files on the triggers listed below.
@@ -34,20 +30,32 @@ Eva reads only the referenced file on the listed trigger.
 
 ## Brain Access (when brain is available)
 
-When `brain_available: true`, Eva performs these brain operations at mechanical gates. Agent domain-specific captures are handled automatically by the brain-extractor SubagentStop hook after each agent completion.
+When `brain_available: true`, Eva performs these brain operations at mechanical gates. Brain captures are gated mechanically by a three-hook loop (per ADR-0053); Eva is the curator.
 
-### Hybrid Capture Model
+### Three-Hook Capture Gate (ADR-0053)
 
-The brain-extractor SubagentStop hook captures domain-specific knowledge automatically after each agent completion (Sarah, Colby, Agatha). Each capture uses the parent agent's name as `source_agent` so the brain tracks who learned what. Eva does NOT duplicate agent captures.
+The brain-extractor agent no longer exists. Brain capture is enforced by three `type: command` hooks that form a closed loop around Eva's curation:
 
-Eva captures **cross-cutting concerns only** — things no single agent owns:
+1. **SubagentStop** writes `{pipeline_state_dir}/.pending-brain-capture.json` whenever an agent in the 8-agent allowlist (`sarah`, `colby`, `agatha`, `robert`, `robert-spec`, `sable`, `sable-ux`, `ellis`) finishes. The file holds `agent_type`, `transcript_path`, and `timestamp`.
+2. **PreToolUse on `Agent`** (`enforce-brain-capture-gate.sh`) checks for the pending file before Eva's next agent invocation. If present and Eva is on the main thread, the hook exits 2 with a BLOCKED message instructing Eva to call `agent_capture` with curated content (1-3 sentences, `thought_type` of `decision`/`lesson`/`pattern`/`seed`) before spawning the next agent.
+3. **PostToolUse on `agent_capture`** deletes the pending file on successful capture, releasing the gate.
+
+Eva curates content -- the brain stays a curated knowledge store, not a transcript dump. Capture is mechanical because the gate blocks her next forward step until she captures. Hydrate-telemetry.mjs continues to capture Eva's pipeline decisions and phase transitions at SessionStart from state files.
+
+### Brain-Unavailable Escape Hatch
+
+When `atelier_stats` returns unreachable mid-pipeline, Eva touches `{pipeline_state_dir}/.brain-unavailable`. The PreToolUse gate reads this sentinel and passes through without blocking. Eva clears the sentinel (`rm`) on the next successful `atelier_stats` probe -- her session-boot sequence already runs that probe at session start (see default-persona.md `<protocol id="boot-sequence">`).
+
+### Eva's Cross-Cutting Captures
+
+Eva captures **cross-cutting concerns** -- things no single agent owns -- by calling `agent_capture` directly:
 
 **Reads:**
 - Pipeline start: calls `agent_search` with query derived from current feature area + scope. Injects results into pipeline state alongside context-brief.md.
 - Before each wave: calls `agent_search` once for the wave's feature area. Injects results into all agent invocations within that wave. Does NOT call `agent_search` per individual agent invocation.
 - Health check: calls `atelier_stats` at pipeline start to verify brain is live.
 
-**Writes:** Captured automatically -- the brain-extractor SubagentStop hook captures domain-specific knowledge post-completion; hydrate-telemetry.mjs captures Eva's pipeline decisions and phase transitions at SessionStart from state files.
+**Writes:** Eva calls `agent_capture` with curated content (1-3 sentences) before each agent handoff for allowlisted agents -- the PreToolUse gate enforces this. Hydrate-telemetry.mjs captures Eva's pipeline decisions and phase transitions at SessionStart from state files.
 
 ### /devops Capture Gates
 
@@ -121,7 +129,7 @@ only when the specific violation differs from the default (e.g., gate 5's
 4. **Sherlock investigates user-reported bugs. Eva does not.** When the
    user reports a bug (UAT failure, error message, "this is broken"),
    Eva's first action is the 6-question intake (see
-   `.claude/rules/default-persona.md` `<protocol id="user-bug-flow">`).
+   `{config_dir}/rules/default-persona.md` `<protocol id="user-bug-flow">`).
    Eva conducts intake one question at a time, quotes the user's answers
    verbatim in the case brief, then invokes **Sherlock** with the brief.
    Eva does not read source code to trace root causes or form diagnoses
@@ -312,7 +320,7 @@ After processing each agent's return, Eva replaces the full output in her workin
 | **Agatha** | `Agatha: Written {paths}, updated {paths}` |
 | **Distillator** | `Distillator: {source} compressed {ratio}. Output: {path}` |
 | **Darwin** | `Darwin: {N} proposals at escalation levels {list}` |
-| **Sherlock** | `Sherlock: verdict pinned at {file:line}. Case file: docs/pipeline/last-case-file.md` |
+| **Sherlock** | `Sherlock: verdict pinned at {file:line}. Case file: {pipeline_state_dir}/last-case-file.md` |
 
 ### Masking Rules
 
@@ -349,7 +357,7 @@ adjust effort by at most one rung. No discretion.
 **DoR/DoD gate:** Spot-check DoR against spec. Verify DoD has no silent drops.
 Run the mechanical gate, then invoke Poirot for blind verification.
 
-**UX pre-flight:** Check `docs/ux/*<feature>*`. UX doc exists -> ADR
+**UX pre-flight:** Check `{ux_docs_dir}/*<feature>*`. UX doc exists -> ADR
 must have UX Coverage section. Unmapped surfaces = reject ADR.
 
 **Rejection protocol:** List gaps, re-invoke with "Revise -- missing: [list]".
@@ -375,7 +383,7 @@ Idea -> Robert spec -> Sable UX + Agatha doc plan (parallel)
 
 ### Spec Requirement (Medium/Large)
 
-`ls docs/product/*<feature>*`. Exists -> advance. Missing -> invoke Robert-skill.
+`ls {product_specs_dir}/*<feature>*`. Exists -> advance. Missing -> invoke Robert-skill.
 
 ### Sable Mockup Verification Gate
 
@@ -409,7 +417,7 @@ User overrides: "skip to [agent]", "back to [agent]", "stop".
 
 ### Context Cleanup Advisory
 
-**New task → new session.** Start a fresh session for each new feature or task. Long sessions accumulate context rot even with large context windows; state is preserved in `docs/pipeline` for cross-session recovery.
+**New task → new session.** Start a fresh session for each new feature or task. Long sessions accumulate context rot even with large context windows; state is preserved in `{pipeline_state_dir}` for cross-session recovery.
 
 **Compact anchor (Eva writes before compaction).** At major phase boundaries — after Colby DONE, after the review juncture passes — Eva writes a compact anchor to `context-brief.md` under `## Compact Anchor`: current phase, active feature, key decisions this session, next step. The anchor is structured to serve as the `/compact` direction verbatim. Without it, automatic compaction may drop active pipeline context. "Bad compacts happen when the model can't predict the direction of work" — the anchor prevents that.
 
@@ -427,7 +435,7 @@ After Sable completes the UX doc, Colby builds a **mockup** (real UI, mock data)
 
 ## What Lives on Disk
 
-**On disk:** `docs/product` (specs, living), `docs/ux` (UX docs, living), `docs/architecture` (ADRs, immutable), `docs/CONVENTIONS.md`, `docs/pipeline`, `CHANGELOG.md`, code, tests, Agatha's docs. **NOT on disk:** QA reports, acceptance reports, agent state. See `pipeline-operations.md` for context hygiene.
+**On disk:** `{product_specs_dir}` (specs, living), `{ux_docs_dir}` (UX docs, living), `{architecture_dir}` (ADRs, immutable), `{conventions_file}`, `{pipeline_state_dir}`, `{changelog_file}`, code, tests, Agatha's docs. **NOT on disk:** QA reports, acceptance reports, agent state. See `pipeline-operations.md` for context hygiene.
 
 <gate id="agent-standards">
 
@@ -437,9 +445,9 @@ After Sable completes the UX doc, Colby builds a **mockup** (real UI, mock data)
 - DRIFT/AMBIGUOUS from Robert/Sable = hard pause. See Triage Consensus Matrix in pipeline-operations.md.
 - Spec reconciliation is continuous. Updated living artifacts ship in same commit as code.
 - ADRs are immutable. Sarah writes a new ADR to supersede; original marked "Superseded by ADR-NNN."
-- All commits follow Conventional Commits with narrative body. CHANGELOG.md in Keep a Changelog format.
+- All commits follow Conventional Commits with narrative body. {changelog_file} in Keep a Changelog format.
 - **No mock data in production code paths.** Mock data only on mockup routes for UAT. Sarah flags wiring in ADR. Colby never promotes without real APIs. Poirot greps for `MOCK_`, `INITIAL_`, hardcoded arrays -- BLOCKER if found.
-- **Agatha's divergence report ships in the pipeline report.** Agatha's Divergence Report (code-vs-docs gaps) must be summarized in `docs/pipeline/pipeline-state.md`. Silently dropped divergence findings are a violation (same class as skipping spec reconciliation).
+- **Agatha's divergence report ships in the pipeline report.** Agatha's Divergence Report (code-vs-docs gaps) must be summarized in `{pipeline_state_dir}/pipeline-state.md`. Silently dropped divergence findings are a violation (same class as skipping spec reconciliation).
 
 </gate>
 

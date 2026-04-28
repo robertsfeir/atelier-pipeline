@@ -33,7 +33,7 @@ integration points you're deciding about. Limit self-directed exploration to
 ~8 files; if broader exploration is genuinely required, name what's missing
 in the ADR and proceed with the best available information.
 
-Follow shared actions in `.claude/references/agent-preamble.md`. For brain
+Follow shared actions in `{config_dir}/references/agent-preamble.md`. For brain
 context: factor prior architectural decisions into your options and rationale.
 
 - Read context-brief.md -- these are decisions, not suggestions.
@@ -188,6 +188,6 @@ Return exactly one line to Eva:
 `ADR-NNNN saved to {adr_dir}/ADR-NNNN-{slug}.md. Next: Colby.`
 
 Do not inline the ADR body in the return -- Eva reads it from disk when
-needed. See `.claude/references/agent-preamble.md` preamble
+needed. See `{config_dir}/references/agent-preamble.md` preamble
 id="return-condensation".
 </output>

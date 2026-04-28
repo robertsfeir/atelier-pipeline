@@ -5,6 +5,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [4.1.0] - 2026-04-28
+
+### Added
+- **ADR-0053: Mechanical brain-capture gate (three-hook loop).** Replaces the silently-broken `type:agent` SubagentStop brain-extractor with three `type:command` hooks: `enforce-brain-capture-pending.sh` (SubagentStop, writes pending marker for 8-agent allowlist), `enforce-brain-capture-gate.sh` (PreToolUse on Agent, blocks Eva's next invocation until she calls `agent_capture`), `clear-brain-capture-pending.sh` (PostToolUse on `agent_capture`, deletes marker on success). Eva curates captures before every agent handoff. `.brain-unavailable` sentinel suppresses gate when brain is unreachable. 29 behavioral tests added.
+
+### Changed
+- **brain-extractor agent removed.** The `type:agent` SubagentStop hook was silently broken in Claude Code 2.1.121 (zero fires in 1,591 qualifying events); the agent file has been removed from source, installed copies, and cursor plugin. Brain capture is now gate-enforced via Eva.
+- **Brain MCP source_agent enum cleaned.** Removed deprecated agent names (`cal`, `roz`, `darwin`, `deps`, `brain-extractor`) from Zod validation in `brain/lib/config.mjs` and from `brain/schema.sql` for fresh installs.
+- **Documentation sweep.** All stale `brain-extractor` capture mechanism language updated across pipeline-orchestration.md, agent-system.md, default-persona.md, agent-preamble.md, pipeline-operations.md, invocation-templates.md, xml-prompt-schema.md, pipeline-models.md. README.md updated: Cal→Sarah, Roz references removed, Darwin/Deps optional agent paragraphs removed. Escape hatch protocol for `.brain-unavailable` sentinel documented in pipeline-orchestration.md.
+- **session-boot.sh CORE_AGENTS:** `brain-extractor` removed from agent discovery list.
+- **post-compact-reinject.sh:** Brain capture description updated from brain-extractor hook to three-hook gate model.
+
 ## [4.0.17] - 2026-04-27
 
 ### Added

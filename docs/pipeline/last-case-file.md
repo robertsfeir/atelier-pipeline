@@ -1,255 +1,66 @@
-# Case File: brain-hydrate scout fan-out returns prose instead of `=== FILE: ===` delimited content
+# Case File: brain-extractor SubagentStop hook silently fails to fire after subagent completion
 
 ## Verdict
 
-The scout output contract is documented as a *passive description of what
-scouts return*, not as an *instruction given to the scout*. The root cause
-lives in `skills/brain-hydrate/SKILL.md` at lines 92 and 106-118: the skill
-tells Eva the scout "returns raw file content with clear delimiters per file"
-and renders a worked example of the `=== FILE: path === ... === END FILE ===`
-format — but the skill never supplies a scout-side invocation template, never
-enumerates the delimiter format inside the prompt Eva must send to the
-Explore subagent, and never specifies that Eva must include a `<read>` file
-list plus a `<output>` format contract in the scout prompt. As a result,
-Eva improvises the scout prompt on every call. The `Explore` subagent is
-Anthropic's built-in research subagent with no project-local persona on
-disk (`.claude/agents/` has no `explore.md`; global search finds none), so
-its default behavior is to produce narrative research summaries, not raw
-file dumps with specific delimiters. When Eva's improvised prompt
-happens to be concrete ("read these 3 files and emit them between
-`=== FILE: ===` markers"), the scout conforms; when Eva's improvised
-prompt is loose ("read docs/product/*.md and return their content"), the
-Explore scout falls back to its default summarizing behavior and returns
-prose — no delimiters, nothing for the downstream Sonnet extraction
-subagent's parser to lock onto. The completeness check at
-`skills/brain-hydrate/SKILL.md:142-145` catches the file-count mismatch
-after the fact but does not explain why; the explanation is that there
-was never a format contract inside the scout's own context window, only
-in Eva's.
+The `type: "agent"` SubagentStop hook registered at `.claude/settings.json:97-107` is silently dropped (or never invoked) by the Claude Code runtime in this project. No source-tree script writes the brain-extractor's output, so its execution is observable only via captures appearing in the brain. Across thousands of qualifying SubagentStop events in `.claude/telemetry/session-hooks.jsonl` (633 colby stops, 875 ellis stops, 19 sarah stops, plus 30 agatha / 20 robert / 12 robert-spec / 2 sable / 2 sable-ux), zero captures have appeared in the brain. Mechanism: the runtime's SubagentStop dispatcher does not execute the `type: "agent"` block — either because the schema is rejected by validation prior to dispatch, or because the dispatcher recognizes the schema but the dispatch is suppressed in this project's runtime configuration. The single `[Brain] Hydrated post colby work: 0 captures (1 quality signals)` line in `.claude/telemetry/brain-extractor.log` (mtime 2026-04-27T20:49:42 local / 00:49:42Z UTC) is a relic of the unauthorized `brain-extractor-dispatch.sh` script Colby created and later removed (recorded in `.claude/settings.local.json:58-61`), not evidence that the configured `type: "agent"` hook ever fired. The `if:` clause uses `agent_type` as the variable (settings.json:106) — Claude Code documentation for SubagentStop hook input keys is the unresolved gap; if the runtime exposes the parent agent's identity under a different field (e.g. `subagent_type`, `tool_input.subagent_type`), every evaluation of `agent_type == 'sarah' || agent_type == 'colby' || ...` returns false and the hook is filtered out before invocation.
 
 ## Evidence
 
-1. **The delimiter format is documented only for Eva, not for the scout.**
-   `skills/brain-hydrate/SKILL.md:108-118` shows the `=== FILE: ... ===`
-   format under the heading "Scout Content Format" inside the skill body
-   that Eva reads. The scout runs as `Agent(subagent_type: "Explore",
-   model: "haiku")` — a fresh context with no session inheritance — and
-   the skill does not instruct Eva to copy this format block into the
-   scout's prompt. Grep confirms: `grep "=== FILE"` across
-   `skills/`, `source/`, `.claude/` returns exactly two hits, both at
-   `skills/brain-hydrate/SKILL.md:111` and `:115`, both inside the
-   illustrative example block aimed at Eva.
+1. **Registration is structurally present, not behaviorally present.** `.claude/settings.json:86-110` registers a SubagentStop block with three `type: "command"` entries (log-agent-stop.sh, enforce-colby-stop-verify.sh, prompt-compact-advisory.sh) plus one `type: "agent"` entry naming `brain-extractor` and gated by `agent_type == 'sarah' || agent_type == 'colby' || agent_type == 'agatha' || agent_type == 'robert' || agent_type == 'robert-spec' || agent_type == 'sable' || agent_type == 'sable-ux' || agent_type == 'ellis'`. This is the only `type: "agent"` hook anywhere in the installed config.
 
-2. **SKILL.md contains no `<task>/<output>/<constraints>/<read>` block
-   for the scout.** `grep -n "<task>\|<output>\|<constraints>\|<read>"
-   skills/brain-hydrate/SKILL.md` returns four hits — all on lines
-   163-188, all inside Phase 2b (the Sonnet extraction subagent
-   invocation). The Phase 2a scout fan-out section (lines 86-146) has
-   zero prompt-template blocks. Every other agent in the pipeline has
-   an invocation template under `source/shared/references/invocation-templates.md`
-   (see Robert line 224, Colby line 176, Sarah section line 83). The
-   brain-hydrate scouts do not. `grep "hydration-content\|hydrate-scout\|brain-hydrate"
-   source/shared/references/invocation-templates.md` returns zero hits.
+2. **The brain-extractor agent file is correctly assembled.** `.claude/agents/brain-extractor.md:1-17` contains the Claude Code frontmatter (`name`, `description`, `model: claude-sonnet-4-6`, `effort: low`, `maxTurns: 5`, tools listing including `mcp__plugin_atelier-pipeline_atelier-brain__agent_capture`, plus disallowedTools). The shared body at `source/shared/agents/brain-extractor.md:1-173` defines the extraction protocol. The agent definition is not the failure surface.
 
-3. **No project-local or global `Explore` persona with the format
-   contract baked in.** `ls .claude/agents/` returns 13 personas; none
-   is `explore.md`. `find . ~/.claude/plugins -name "explore*"`
-   returns nothing. The Explore subagent's behavior is therefore
-   whatever Anthropic's built-in research subagent defaults to, which
-   is a summarizing researcher — not a file-dumping courier. Without
-   a format contract in the prompt, the scout has no reason to emit
-   the delimiters.
+3. **The hook chain has run thousands of times for qualifying agents with zero capture evidence.** `.claude/telemetry/session-hooks.jsonl` contains 9,006 lines covering ~875 ellis, 633 colby, 506 roz, 207 investigator, 19 sarah, 30 agatha, 20 robert, 12 robert-spec, 2 sable, 2 sable-ux SubagentStop events. The `log-agent-stop.sh` `type: "command"` hook at `.claude/settings.json:90-92` clearly fires (this is how the JSONL exists). If the parallel `type: "agent"` entry fired even once for a Sarah / Colby / Agatha / Robert / Robert-spec / Sable / Sable-ux / Ellis stop, the brain-extractor would call `agent_capture` (per `source/shared/agents/brain-extractor.md:38-40`) — captures the user reports never appear.
 
-4. **The failure record matches.** `docs/pipeline/error-patterns.md`
-   logs three `StopFailure: Explore` entries at
-   2026-04-05T16:23:30-31Z (lines 79-92), clustered within one second —
-   a parallel fan-out's worth of scouts all failing or returning
-   non-conforming output at the same moment. The `log-stop-failure.sh`
-   hook at `.claude/hooks/log-stop-failure.sh:75` writes
-   `AGENT_TYPE` from the `agent_type` JSON field, confirming these
-   are in fact Explore subagents (not the generic "unknown" default
-   at line 50 of the hook).
+4. **The lone brain-extractor.log entry pre-dates the current hook config.** `.claude/telemetry/brain-extractor.log` is 140 bytes, three lines, written 2026-04-27T20:49:42 local time (= 00:49:42Z UTC, 2026-04-28). No script in `source/claude/hooks/`, `source/shared/hooks/`, or the agent body in `source/shared/agents/brain-extractor.md` writes to `brain-extractor.log` — `grep -rn "brain-extractor.log"` against the installed and source trees produces zero hits. The file is the artifact of the now-deleted `brain-extractor-dispatch.sh` Colby created during his unauthorized `type: "command"` pivot, recorded in `.claude/settings.local.json:58-61` (`cp .../brain-extractor-dispatch.sh ...`, `chmod +x .../brain-extractor-dispatch.sh`, then `rm -f .claude/hooks/brain-extractor-dispatch.sh .claude/hooks/brain-probe.mjs source/claude/hooks/brain-extractor-dispatch.sh source/shared/hooks/brain-probe.mjs tests/hooks/test_brain_extractor_dispatch.py`). The single dispatch line is therefore not evidence that `type: "agent"` ever fired.
 
-5. **Intermittency is explained by prompt improvisation.** Because the
-   scout prompt is not templated, each fan-out Eva constructs can be
-   different. Runs where Eva happens to include a verbatim format
-   example in the prompt succeed; runs where Eva uses a generic
-   "read and return" phrasing fail. This matches Q6's report that
-   "some scouts in the same fan-out succeed while others don't" —
-   each scout gets a slightly different prompt (one per category),
-   so the scouts that happen to receive explicit delimiter
-   instructions conform while the others drift to Explore's default
-   prose output.
+5. **The user has documented the failure mode in user-memory.** `~/.claude/projects/-Users-sfeirr-projects-atelier-pipeline/memory/feedback_no_background_agents.md` records: "Background agents caused unrecoverable race conditions (infinite loops, zero forward progress over 2.5 hours). The brain-extractor SubagentStop hook was removed. … Brain capture must be on-demand (manual call), not automatic via hook." This is one direct prior observation that `type: "agent"` SubagentStop did not work as intended in this project's runtime.
+
+6. **The Cursor frontmatter explicitly states `type: "agent"` is unsupported there.** `source/cursor/agents/brain-extractor.frontmatter.yml:1-3`: "This agent is a no-op on Cursor. Cursor does not support `type: "agent"` SubagentStop hooks, so the brain-extractor never fires in Cursor context." The Claude Code analog ("does Claude Code's SubagentStop dispatcher actually accept the `type: "agent"` schema in 2026-04?") is exactly the open question the case raises and is unresolved by the codebase.
+
+7. **The `if:` clause variable name does not match the documented hook input key.** `.claude/settings.json:106` evaluates `agent_type == 'sarah' || ... || agent_type == 'ellis'`. The hook input documented and consumed by `source/shared/agents/brain-extractor.md:13-14` ("You receive SubagentStop hook input containing `agent_type` and `last_assistant_message`") matches this name. However, `source/claude/hooks/log-agent-stop.sh:48` extracts `agent_type` via `hook_lib_get_agent_type` (not a direct `.agent_type` JSON path), and the same hook's siblings (`enforce-pipeline-activation.sh` matchers, the PreToolUse `tool_input.subagent_type` reads at `.claude/settings.json:33,38,47`) use `tool_input.subagent_type`. If the SubagentStop dispatcher exposes the parent agent's name under `subagent_type` or `tool_input.subagent_type` — not `agent_type` — every `if:` evaluation in the `type: "agent"` block returns false and the dispatch is skipped silently.
 
 ## Path walked
 
-- `skills/brain-hydrate/SKILL.md:86-146` — scout fan-out protocol, the
-  claimed contract site. Contract described passively; no prompt block.
-- `skills/brain-hydrate/SKILL.md:108-118` — delimiter format rendered in
-  the skill body (read by Eva, not by scout).
-- `skills/brain-hydrate/SKILL.md:142-145` — completeness check gate,
-  explains the *detection* mechanism but not the cause.
-- `skills/brain-hydrate/SKILL.md:160-190` — Phase 2b Sonnet extraction
-  subagent invocation with a full `<task>/<hydration-content>/<read>/<constraints>/<output>`
-  block. The producer is templated; the scout that feeds it is not.
-- `source/shared/references/invocation-templates.md:82-102` — pipeline
-  scout template (`scout-research-brief`). This exists for the
-  Sarah/Colby pre-build fan-out but is purpose-built for that flow
-  and has no `=== FILE: ===` format requirement. Brain-hydrate
-  scouts have no equivalent template.
-- `docs/architecture/ADR-0027-brain-hydrate-scout-fanout.md:82-97,306-315`
-  — the ADR that defined the scout-fanout design. Line 310 documents
-  the contract boundary ("Scout (Explore+haiku) produces raw file
-  content with `=== FILE: path ===` / `=== END FILE ===` delimiters")
-  but the Implementation Plan (lines 181-218) only specifies
-  modifications to SKILL.md and pipeline-orchestration.md — never a
-  scout-side invocation template. The wiring was documented but
-  never implemented as an executable prompt contract.
-- `.claude/hooks/enforce-scout-swarm.sh:40-43` — the scout-swarm hook
-  enforces `<research-brief>` / `<colby-context>` on sarah/colby
-  invocations only. It does not enforce on Explore subagent
-  invocations. Nothing mechanically forces Eva to include a format
-  contract in a scout prompt.
-- `docs/pipeline/error-patterns.md:79-92` — three clustered
-  `StopFailure: Explore` entries at 2026-04-05T16:23:30-31Z, matching
-  the symptom.
+1. Hook registration — `.claude/settings.json:86-110` (SubagentStop array, four hooks, only the fourth is `type: "agent"`).
+2. Agent persona assembly — `.claude/agents/brain-extractor.md:1-17` frontmatter; `source/shared/agents/brain-extractor.md:1-173` body.
+3. Source frontmatter overlay — `source/claude/agents/brain-extractor.frontmatter.yml:1-16`.
+4. Cursor parity note — `source/cursor/agents/brain-extractor.frontmatter.yml:1-3` (Cursor cannot fire `type: "agent"`; Claude Code parity unverified).
+5. Telemetry observation surface — `source/claude/hooks/log-agent-stop.sh` (SubagentStop `type: "command"` that DOES fire and writes JSONL).
+6. Evidence-of-execution surface — `.claude/telemetry/brain-extractor.log` and the brain MCP database. Log shows one stale entry pre-dating current config; brain shows zero captures per user.
+7. Prior-fix archaeology — `.claude/settings.local.json:58-61` traces Colby's unauthorized `type: "command"` pivot and its reversal.
+8. User-recorded prior — `~/.claude/projects/-Users-sfeirr-projects-atelier-pipeline/memory/feedback_no_background_agents.md` corroborates non-firing in earlier sessions.
 
 ## Ruled out
 
-- **Not an Explore subagent bug.** The Explore subagent runs with
-  default Anthropic behavior; asking it for prose gets prose, asking
-  it for delimited output gets delimited output. Its behavior is
-  consistent with a scout that was never told what format to emit.
-- **Not a file-reading failure.** The scouts return successfully, no
-  stack traces, no tool errors — they return *content*, just the
-  wrong shape. The `StopFailure: Explore` entries at
-  `error-patterns.md:79-92` log `Error: unknown` and `Message: unknown`
-  (from `log-stop-failure.sh:50-52` defaulting empty JSON fields to
-  "unknown"), meaning the subagent turn ended without a structured
-  API error — consistent with "returned clean but with non-conforming
-  output," not with "crashed while reading files."
-- **Not the completeness check gate.** The gate at
-  `skills/brain-hydrate/SKILL.md:142-145` fires after the scout
-  returns. The scout has already emitted prose by that point. The
-  gate is a detector, not a cause.
-- **Not a dedup-rule violation or file-count-gate miss.** The
-  dedup rule (line 94) and >20-file split (lines 128-132) determine
-  *which* files each scout gets, not *how* the scout formats its
-  output. The bug would persist with a single file in a single
-  scout.
-- **Not a splitting-logic bug.** Even a single ADR scout with 3
-  files reproduces the symptom when Eva's improvised prompt is
-  underspecified.
-- **Not a model-selection bug.** `pipeline-models.md` correctly
-  assigns haiku to Explore scouts (line 91 of the Per-Agent table).
-  Haiku is sufficient to emit the delimiter format *if instructed
-  to do so*. The model isn't the problem; the prompt is.
-- **Not a scout-swarm hook gap.** `enforce-scout-swarm.sh` enforces
-  only on sarah/colby (lines 40-43); brain-hydrate's Sonnet
-  extraction subagent has no `<hydration-content>` enforcement
-  either. This means there's no mechanical safety net, but the
-  hook gap is a missing mitigation, not the root cause. The root
-  cause is the missing scout-side prompt contract.
+- **brain-extractor agent file missing or malformed.** `.claude/agents/brain-extractor.md:1-17` exists with valid frontmatter; the Claude Code frontmatter overlay at `source/claude/agents/brain-extractor.frontmatter.yml:1-16` includes the required `name`, `description`, `model`, `tools`. Eliminates "agent not found" as the cause.
+
+- **Brain MCP unreachable / agent_capture permission denied.** `.claude/settings.json:6-13` allowlists every relevant `mcp__plugin_atelier-pipeline_atelier-brain__*` tool including `agent_capture`. `.claude/settings.local.json:9` allowlists it again at the session level. If the brain were merely unavailable, the brain-extractor would still be dispatched and would emit `[Brain] WARNING: Brain unavailable` per `source/shared/agents/brain-extractor.md:151` — that line is absent from `.claude/telemetry/brain-extractor.log`.
+
+- **Sibling SubagentStop `type: "command"` hooks are blocking the agent dispatch.** Each `type: "command"` entry (`log-agent-stop.sh`, `enforce-colby-stop-verify.sh`, `prompt-compact-advisory.sh`) is unrelated to the agent dispatch and must run irrespective of the agent block. `log-agent-stop.sh` clearly fires (9,006 JSONL lines). Eliminates "earlier hook short-circuited the chain."
+
+- **The `if:` condition's agent enum is wrong.** The eight target agents in `.claude/settings.json:106` exactly match the eight in `source/shared/agents/brain-extractor.md:18-21` and the agent-to-metadata mapping at lines 43-52. Eliminates "the right agents aren't named."
+
+- **Eva is the parent that completed and `agent_type` is `eva`, which is not in the allowlist.** SubagentStop fires on subagent stop, not on Eva. Telemetry shows ~1,500+ stops for the eight allowlisted agent_types — the hook had ample qualifying triggers.
 
 ## Reproduction confirmed
 
-Partial. I did not invoke a live Explore scout with the improvised
-prompt and observe the drift directly — invoking a fresh
-`Agent(subagent_type: "Explore", model: "haiku")` from within this
-Sherlock session would create a nested subagent with no inheritance
-and would not faithfully reproduce Eva's improvised prompt. What I
-confirmed instead: (a) the `=== FILE: ===` format appears only in
-SKILL.md's illustrative block (grep hits only at lines 111 and 115
-of the skill), (b) no scout-side invocation template exists anywhere
-in the repo (zero hits for brain-hydrate scout prompts in
-invocation-templates.md), (c) the `StopFailure: Explore` entries at
-`docs/pipeline/error-patterns.md:79-92` match the reported failure
-cluster, (d) no `Explore` persona file exists to carry the format
-contract. The three independent observations converge on the
-structural gap. A live repro would confirm the mechanism but is not
-needed to pin the verdict — the contract is demonstrably absent
-from the scout's context window.
+Reproduction was not attempted as a live `/pipeline` run within this Sherlock invocation — Sherlock runs read-only and does not orchestrate. Instead, the bug was reproduced by archival evidence: 9,006 SubagentStop telemetry events logged by the parallel `type: "command"` hook in `.claude/telemetry/session-hooks.jsonl`, of which approximately 1,591 match the `if:` allowlist (875 ellis + 633 colby + 30 agatha + 20 robert + 19 sarah + 12 robert-spec + 2 sable + 2 sable-ux), with zero corresponding brain captures observed by the user across all sessions. To reproduce live: invoke any one of the eight allowlisted agents via the Agent tool, let it complete, then `mcp__plugin_atelier-pipeline_atelier-brain__atelier_stats` and inspect total thought count immediately before and after — the count will not increment from the SubagentStop hook.
 
 ## Recommended fix (prose, not a patch)
 
-Add a scout-side invocation template to `skills/brain-hydrate/SKILL.md`
-inside the Phase 2a scout-fanout protocol (between the existing
-lines 106 and 120), following the same `<task>/<read>/<constraints>/<output>`
-shape used for the Sonnet extraction subagent at lines 160-191. The
-template should specify verbatim: the exact list of files the scout
-must read (passed in by Eva from Phase 1 inventory), a `<constraints>`
-block that forbids summarization and prose, and an `<output>` block
-that reproduces the `=== FILE: {path} ===` / `=== END FILE ===`
-delimiter format verbatim with an explicit note that every file
-listed in `<read>` must appear once between these delimiters. Mirror
-this into `source/shared/references/invocation-templates.md` as a new
-`brain-hydrate-scout` template so the pattern is discoverable from
-the canonical template index. Separately, extend
-`.claude/hooks/enforce-scout-swarm.sh` with a second enforcement
-clause that fires on `Agent` calls with `subagent_type == "Explore"`
-when the parent context is brain-hydrate, requiring the `<output>`
-block in the scout prompt to contain the `=== FILE:` literal — this
-closes the mechanical loop (per `feedback_mechanical_enforcement.md`:
-behavioral constraints are ignored, hook enforcement is required).
-The completeness check at lines 142-145 stays as a belt-and-suspenders
-detector.
+Two falsifiable diagnostic moves, in order. First, replace the `agent_type` token in the `if:` clause at `.claude/settings.json:106` with `subagent_type` (or `tool_input.subagent_type`), keeping the eight-agent enum unchanged, and rerun the pipeline against any allowlisted agent. If captures begin to appear in the brain immediately, the variable-name mismatch was the cause and the fix is permanent. Second, if step one produces no change, the conclusion is that Claude Code's SubagentStop dispatcher does not honor `type: "agent"` at all in this runtime version (matching the Cursor situation documented at `source/cursor/agents/brain-extractor.frontmatter.yml:1-3`), and the architecturally correct path is the one Colby attempted but executed unauthorized: replace the `type: "agent"` entry with a `type: "command"` shell script that reads the SubagentStop stdin payload, gates on `agent_type` (or `subagent_type`) against the eight-agent enum, and either invokes the brain-extractor agent via the Agent tool or calls `agent_capture` directly via the brain MCP using the same agent-to-metadata mapping at `source/shared/agents/brain-extractor.md:43-52`. The user's `feedback_no_background_agents.md` constraint forbids spawning a background subagent inside the hook script; a synchronous `command` hook that exits 0 and writes to the brain via MCP CLI is compatible with that constraint, but this is a design decision for Sarah, not Sherlock.
 
 ## Unknowns
 
-- **Whether the Explore subagent has documented default output
-  behavior.** I could not inspect Anthropic's built-in Explore
-  subagent persona (no project-local override exists; no public
-  persona file is on disk). The claim that Explore defaults to
-  prose summaries is inferred from: (a) the symptom description
-  ("prose/narrative text with no delimiters"), (b) Explore's role
-  per `source/shared/references/pipeline-phases.md:137-152` as a
-  research/evidence-collection subagent, and (c) the absence of any
-  file-dump format convention in its default behavior. If Explore
-  does have a documented default that includes file delimiters, then
-  the verdict narrows to "Eva's improvised prompt overrides
-  Explore's default with looser instructions" — the fix is the same
-  (template the prompt) but the attribution shifts.
-- **Whether any prior fan-out succeeded purely by luck of prompt
-  wording, or whether there's a code path I missed.** I grepped
-  every skill, agent, reference, and hook file and found no
-  scout-prompt template. If a template exists outside the
-  repository (e.g., in a plugin cache or global Claude Code
-  configuration), it would contradict the verdict. The absence of
-  any project-local match is strong evidence but not conclusive
-  for external injection.
-- **The exact timestamps of user-reported recent failures.** The
-  case brief cites the 2026-04-05T16:23:30Z `StopFailure: Explore`
-  entry but the user describes the failure as intermittent and
-  ongoing. I cannot confirm from `error-patterns.md` alone whether
-  the 2026-04-05 cluster is the most recent instance or one of many.
+- **Whether Claude Code's current SubagentStop dispatcher accepts the `type: "agent"` schema at all.** No authoritative documentation file is present in the repository, and Sherlock has read-only tools; the dispatcher source is not in this project. The Cursor frontmatter explicitly says Cursor rejects it; Claude Code parity is unverified.
+
+- **Whether the `if:` evaluator binds `agent_type` from the SubagentStop hook input directly, or only `subagent_type` / `tool_input.subagent_type`.** The PreToolUse `if:` clauses elsewhere in `.claude/settings.json` (lines 33, 38, 47) use `tool_input.subagent_type`, suggesting the SubagentStop event may or may not expose the same name. No authoritative schema doc for SubagentStop input keys is in-repo.
+
+- **Whether any silent runtime warning is emitted when the dispatcher rejects a `type: "agent"` block or fails an `if:` evaluation.** No such warning has been observed in `.claude/telemetry/`, but the absence may reflect the user not having checked, not the absence of a warning.
+
+- **Whether `claude-sonnet-4-6` (the model pinned in `.claude/agents/brain-extractor.md:9`) is a currently valid Claude Code model alias.** If invalid, the dispatcher would arguably fail before reaching extractor execution, but this would be a different failure mode than "silent drop."
 
 ## Correction to brief (if any)
 
-The case brief describes the symptom as "the scout Agent call returns
-successfully (no error, no exception) but their output contains no
-parseable file content," and separately notes three clustered
-`StopFailure: Explore` entries at 2026-04-05T16:23:30-31Z. These are
-two different failure modes that likely share the same root cause:
-
-- **Mode A: return clean, wrong shape.** The scout emits prose. No
-  stop failure is logged. The Sonnet extraction subagent parses
-  zero `=== FILE: ===` blocks and silently skips. This is the
-  "silent" symptom the brief foregrounds.
-- **Mode B: return with a StopFailure.** The three log entries at
-  `error-patterns.md:79-92` show the turn ending in a stop failure
-  with `Error: unknown` and `Message: unknown`. This is not
-  "return successfully" — it's a distinct failure path. Both modes
-  trace back to the same cause (no format contract in the scout's
-  prompt), but mode B also involves the turn terminating in an
-  unstructured error state, possibly because the scout attempted
-  to emit structured output without a contract and exceeded turn
-  limits or hit an internal error. The brief should not treat the
-  StopFailure entries as synonymous with the "clean-but-wrong"
-  symptom — they are two visible surfaces of one underlying
-  structural gap.
-
-Also, Q6 identifies the "completeness check" as a detection layer and
-says "the root cause of why the scout returns non-conforming output
-has not been determined." The brief's framing is accurate. The
-verdict confirms it: the completeness check detects, it does not
-explain. The explanation is the missing prompt-side contract.
+The brief states "no brain captures have been observed in any session." Strict accuracy: one capture-related artifact exists (`.claude/telemetry/brain-extractor.log`, 140 bytes, mtime 2026-04-27T20:49:42 local), but it pre-dates and does not vindicate the configured `type: "agent"` SubagentStop entry — it was written by the now-deleted `brain-extractor-dispatch.sh` from Colby's unauthorized `type: "command"` pivot. The user's underlying claim — that the configured `type: "agent"` SubagentStop hook produces zero captures — holds.

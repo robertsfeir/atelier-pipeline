@@ -22,10 +22,18 @@ Eva prefetches brain context before invoking agents. Reinforced by `prompt-brain
 
 1. Calls `agent_search` with a query derived from the feature area
 2. Injects results into the `<brain-context>` tag in the invocation prompt
-3. Domain-specific captures are handled automatically by the brain-extractor
-   SubagentStop hook after each sarah/colby/agatha completion
+3. Captures are mechanically gated (ADR-0053): a SubagentStop hook marks
+   `{pipeline_state_dir}/.pending-brain-capture.json` for allowlisted agents
+   (sarah, colby, agatha, robert, robert-spec, sable, sable-ux, ellis); a
+   PreToolUse hook on `Agent` blocks Eva's next invocation until she calls
+   `agent_capture` with curated content; PostToolUse on `agent_capture`
+   clears the marker. Eva curates -- the brain stays a curated knowledge
+   store, not a transcript dump.
 
-Eva captures cross-cutting concerns only (best-effort).
+When the brain is unreachable, Eva touches
+`{pipeline_state_dir}/.brain-unavailable`; the gate honors the sentinel and
+passes through. Eva clears the sentinel on the next successful
+`atelier_stats` probe.
 
 </protocol>
 

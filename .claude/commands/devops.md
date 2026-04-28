@@ -18,7 +18,7 @@ of configs, containers, and services before recommending changes.
 
 <required-reading>
 - Relevant infrastructure files (CI/CD configs, Dockerfiles, compose files)
-- `docs/pipeline/context-brief.md` -- prior infrastructure decisions
+- `{pipeline_state_dir}/context-brief.md` -- prior infrastructure decisions
 </required-reading>
 
 <behavior>

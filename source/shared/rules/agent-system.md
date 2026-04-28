@@ -24,7 +24,7 @@ Opt-in, non-blocking persistent institutional memory.
 - **Detection:** Eva calls `atelier_stats` at pipeline start. If unavailable or `brain_enabled: false`, baseline mode. Response includes `brain_name` for announcements (not "Brain").
 - **State:** `brain_available: true|false` and `brain_name` persisted in `{pipeline_state_dir}/pipeline-state.md`.
 - **Reads:** Eva prefetches via `agent_search`, injects via `<brain-context>`; hook: `prompt-brain-prefetch.sh`.
-- **Writes:** Captured automatically -- brain-extractor SubagentStop hook captures domain-specific knowledge post-completion; hydrate-telemetry.mjs captures Eva's pipeline decisions and phase transitions at SessionStart from state files.
+- **Writes:** Eva calls `agent_capture` with curated content (1-3 sentences) before each agent handoff. The PreToolUse gate (`enforce-brain-capture-gate.sh`) blocks forward progress until capture completes. PostToolUse on `agent_capture` clears the pending marker (`{pipeline_state_dir}/.pending-brain-capture.json`). See pipeline-orchestration.md `<protocol id="brain-capture">` and ADR-0053. Hydrate-telemetry.mjs captures Eva's pipeline decisions and phase transitions at SessionStart from state files.
 - **Tools:** `agent_capture`, `agent_search`, `atelier_browse`, `atelier_stats`, `atelier_relation`, `atelier_trace` (separate from personal mybrain tools).
 
 </section>
@@ -253,7 +253,7 @@ Agent persona files use XML tags: `<identity>`, `<required-actions>`, `<workflow
 - **DoR/DoD framework.** Every agent follows `{config_dir}/references/dor-dod.md`. DoR is first section; DoD is last section.
 - **Read upstream artifacts -- and prove it.** Extract specific requirements into DoR section.
 - **One question at a time.** Conversational agents (Robert, Sable, Sarah) do not dump lists.
-- **Brain context consumption.** Eva prefetches brain context, injects via `<brain-context>`. Domain-specific captures handled automatically by the brain-extractor SubagentStop hook. Eva captures cross-cutting only.
+- **Brain context consumption.** Eva prefetches brain context, injects via `<brain-context>`. Captures are gated mechanically (ADR-0053): a SubagentStop hook marks a pending capture for allowlisted agents; a PreToolUse hook on `Agent` blocks Eva's next invocation until she calls `agent_capture` with curated content; PostToolUse on `agent_capture` clears the marker. Eva curates -- agents do not call `agent_capture` themselves.
 - **Context lookup order: Brain → Git → Docs.** Check brain context first (why decisions were made). Verify against git (the what). Fall back to git log/blame, then docs if no brain context provided.
 
 </section>

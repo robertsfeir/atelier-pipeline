@@ -7,7 +7,7 @@ pipeline file.
 
 ## Persona File Tags
 
-Agent persona files (`.claude/agents/*.md`) use these 7 tags in this order.
+Agent persona files (`{config_dir}/agents/*.md`) use these 7 tags in this order.
 `<identity>` is always first, `<output>` is always last.
 
 | Tag | Purpose | Attributes |
@@ -28,7 +28,7 @@ its output format last.
 
 ## Skill Command Tags
 
-Skill command files (`.claude/commands/*.md`) use a slightly different
+Skill command files (`{config_dir}/commands/*.md`) use a slightly different
 structure for conversational agents running in the main thread.
 
 | Tag | Purpose | Attributes |
@@ -106,13 +106,18 @@ these attributes:
 - `retro` -- during post-pipeline retrospective
 - `handoff` -- during phase transition context packaging
 
-**`agent`** -- source agent who captured the thought. Any value from the
-brain `SOURCE_AGENTS` enum (18 agents): eva, cal, robert, sable, colby,
-roz, agatha, ellis, poirot, distillator, robert-spec, sable-ux, sentinel,
-darwin, deps, brain-extractor, sarah, sherlock. Note that several of these
-agents have no automatic capture path (eva, poirot, distillator, sentinel,
-darwin, deps, brain-extractor, sarah, sherlock) -- they appear in the enum
-for Zod validation of manual or future captures.
+**`agent`** -- source agent who captured the thought. Current roster
+(13 agents): eva, robert, robert-spec, sable, sable-ux, sarah, colby,
+agatha, ellis, poirot, distillator, sherlock, sentinel. Captures are
+mechanically gated (ADR-0053): a PreToolUse hook on `Agent` blocks Eva's
+next invocation until she calls `agent_capture` with curated content for
+allowlisted agents (sarah, colby, agatha, robert, robert-spec, sable,
+sable-ux, ellis). Information-asymmetry agents (poirot, distillator,
+sentinel, sherlock) and Eva-as-orchestrator captures use direct
+`agent_capture` calls outside the gate. Older brain rows may carry legacy
+`source_agent` values (cal, roz, darwin, deps, brain-extractor) from
+agents removed in earlier ADRs; treat those as historical and do not
+re-emit.
 
 **`captured_by`** -- email or identifier of the human who was active when
 the thought was captured (from the `captured_by` column in the brain
@@ -277,7 +282,7 @@ frontmatter hook (e.g., enforce-{name}-paths.sh) to the agent's overlay.
 | Source Content | Target Tag | Required |
 |----------------|------------|----------|
 | Role, identity, pronouns, personality | `<identity>` | Yes |
-| Cognitive directive, proactive behaviors | `<required-actions>` | Yes -- always includes reference to `.claude/references/agent-preamble.md` |
+| Cognitive directive, proactive behaviors | `<required-actions>` | Yes -- always includes reference to `{config_dir}/references/agent-preamble.md` |
 | Ordered steps, process, methodology | `<workflow>` | No -- omit tag if source has no workflow |
 | Scenarios showing correct behavior | `<examples>` | No -- omit tag if source has no examples |
 | Tool access list, tool-specific guidance | `<tools>` | No -- omit tag if source has no tool list |
@@ -289,7 +294,7 @@ frontmatter hook (e.g., enforce-{name}-paths.sh) to the agent's overlay.
 Every converted agent's `<required-actions>` must begin with:
 
 ```
-Follow the shared required actions in `.claude/references/agent-preamble.md`:
+Follow the shared required actions in `{config_dir}/references/agent-preamble.md`:
 DoR first, read upstream artifacts, review retro lessons, review brain context
 (if provided), DoD last.
 ```

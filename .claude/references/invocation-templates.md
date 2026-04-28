@@ -6,8 +6,11 @@
 ## Shared Protocols (apply to all templates below)
 
 **Brain-context injection:** Eva prefetches via `agent_search` and injects
-into `<brain-context>`. Domain-specific captures handled automatically by the
-brain-extractor SubagentStop hook after each agent completion. Omit tag when brain unavailable.
+into `<brain-context>`. Captures are gated mechanically by the three-hook
+loop (ADR-0053): SubagentStop marks the pending capture for allowlisted
+agents, PreToolUse on `Agent` blocks Eva's next invocation until she calls
+`agent_capture` with curated content, PostToolUse on `agent_capture` clears
+the marker. Omit `<brain-context>` when brain unavailable.
 
 Example fully-formed `<brain-context>` block:
 ```xml
@@ -23,7 +26,7 @@ thought from the same agent in the same scope carries more weight than a
 months-old thought from a different feature.
 
 **Standard READ items (included in every invocation, not listed per template):**
-`.claude/references/retro-lessons.md`, `.claude/references/agent-preamble.md`
+`{config_dir}/references/retro-lessons.md`, `{config_dir}/references/agent-preamble.md`
 
 **Persona constraints apply:** Templates list only task-specific constraints
 that supplement the persona. Do not duplicate persona-level rules.
@@ -46,7 +49,7 @@ returns "not currently addressable" for stopped subagents, which is exactly
 the resume target. UUID is the only valid `to` value for resume.
 No other agent qualifies; capture is in-session only and is discarded at
 session boundaries (compaction, restart, crash). Full rule:
-`.claude/rules/agent-system.md` (`<protocol id="sendmessage-resume">`).
+`{config_dir}/rules/agent-system.md` (`<protocol id="sendmessage-resume">`).
 
 ---
 
@@ -383,7 +386,7 @@ Poirot's CI diagnosis + failure logs. Scope to the specific CI failure.
 ### Darwin (Pipeline Analysis)
 Requires brain and 5+ pipelines of Tier 3 telemetry data.
 <task>Analyze pipeline telemetry and propose structural improvements.</task>
-<read>docs/pipeline/error-patterns.md, .claude/references/telemetry-metrics.md, [flagged agent personas]</read>
+<read>docs/pipeline/error-patterns.md, {config_dir}/references/telemetry-metrics.md, [flagged agent personas]</read>
 <constraints>
 - Per-agent fitness: thriving/struggling/failing. Escalation ladder for struggling/failing.
 - Every proposal: evidence, layer, escalation level, risk, expected impact
