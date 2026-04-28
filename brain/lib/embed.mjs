@@ -1,8 +1,20 @@
 /**
- * Embedding generation via OpenRouter API.
- * Depends on: config.mjs (receives apiKey as parameter).
+ * Embedding generation -- routes through llm-provider.mjs (ADR-0054).
+ *
+ * Public signature:
+ *   getEmbedding(text, providerConfigOrApiKey)
+ *
+ * Backward-compat shim: when the second argument is a string, it is treated
+ * as a legacy OpenRouter apiKey and wrapped into the openai-compat provider
+ * config used before ADR-0054. New callers pass a providerConfig object built
+ * via `buildProviderConfig(config, "embed")` in config.mjs.
+ *
+ * The retry/backoff loop lives here, not in llm-provider.mjs -- the provider
+ * module is one round-trip per call so the embed-specific retry policy stays
+ * with embed-specific concerns.
  */
 
+import { embed as providerEmbed } from "./llm-provider.mjs";
 import { EMBEDDING_MODEL } from "./config.mjs";
 
 // =============================================================================
@@ -21,31 +33,45 @@ function sleep(ms) {
 }
 
 // =============================================================================
+// Backward-compat: lift a bare apiKey string into a providerConfig
+// =============================================================================
+
+function coerceProviderConfig(providerConfigOrApiKey) {
+  if (
+    providerConfigOrApiKey != null &&
+    typeof providerConfigOrApiKey === "object"
+  ) {
+    return providerConfigOrApiKey;
+  }
+  // Legacy: string apiKey -> default OpenRouter openai-compat config.
+  return {
+    family: "openai-compat",
+    baseUrl: "https://openrouter.ai/api/v1",
+    apiKey: providerConfigOrApiKey || null,
+    model: EMBEDDING_MODEL,
+    extraHeaders: {},
+  };
+}
+
+// =============================================================================
 // Embedding Generation
 // =============================================================================
 
-async function getEmbedding(text, apiKey) {
+async function getEmbedding(text, providerConfigOrApiKey) {
+  const providerConfig = coerceProviderConfig(providerConfigOrApiKey);
   let lastError;
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     try {
-      const res = await fetch("https://openrouter.ai/api/v1/embeddings", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ model: EMBEDDING_MODEL, input: text }),
-      });
+      return await providerEmbed(text, providerConfig);
+    } catch (err) {
+      lastError = err;
 
-      if (!res.ok) {
-        const errBody = await res.text();
-        const err = new Error(`Embedding API error: ${res.status} ${errBody}`);
-
-        if (!isRetryable(res.status)) {
+      // HTTP errors carry a numeric .status from llm-provider.mjs
+      if (typeof err.status === "number") {
+        if (!isRetryable(err.status)) {
           throw err;
         }
-        lastError = err;
         if (attempt < MAX_ATTEMPTS - 1) {
           await sleep(BACKOFF_MS[attempt]);
           continue;
@@ -53,24 +79,7 @@ async function getEmbedding(text, apiKey) {
         throw lastError;
       }
 
-      const data = await res.json();
-
-      if (!data.data || !Array.isArray(data.data) || data.data.length === 0) {
-        throw new Error(
-          "Embedding API returned invalid response: missing data array"
-        );
-      }
-
-      const embedding = data.data[0].embedding;
-      if (!Array.isArray(embedding)) {
-        throw new Error(
-          "Embedding API returned invalid response: missing embedding vector"
-        );
-      }
-
-      return embedding;
-    } catch (err) {
-      lastError = err;
+      // Network-class errors -- retry up to MAX_ATTEMPTS
       const isNetworkError =
         err.name === "TypeError" ||
         err.code === "ECONNRESET" ||

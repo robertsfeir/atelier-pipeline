@@ -26,7 +26,7 @@ import { createHash } from "crypto";
 import path from "path";
 import os from "os";
 import { fileURLToPath } from "url";
-import { resolveConfig } from "../lib/config.mjs";
+import { resolveConfig, buildProviderConfig } from "../lib/config.mjs";
 import { createPool, runMigrations } from "../lib/db.mjs";
 import { getEmbedding } from "../lib/embed.mjs";
 
@@ -303,10 +303,12 @@ async function insertTelemetryThought(pool, config, {
   importance = 0.3,
 }) {
   let embedding = null;
+  const embedConfig = buildProviderConfig(config, "embed");
+  const canEmbed = embedConfig.family === "local" || !!embedConfig.apiKey;
 
-  if (config.openrouter_api_key) {
+  if (canEmbed) {
     try {
-      const vector = await getEmbedding(content, config.openrouter_api_key);
+      const vector = await getEmbedding(content, embedConfig);
       // pgvector expects the array as a string like '[0.1,0.2,...]'
       embedding = `[${vector.join(",")}]`;
     } catch (err) {
@@ -593,9 +595,11 @@ async function generateTier3Summaries(pool, config) {
 
     // Reuse embedding strategy from insertTelemetryThought
     let embedding = null;
-    if (config.openrouter_api_key) {
+    const t3EmbedConfig = buildProviderConfig(config, "embed");
+    const t3CanEmbed = t3EmbedConfig.family === "local" || !!t3EmbedConfig.apiKey;
+    if (t3CanEmbed) {
       try {
-        const vector = await getEmbedding(content, config.openrouter_api_key);
+        const vector = await getEmbedding(content, t3EmbedConfig);
         embedding = `[${vector.join(",")}]`;
       } catch (err) {
         // Non-fatal

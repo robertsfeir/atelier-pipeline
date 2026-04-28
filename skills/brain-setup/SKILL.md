@@ -11,11 +11,11 @@ This skill guides the user through setting up the Atelier Brain persistent memor
   <requires>
     - Pipeline installed via `/pipeline-setup` (`.claude/` directory exists with `settings.json`).
     - PostgreSQL access via one of: Docker (`docker --version` + running daemon), local PostgreSQL (`pg_isready` succeeds), or a reachable remote PostgreSQL host with `pgvector` and `ltree` extensions available.
-    - `OPENROUTER_API_KEY` and `ATELIER_BRAIN_DB_PASSWORD` set in the environment (or willingness to set them after Path A auto-fix reports them missing).
+    - `ATELIER_BRAIN_DB_PASSWORD` set in the environment, plus the API-key env var that matches the chosen LLM provider family — `OPENROUTER_API_KEY` (default), `OPENAI_API_KEY`, `GITHUB_TOKEN` (GitHub Models), `ANTHROPIC_API_KEY` (chat only), or none for `local` (Ollama / LM Studio). Backward compatibility is preserved: a config containing only `openrouter_api_key` continues to work exactly as before.
     - `python3` (preferred) or `node` available on `PATH` for inline file mutations (Eva cannot use Write/Edit on `.claude/`).
   </requires>
   <produces>
-    - `.claude/brain-config.json` (shared) or `${CLAUDE_PLUGIN_DATA}/brain-config.json` (personal) with `database_url`, `openrouter_api_key`, `scope`, and optional `brain_name` -- secrets stored as `${ENV_VAR}` placeholders only.
+    - `.claude/brain-config.json` (shared) or `${CLAUDE_PLUGIN_DATA}/brain-config.json` (personal) with `database_url`, `scope`, optional `brain_name`, and provider fields (`embedding_provider`, `embedding_model`, `embedding_api_key`, optional `embedding_base_url`; `chat_provider`, `chat_model`, `chat_api_key`, optional `chat_base_url`). Legacy `openrouter_api_key` is still accepted as a fallback when the user picks OpenRouter for both families. Secrets stored as `${ENV_VAR}` placeholders only.
     - `brain_config.brain_enabled = true` in the brain database via `PUT /api/config`.
     - `permissions.allow` in `.claude/settings.json` extended with the 8 atelier-brain MCP tool names.
     - Brain MCP tool schemas pre-loaded via ToolSearch for the current session.
@@ -308,17 +308,55 @@ Ask the user:
    - **Missing ltree:** "The ltree extension is required. Run `CREATE EXTENSION ltree;` on the remote database (ltree ships with PostgreSQL)."
 6. Database URL: `postgresql://<user>:${ATELIER_BRAIN_DB_PASSWORD}@<host>:<port>/<database_name>?sslmode=require` (omit `?sslmode=require` if the user chose no SSL).
 
-### Step 3: OpenRouter API Key
+### Step 3: LLM Provider Setup
 
-Ask the user:
+Per ADR-0054, the brain supports multiple LLM provider families through three adapters (`openai-compat`, `anthropic`, `local`). The brain makes two kinds of LLM calls and you pick a provider for each: **embeddings** (used by every capture and search) and **chat** (used by conflict detection and consolidation synthesis). They can be the same provider or different ones.
 
-> "Do you have an OpenRouter API key set in your environment (`OPENROUTER_API_KEY`), or would you like to provide one now?"
+Ask the user one question at a time -- embeddings first, then chat.
 
-1. Check if `OPENROUTER_API_KEY` is set in the environment.
-   - **Set:** "Found `OPENROUTER_API_KEY` in your environment."
-   - **Not set:** Ask the user to provide one. Direct them to https://openrouter.ai/keys if needed. Instruct them to set it: `export OPENROUTER_API_KEY="sk-or-..."` in their shell profile.
-2. For **shared** config, always store as `${OPENROUTER_API_KEY}` -- never the actual key value.
-3. For **personal** config, store as `${OPENROUTER_API_KEY}` as well (the actual key lives in the environment, not in config files).
+#### 3a. Embedding Provider
+
+> "Which provider should the brain use for embeddings? Options:
+> - **openrouter** (default, recommended) -- broad model selection, single key. Env var: `OPENROUTER_API_KEY`.
+> - **github-models** -- recommended for GitHub Enterprise customers. Env var: `GITHUB_TOKEN`.
+> - **local** -- Ollama or any OpenAI-compatible local endpoint. No API key. Default endpoint: `http://localhost:11434/v1`. Default model: `gte-qwen2-1.5b-instruct`.
+> - **openai** -- direct OpenAI API. Env var: `OPENAI_API_KEY`.
+>
+> Press Enter for `openrouter`, or type one of: `openrouter`, `github-models`, `local`, `openai`."
+
+Notes:
+- `anthropic` is **not** offered for embeddings -- Anthropic has no embeddings API. The brain will reject this combination at startup.
+- Default embedding model: `openai/text-embedding-3-small` (1536-dim). The brain enforces a 1536-dim probe at startup; if a chosen provider/model returns a different dimension, startup fails fast with remediation guidance.
+- For non-default providers, ask whether they want to override `embedding_model` and/or `embedding_base_url`. Most users accept defaults.
+
+Detect the relevant env var for the chosen provider:
+- `openrouter` -> `OPENROUTER_API_KEY`. Direct to https://openrouter.ai/keys if missing.
+- `github-models` -> `GITHUB_TOKEN`. Direct to https://github.com/settings/tokens if missing (a token with `read:packages` scope works).
+- `openai` -> `OPENAI_API_KEY`. Direct to https://platform.openai.com/api-keys if missing.
+- `local` -> no key needed; verify the endpoint is reachable.
+
+#### 3b. Chat Provider
+
+> "Which provider should the brain use for chat (conflict detection + consolidation)? Options:
+> - **openrouter** (default) -- env var `OPENROUTER_API_KEY`.
+> - **anthropic** -- direct Claude API. Env var: `ANTHROPIC_API_KEY`. Chat-only.
+> - **github-models** -- env var `GITHUB_TOKEN`.
+> - **openai** -- env var `OPENAI_API_KEY`.
+> - **local** -- Ollama-compatible endpoint, no key.
+>
+> Press Enter for `openrouter`."
+
+Default chat model: `openai/gpt-4o-mini`. Ask whether they want to override `chat_model` and/or `chat_base_url`. Most users accept defaults.
+
+#### 3c. Backward Compatibility
+
+If the user picks `openrouter` for both embeddings and chat, the resulting config is **identical to v3.x format** -- just `openrouter_api_key`, no new fields. Tell them: "If you choose OpenRouter for both, the config is backward-compatible with the single `openrouter_api_key` field." Existing v3.x configs continue to work with zero changes.
+
+#### 3d. Storage Rules
+
+1. For **shared** config, store keys as `${ENV_VAR}` placeholders -- never the actual key value.
+2. For **personal** config, also store as `${ENV_VAR}` (the actual key lives in the environment).
+3. The relevant env var is whichever the chosen provider expects (see 3a/3b above).
 
 ### Step 4: Scope Path
 
@@ -353,6 +391,10 @@ Write the config file using Bash. Do not use Write or Edit tools.
 
 **Config format:**
 
+There are two valid shapes. The first is the v3.x backward-compatible shape (OpenRouter for both embeddings and chat). The second is the multi-provider shape introduced by ADR-0054. The brain accepts either; pick based on the choices made in Step 3.
+
+**(a) Backward-compatible (OpenRouter for both):**
+
 ```json
 {
   "database_url": "postgresql://atelier:${ATELIER_BRAIN_DB_PASSWORD}@localhost:5432/atelier_brain",
@@ -361,6 +403,22 @@ Write the config file using Bash. Do not use Write or Edit tools.
   "brain_name": "My Noodle"
 }
 ```
+
+**(b) Multi-provider (e.g., Anthropic chat + GitHub Models embeddings):**
+
+```json
+{
+  "database_url": "postgresql://atelier:${ATELIER_BRAIN_DB_PASSWORD}@localhost:5432/atelier_brain",
+  "embedding_provider": "github-models",
+  "embedding_api_key": "${GITHUB_TOKEN}",
+  "chat_provider": "anthropic",
+  "chat_api_key": "${ANTHROPIC_API_KEY}",
+  "scope": "myorg.myproduct",
+  "brain_name": "My Noodle"
+}
+```
+
+All ADR-0054 fields are optional. Omitted fields fall back to defaults: `embedding_provider`/`chat_provider` default to `openrouter`; `embedding_model` defaults to `openai/text-embedding-3-small`; `chat_model` defaults to `openai/gpt-4o-mini`. `embedding_base_url` and `chat_base_url` default to the chosen provider's canonical endpoint and only need to be set for self-hosted or proxied deployments (e.g., a local Ollama server). `embedding_api_key`/`chat_api_key` may be omitted when `openrouter_api_key` is set and the provider is `openrouter` -- the brain falls back to it.
 
 The `brain_name` field is optional. Omit it to default to "Brain".
 
@@ -392,7 +450,14 @@ if not PATH or PATH == 'REPLACE_ME':
 
 config = {
   'database_url': 'COMPUTED_URL',
+  # Backward-compatible default (OpenRouter for both embeddings and chat):
   'openrouter_api_key': '\${OPENROUTER_API_KEY}',
+  # Multi-provider (ADR-0054) -- replace the line above with the fields below
+  # when Step 3 chose anything other than openrouter for either operation:
+  # 'embedding_provider': 'github-models',
+  # 'embedding_api_key': '\${GITHUB_TOKEN}',
+  # 'chat_provider': 'anthropic',
+  # 'chat_api_key': '\${ANTHROPIC_API_KEY}',
   'scope': 'COMPUTED_SCOPE',
   # 'brain_name': 'BRAIN_NAME',  # optional -- omit to default to 'Brain'
 }
@@ -419,7 +484,14 @@ if (!PATH || PATH === 'REPLACE_ME') { console.error('PATH must be set before run
 
 const config = {
   database_url: 'COMPUTED_URL',
+  // Backward-compatible default (OpenRouter for both embeddings and chat):
   openrouter_api_key: '\${OPENROUTER_API_KEY}',
+  // Multi-provider (ADR-0054) -- replace the line above with the fields below
+  // when Step 3 chose anything other than openrouter for either operation:
+  // embedding_provider: 'github-models',
+  // embedding_api_key: '\${GITHUB_TOKEN}',
+  // chat_provider: 'anthropic',
+  // chat_api_key: '\${ANTHROPIC_API_KEY}',
   scope: 'COMPUTED_SCOPE',
   // brain_name: 'BRAIN_NAME',  // optional -- omit to default to 'Brain'
 };

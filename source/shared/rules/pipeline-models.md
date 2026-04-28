@@ -100,6 +100,43 @@ tool invocation based on this table plus the promotion signals above.
 
 </model-table>
 
+<model-table id="provider-shaped-model-ids">
+
+## Provider-Shaped Model ID Translation (ADR-0054)
+
+The tier table above uses logical names (opus/sonnet/haiku). Eva resolves
+each logical name to a provider-shaped model ID at invocation time by
+reading `model_provider` from `{pipeline_state_dir}/../pipeline-config.json`
+(field default `anthropic`). Credentials remain in the Claude Code
+environment configuration -- the pipeline emits IDs, it does not hold keys.
+
+| Logical name | anthropic (default) | bedrock | vertex |
+|--------------|---------------------|---------|--------|
+| **opus** | `claude-opus-4-7` | `anthropic.claude-opus-4-7-20250514-v1:0` | `claude-opus@002` |
+| **sonnet** | `claude-sonnet-4-6` | `anthropic.claude-sonnet-4-6-20250514-v1:0` | `claude-sonnet@001` |
+| **haiku** | `claude-haiku-4-5-20251001` | `anthropic.claude-haiku-4-5-20251001-v1:0` | `claude-haiku@001` |
+
+**Resolution rules:**
+
+1. Eva reads `model_provider` from `pipeline-config.json` once at session
+   boot and caches the value. Default is `anthropic` -- existing deployments
+   are unaffected until they opt in.
+2. For every Agent tool invocation, Eva translates the logical name from the
+   per-agent assignment table to the provider-shaped ID using the row above.
+3. Frontmatter-pinned subagents (scout, synthesis -- ADR-0048) are not
+   re-translated by Eva. Their frontmatter holds the explicit `claude-*`
+   Anthropic ID; Bedrock/Vertex deployments must rewrite those frontmatter
+   values at install time, not at invocation time.
+4. Unknown `model_provider` values are a configuration error. Eva does not
+   fall back silently; she surfaces the unknown value and stops.
+
+**Voyage AI is permanently excluded.** Gemini is deferred (768-dim
+embeddings incompatible with the brain's `vector(1536)` schema, non-OpenAI
+wire format) -- not because of routing complexity, but because the
+schema-migration cost has not been paid. See ADR-0054 for the full decision.
+
+</model-table>
+
 ## Runtime Lookup Procedure
 
 For every Agent tool invocation:

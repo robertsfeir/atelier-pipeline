@@ -844,13 +844,14 @@ The brain server is composed of several hardened modules:
 | `rest-api.mjs` | HTTP route handlers for dashboard settings UI and telemetry API endpoints. Authentication via `Authorization: Bearer {token}`. |
 | `config.mjs` | Enums and Zod schemas for thought types, source agents, and source phases. Single source of truth for valid values. |
 | `conflict.mjs` | Detects duplicate or conflicting thoughts at write time using semantic search + optional LLM classification. Uses `llm-response.mjs` for safe LLM response parsing. |
-| `consolidation.mjs` | Periodic synthesis task: groups similar active thoughts and generates reflection summaries using OpenRouter API. Uses `llm-response.mjs` for safe parsing. |
-| `llm-response.mjs` | Null-guard helper for safely extracting content from OpenRouter / OpenAI chat-completion responses. Prevents crashes on malformed responses. Exported `assertLlmContent(data, context)` validates response shape and throws named Error if invalid. |
+| `consolidation.mjs` | Periodic synthesis task: groups similar active thoughts and generates reflection summaries using the configured LLM provider (per ADR-0054, routed through `llm-provider.mjs`). Uses `llm-response.mjs` for safe parsing. |
+| `llm-provider.mjs` | Provider abstraction layer (ADR-0054). Three adapter families -- `openai-compat`, `anthropic`, `local` -- behind a uniform `embed(text, providerConfig)` and `chat(messages, providerConfig)` surface. `verifyEmbeddingDimension()` runs a 1536-dim probe at startup so misconfigured providers fail fast with remediation guidance. |
+| `llm-response.mjs` | Null-guard helper for safely extracting content from any configured LLM provider's chat-completion response. Prevents crashes on malformed responses. Exported `assertLlmContent(data, context)` validates response shape and throws named Error if invalid. |
 | `ttl.mjs` | Periodic TTL enforcement: marks thoughts past their type's TTL as expired, excludes them from searches. |
 | `crash-guards.mjs` | Process-level error handlers, graceful shutdown, deadman timeout logic. Injected into `server.mjs` for testability. |
 
 **LLM Response Parsing Safety:**
-Both `conflict.mjs` and `consolidation.mjs` use the `llm-response.mjs` module's `assertLlmContent()` function to safely extract synthesis results from OpenRouter responses. This ensures that malformed responses (null `data`, empty `choices` array, missing `message` or `content` field) throw a named Error with context and a truncated payload dump, rather than crashing the process with an unhandled TypeError.
+Both `conflict.mjs` and `consolidation.mjs` use the `llm-response.mjs` module's `assertLlmContent()` function to safely extract synthesis results from the configured provider's responses (ADR-0054 routes both calls through `llm-provider.mjs`). This ensures that malformed responses (null `data`, empty `choices` array, missing `message` or `content` field) throw a named Error with context and a truncated payload dump, rather than crashing the process with an unhandled TypeError.
 
 ### Database Schema
 
@@ -936,10 +937,12 @@ The brain server resolves its configuration using a priority chain:
 
 1. **Project config** (`BRAIN_CONFIG_PROJECT` env var -> `.claude/brain-config.json`) -- shared team config
 2. **Personal config** (`BRAIN_CONFIG_USER` env var -> `~/.claude/plugins/data/atelier-pipeline/brain-config.json`) -- local-only
-3. **Environment variables** (`DATABASE_URL` or `ATELIER_BRAIN_DATABASE_URL`, `OPENROUTER_API_KEY`) -- fallback
+3. **Environment variables** (`DATABASE_URL` or `ATELIER_BRAIN_DATABASE_URL`, plus the API key matching the chosen provider -- `OPENROUTER_API_KEY` by default; `OPENAI_API_KEY`, `GITHUB_TOKEN`, or `ANTHROPIC_API_KEY` when the corresponding provider is selected; `local` needs no key) -- fallback
 4. **No config found** -- exit cleanly, brain disabled
 
 Config files support `${ENV_VAR}` placeholders for secrets. Shared configs never contain bare secret values.
+
+Per ADR-0054, the brain supports multiple LLM provider families (`openai-compat`, `anthropic`, `local`) for embeddings and chat. The optional config fields `embedding_provider`, `embedding_model`, `embedding_api_key`, `embedding_base_url`, `chat_provider`, `chat_model`, `chat_api_key`, and `chat_base_url` select and tune each provider independently. All fields are optional and default to OpenRouter, which preserves backward compatibility with v3.x configs (`openrouter_api_key` alone is still a complete configuration).
 
 The config file also supports an optional `brain_name` field -- a display name for the brain (e.g., "My Noodle", "Cortex"). When set, Eva uses this name in pipeline announcements and reports instead of the generic "Brain". The value flows through `atelier_stats` and `/api/health` responses as `brain_name`, defaulting to `"Brain"` when omitted.
 

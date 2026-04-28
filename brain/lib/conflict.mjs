@@ -5,6 +5,28 @@
 
 import pgvector from "pgvector/pg";
 import { assertLlmContent } from "./llm-response.mjs";
+import { chat as providerChat } from "./llm-provider.mjs";
+
+// =============================================================================
+// Backward-compat: lift a bare apiKey string into a chat providerConfig
+// =============================================================================
+
+function coerceChatProviderConfig(providerConfigOrApiKey) {
+  if (
+    providerConfigOrApiKey != null &&
+    typeof providerConfigOrApiKey === "object"
+  ) {
+    return providerConfigOrApiKey;
+  }
+  // Legacy: string apiKey -> default OpenRouter openai-compat config.
+  return {
+    family: "openai-compat",
+    baseUrl: "https://openrouter.ai/api/v1",
+    apiKey: providerConfigOrApiKey || null,
+    model: "openai/gpt-4o-mini",
+    extraHeaders: {},
+  };
+}
 
 // =============================================================================
 // Brain Config Cache
@@ -31,19 +53,12 @@ function resetBrainConfigCache() {
 // LLM-Based Conflict Classification
 // =============================================================================
 
-async function classifyConflict(thoughtA, thoughtB, apiKey) {
+async function classifyConflict(thoughtA, thoughtB, providerConfigOrApiKey) {
   try {
-    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "openai/gpt-4o-mini",
-        messages: [{
-          role: "user",
-          content: `You are a conflict classifier for an institutional memory system. Compare these two thoughts and classify their relationship.
+    const providerConfig = coerceChatProviderConfig(providerConfigOrApiKey);
+    const messages = [{
+      role: "user",
+      content: `You are a conflict classifier for an institutional memory system. Compare these two thoughts and classify their relationship.
 
 Thought A (existing): ${thoughtA}
 Thought B (new): ${thoughtB}
@@ -52,12 +67,12 @@ Classify as exactly one of: DUPLICATE, CONTRADICTION, COMPLEMENT, SUPERSESSION, 
 
 Respond in JSON format:
 {"classification": "...", "confidence": 0.0-1.0, "reasoning": "..."}`,
-        }],
-        response_format: { type: "json_object" },
-      }),
+    }];
+    // response_format is honored on openai-compat; anthropic family ignores it
+    // (it returns plain text JSON which JSON.parse handles).
+    const data = await providerChat(messages, providerConfig, {
+      responseFormat: { type: "json_object" },
     });
-    if (!res.ok) throw new Error(`LLM API error: ${res.status}`);
-    const data = await res.json();
     return JSON.parse(assertLlmContent(data, 'conflict'));
   } catch (err) {
     console.error("Conflict classification failed:", err.message);
@@ -69,7 +84,7 @@ Respond in JSON format:
 // Conflict Detection
 // =============================================================================
 
-async function detectConflicts(client, embedding, content, scope, brainConfig, apiKey) {
+async function detectConflicts(client, embedding, content, scope, brainConfig, providerConfigOrApiKey) {
   if (!brainConfig.conflict_detection_enabled) return { action: "store" };
 
   const result = await client.query(
@@ -100,7 +115,7 @@ async function detectConflicts(client, embedding, content, scope, brainConfig, a
       return { action: "store", conflictFlag: true, candidateId: topMatch.id, similarity };
     }
 
-    const classification = await classifyConflict(topMatch.content, content, apiKey);
+    const classification = await classifyConflict(topMatch.content, content, providerConfigOrApiKey);
     if (!classification) {
       return { action: "store", warning: "Conflict classification failed" };
     }

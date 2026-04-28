@@ -35,10 +35,15 @@ import {
 const hydrateStatusMap = new Map();
 
 function registerTools(srv, pool, cfg) {
-  const apiKey = cfg.openrouter_api_key;
+  // ADR-0054: prefer the new providerConfig objects when present. The legacy
+  // openrouter_api_key string still flows through for setups that have not
+  // yet migrated their config -- embed.mjs / conflict.mjs lift it into the
+  // openai-compat default at call time.
+  const apiKey = cfg.embedProviderConfig || cfg.openrouter_api_key;
+  const chatKey = cfg.chatProviderConfig || cfg.openrouter_api_key;
   const capturedBy = cfg.capturedBy;
 
-  registerAgentCapture(srv, pool, apiKey, capturedBy, cfg);
+  registerAgentCapture(srv, pool, apiKey, capturedBy, cfg, chatKey);
   registerAgentSearch(srv, pool, apiKey);
   registerAtelierBrowse(srv, pool);
   registerAtelierStats(srv, pool, cfg);
@@ -52,7 +57,7 @@ function registerTools(srv, pool, cfg) {
 // Tool 1: agent_capture
 // =============================================================================
 
-function registerAgentCapture(srv, pool, apiKey, capturedBy, cfg) {
+function registerAgentCapture(srv, pool, apiKey, capturedBy, cfg, chatKey) {
   srv.tool(
     "agent_capture",
     "Store a thought with schema-enforced metadata. Handles dedup, conflict detection, and supersedes relations. Required: content, thought_type, source_agent, source_phase, importance.",
@@ -83,11 +88,14 @@ function registerAgentCapture(srv, pool, apiKey, capturedBy, cfg) {
       confidence: z.number().min(0).max(1).optional()
         .describe("Decision confidence 0-1; low values flag for retro review"),
     },
-    async (params) => handleAgentCapture(params, pool, apiKey, capturedBy, cfg)
+    async (params) => handleAgentCapture(params, pool, apiKey, capturedBy, cfg, chatKey)
   );
 }
 
-async function handleAgentCapture(params, pool, apiKey, capturedBy, cfg) {
+async function handleAgentCapture(params, pool, apiKey, capturedBy, cfg, chatKey) {
+  // chatKey defaults to apiKey when the runtime config did not split embed
+  // and chat providers (legacy v3.x configs).
+  chatKey = chatKey || apiKey;
   const { content, thought_type, source_agent, source_phase, importance,
           trigger_event, supersedes_id, scope, metadata = {},
           decided_by, alternatives_rejected, evidence, confidence } = params;
@@ -109,7 +117,7 @@ async function handleAgentCapture(params, pool, apiKey, capturedBy, cfg) {
     const relatedIds = [];
 
     if (["decision", "preference"].includes(thought_type)) {
-      conflictResult = await detectConflicts(client, embedding, content, scopeArray, brainConfig, apiKey);
+      conflictResult = await detectConflicts(client, embedding, content, scopeArray, brainConfig, chatKey);
     }
 
     // Build provenance fields from explicit params (ADR-0026)

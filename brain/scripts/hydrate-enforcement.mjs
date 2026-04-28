@@ -17,7 +17,7 @@
 import { readFileSync, existsSync } from "fs";
 import { createHash } from "crypto";
 import path from "path";
-import { resolveConfig } from "../lib/config.mjs";
+import { resolveConfig, buildProviderConfig } from "../lib/config.mjs";
 import { createPool, runMigrations } from "../lib/db.mjs";
 import { getEmbedding } from "../lib/embed.mjs";
 
@@ -81,9 +81,11 @@ async function insertEnforcementThought(pool, config, event) {
   };
 
   let embedding = null;
-  if (config.openrouter_api_key) {
+  const embedConfig = buildProviderConfig(config, "embed");
+  const canEmbed = embedConfig.family === "local" || !!embedConfig.apiKey;
+  if (canEmbed) {
     try {
-      const vector = await getEmbedding(content, config.openrouter_api_key);
+      const vector = await getEmbedding(content, embedConfig);
       embedding = `[${vector.join(",")}]`;
     } catch {
       // Non-fatal: fall back to zero vector

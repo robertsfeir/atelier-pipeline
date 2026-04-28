@@ -8,6 +8,36 @@ import pgvector from "pgvector/pg";
 import { getEmbedding } from "./embed.mjs";
 import { getBrainConfig } from "./conflict.mjs";
 import { assertLlmContent } from "./llm-response.mjs";
+import { chat as providerChat } from "./llm-provider.mjs";
+
+// =============================================================================
+// Backward-compat: accept a runtime config bundle, a single providerConfig
+// (used directly), or a legacy apiKey string. Consolidation needs both an
+// embed providerConfig (for getEmbedding) and a chat providerConfig (for the
+// synthesis LLM call) -- so the bundle shape is preferred. ADR-0054.
+// =============================================================================
+
+function coerceConsolidationContext(arg) {
+  if (arg == null) return { embedConfig: null, chatConfig: null };
+  if (typeof arg === "string") {
+    // Legacy: single OpenRouter apiKey used for both embed and chat.
+    const compat = {
+      family: "openai-compat",
+      baseUrl: "https://openrouter.ai/api/v1",
+      apiKey: arg,
+      extraHeaders: {},
+    };
+    return {
+      embedConfig: { ...compat, model: "openai/text-embedding-3-small" },
+      chatConfig: { ...compat, model: "openai/gpt-4o-mini" },
+    };
+  }
+  if (arg.embedConfig || arg.chatConfig) {
+    return { embedConfig: arg.embedConfig || null, chatConfig: arg.chatConfig || null };
+  }
+  // Treat as a single providerConfig used for both operations (rare).
+  return { embedConfig: arg, chatConfig: arg };
+}
 
 // =============================================================================
 // Union-Find for Cluster Formation
@@ -98,7 +128,8 @@ const CANDIDATE_COUNT_SQL = `
 // Consolidation Run
 // =============================================================================
 
-async function runConsolidation(pool, apiKey) {
+async function runConsolidation(pool, providerArg) {
+  const ctx = coerceConsolidationContext(providerArg);
   const client = await pool.connect();
   try {
     const brainConfig = await getBrainConfig(client);
@@ -133,7 +164,7 @@ async function runConsolidation(pool, apiKey) {
     for (const clusterIds of clusters) {
       const cluster = clusterIds.map(id => candidateMap.get(id)).filter(Boolean);
       if (cluster.length < 3) continue;
-      await synthesizeCluster(client, cluster, apiKey);
+      await synthesizeCluster(client, cluster, ctx);
     }
   } catch (err) {
     console.error("Consolidation error:", err.message);
@@ -142,34 +173,27 @@ async function runConsolidation(pool, apiKey) {
   }
 }
 
-async function synthesizeCluster(client, cluster, apiKey) {
+async function synthesizeCluster(client, cluster, ctx) {
   try {
     const thoughtContents = cluster.map((t, i) => `${i + 1}. [${t.thought_type}] ${t.content}`).join("\n");
 
-    const llmRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "openai/gpt-4o-mini",
-        messages: [{
+    let llmData;
+    try {
+      llmData = await providerChat(
+        [{
           role: "user",
           content: `Synthesize these ${cluster.length} observations into a single higher-level insight. Preserve specific details, decisions, and reasoning. Do not generalize away the useful specifics.\n\n${thoughtContents}`,
         }],
-      }),
-    });
-
-    if (!llmRes.ok) {
-      console.error(`Consolidation LLM error for cluster: ${llmRes.status}`);
+        ctx.chatConfig,
+      );
+    } catch (chatErr) {
+      console.error(`Consolidation LLM error for cluster: ${chatErr.message}`);
       return;
     }
 
-    const llmData = await llmRes.json();
     const synthesis = assertLlmContent(llmData, 'consolidation');
 
-    const reflectionEmbedding = await getEmbedding(synthesis, apiKey);
+    const reflectionEmbedding = await getEmbedding(synthesis, ctx.embedConfig);
     const maxImportance = Math.max(...cluster.map(t => t.importance ?? 0));
     const reflectionImportance = Math.min(1.0, maxImportance + 0.05);
 
@@ -207,12 +231,12 @@ async function synthesizeCluster(client, cluster, apiKey) {
 
 let consolidationTimer = null;
 
-async function startConsolidationTimer(pool, apiKey) {
+async function startConsolidationTimer(pool, providerArg) {
   const brainConfig = await getBrainConfig(pool);
   const intervalMs = brainConfig.consolidation_interval_minutes * 60 * 1000;
   consolidationTimer = setInterval(async () => {
     try {
-      await runConsolidation(pool, apiKey);
+      await runConsolidation(pool, providerArg);
     } catch (err) {
       try { console.error('Consolidation timer error (survived):', err.message); }
       catch { /* stderr may be broken */ }
