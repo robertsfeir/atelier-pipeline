@@ -6,3 +6,8 @@ brain/node_modules/
 __pycache__/
 *.pyc
 .hypothesis/
+
+# Runtime pipeline gate artifacts (transient, never commit)
+docs/pipeline/.pending-brain-capture.json
+docs/pipeline/.brain-unavailable
+docs/pipeline/.colby-verify-attempts-*
