@@ -122,6 +122,46 @@ Run `atelier_stats` to test brain connectivity.
 
 > Cursor manages tool permissions differently from Claude Code — there is no `settings.json`-based pre-approval mechanism. If brain tools prompt for approval on each call, check your Cursor plugin settings and ensure the `atelier-pipeline` plugin is trusted. This is a one-time action in Cursor's UI.
 
+**ADR-0055 migration note:** When this skill moves to the standalone `mybrain` plugin, the MCP tool prefix changes (the bundled-plugin prefix `mcp__plugin_atelier-pipeline_atelier-brain__` no longer matches the new tool registration). The snippet below defensively removes any stale entries that start with the old `mcp__plugin_atelier-pipeline_atelier-brain__` prefix from `.claude/settings.json` if it exists (e.g., left over from a prior Claude Code install or dual-IDE setup). In Phase 1 (this release) the prefix is unchanged so the dedup is a no-op; the cleanup activates automatically once the prefix changes in Phase 3. The snippet is silent when `.claude/settings.json` does not exist (the common Cursor-only case).
+
+```bash
+python3 -c "
+import json, os
+settings_path = '.claude/settings.json'
+if not os.path.exists(settings_path):
+    exit(0)
+tools = [
+  'mcp__plugin_atelier-pipeline_atelier-brain__agent_capture',
+  'mcp__plugin_atelier-pipeline_atelier-brain__agent_search',
+  'mcp__plugin_atelier-pipeline_atelier-brain__atelier_stats',
+  'mcp__plugin_atelier-pipeline_atelier-brain__atelier_hydrate',
+  'mcp__plugin_atelier-pipeline_atelier-brain__atelier_hydrate_status',
+  'mcp__plugin_atelier-pipeline_atelier-brain__atelier_browse',
+  'mcp__plugin_atelier-pipeline_atelier-brain__atelier_relation',
+  'mcp__plugin_atelier-pipeline_atelier-brain__atelier_trace',
+]
+try:
+    s = json.load(open(settings_path))
+except json.JSONDecodeError:
+    print('settings.json is not valid JSON — skipping permissions merge. Check the file manually.')
+    exit()
+s.setdefault('permissions', {})
+allow = s['permissions'].get('allow') or []
+s['permissions']['allow'] = allow
+# ADR-0055 migration: drop stale entries whose prefix no longer matches
+# the current plugin's tool registration. When the prefix is unchanged
+# (Phase 1) every tool stays; once the prefix changes (Phase 3) the
+# stale entries are removed before the new ones are added below.
+stale_prefix = 'mcp__plugin_atelier-pipeline_atelier-brain__'
+current_tool_set = set(tools)
+removed = [t for t in allow if isinstance(t, str) and t.startswith(stale_prefix) and t not in current_tool_set]
+if removed:
+    allow[:] = [t for t in allow if t not in removed]
+    print(f'Removed {len(removed)} stale brain permission entries (ADR-0055 migration).')
+    json.dump(s, open(settings_path, 'w'), indent=2)
+"
+```
+
 ### Step 5: Evaluate and Report
 
 **Case 1 — All env vars present AND `atelier_stats` succeeds:**

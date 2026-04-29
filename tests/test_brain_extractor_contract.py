@@ -1,13 +1,14 @@
-"""Contract tests for brain-extractor <-> producer persona files.
+"""Contract tests for Sarah's revision-mode token.
 
-These are structural/contract tests that verify producer personas and the
-brain-extractor consumer agree on the same textual tokens. They do NOT
-exercise an LLM -- they check that the token a producer is instructed to
-emit is the same token the extractor is instructed to search for. If these
-drift apart, structured quality signals silently stop flowing, and no
-behavioral test would catch it.
+The original module also covered the brain-extractor consumer side of the
+contract -- those tests were removed when the brain-extractor agent itself
+was deleted in v4.1.0 (superseded by the ADR-0053 three-hook capture gate).
+What remains is the producer-side assertion: Sarah must emit the
+`Revision <N>` placeholder in her Revision Mode section so downstream
+telemetry curation (now performed by Eva, not the extractor) has a stable
+token to recognize.
 
-Each test runs against all three agent locations:
+This test runs against all three agent locations:
 - `source/shared/agents/` (canonical source)
 - `.claude/agents/` (installed Claude Code mirror)
 - `.cursor-plugin/agents/` (installed Cursor mirror)
@@ -26,31 +27,6 @@ AGENT_DIRS = [
     pytest.param(INSTALLED_AGENTS, id="claude"),
     pytest.param(CURSOR_AGENTS, id="cursor"),
 ]
-
-
-@pytest.mark.parametrize("agents_dir", AGENT_DIRS)
-def test_brain_extractor_documents_adr_revision_signal(agents_dir):
-    """brain-extractor.md must mention `adr_revision` in its sarah quality
-    signals section. This is the field name persisted to metadata."""
-    extractor = (agents_dir / "brain-extractor.md").read_text()
-    assert "adr_revision" in extractor, (
-        f"brain-extractor.md in {agents_dir} is missing the `adr_revision` "
-        "quality signal. Sarah's revision telemetry depends on this field name."
-    )
-
-
-@pytest.mark.parametrize("agents_dir", AGENT_DIRS)
-def test_brain_extractor_searches_for_revision_n_pattern(agents_dir):
-    """brain-extractor.md must explicitly name the `Revision <integer>` pattern
-    it searches for in Sarah's ADR output. If this token changes on the
-    extractor side without coordination, revision cycles go invisible."""
-    extractor = (agents_dir / "brain-extractor.md").read_text()
-    assert "Revision <integer>" in extractor, (
-        f"brain-extractor.md in {agents_dir} no longer mentions the "
-        "`Revision <integer>` token. Either the pattern changed or the signal "
-        "documentation drifted; coordinate with Sarah's Revision Mode section "
-        "before landing."
-    )
 
 
 @pytest.mark.parametrize("agents_dir", AGENT_DIRS)

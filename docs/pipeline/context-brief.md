@@ -1,6 +1,32 @@
 # Context Brief
 
 ## Active Scope
+ADR-0055 — Brain/Pipeline Separation, Phase 1 of 3. Large pipeline.
+
+## Compact Anchor
+**Phase:** idle — scheduled for 2026-04-29 04:00 EDT.
+**Feature:** Separate atelier brain from atelier-pipeline plugin; merge into mybrain repo (three phases).
+**Key decisions this session:**
+- ADR-0055 accepted. Option B: brain leaves this repo, lives in mybrain. Two-release migration (no silent breakage).
+- Tool-name coupling resolved by suffix-match (`__agent_capture`) not full prefixed name — brain becomes a protocol.
+- New `.brain-not-installed` sentinel distinguishes "never installed" from "installed but down."
+- Three-phase rollout: Phase 1 (this run) = hook decoupling + sentinel + migration steps in skills. Phase 2 = mybrain merged release. Phase 3 = remove brain/ from atelier-pipeline.
+- User instruction: Ellis commit + pipeline state reset after EACH phase.
+- Sizing: Large.
+- Merged brain feature set: ALL atelier-brain features + mybrain ergonomics (bundled container, async worker, {{EMBED_DIM}}, shell wrappers, /health endpoint, 4-mode installer).
+
+## How to Resume
+Fresh session reads pipeline-state.md + this file. Say "continue ADR-0055 Phase 1" or just "continue."
+Large sizing — scout fan-out required before Colby per enforce-scout-swarm.sh.
+No Robert spec (internal tooling). No Sable UX (no UI). Agatha runs post-verification per Large gate.
+Phase 1 scope: 4 units, ~150 LOC, 6 files + 1 new test file. See pipeline-state.md for full build spec.
+
+## ADR-0055 Research Summary (for agent context)
+Two brain implementations diverged: atelier-brain has operational maturity; mybrain has deployment ergonomics (bundled container, async storage, configurable dim, shell wrappers). The hardcoded tool name `mcp__plugin_atelier-pipeline_atelier-brain__agent_capture` in clear-brain-capture-pending.sh is the critical coupling. Suffix-match fixes it. Brain plugin name changes (atelier-pipeline → mybrain) would have silently deadlocked existing installs without the new `.brain-not-installed` sentinel.
+
+---
+
+## Prior Scope (completed)
 ADR-0054 — Multi-Provider LLM Abstraction (Brain) and Pipeline Provider Routing. Medium pipeline.
 
 ## Compact Anchor

@@ -144,6 +144,8 @@ Run `atelier_stats` to test brain connectivity.
 
 Run this without prompting. The merge is idempotent — tools already present are skipped.
 
+**ADR-0055 migration note:** When this skill moves to the standalone `mybrain` plugin, the MCP tool prefix changes (the bundled-plugin prefix `mcp__plugin_atelier-pipeline_atelier-brain__` no longer matches the new tool registration). Before re-adding tools with the current plugin's prefix, the snippet below removes any stale entries that start with the old `mcp__plugin_atelier-pipeline_atelier-brain__` prefix when that prefix differs from the current `tools` list — leaving only the entries that match the registered MCP tool names. In Phase 1 (this release) the prefix is unchanged so the dedup is a no-op; the cleanup activates automatically once the prefix changes in Phase 3.
+
 ```bash
 python3 -c "
 import json, os
@@ -169,10 +171,21 @@ else:
     s.setdefault('permissions', {})
     allow = s['permissions'].get('allow') or []
     s['permissions']['allow'] = allow
+    # ADR-0055 migration: drop stale entries whose prefix no longer matches
+    # the current plugin's tool registration. When the prefix is unchanged
+    # (Phase 1) every tool stays; once the prefix changes (Phase 3) the
+    # stale entries are removed before the new ones are added below.
+    stale_prefix = 'mcp__plugin_atelier-pipeline_atelier-brain__'
+    current_tool_set = set(tools)
+    removed = [t for t in allow if isinstance(t, str) and t.startswith(stale_prefix) and t not in current_tool_set]
+    if removed:
+        allow[:] = [t for t in allow if t not in removed]
+        print(f'Removed {len(removed)} stale brain permission entries (ADR-0055 migration).')
     added = [t for t in tools if t not in allow]
     allow.extend(added)
-    if added:
+    if added or removed:
         json.dump(s, open(settings_path, 'w'), indent=2)
+    if added:
         print(f'Added {len(added)} brain tool(s) to permissions.allow.')
 "
 ```

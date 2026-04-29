@@ -50,6 +50,7 @@ esac
 
 PENDING_FILE="${PIPELINE_DIR}/.pending-brain-capture.json"
 SENTINEL_FILE="${PIPELINE_DIR}/.brain-unavailable"
+NOT_INSTALLED_FILE="${PIPELINE_DIR}/.brain-not-installed"
 
 # No pending capture -> nothing to gate.
 [ ! -f "$PENDING_FILE" ] && exit 0
@@ -58,18 +59,25 @@ SENTINEL_FILE="${PIPELINE_DIR}/.brain-unavailable"
 # atelier_stats reports the brain unreachable.
 [ -f "$SENTINEL_FILE" ] && exit 0
 
+# Brain-not-installed sentinel honored (ADR-0055): pipeline runs with no
+# brain plugin installed at all. Pass through so the pipeline does not
+# deadlock on a capture that no tool can satisfy.
+[ -f "$NOT_INSTALLED_FILE" ] && exit 0
+
 # Best-effort: surface which agent's output is pending capture.
 PENDING_AGENT=$(jq -r '.agent_type // "unknown"' "$PENDING_FILE" 2>/dev/null || echo "unknown")
 
 cat >&2 <<EOF
 BLOCKED: brain capture pending for previous agent (${PENDING_AGENT}).
-Call mcp__plugin_atelier-pipeline_atelier-brain__agent_capture with a
-curated thought (decision/pattern/lesson, 1-3 sentences) before spawning
-the next agent. The pending marker at ${PENDING_FILE} clears
-automatically on a successful capture.
+Call agent_capture (via your brain plugin) with a curated thought
+(decision/pattern/lesson, 1-3 sentences) before spawning the next agent.
+The pending marker at ${PENDING_FILE} clears automatically on a
+successful capture.
 
 If the brain is genuinely unreachable, follow the Eva-only escape-hatch
 protocol in pipeline-orchestration.md (touch ${SENTINEL_FILE}; clear on
-next successful atelier_stats ping).
+next successful atelier_stats ping). If no brain plugin is installed at
+all, touch ${NOT_INSTALLED_FILE} to suppress the gate permanently for
+this project.
 EOF
 exit 2

@@ -72,6 +72,15 @@ mkdir -p "$PIPELINE_DIR" 2>/dev/null || {
   exit 0
 }
 
+# Short-circuit when either sentinel is present (ADR-0055 + ADR-0053):
+#   .brain-unavailable    -> brain installed but unreachable (Eva escape hatch).
+#   .brain-not-installed  -> no brain plugin installed at all.
+# Writing a pending file in either case would deadlock the gate, since no
+# agent_capture call can reach a brain that does not exist or is down.
+if [ -f "${PIPELINE_DIR}/.brain-unavailable" ] || [ -f "${PIPELINE_DIR}/.brain-not-installed" ]; then
+  exit 0
+fi
+
 PENDING_FILE="${PIPELINE_DIR}/.pending-brain-capture.json"
 
 # Pull transcript_path (best-effort; SubagentStop payload includes it on

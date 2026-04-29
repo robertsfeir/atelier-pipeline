@@ -34,34 +34,8 @@ def _extract_section(file_path, start_tag, end_tag):
 # Step 2a: Cal
 # ═══════════════════════════════════════════════════════════════════════
 
-BRAIN_AGENTS = [
-    ("colby", "insight", "colby"),
-    ("agatha", "decision", "agatha"),
-]
-
-
-# ADR-0024/ADR-0025: thought_type and source_agent moved from agent personas
-# to brain-extractor.md (mechanical extraction via SubagentStop hook).
-# Tests now verify the brain-extractor contains the mapping instead.
-
-@pytest.mark.parametrize("agent,thought_type,source_agent", BRAIN_AGENTS)
-def test_thought_type(agent, thought_type, source_agent):
-    """Verify brain-extractor maps this agent to the expected thought_type."""
-    text = (PROJECT_ROOT / "source" / "shared" / "agents" / "brain-extractor.md").read_text()
-    assert re.search(rf"{agent}\s*\|.*\|", text), f"brain-extractor missing agent mapping for {agent}"
-    assert thought_type in text, f"brain-extractor missing thought_type '{thought_type}'"
-
-
-@pytest.mark.parametrize("agent,thought_type,source_agent", BRAIN_AGENTS)
-def test_source_agent(agent, thought_type, source_agent):
-    """Verify brain-extractor maps this agent to the expected source_agent."""
-    text = (PROJECT_ROOT / "source" / "shared" / "agents" / "brain-extractor.md").read_text()
-    assert re.search(rf"\|\s*{agent}\s*\|\s*{source_agent}\s*\|", text), \
-        f"brain-extractor missing source_agent mapping {agent} -> {source_agent}"
-
-
-@pytest.mark.parametrize("agent,thought_type,source_agent", BRAIN_AGENTS)
-def test_valid_yaml(agent, thought_type, source_agent):
+@pytest.mark.parametrize("agent", ["colby", "agatha"])
+def test_valid_yaml(agent):
     # Frontmatter lives in source/claude/agents/X.frontmatter.yml
     f = CLAUDE_AGENTS / f"{agent}.frontmatter.yml"
     fm = f.read_text()

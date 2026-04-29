@@ -145,6 +145,41 @@ The Atelier Brain MCP server is now registered and managed entirely by the plugi
 
 This cleanup targets only atelier-brain entries. Other MCP server entries in `.mcp.json` are not affected.
 
+### Step 0e: Migrate Stale Brain MCP `permissions.allow` Entries (ADR-0055)
+
+Unconditionally run this cleanup on every /pipeline-setup invocation. Silent unless it finds something to remove.
+
+Per ADR-0055, the brain is moving from this pipeline plugin into the standalone `mybrain` plugin. The 8 `permissions.allow` entries written by older `brain-setup` runs use the bundled-plugin prefix `mcp__plugin_atelier-pipeline_atelier-brain__`. After Phase 3 these entries no longer match any registered tool — they are dead weight. Removing them now is safe: when the user re-runs `/brain-setup` against the current brain plugin, the correct entries are re-added.
+
+1. **Check settings.json:** Check if `.claude/settings.json` exists and contains any `permissions.allow` entry whose value starts with the prefix `mcp__plugin_atelier-pipeline_atelier-brain__`. If found:
+
+   ```bash
+   python3 -c "
+   import json, os
+   p = '.claude/settings.json'
+   if not os.path.exists(p):
+       exit(0)
+   try:
+       s = json.load(open(p))
+   except json.JSONDecodeError:
+       print('Warning: .claude/settings.json is malformed JSON -- skipping ADR-0055 brain permissions cleanup. Does not block setup.')
+       exit(0)
+   allow = (s.get('permissions') or {}).get('allow') or []
+   stale_prefix = 'mcp__plugin_atelier-pipeline_atelier-brain__'
+   keep = [t for t in allow if not (isinstance(t, str) and t.startswith(stale_prefix))]
+   removed = len(allow) - len(keep)
+   if removed:
+       s.setdefault('permissions', {})['allow'] = keep
+       json.dump(s, open(p, 'w'), indent=2)
+       print(f'Removed {removed} stale brain permission entries (ADR-0055).')
+   "
+   ```
+
+2. **Print notice (conditional):** The python snippet prints `Removed N stale brain permission entries (ADR-0055).` when it removes anything. Re-run `/brain-setup` after upgrading to the standalone brain plugin to re-add the correct entries.
+3. **Silent no-op:** If no stale entries are found, the snippet prints nothing.
+
+This cleanup targets only entries with the `mcp__plugin_atelier-pipeline_atelier-brain__` prefix. Other `permissions.allow` entries (e.g., `Edit`, `Bash(...)`, other plugins' MCP tools) are not affected.
+
 ### Step 1: Gather Project Information
 
 Before installing, ask the user about their project. Ask these questions conversationally, one at a time -- do not dump a list.
@@ -226,7 +261,7 @@ Before asking about branching strategy, determine git availability.
 
 3. **If user says yes:** Run `git init`, create a sensible `.gitignore` (node_modules/, .env, dist/, etc. based on detected tech stack), run `git add .gitignore && git commit -m "Initial commit"`. Set `git_available: true`, proceed to Step 1c (branching strategy selection).
 
-4. **If user says no:** Set `git_available: false` in pipeline-config.json. Skip Step 1c entirely. Skip platform CLI detection. Skip CI Watch offer (Step 6c). Log: "Git unavailable -- skipping branching strategy, platform CLI, and CI Watch configuration."
+4. **If user says no:** Set `git_available: false` in pipeline-config.json. Skip Step 1c entirely. Skip platform CLI detection. Skip CI Watch offer (Step 6c). Log: "Git unavailable -- skipping branching strategy, platform CLI, and CI Watch configuration." Proceed to Step 1d.
 
 5. **If `git init` fails** (e.g., permission error): Set `git_available: false` and proceed as in step 4. Inform: "Git init failed -- proceeding without git. You can run `git init` manually later and re-run `/pipeline-setup`."
 
@@ -252,6 +287,29 @@ Before asking about branching strategy, determine git availability.
 - **GitFlow:** Platform detection only, no additional questions (conventions are standardized). Integration branch is `develop`.
 
 **Store selection:** Write `.claude/pipeline-config.json` with the appropriate values from `source/shared/pipeline/pipeline-config.json` as the template, filled with the user's selections. The template includes `design_system_path: null` (convention-based auto-detection). Use `/load-design` after setup to configure an external design system path if needed.
+
+### Step 1d: Model Provider Selection
+
+Ask the user one question:
+
+> Which model provider does your Claude Code environment use?
+> - **anthropic** (default) -- Standard Anthropic API (api.anthropic.com). No extra setup beyond `ANTHROPIC_API_KEY`.
+> - **bedrock** -- AWS Bedrock. Requires `ANTHROPIC_AWS_REGION` plus one of: `AWS_PROFILE` or the `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY` key pair. You must also enable Claude model access in the AWS Bedrock console for your region before running the pipeline.
+> - **vertex** -- Google Vertex AI. Requires `ANTHROPIC_VERTEX_PROJECT_ID`, `CLOUD_ML_REGION`, and service account authentication (either `GOOGLE_APPLICATION_CREDENTIALS` pointing to a service account JSON key, or `gcloud auth application-default login`).
+
+**Default:** If the user presses Enter without selecting, default to `anthropic`. This keeps existing deployments unaffected.
+
+**Credential note (read aloud or display after selection):**
+
+> Credentials stay in your Claude Code environment — the pipeline only needs to know which ID shape to emit. Do not put API keys or cloud credentials in pipeline-config.json.
+
+**Provider-specific follow-up:**
+
+- **anthropic:** No further questions. Proceed.
+- **bedrock:** Confirm: "Make sure `ANTHROPIC_AWS_REGION` is set in your Claude Code environment, and that you have either `AWS_PROFILE` or the `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY` pair configured. Also verify that Claude model access is enabled in the AWS Bedrock console for your region." No input required — informational only.
+- **vertex:** Confirm: "Make sure `ANTHROPIC_VERTEX_PROJECT_ID` and `CLOUD_ML_REGION` are set in your Claude Code environment, and that service account auth is configured (via `GOOGLE_APPLICATION_CREDENTIALS` or `gcloud auth application-default login`)." No input required — informational only.
+
+**Write model_provider:** The template ships with `"model_provider": "anthropic"` — no file change is needed when the user selects the default. For `bedrock` or `vertex`, update `.claude/pipeline-config.json` to set `model_provider` to the selected value.
 
 ### Step 2: Read Templates
 

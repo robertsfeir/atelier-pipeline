@@ -1,10 +1,61 @@
 # Pipeline State
 
-<!-- PIPELINE_STATUS: {"phase": "build", "sizing": "medium", "qa_status": null, "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": false, "robert_reviewed": false, "brain_available": false, "worktree_path": "/Users/sfeirr/projects/atelier-pipeline-315e2ac4", "session_id": "315e2ac4", "branch_name": "session/315e2ac4", "stop_reason": null} -->
+<!-- PIPELINE_STATUS: {"phase": "commit", "sizing": "large", "qa_status": "VERIFIED", "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": true, "robert_reviewed": false, "brain_available": false, "worktree_path": null, "session_id": null, "branch_name": null, "stop_reason": null} -->
 
 ## Active Pipeline
-**Feature:** ADR-0054 — Multi-Provider LLM Abstraction (Brain) and Pipeline Provider Routing
+**Feature:** ADR-0055 — Brain/Pipeline Separation (Phase 1 of 3)
 **Phase:** commit — verification complete, Ellis pending
+**Sizing:** Large
+**ADR:** `docs/architecture/ADR-0055-brain-pipeline-separation.md`
+**Brain:** unavailable (sentinel written)
+**Commit cadence:** Ellis commit + pipeline state reset after EACH phase
+
+### Phase 1 Scope (this run — ~150 LOC, atelier-pipeline repo only)
+
+**Unit 1: Suffix-match the brain capture clear hook**
+- `source/claude/hooks/clear-brain-capture-pending.sh` — change PostToolUse `toolName` pattern from hardcoded `mcp__plugin_atelier-pipeline_atelier-brain__agent_capture` to suffix-match `__agent_capture`. Any MCP server implementing the brain protocol is now a valid pipeline brain.
+
+**Unit 2: Brain-not-installed sentinel**
+- `source/claude/hooks/enforce-brain-capture-gate.sh` — honor new `.brain-not-installed` sentinel alongside existing `.brain-unavailable`. Either sentinel = pass-through, no blocking.
+- `source/claude/hooks/enforce-brain-capture-pending.sh` — short-circuit (write nothing) when either `.brain-not-installed` OR `.brain-unavailable` sentinel is present. Prevents pending files from accumulating when no brain is installed.
+
+**Unit 3: Migration rewrites in setup skills**
+- `skills/pipeline-setup/SKILL.md` — add migration step: detect `permissions.allow` entries with old prefix `mcp__plugin_atelier-pipeline_atelier-brain__*` and rewrite to suffix-aware form `mcp__*__<tool>` OR remove them (brain-setup will re-add with correct names on next run).
+- `skills/brain-setup/SKILL.md` — add migration note: when existing config detected, check for and remove stale `permissions.allow` entries with old prefix; brain-setup re-adds with current plugin prefix.
+
+**Unit 4: Tests (behavioral)**
+- `tests/adr-0055/test_adr_0055.py` — NEW pytest suite:
+  - Suffix-match hook fires on any `__agent_capture` tool name (not just the old prefix)
+  - Suffix-match hook does NOT fire on unrelated tool names
+  - enforce-brain-capture-gate.sh passes through when `.brain-not-installed` exists
+  - enforce-brain-capture-pending.sh writes nothing when `.brain-not-installed` exists
+  - enforce-brain-capture-gate.sh still passes through when `.brain-unavailable` exists (regression)
+  - enforce-brain-capture-pending.sh still short-circuits for `.brain-unavailable` (regression)
+
+**NOT in Phase 1 (Phase 2):** mybrain feature merge (separate repo), mybrain release, pipeline-setup auto-register mybrain
+**NOT in Phase 1 (Phase 3):** remove `brain/` from atelier-pipeline, remove brain SessionStart hooks from plugin.json, remove brain-setup skill
+
+### Agatha Divergence Report
+**No doc changes for Phase 1** — hook decoupling is internal, migration steps are silent, `.brain-not-installed` workflow not yet user-reachable.
+**Divergences (pre-existing, flagged for future cleanup):**
+1. `docs/guide/technical-reference.md` L357, L951-997 and `docs/guide/user-guide.md` L1107-1117 still describe a `brain-extractor` agent (SubagentStop-launched Sonnet). Replaced by three-hook gate in ADR-0053 — drift predates Phase 1. Separate doc-update pipeline required.
+2. `docs/guide/technical-reference.md` L802 (brain MCP registration) incomplete pending Phase 2 mybrain plugin. No Phase 1 update warranted.
+
+**Key constraint from ADR-0055:**
+- `brain/` stays in repo during Phase 1 — existing installs keep working unchanged
+- `NODE_TLS_REJECT_UNAUTHORIZED=0` must remain in brain server startup env (untouched in Phase 1)
+- Mechanical enforcement is non-negotiable — no behavioral-only fallbacks
+
+### Installed copies to sync (source/ → .claude/)
+All hook changes are in `source/claude/hooks/`. Colby must sync to `.claude/hooks/` as well. Skills live only in `skills/` (not mirrored to `.claude/`).
+
+---
+
+## Prior Pipeline (closed)
+**Feature:** ADR-0054 — Multi-Provider LLM Abstraction (Brain) and Pipeline Provider Routing
+**Phase:** idle
+**Stop Reason:** completed_clean
+**Release:** v4.5.0 (commit 94410b8)
 **Sizing:** Medium
 **ADR:** `docs/architecture/ADR-0054-multi-provider-llm-and-pipeline-routing.md`
 **Worktree:** `/Users/sfeirr/projects/atelier-pipeline-315e2ac4` (branch: `session/315e2ac4`)
@@ -454,3 +505,4 @@ Sarah (ADR-0044 with research brief) → Roz test spec review → Colby build �
 <!-- COMPACTION: 2026-04-24T21:36:21Z -->
 <!-- COMPACTION: 2026-04-27T11:56:47Z -->
 <!-- COMPACTION: 2026-04-28T15:35:34Z -->
+<!-- COMPACTION: 2026-04-29T00:32:31Z -->

@@ -78,10 +78,8 @@ def test_T_0021_099_empty_stdin(hook_env):
 
 def test_T_0021_100_installed_hooks_executable():
     """prompt-brain-prefetch.sh must be executable. prompt-brain-capture.sh was removed by ADR-0024 R7
-    (brain capture now handled mechanically by brain-extractor SubagentStop hook)."""
+    (brain capture now handled mechanically by the three-hook gate (ADR-0053))."""
     assert (PROJECT_ROOT / ".claude" / "hooks" / "prompt-brain-prefetch.sh").stat().st_mode & 0o111
-    # Verify brain-extractor exists as the replacement mechanism
-    assert (PROJECT_ROOT / "source" / "shared" / "agents" / "brain-extractor.md").is_file()
 
 
 def test_T_0021_117_source_hooks_executable():

@@ -426,3 +426,65 @@ def test_github_models_adapter_sets_required_headers() -> None:
     assert payload["accept"] == "application/vnd.github+json"
     assert payload["apiVersion"] == "2026-03-10"
     assert payload["auth"] == "Bearer ghp_test"
+
+
+# ─── Step 1d: Model Provider Selection in pipeline-setup SKILL.md ─────────
+
+SKILL_MD = PROJECT_ROOT / "skills" / "pipeline-setup" / "SKILL.md"
+
+
+def test_skill_md_contains_step_1d_header() -> None:
+    """ADR-0054 pipeline-setup Step 1d: SKILL.md must contain a Step 1d header
+    for Model Provider Selection so the skill surfaces provider config during install.
+    """
+    text = SKILL_MD.read_text(encoding="utf-8")
+    assert "Step 1d" in text, (
+        "SKILL.md must include a '### Step 1d' section for Model Provider Selection "
+        "(required by ADR-0054 to configure model_provider at install time)."
+    )
+
+
+def test_skill_md_mentions_all_three_providers() -> None:
+    """ADR-0054 pipeline-setup Step 1d: SKILL.md must name all three valid
+    model_provider values so Bedrock and Vertex users can self-select during install.
+    """
+    text = SKILL_MD.read_text(encoding="utf-8")
+    for provider in ("anthropic", "bedrock", "vertex"):
+        assert provider in text, (
+            f"SKILL.md must mention provider {provider!r} in Step 1d "
+            "(ADR-0054 requires all three provider options to be offered)."
+        )
+
+
+def test_skill_md_contains_bedrock_env_var_guidance() -> None:
+    """ADR-0054 pipeline-setup Step 1d: SKILL.md must document ANTHROPIC_AWS_REGION
+    so Bedrock users know the required environment variable before running the pipeline.
+    """
+    text = SKILL_MD.read_text(encoding="utf-8")
+    assert "ANTHROPIC_AWS_REGION" in text, (
+        "SKILL.md must contain 'ANTHROPIC_AWS_REGION' guidance for Bedrock users "
+        "(ADR-0054 Step 1d credential notes)."
+    )
+
+
+def test_skill_md_contains_vertex_env_var_guidance() -> None:
+    """ADR-0054 pipeline-setup Step 1d: SKILL.md must document ANTHROPIC_VERTEX_PROJECT_ID
+    so Vertex users know the required environment variable before running the pipeline.
+    """
+    text = SKILL_MD.read_text(encoding="utf-8")
+    assert "ANTHROPIC_VERTEX_PROJECT_ID" in text, (
+        "SKILL.md must contain 'ANTHROPIC_VERTEX_PROJECT_ID' guidance for Vertex users "
+        "(ADR-0054 Step 1d credential notes)."
+    )
+
+
+def test_skill_md_contains_credentials_stay_in_env_note() -> None:
+    """ADR-0054 pipeline-setup Step 1d: SKILL.md must contain a note that credentials
+    stay in the Claude Code environment and must not be written to pipeline-config.json.
+    """
+    text = SKILL_MD.read_text(encoding="utf-8")
+    assert "Credentials stay in your Claude Code environment" in text, (
+        "SKILL.md must contain the 'Credentials stay in your Claude Code environment' "
+        "note warning users not to put API keys in pipeline-config.json "
+        "(ADR-0054 Step 1d security guidance)."
+    )
