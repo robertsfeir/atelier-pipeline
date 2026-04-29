@@ -191,7 +191,19 @@ Done. No further action.
 
 **Case 2 — Env vars missing (Step 4 was skipped):**
 
-List every missing variable by name. Print:
+List every missing variable by name. The set of expected env vars is **provider-aware** — derive them from the config file:
+
+- `ATELIER_BRAIN_DB_PASSWORD` is always expected when `database_url` references `${ATELIER_BRAIN_DB_PASSWORD}`.
+- For `embedding_provider` and `chat_provider`:
+  - `openrouter` → `OPENROUTER_API_KEY`
+  - `github-models` → `GITHUB_TOKEN`
+  - `openai` → `OPENAI_API_KEY`
+  - `anthropic` → `ANTHROPIC_API_KEY`
+  - `local` → no env var required (skip)
+- If neither provider field is set and `openrouter_api_key` is present (v3.x backward-compatible shape), expect `OPENROUTER_API_KEY`.
+- If both providers are `local` and no `openrouter_api_key` field exists, no LLM env var is required — only `ATELIER_BRAIN_DB_PASSWORD` (when applicable).
+
+Print only the variables actually required by the user's config. Example for an OpenRouter setup:
 
 ```
 Brain config found at .claude/brain-config.json.
@@ -206,6 +218,8 @@ Add them to your shell profile (e.g., ~/.zshrc or ~/.bash_profile):
   export ATELIER_BRAIN_DB_PASSWORD="..."
   export OPENROUTER_API_KEY="sk-or-..."
 ```
+
+For a GitHub Models setup, list `GITHUB_TOKEN` instead of `OPENROUTER_API_KEY`. For Anthropic chat, list `ANTHROPIC_API_KEY`. For an all-local (Ollama) setup with no API-key-bearing provider, omit the LLM env var entirely — only `ATELIER_BRAIN_DB_PASSWORD` may appear (and even that only if the database URL references it).
 
 Done. No further action.
 
@@ -418,6 +432,19 @@ There are two valid shapes. The first is the v3.x backward-compatible shape (Ope
 }
 ```
 
+**(c) Local only (Ollama, no API key required):**
+
+```json
+{
+  "database_url": "postgresql://atelier:${ATELIER_BRAIN_DB_PASSWORD}@localhost:5432/atelier_brain",
+  "embedding_provider": "local",
+  "chat_provider": "local",
+  "scope": "myorg.myproduct"
+}
+```
+
+No API key fields required. The brain will use the Ollama endpoint at `http://localhost:11434/v1` by default. To use a custom endpoint or model, add `embedding_base_url`, `embedding_model`, `chat_base_url`, `chat_model` as needed.
+
 All ADR-0054 fields are optional. Omitted fields fall back to defaults: `embedding_provider`/`chat_provider` default to `openrouter`; `embedding_model` defaults to `openai/text-embedding-3-small`; `chat_model` defaults to `openai/gpt-4o-mini`. `embedding_base_url` and `chat_base_url` default to the chosen provider's canonical endpoint and only need to be set for self-hosted or proxied deployments (e.g., a local Ollama server). `embedding_api_key`/`chat_api_key` may be omitted when `openrouter_api_key` is set and the provider is `openrouter` -- the brain falls back to it.
 
 The `brain_name` field is optional. Omit it to default to "Brain".
@@ -458,6 +485,11 @@ config = {
   # 'embedding_api_key': '\${GITHUB_TOKEN}',
   # 'chat_provider': 'anthropic',
   # 'chat_api_key': '\${ANTHROPIC_API_KEY}',
+  # Local-only (Ollama, no API key) -- remove the openrouter_api_key line above
+  # and uncomment these two fields. Add embedding_base_url / embedding_model /
+  # chat_base_url / chat_model only to override the http://localhost:11434/v1 default:
+  # 'embedding_provider': 'local',
+  # 'chat_provider': 'local',
   'scope': 'COMPUTED_SCOPE',
   # 'brain_name': 'BRAIN_NAME',  # optional -- omit to default to 'Brain'
 }
@@ -492,6 +524,11 @@ const config = {
   // embedding_api_key: '\${GITHUB_TOKEN}',
   // chat_provider: 'anthropic',
   // chat_api_key: '\${ANTHROPIC_API_KEY}',
+  // Local-only (Ollama, no API key) -- remove the openrouter_api_key line above
+  // and uncomment these two fields. Add embedding_base_url / embedding_model /
+  // chat_base_url / chat_model only to override the http://localhost:11434/v1 default:
+  // embedding_provider: 'local',
+  // chat_provider: 'local',
   scope: 'COMPUTED_SCOPE',
   // brain_name: 'BRAIN_NAME',  // optional -- omit to default to 'Brain'
 };
