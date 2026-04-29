@@ -16,5 +16,6 @@
   "ci_watch_log_command": "",
   "deps_agent_enabled": false,
   "darwin_enabled": false,
-  "dashboard_mode": "none"
+  "dashboard_mode": "none",
+  "model_provider": "anthropic"
 }

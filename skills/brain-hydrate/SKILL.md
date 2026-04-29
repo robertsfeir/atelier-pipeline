@@ -16,7 +16,7 @@ This skill reads existing project artifacts and git history, extracts reasoning 
     - At least one extractable source on disk: ADRs, feature specs, UX docs, `error-patterns.md`, `context-brief.md`, or git history.
   </requires>
   <produces>
-    - Up to 100 brain thoughts per run captured via `agent_capture` (types: `decision`, `rejection`, `preference`, `lesson`, `correction`, `insight`).
+    - Brain thoughts captured via `agent_capture` (types: `decision`, `rejection`, `preference`, `lesson`, `correction`, `insight`) — no per-run cap.
     - Brain relations created via `atelier_relation` (`evolves_from`, `triggered_by`, `supports`, `contradicts`).
     - Phase 3 progress and final-summary report on the main thread (counts per source type, breakdown, top themes).
   </produces>
@@ -206,7 +206,7 @@ Eva invokes `Agent(model: "sonnet")` with the collected scout content in a `<hyd
 <task>Extract reasoning and decisions from project artifacts into brain thoughts.
 Follow the extraction rules exactly. Call agent_capture for each thought.
 Call agent_search (threshold 0.85) before each capture for dedup.
-Cap at 100 thoughts. Report progress per source type.</task>
+Report progress per source type.</task>
 
 <hydration-content>
   <adrs>[ADR scout output]</adrs>
@@ -222,7 +222,6 @@ Cap at 100 thoughts. Report progress per source type.</task>
 - Extract the WHY, never the WHAT. Synthesize reasoning, never copy content.
 - Never capture code, function signatures, SQL schemas, or config snippets.
 - Respect write-time conflict detection -- if agent_capture returns conflict, skip.
-- Maximum 100 thoughts per run. If more are extractable, stop and report.
 - Dedup: agent_search at 0.85 before each capture. >0.85 = skip. 0.7-0.85 = new thought + evolves_from relation.
 - Create relations via `atelier_relation` per source extraction rules (evolves_from, triggered_by, supports, contradicts).
 - User scope constraints: [injected from Phase 1]
@@ -477,7 +476,7 @@ These rules are mandatory:
 
 4. **Respect the write-time conflict detection.** If `agent_capture` returns a conflict warning (duplicate or candidate), log it and move on. Do not force-write.
 
-5. **Cap single-run extraction.** Maximum 100 thoughts per hydration run. If the scan estimates more, batch: "Found ~150 extractable thoughts. I'll capture the first 100 (highest importance). Run again for the remainder."
+5. **Run to completion.** Hydration has no per-run cap. Extract every extractable thought from the collected scout content. Dedup via `agent_search` (0.85 threshold) handles re-runs safely — already-captured thoughts are skipped automatically.
 
 6. **Always verify at the end.** Call `atelier_stats` after hydration to confirm thought count increased as expected.
 

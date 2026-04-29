@@ -5,6 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [5.0.1] - 2026-04-29
+
+### Changed
+- **`skills/brain-hydrate/SKILL.md`:** Removed hardcoded 100-thought-per-run cap. The limit was an unjustified conservative guard; `agent_search` dedup handles safe re-runs without it. Both the skill source (`skills/brain-hydrate/SKILL.md`) and the plugin cache copy were updated.
+- **Pipeline re-synced to v5.0.0 baseline.** All installed `.claude/` files (14 agents, 5 rules, 6 commands, 16 references, 27 hooks) re-synced from source via `/pipeline-setup`.
+- **mybrain plugin wired.** `.claude/settings.json` swapped 8 stale `mcp__plugin_atelier-pipeline_atelier-brain__*` permission entries for the correct `mcp__mybrain__*` entries. `.claude/brain-config.json` updated to match.
+- **Brain hydration recorded.** `docs/pipeline/pipeline-state.md` updated: 275 thoughts from 53 ADRs, 14 specs, UX doc, pipeline artifacts, and git history now seeded in the brain.
+
+### Added
+- **`docs/architecture/ADR-0056-brain-migration-wizard.md`** — new ADR formally recording the 7-state migration wizard decision from the prior session's pipeline-setup run.
+
 ## [5.0.0] - 2026-04-29
 
 ### Added

@@ -1,3 +1,7 @@
+---
+paths:
+  - "docs/pipeline/**"
+---
 # Pipeline Orchestration -- Operational Procedures
 
 Loads automatically when Eva reads `{pipeline_state_dir}/` files. Contains
