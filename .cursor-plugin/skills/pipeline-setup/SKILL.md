@@ -601,24 +601,26 @@ Before asking about branching strategy, determine git availability.
 
 Ask the user one question:
 
-> Which model provider does your Claude Code environment use?
-> - **anthropic** (default) -- Standard Anthropic API (api.anthropic.com). No extra setup beyond `ANTHROPIC_API_KEY`.
-> - **bedrock** -- AWS Bedrock. Requires `ANTHROPIC_AWS_REGION` plus one of: `AWS_PROFILE` or the `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY` key pair. You must also enable Claude model access in the AWS Bedrock console for your region before running the pipeline.
-> - **vertex** -- Google Vertex AI. Requires `ANTHROPIC_VERTEX_PROJECT_ID`, `CLOUD_ML_REGION`, and service account authentication (either `GOOGLE_APPLICATION_CREDENTIALS` pointing to a service account JSON key, or `gcloud auth application-default login`).
+> Eva needs to know which model ID format to use when invoking agents — this is a string formatting decision, not a service selection. You're not being asked to set up a new API or pay for anything extra.
+>
+> Which environment is Claude Code running in?
+> - **Claude Code** (default) — Standard Claude Code. You're already configured. No new setup, no new cost.
+> - **AWS Bedrock** — Claude accessed via AWS Bedrock.
+> - **Google Vertex AI** — Claude accessed via Google Vertex AI.
 
-**Default:** If the user presses Enter without selecting, default to `anthropic`. This keeps existing deployments unaffected.
+**Default:** If the user presses Enter without selecting, default to `Claude Code`. This keeps existing deployments unaffected.
 
-**Credential note (read aloud or display after selection):**
+**Credential note (display after selection):**
 
 > Credentials stay in your Claude Code environment — the pipeline only needs to know which ID shape to emit. Do not put API keys or cloud credentials in pipeline-config.json.
 
 **Provider-specific follow-up:**
 
-- **anthropic:** No further questions. Proceed.
-- **bedrock:** Confirm: "Make sure `ANTHROPIC_AWS_REGION` is set in your Claude Code environment, and that you have either `AWS_PROFILE` or the `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY` pair configured. Also verify that Claude model access is enabled in the AWS Bedrock console for your region." No input required — informational only.
-- **vertex:** Confirm: "Make sure `ANTHROPIC_VERTEX_PROJECT_ID` and `CLOUD_ML_REGION` are set in your Claude Code environment, and that service account auth is configured (via `GOOGLE_APPLICATION_CREDENTIALS` or `gcloud auth application-default login`)." No input required — informational only.
+- **Claude Code:** No further questions. Proceed.
+- **AWS Bedrock:** Confirm: "Make sure `ANTHROPIC_AWS_REGION` is set in your Claude Code environment, and that you have either `AWS_PROFILE` or the `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY` pair configured. Also verify that Claude model access is enabled in the AWS Bedrock console for your region." No input required — informational only.
+- **Google Vertex AI:** Confirm: "Make sure `ANTHROPIC_VERTEX_PROJECT_ID` and `CLOUD_ML_REGION` are set in your Claude Code environment, and that service account auth is configured (via `GOOGLE_APPLICATION_CREDENTIALS` or `gcloud auth application-default login`)." No input required — informational only.
 
-**Write model_provider:** The template ships with `"model_provider": "anthropic"` — no file change is needed when the user selects the default. For `bedrock` or `vertex`, update `.claude/pipeline-config.json` to set `model_provider` to the selected value.
+**Write model_provider:** The template ships with `"model_provider": "anthropic"` — no file change is needed when the user selects the default. For AWS Bedrock or Google Vertex AI, update `.claude/pipeline-config.json` to set `model_provider` to `bedrock` or `vertex` respectively.
 
 ### Step 2: Read Templates
 
