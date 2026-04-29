@@ -135,3 +135,8 @@ get WARN injection into the relevant agent's invocation prompt.
 
 - Error: rate_limit
 - Message: unknown
+
+### StopFailure: agatha at 2026-04-28T23:53:10Z
+
+- Error: unknown
+- Message: unknown

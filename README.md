@@ -14,7 +14,7 @@ Atelier Pipeline has two core systems:
 
 **Atelier Brain.** A persistent memory layer backed by PostgreSQL and vector embeddings that gives your agents institutional memory across sessions. Without it, every time you close a terminal you lose the architectural decisions that shaped your implementation, the user corrections that steered scope, the rejected alternatives that explain why you didn't go a different way, and the QA lessons that prevent recurring bugs. The brain captures all of this during pipeline runs and surfaces it automatically when agents need context. It includes write-time conflict detection, TTL-based knowledge decay, and background consolidation that synthesizes raw observations into higher-level insights. The pipeline works without the brain -- but with it, session 12 of a feature build has the same context as session 1.
 
-> **The brain is essentially free to run.** It uses OpenRouter for embeddings (`text-embedding-3-small` at $0.02/1M tokens) and occasional conflict detection (`gpt-4o-mini`). Real-world cost: **3,500+ thoughts stored over one month of heavy daily use for $0.06 total** in OpenRouter fees. Extrapolated, that's **under $0.72/year**. Fund $1.00 on OpenRouter and you're covered for a long time.
+> **The brain is essentially free to run.** It uses OpenRouter for embeddings (`text-embedding-3-small` at $0.02/1M tokens) and occasional conflict detection (`gpt-4o-mini`). Real-world cost: **3,500+ thoughts stored over one month of heavy daily use for $0.06 total** in OpenRouter fees. Extrapolated, that's **under $0.72/year**. Fund $1.00 on OpenRouter and you're covered for a long time. Per ADR-0054, you can also point the brain at GitHub Models (free for GitHub Enterprise users via `GITHUB_TOKEN`) or a local Ollama instance (free, no API key) instead of OpenRouter.
 
 For full documentation, see the [User Guide](docs/guide/user-guide.md) and [Technical Reference](docs/guide/technical-reference.md).
 
@@ -76,7 +76,7 @@ The setup asks:
 
 1. **Personal or shared?** Personal config stays local (never committed). Shared config is committed to the repo with `${ENV_VAR}` placeholders -- no bare secrets.
 2. **Docker, local PostgreSQL, or remote PostgreSQL?** Docker is one command (`docker compose up`). Local PostgreSQL requires pgvector and ltree extensions. Remote PostgreSQL (RDS, Supabase, etc.) connects to an existing managed database -- setup verifies the connection, checks for required extensions, and applies the schema if needed.
-3. **OpenRouter API key.** Needed for vector embeddings. Get one at https://openrouter.ai/keys and set `export OPENROUTER_API_KEY="sk-or-..."` in your shell profile.
+3. **LLM provider for vector embeddings.** Pick one: **OpenRouter** (default — get a key at https://openrouter.ai/keys and set `export OPENROUTER_API_KEY="sk-or-..."`), **GitHub Models** (free for GitHub Enterprise users — uses your existing `GITHUB_TOKEN`), or **local Ollama** (free, no API key required). See ADR-0054 for the full provider matrix.
 4. **Scope path.** A dot-separated namespace like `myorg.myproduct` that organizes knowledge.
 
 Setup verifies the connection and confirms:

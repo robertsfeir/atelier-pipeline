@@ -1,35 +1,48 @@
 # Pipeline State
 
-<!-- PIPELINE_STATUS: {"phase": "idle", "sizing": null, "qa_status": null, "telemetry_captured": true, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": false, "robert_reviewed": false, "brain_available": true, "worktree_path": null, "session_id": "current", "branch_name": null, "stop_reason": "completed_clean"} -->
+<!-- PIPELINE_STATUS: {"phase": "build", "sizing": "medium", "qa_status": null, "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": false, "robert_reviewed": false, "brain_available": false, "worktree_path": "/Users/sfeirr/projects/atelier-pipeline-315e2ac4", "session_id": "315e2ac4", "branch_name": "session/315e2ac4", "stop_reason": null} -->
 
 ## Active Pipeline
-**Feature:** ADR-0053 — Mechanical Brain Capture via Three-Hook Gate
-**Phase:** idle — ADR accepted, awaiting Colby build in fresh session
-**Sizing:** Small
-**Stop Reason:** completed_clean (architecture phase done; session closed intentionally for fresh context)
+**Feature:** ADR-0054 — Multi-Provider LLM Abstraction (Brain) and Pipeline Provider Routing
+**Phase:** commit — verification complete, Ellis pending
+**Sizing:** Medium
+**ADR:** `docs/architecture/ADR-0054-multi-provider-llm-and-pipeline-routing.md`
+**Worktree:** `/Users/sfeirr/projects/atelier-pipeline-315e2ac4` (branch: `session/315e2ac4`)
+**Brain:** unavailable (sentinel written)
 
 ### Scope (Colby's build — next session)
 
-Per ADR-0053 (`docs/architecture/ADR-0053-mechanical-brain-capture-gate.md`):
+**Unit 1: Brain provider abstraction**
+- **New** `brain/lib/llm-provider.mjs` — exports `embed(text, config)` and `chat(messages, config)`; three adapter families: `openai-compat` (OpenRouter, OpenAI direct, GitHub Models), `anthropic` (chat only), `local` (Ollama at localhost)
+- **Refactor** `brain/lib/embed.mjs` line 32 — replace hardcoded OpenRouter fetch with `embed()` from provider
+- **Refactor** `brain/lib/conflict.mjs` line 36 — replace hardcoded OpenRouter fetch with `chat()` from provider; preserve `apiKey` injection point
+- **Refactor** `brain/lib/consolidation.mjs` — replace hardcoded OpenRouter fetch with `chat()` from provider
+- **Update** `brain/lib/config.mjs` — add fields: `embedding_provider`, `embedding_model`, `embedding_api_key`, `chat_provider`, `chat_model`, `chat_api_key`; backward compat via `openrouter_api_key` fallback
+- **Update** `brain/server.mjs` — resolve new config fields at startup; validate anthropic not selected for embedding
 
-1. **Remove** `type: agent` brain-extractor entry from `.claude/settings.json` SubagentStop block
-2. **Remove** `source/claude/agents/brain-extractor.md` and `source/cursor/agents/brain-extractor.md`
-3. **New** `source/claude/hooks/enforce-brain-capture-pending.sh` — SubagentStop command hook; writes `docs/pipeline/.pending-brain-capture.json` for 8-agent allowlist; exits 0 always (no blocking)
-4. **New** `source/claude/hooks/enforce-brain-capture-gate.sh` — PreToolUse on Agent; blocks if pending file exists and `.brain-unavailable` absent; main-thread only; fail-open on missing config
-5. **New** `source/claude/hooks/clear-brain-capture-pending.sh` — PostToolUse on `agent_capture` MCP tool; deletes pending file idempotently; logs to telemetry
-6. **Update** `source/claude/hooks/enforcement-config.json` or settings.json source templates to register all three hooks
-7. **Update** `source/shared/references/pipeline-orchestration.md` — add escape hatch protocol: when `atelier_stats` returns unreachable, Eva touches `docs/pipeline/.brain-unavailable`; gate honors that sentinel; cleared on next successful brain ping
-8. **Tests** — pytest covering: (a) PreToolUse blocks Agent when pending file exists, (b) PostToolUse on agent_capture deletes pending file, (c) `.brain-unavailable` sentinel suppresses block
-9. **Sync** — run pipeline-setup to sync installed `.claude/` copies from source
+**Unit 2: Pipeline Bedrock/Vertex routing**
+- **Update** `source/shared/pipeline/pipeline-config.json` — add `model_provider` field (default: `"anthropic"`, values: `"anthropic"`, `"bedrock"`, `"vertex"`)
+- **Update** `source/shared/rules/pipeline-models.md` — add model ID translation table (opus/sonnet/haiku x anthropic/bedrock/vertex)
+- **Sync** installed copies: `.claude/rules/pipeline-models.md`, `.claude/pipeline-config.json`
 
-**Allowlist** (same as old type:agent if: clause): `sarah`, `colby`, `agatha`, `robert`, `robert-spec`, `sable`, `sable-ux`, `ellis`
+**Unit 3: Tests**
+- pytest: (a) each adapter family returns correct shape, (b) anthropic rejected for embedding, (c) local adapter uses localhost URL, (d) config fallback to `openrouter_api_key`, (e) `model_provider: bedrock` produces Bedrock model IDs, (f) dimension verification test in brain-setup detects mismatch
 
-**Pending file structure:**
-```json
-{"agent_type": "colby", "transcript_path": "/path/to/transcript", "timestamp": "2026-04-28T15:44:00Z"}
-```
+**LOC estimate (Sarah):** ~250 lines across ~7 files.
 
-**LOC estimate (Sarah):** ~280 lines added, ~80 lines removed (brain-extractor files).
+**Key constraints for Colby:**
+- Voyage AI: permanently excluded — do not add
+- Gemini: deferred — do not add
+- Local default model: `gte-qwen2-1.5b-instruct` (Ollama: `rjmalagon/gte-qwen2-1.5b-instruct-embed-f16`) — 1536-dim native, 3.6GB
+- Recommended GitHub Models embedding endpoint: `https://models.github.ai/inference/embeddings`, auth `Authorization: Bearer {GITHUB_TOKEN}`, requires `Accept: application/vnd.github+json` + `X-GitHub-Api-Version: 2026-03-10`
+
+---
+
+### Parked — ADR-0053 (resume after ADR-0054 or in separate session)
+**Feature:** ADR-0053 — Mechanical Brain Capture via Three-Hook Gate
+**ADR:** `docs/architecture/ADR-0053-mechanical-brain-capture-gate.md`
+**Sizing:** Small
+See context-brief.md ADR-0053 section for full build scope.
 
 ---
 

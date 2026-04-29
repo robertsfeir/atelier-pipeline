@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [4.5.0] - 2026-04-28
+
 ### Added
 - **ADR-0054: Multi-provider LLM and pipeline routing.** Brain now supports three LLM adapter families (`openai-compat`, `anthropic`, `local`) behind a uniform interface in `brain/lib/llm-provider.mjs`. New optional `brain-config.json` fields select and tune embeddings and chat independently: `embedding_provider`, `embedding_model`, `embedding_api_key`, `embedding_base_url`, `chat_provider`, `chat_model`, `chat_api_key`, `chat_base_url`. Providers: `openrouter` (default), `openai`, `github-models` (recommended for GitHub Enterprise; uses `GITHUB_TOKEN`), `anthropic` (chat only -- no embeddings API), `local` (Ollama-compatible, no key, default endpoint `http://localhost:11434/v1`, default model `gte-qwen2-1.5b-instruct`). A 1536-dim embedding probe runs at startup so misconfigured providers fail fast. Pipeline routing exposes a `model_provider` field in `pipeline-config.json` (`anthropic` / `bedrock` / `vertex`). Backward compatible: existing v3.x configs with only `openrouter_api_key` continue to work unchanged. `skills/brain-setup/SKILL.md` and `docs/guide/technical-reference.md` updated for the new setup flow and module docs.
 

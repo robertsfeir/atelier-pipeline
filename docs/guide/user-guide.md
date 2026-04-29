@@ -1062,7 +1062,7 @@ The setup asks five things:
    | Local PostgreSQL | Already running PostgreSQL | pgvector and ltree extensions |
    | Remote PostgreSQL | Team use, managed databases | RDS, Supabase, or similar |
 
-3. **OpenRouter API key** -- needed for vector embeddings. Get one at https://openrouter.ai/keys and set `export OPENROUTER_API_KEY="sk-or-..."` in your shell profile.
+3. **LLM provider for vector embeddings** -- pick one: **OpenRouter** (default; get a key at https://openrouter.ai/keys and set `export OPENROUTER_API_KEY="sk-or-..."`), **GitHub Models** (free for GitHub Enterprise users; uses your existing `GITHUB_TOKEN`), or **local Ollama** (free, no API key required). See ADR-0054 for the full provider matrix.
 
 4. **Scope path** -- a dot-separated namespace like `myorg.myproduct` that organizes brain knowledge.
 
