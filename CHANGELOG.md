@@ -5,6 +5,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [5.0.0] - 2026-04-29
+
+### Added
+- **ADR-0056: Brain migration wizard in pipeline-setup.** 7-state machine with two parallel tracks (migrate existing brain / fresh install), pg_dump backup gate before any destructive operation, advisory-blocking at each state, and full rollback contract. Guides users from the embedded brain/ server to the standalone mybrain plugin without data loss.
+- **tests/adr-0056/:** 14 wizard contract tests covering all 7 states, both tracks, and rollback paths.
+
+### Changed
+- **ADR-0055 Phase 3: brain/ directory removed entirely.** The embedded Node.js brain server (`brain/`), brain-setup skill, and `session-hydrate-enforcement.sh` hook are removed from the plugin. Brain persistence is now provided by the standalone mybrain plugin (installed separately).
+- **Plugin cleanup.** Brain MCP server entries and brain SessionStart hooks removed from `.claude-plugin/plugin.json`, `.cursor-plugin/plugin.json`, and `.cursor-plugin/mcp.json`. `enforcement-config.json` updated to `pytest tests/` only.
+- **brain-uninstall skill** updated to target the mybrain plugin rather than the removed embedded server.
+- **tests/brain/ removed.** All brain Node.js unit tests deleted; `test_brain_wiring.py` assertions inverted to confirm brain files are absent; adr-0054 brain Node test suite pruned; adr-0055 Phase 3 assertions added.
+- **Docs updated.** `technical-reference.md` and `user-guide.md` remove brain internals, add mybrain plugin references and upgrade notices.
+
 ## [4.5.0] - 2026-04-28
 
 ### Added
