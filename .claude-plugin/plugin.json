@@ -7,35 +7,13 @@
     "name": "Robert Sfeir",
     "email": "robert@sfeir.design"
   },
-  "mcpServers": {
-    "atelier-brain": {
-      "command": "${CLAUDE_PLUGIN_ROOT}/brain/start.sh",
-      "env": {
-        "CLAUDE_PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}",
-        "CLAUDE_PLUGIN_DATA": "${CLAUDE_PLUGIN_DATA}",
-        "BRAIN_CONFIG_USER": "${CLAUDE_PLUGIN_DATA}/brain-config.json",
-        "ATELIER_BRAIN_DB_PASSWORD": "${ATELIER_BRAIN_DB_PASSWORD}",
-        "ATELIER_BRAIN_DATABASE_URL": "${ATELIER_BRAIN_DATABASE_URL}",
-        "OPENROUTER_API_KEY": "${OPENROUTER_API_KEY}",
-        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
-      }
-    }
-  },
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "test -d \"${CLAUDE_PLUGIN_ROOT}/brain/node_modules\" || npm install --prefix \"${CLAUDE_PLUGIN_ROOT}/brain\" --silent"
-          },
-          {
-            "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/check-updates.sh\" \"${CLAUDE_PLUGIN_ROOT}\""
-          },
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/brain/scripts/hydrate-telemetry.mjs\" \"${CLAUDE_PROJECT_DIR}\" --silent --state-dir \"${CLAUDE_PROJECT_DIR}/docs/pipeline\" 2>/dev/null || true"
           }
         ]
       }

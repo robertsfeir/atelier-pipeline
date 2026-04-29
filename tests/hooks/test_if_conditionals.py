@@ -130,7 +130,8 @@ def test_T_0020_009_enforce_git_if_field_type():
 
 # ADR-0025 supersedes: warn-dor-dod.sh deleted from SubagentStop; SessionStart carries session-hydrate.sh instead (ADR-0025 R11, R9)
 # Hook wiring audit: session-hydrate.sh is now a no-op and removed from SessionStart.
-# session-hydrate-enforcement.sh provides the active SessionStart enforcement hydration.
+# ADR-0055 Phase 3 (brain extraction): session-hydrate-enforcement.sh removed -- it depended on
+# brain/scripts/hydrate-enforcement.mjs which no longer exists in the pipeline repo.
 def test_T_0020_010_warn_dor_dod_if_field_type():
     settings = json.loads((PROJECT_ROOT / ".claude" / "settings.json").read_text())
     stop_matchers = settings["hooks"].get("SubagentStop", [])
@@ -142,15 +143,13 @@ def test_T_0020_010_warn_dor_dod_if_field_type():
     assert len(dod_hooks) == 0, (
         "warn-dor-dod.sh must not appear in SubagentStop after ADR-0025 deleted it."
     )
-    # session-hydrate.sh (no-op) must NOT be registered; session-hydrate-enforcement.sh is the active replacement.
+    # session-hydrate-enforcement.sh must NOT be registered after brain extraction (ADR-0055 Phase 3).
+    # The hook depended on brain/scripts/hydrate-enforcement.mjs which is no longer in this repo.
     session_start = settings["hooks"].get("SessionStart", [])
     enforcement_hooks = [
         h for m in session_start for h in m.get("hooks", [])
         if h.get("command") and "session-hydrate-enforcement.sh" in h["command"]
     ]
-    assert len(enforcement_hooks) >= 1, (
-        "session-hydrate-enforcement.sh must be registered in SessionStart."
+    assert len(enforcement_hooks) == 0, (
+        "session-hydrate-enforcement.sh must not be registered after brain extraction (ADR-0055 Phase 3)."
     )
-    cmd_val = enforcement_hooks[0].get("command")
-    assert isinstance(cmd_val, str)
-    assert len(cmd_val) > 0

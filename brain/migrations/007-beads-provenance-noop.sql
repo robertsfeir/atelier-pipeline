@@ -1,4 +1,0 @@
--- Migration 007: Beads-style provenance (ADR-0026)
--- No DDL changes required. Provenance fields are stored in the existing
--- metadata JSONB column. This file documents the design decision.
--- See: docs/architecture/ADR-0026-beads-provenance-records.md

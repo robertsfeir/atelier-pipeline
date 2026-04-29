@@ -1,7 +1,7 @@
 # Invocation Templates
 
 <!-- CONFIGURE: docs/product, docs/ux, docs/architecture, source/, tests/,
-     echo "no single test configured" (single test), pytest tests/ && cd brain && node --test ../tests/brain/*.test.mjs (full suite) -->
+     echo "no single test configured" (single test), pytest tests/ (full suite) -->
 
 ## Shared Protocols (apply to all templates below)
 

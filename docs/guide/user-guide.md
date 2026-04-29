@@ -2,6 +2,8 @@
 
 A structured, multi-agent development workflow for Claude Code and Cursor. Twelve specialized agents handle product specs, UX design, architecture, implementation, QA, security audit, dependency management, documentation, and commits -- so you focus on decisions, not process.
 
+> **Upgrading from v4.x:** The Atelier Brain is no longer bundled with atelier-pipeline. It now lives as a standalone `mybrain` plugin that you install alongside this one. Run `/pipeline-setup` once after upgrading -- the built-in migration wizard handles the transition to `mybrain` automatically, with no data loss.
+
 ---
 
 ## Table of Contents
@@ -180,8 +182,8 @@ These are installed into your project by `/pipeline-setup`. Use them to invoke a
 | `/devops` | Eva | Handle infrastructure, CI/CD, deployment |
 | `/deps` | Deps | Scan dependencies for outdated packages, CVEs, and upgrade risk |
 | `/darwin` | Darwin | Analyze telemetry, evaluate agent fitness, and propose pipeline improvements |
-| `/telemetry-hydrate` | Eva | Manually capture agent telemetry from session files into the brain |
-| `/dashboard` | Eva | Open the Atelier Dashboard in the browser (starts brain HTTP server if needed) |
+| `/telemetry-hydrate` | Eva | Manually capture agent telemetry from session files into the brain *(ships with the `mybrain` plugin)* |
+| `/dashboard` | Eva | Open the Atelier Dashboard in the browser *(ships with the `mybrain` plugin)* |
 
 ### When you don't need slash commands
 
@@ -711,7 +713,7 @@ Darwin is an opt-in pipeline evolution engine. It queries telemetry from the bra
 
 ### Prerequisites
 
-Darwin requires the Atelier Brain. Without stored telemetry, Darwin has no data to analyze.
+Darwin requires the Atelier Brain (the standalone `mybrain` plugin). Without stored telemetry, Darwin has no data to analyze. Install `mybrain` alongside atelier-pipeline before enabling Darwin.
 
 ### What Darwin does
 
@@ -735,7 +737,7 @@ Eva also auto-triggers Darwin at pipeline end when a degradation alert fires (3+
 
 ### Enabling Darwin
 
-Set `darwin_enabled: true` in `.claude/pipeline-config.json`, or ask Eva to enable it during a session. Darwin requires the brain to be configured. If `brain_available: false`, Darwin remains unavailable even when the config flag is set.
+Set `darwin_enabled: true` in `.claude/pipeline-config.json`, or ask Eva to enable it during a session. Darwin requires the `mybrain` plugin to be installed and configured. If `brain_available: false`, Darwin remains unavailable even when the config flag is set.
 
 ### When Darwin is disabled
 
@@ -751,7 +753,7 @@ Model selection follows a 4-tier task-class system. Each task class maps to a ba
 
 ## Agent Telemetry
 
-Agent Telemetry gives you visibility into pipeline efficiency -- cost, duration, rework rates, and quality trends across sessions. It requires the Atelier Brain.
+Agent Telemetry gives you visibility into pipeline efficiency -- cost, duration, rework rates, and quality trends across sessions. It requires the Atelier Brain (the standalone `mybrain` plugin).
 
 ### What you see
 
@@ -855,9 +857,11 @@ This separation ensures that the audit is thorough and independent, while fixes 
 
 The Atelier Dashboard is a browser-based telemetry visualization page. It shows pipeline cost, quality trends, agent fitness, and degradation alerts in one view.
 
+The `/dashboard` command and the dashboard's HTTP server ship with the **`mybrain` plugin**, not with atelier-pipeline. Install `mybrain` to use the dashboard. The sections below describe what the dashboard renders for atelier-pipeline data; see the `mybrain` plugin documentation for the canonical URL, port configuration, and server lifecycle.
+
 ### Opening the dashboard
 
-Run `/dashboard` in your IDE. The skill starts the brain HTTP server if it is not already running and opens the dashboard in your default browser at `http://localhost:8788/ui/dashboard.html`.
+Run `/dashboard` in your IDE. The `mybrain` plugin starts its HTTP server if it is not already running and opens the dashboard in your default browser.
 
 ### What you see
 
@@ -898,7 +902,7 @@ Telemetry hydration reads IDE session JSONL files and captures per-agent token u
 
 ### Automatic hydration
 
-Hydration runs automatically at the start of every session via `session-hydrate.sh`, registered as a `SessionStart` hook on both Claude Code and Cursor. It runs silently in the background and never blocks session startup. If the brain is not configured or the hydration script encounters an error, it fails silently.
+Hydration runs automatically at the start of every session via the `mybrain` plugin's SessionStart hooks (when `mybrain` is installed). It runs silently in the background and never blocks session startup. If the brain is not configured or the hydration script encounters an error, it fails silently.
 
 Each session start triggers two hydration steps:
 
@@ -937,7 +941,7 @@ Skipped 8 already-hydrated agents.
 
 If everything is already captured: "Telemetry is up to date -- no new data to hydrate."
 
-Note: `/telemetry-hydrate` handles JSONL hydration only. State-file parsing happens automatically at SessionStart via `session-hydrate.sh`.
+Note: `/telemetry-hydrate` handles JSONL hydration only. State-file parsing happens automatically at SessionStart via the `mybrain` plugin's SessionStart hooks (when `mybrain` is installed).
 
 ### What gets captured from JSONL files
 
@@ -956,9 +960,9 @@ Already-hydrated agents are skipped automatically. You can run hydration repeate
 
 ### Live cost data vs. post-session cost data
 
-The pipeline telemetry summary at pipeline end (showing cost per agent and total) is computed from token data extracted by `hydrate-telemetry.mjs` from session JSONL files -- this is the authoritative source for cost figures.
+The pipeline telemetry summary at pipeline end (showing cost per agent and total) is computed from token data extracted by the `mybrain` plugin's telemetry hydrator from session JSONL files -- this is the authoritative source for cost figures.
 
-The Claude Code Agent tool does not expose per-agent input/output token counts at runtime (this was investigated as part of ADR-0030 and confirmed unavailable). Eva cannot accumulate a live running cost during the pipeline. What Eva shows mid-pipeline is a heuristic estimate based on phase sizing; the actual figures appear in the post-session telemetry summary after `session-hydrate.sh` runs at the next session start.
+The Claude Code Agent tool does not expose per-agent input/output token counts at runtime (this was investigated as part of ADR-0030 and confirmed unavailable). Eva cannot accumulate a live running cost during the pipeline. What Eva shows mid-pipeline is a heuristic estimate based on phase sizing; the actual figures appear in the post-session telemetry summary after the `mybrain` plugin's SessionStart hooks run at the next session start.
 
 If you need cost data before the next session, run `/telemetry-hydrate` manually -- it processes the current session's JSONL files and reports results immediately.
 
@@ -1044,89 +1048,35 @@ Server-side context management handles automatic compaction when the context win
 
 The brain is optional persistent memory that survives across sessions. Without it, each session starts fresh. With it, agents recall architectural decisions, user corrections, QA lessons, and rejected alternatives from previous sessions.
 
+The brain ships as a separate plugin called **`mybrain`**. It is no longer bundled inside atelier-pipeline. The two plugins install side-by-side: atelier-pipeline orchestrates; `mybrain` provides persistent memory. Atelier-pipeline detects the brain at session start via the `atelier_stats` MCP tool. When the brain is present, Eva uses it transparently; when it is absent, the pipeline runs in baseline mode with no warnings.
+
 ### Setting up the brain
 
-Run `/brain-setup` (or accept the offer at the end of `/pipeline-setup`).
+Install the `mybrain` plugin alongside atelier-pipeline and follow its setup instructions. The `mybrain` plugin owns its own `/brain-setup`, `/brain-hydrate`, `/brain-uninstall`, `/dashboard`, and `/telemetry-hydrate` skills, plus its database, MCP server, configuration, and hooks. See the `mybrain` plugin documentation for installation steps, database options (Docker / local PostgreSQL / remote PostgreSQL), LLM provider choices, scope paths, and the optional `brain_name` display name.
 
-The setup asks five things:
-
-1. **Personal or shared?**
-   - Personal: config stored locally, never committed to git.
-   - Shared: config committed to the repo with `${ENV_VAR}` placeholders. Teammates run `/brain-setup` and it detects the existing config automatically.
-
-2. **Database strategy:**
-
-   | Option | Best for | Requirements |
-   |--------|----------|-------------|
-   | Docker | Quick start, local dev | Docker installed |
-   | Local PostgreSQL | Already running PostgreSQL | pgvector and ltree extensions |
-   | Remote PostgreSQL | Team use, managed databases | RDS, Supabase, or similar |
-
-3. **LLM provider for vector embeddings** -- pick one: **OpenRouter** (default; get a key at https://openrouter.ai/keys and set `export OPENROUTER_API_KEY="sk-or-..."`), **GitHub Models** (free for GitHub Enterprise users; uses your existing `GITHUB_TOKEN`), or **local Ollama** (free, no API key required). See ADR-0054 for the full provider matrix.
-
-4. **Scope path** -- a dot-separated namespace like `myorg.myproduct` that organizes brain knowledge.
-
-5. **Brain name** (optional) -- a display name for your brain (e.g., "My Noodle", "Cortex"). Eva uses this name in pipeline announcements and reports instead of the generic "Brain". Leave blank to keep the default.
-
-After answering these questions, the setup registers the brain MCP server in your project's `.mcp.json` with absolute paths and verifies the connection. You do not need to configure the MCP registration manually.
-
-### Teammate onboarding
-
-If a shared brain config already exists in the repo, `/brain-setup` detects it and tells the new team member which environment variables to set. No interactive setup required.
-
-### Hydrating the brain
-
-For existing projects with ADRs, specs, or meaningful git history, run:
-
-```
-/brain-hydrate
-```
-
-This scans your project artifacts, extracts the reasoning behind decisions (not the content itself), and imports it as brain thoughts. The skill presents what it found and asks for your approval before writing anything.
-
-```
-Brain Hydration Scan
-====================
-ADRs:           4 files in docs/architecture/
-Feature specs:  6 files in docs/product/
-Error patterns: 3 entries
-Git commits:    187 commits (last 6 months)
-
-Estimated thoughts: 25-40
-Ready to hydrate?
-```
-
-You can narrow the scope: "only ADRs", "skip git history", "since January".
-
-Safe to re-run. Duplicate detection prevents re-importing the same knowledge.
+> **Upgrading from atelier-pipeline v4.x:** Earlier versions shipped the brain bundled inside atelier-pipeline. If you had the brain installed under v4.x, run `/pipeline-setup` after upgrading -- the built-in migration wizard (Step 0f) walks you through installing `mybrain` and migrates your existing data with no data loss.
 
 ### What the brain captures
 
-Knowledge is captured automatically after each agent completes. You do not need to manage brain contents.
+Knowledge is captured automatically during pipeline runs. You do not manage brain contents directly.
 
-A lightweight Sonnet extractor fires on every Sarah, Colby, or Agatha completion via a `SubagentStop` hook. It reads the agent's output, identifies what is worth preserving, and writes it to the brain -- no agent instruction required. Eva separately captures cross-cutting concerns (your decisions, phase transitions, cross-agent findings).
+Eva curates captures (1-3 sentences) before each agent handoff for an allowlisted set of agents (Sarah, Colby, Agatha, Robert, Robert-spec, Sable, Sable-ux, Ellis). The capture is mechanically gated: a SubagentStop hook marks a pending capture, a PreToolUse hook blocks Eva's next agent invocation until she captures, and a PostToolUse hook clears the marker on success. See ADR-0053 for the full hook loop.
 
-| What gets captured | Captured by | Why it matters |
-|-------------------|-------------|---------------|
-| Architectural decisions | brain-extractor (from Sarah) | Future Sarah knows why you chose REST over GraphQL |
-| Rejected alternatives | brain-extractor (from Sarah) | Prevents re-evaluating the same rejected approaches |
-| Implementation patterns | brain-extractor (from Colby) | Future Colby reuses working patterns without re-discovering them |
-| QA lessons | brain-extractor (from Poirot) | Future Colby gets warnings before making the same mistake |
-| Structured quality signals | brain-extractor (second pass) | Per-invocation metrics -- Poirot verdicts, finding counts, test counts, Colby file counts, Sarah step counts, Agatha divergence counts -- stored in `metadata.quality_signals` for Darwin analysis |
-| Pipeline phase completions | hydrate-telemetry (state-file parse) | Completed pipeline phases from `pipeline-state.md` captured as Eva decisions at session start; Darwin and brain search can see your pipeline history across sessions |
-| Your decisions during conversation | hydrate-telemetry (state-file parse) | Items under `## User Decisions` in `context-brief.md` captured at next session start; teammates find your directives via brain search without re-asking |
+| What gets captured | Why it matters |
+|--------------------|----------------|
+| Architectural decisions | Future Sarah knows why you chose REST over GraphQL |
+| Rejected alternatives | Prevents re-evaluating the same rejected approaches |
+| Implementation patterns | Future Colby reuses working patterns without re-discovering them |
+| QA lessons | Future Colby gets warnings before making the same mistake |
+| Pipeline phase completions and your conversational decisions | Captured via state-file hydration so teammates find your directives via brain search without re-asking |
 
 ### Human attribution
 
-Every brain thought records who produced it in a `captured_by` field. The value is resolved automatically from your git config (`user.name`) or the `ATELIER_BRAIN_USER` environment variable if set. You do not need to configure this -- it happens on every capture.
-
-Attribution shows up in search results, browse output, and stats. On a team, this lets you see that Alice captured a preference and Bob captured a correction, giving you a clear trail of who shaped each decision.
-
-If you are running against an existing brain database created before attribution was added, the server auto-migrates the schema on startup. Existing thoughts will have a blank `captured_by` until they are re-captured or updated.
+Every brain thought records who produced it via the `captured_by` field. The value is resolved automatically from your git config (`user.name`) or the `ATELIER_BRAIN_USER` environment variable. Attribution flows through to search and browse results so you can see, on a team, who shaped each decision.
 
 ### Brain tools
 
-The brain provides six MCP tools that agents use automatically:
+The brain exposes six MCP tools that the pipeline uses automatically:
 
 | Tool | Purpose |
 |------|---------|
@@ -1137,7 +1087,7 @@ The brain provides six MCP tools that agents use automatically:
 | `atelier_relation` | Create typed edges between thoughts |
 | `atelier_trace` | Walk relation chains from a thought |
 
-For details on brain internals, see the [Technical Reference](technical-reference.md).
+For brain internals (schema, scoring, configuration, dashboard), see the `mybrain` plugin documentation.
 
 ---
 
@@ -1149,7 +1099,7 @@ When multiple people work on the same feature across sessions, the brain bridges
 
 During a pipeline run, Eva records your preferences, corrections, and rejected alternatives in `context-brief.md`. This file is reset at the start of each new feature pipeline, so those decisions would normally be lost.
 
-With the brain enabled, the hydrator captures context brief entries automatically at the start of each session. When `session-hydrate.sh` runs at SessionStart, it parses the `## User Decisions` section of `context-brief.md` and writes each item to the brain as a decision thought attributed to Eva. When a teammate starts a new session on the same feature, their agents find your preferences and corrections via `agent_search` alongside architectural decisions and QA findings.
+With the brain enabled, the hydrator captures context brief entries automatically at the start of each session. When the `mybrain` plugin's SessionStart hooks run (when `mybrain` is installed), they parse the `## User Decisions` section of `context-brief.md` and write each item to the brain as a decision thought attributed to Eva. When a teammate starts a new session on the same feature, their agents find your preferences and corrections via `agent_search` alongside architectural decisions and QA findings.
 
 For example, if you say "no modals, keep it simple" during your session, Eva writes that to the context brief. At the start of the next session (yours or a teammate's), the hydrator captures it to the brain. When your teammate's agents search for context on the feature, they see your directive. They do not need to re-discover your preferences.
 
@@ -1344,7 +1294,7 @@ Every enforcement decision is durably logged so you can audit what happened duri
 
 **What gets logged.** Every time an enforcement hook fires -- whether it blocks an action or allows it -- a JSON line is appended to `~/.claude/logs/enforcement-YYYY-MM-DD.jsonl` (one file per calendar day, UTC). The log captures six fields: timestamp, the tool being intercepted (Write, Edit, Bash, Agent), the agent involved, the decision (blocked or allowed), the reason, and which hook fired. Write failures to this file are silent and never affect the enforcement decision.
 
-**What gets brain-captured.** At session start, `session-hydrate.sh` calls `session-hydrate-enforcement.sh`, which reads the previous day's log and captures blocked decisions into the brain database. Allowed decisions are logged locally for forensic analysis but are not brain-captured (too much noise relative to signal). Blocked events are stored as `insight` thoughts with `metadata.enforcement_event: true`, making them queryable via `agent_search` and visible to Darwin for pattern detection.
+**What gets brain-captured.** Allowed decisions are logged locally for forensic analysis but are not brain-captured (too much noise relative to signal). Blocked events are queryable via `agent_search` and visible to Darwin for pattern detection when the brain is available.
 
 **It is automatic and fail-open.** You do not configure or trigger enforcement logging. If the log directory cannot be written, logging degrades silently. If the brain is unavailable during hydration, capture is skipped. The enforcement decision itself is never affected by logging or capture failures.
 
@@ -1393,17 +1343,15 @@ To reinstall later: `/pipeline-setup`.
 
 ### Disconnecting or removing the brain
 
-Run `/brain-uninstall` in your IDE. The skill detects your brain configuration and offers two paths:
+Run `/brain-uninstall` from the mybrain plugin. The skill detects your brain configuration and offers two paths:
 
-- **Disconnect only** -- removes the config file but leaves the database untouched. You can reconnect later with `/brain-setup`.
+- **Disconnect only** -- removes the config file but leaves the database untouched. You can reconnect later with the mybrain plugin's `/brain-setup`.
 - **Full uninstall** -- removes the config file and cleans up the database. The cleanup procedure depends on how the brain was set up:
   - **Docker:** stops the container and optionally deletes the Docker volume
   - **Local PostgreSQL:** optionally drops the database
   - **Remote PostgreSQL:** optionally drops all brain tables (preserves the database itself)
 
 Both paths require explicit confirmation before any destructive action. Database passwords are masked in all output.
-
-The `brain/` directory inside the plugin is not removed -- it contains plugin code, not your data.
 
 ---
 
@@ -1494,11 +1442,11 @@ Read /tmp/atelier-pipeline/.cursor-plugin/skills/pipeline-setup/SKILL.md and fol
 
 | Problem | Cause | Fix |
 |---------|-------|-----|
-| "Brain is not running" | Database not started | Docker: `docker compose -f <plugin-root>/brain/docker-compose.yml up -d`. Local PG: `brew services start postgresql` (macOS) or `sudo systemctl start postgresql` (Linux). |
+| "Brain is not running" | Database not started | Docker: see the mybrain plugin's startup instructions (`docker compose -f <mybrain-plugin-root>/docker-compose.yml up -d`). Local PG: `brew services start postgresql` (macOS) or `sudo systemctl start postgresql` (Linux). |
 | "Authentication failed" | Wrong database password | Check that `ATELIER_BRAIN_DB_PASSWORD` is set in your shell profile and matches the database |
 | "pgvector extension is required" | Extension not installed | macOS: `brew install pgvector`. Ubuntu: `sudo apt install postgresql-16-pgvector`. Then: `psql -d <db> -c 'CREATE EXTENSION vector;'` |
 | "ltree extension is required" | Extension not enabled | `psql -d <db> -c 'CREATE EXTENSION ltree;'` (ships with PostgreSQL) |
-| Brain available but agents not using it | `brain_enabled` is false | Check with `atelier_stats`. Re-run `/brain-setup` if needed. |
+| Brain available but agents not using it | `brain_enabled` is false | Check with `atelier_stats`. Re-run mybrain's `/brain-setup` if needed. |
 | Hydration skips everything | Already hydrated | Duplicate detection is working correctly. New thoughts are only captured for new or changed artifacts. |
 
 ### Common mistakes
@@ -1558,7 +1506,6 @@ your-project/
       enforce-sequencing.sh         # Blocks out-of-order agent invocations
       enforce-git.sh                # Blocks git write ops and test commands from main thread
       enforce-pipeline-activation.sh # Blocks Colby/Ellis without active pipeline
-      session-hydrate.sh            # SessionStart hook: hydrates brain context at session start
       log-agent-start.sh            # Logs agent start events to telemetry JSONL
       log-agent-stop.sh             # Logs agent stop events to telemetry JSONL
       pre-compact.sh                # Compaction marker for pipeline state preservation

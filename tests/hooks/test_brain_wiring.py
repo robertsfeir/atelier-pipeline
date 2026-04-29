@@ -303,3 +303,103 @@ def test_T_0021_108_non_brain_agents_no_mcpServers():
         if f.exists():
             fm = f.read_text()
             assert "atelier-brain" not in fm, f"{agent} should not have atelier-brain"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# ADR-0055 Phase 3 — Brain removed from plugin.json
+# ═══════════════════════════════════════════════════════════════════════
+#
+# Phase 3 deletes brain/ from the plugin tree and removes the bundled
+# atelier-brain MCP server registration from both plugin.json files. The
+# pipeline must ship with no brain-specific lifecycle steps or MCP server
+# entries; users install the standalone mybrain plugin separately.
+
+import json as _json
+
+
+def _load_plugin_json(plugin_dir_name: str) -> dict:
+    path = PROJECT_ROOT / plugin_dir_name / "plugin.json"
+    return _json.loads(path.read_text())
+
+
+def test_claude_plugin_json_has_no_mcpServers():
+    """ADR-0055 Phase 3: .claude-plugin/plugin.json must NOT contain mcpServers."""
+    data = _load_plugin_json(".claude-plugin")
+    assert "mcpServers" not in data, (
+        ".claude-plugin/plugin.json still contains an mcpServers block; "
+        "ADR-0055 Phase 3 removed the bundled atelier-brain registration. "
+        "Users install the standalone mybrain plugin separately."
+    )
+
+
+def test_cursor_plugin_json_has_no_mcpServers():
+    """ADR-0055 Phase 3: .cursor-plugin/plugin.json must NOT contain mcpServers."""
+    data = _load_plugin_json(".cursor-plugin")
+    assert "mcpServers" not in data, (
+        ".cursor-plugin/plugin.json still contains an mcpServers block; "
+        "ADR-0055 Phase 3 removed the bundled atelier-brain registration."
+    )
+
+
+def _session_start_command_strings(plugin_dir_name: str) -> list[str]:
+    data = _load_plugin_json(plugin_dir_name)
+    out = []
+    for entry in data.get("hooks", {}).get("SessionStart", []):
+        for hook in entry.get("hooks", []):
+            cmd = hook.get("command", "")
+            if isinstance(cmd, str):
+                out.append(cmd)
+    return out
+
+
+def test_claude_plugin_json_no_npm_install_brain_hook():
+    """ADR-0055 Phase 3: SessionStart must not run `npm install --prefix brain`."""
+    cmds = _session_start_command_strings(".claude-plugin")
+    for cmd in cmds:
+        assert "npm install --prefix" not in cmd or "brain" not in cmd, (
+            f".claude-plugin SessionStart still references the brain npm install hook: {cmd!r}"
+        )
+
+
+def test_cursor_plugin_json_no_npm_install_brain_hook():
+    """ADR-0055 Phase 3: cursor SessionStart must not run `npm install --prefix brain`."""
+    cmds = _session_start_command_strings(".cursor-plugin")
+    for cmd in cmds:
+        assert "npm install --prefix" not in cmd or "brain" not in cmd, (
+            f".cursor-plugin SessionStart still references the brain npm install hook: {cmd!r}"
+        )
+
+
+def test_claude_plugin_json_no_hydrate_telemetry_hook():
+    """ADR-0055 Phase 3: SessionStart must not run hydrate-telemetry.mjs (lived in brain/)."""
+    cmds = _session_start_command_strings(".claude-plugin")
+    for cmd in cmds:
+        assert "hydrate-telemetry.mjs" not in cmd, (
+            f".claude-plugin SessionStart still references hydrate-telemetry.mjs: {cmd!r}"
+        )
+
+
+def test_cursor_plugin_json_no_hydrate_telemetry_hook():
+    """ADR-0055 Phase 3: cursor SessionStart must not run hydrate-telemetry.mjs."""
+    cmds = _session_start_command_strings(".cursor-plugin")
+    for cmd in cmds:
+        assert "hydrate-telemetry.mjs" not in cmd, (
+            f".cursor-plugin SessionStart still references hydrate-telemetry.mjs: {cmd!r}"
+        )
+
+
+def test_claude_plugin_json_keeps_check_updates_hook():
+    """ADR-0055 Phase 3: the check-updates.sh SessionStart hook must survive the brain removal."""
+    cmds = _session_start_command_strings(".claude-plugin")
+    assert any("check-updates.sh" in c for c in cmds), (
+        ".claude-plugin SessionStart no longer references check-updates.sh — "
+        "ADR-0055 Phase 3 removes brain hooks but must preserve the update-check hook."
+    )
+
+
+def test_cursor_plugin_json_keeps_check_updates_hook():
+    """ADR-0055 Phase 3: cursor check-updates.sh hook (CURSOR_PLUGIN_ROOT) must survive."""
+    cmds = _session_start_command_strings(".cursor-plugin")
+    assert any("check-updates.sh" in c for c in cmds), (
+        ".cursor-plugin SessionStart no longer references check-updates.sh."
+    )

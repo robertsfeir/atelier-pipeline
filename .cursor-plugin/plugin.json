@@ -13,15 +13,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "test -f \"${CURSOR_PLUGIN_ROOT}/brain/node_modules/.package-lock.json\" || npm install --prefix \"${CURSOR_PLUGIN_ROOT}/brain\" --silent"
-          },
-          {
-            "type": "command",
             "command": "bash \"${CURSOR_PLUGIN_ROOT}/scripts/check-updates.sh\" \"${CURSOR_PLUGIN_ROOT}\""
-          },
-          {
-            "type": "command",
-            "command": "node \"${CURSOR_PLUGIN_ROOT}/brain/scripts/hydrate-telemetry.mjs\" \"${CURSOR_PROJECT_DIR}\" --silent --state-dir \"${CURSOR_PROJECT_DIR}/docs/pipeline\" 2>/dev/null || true"
           }
         ]
       }

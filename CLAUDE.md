@@ -1,18 +1,17 @@
 # Atelier Pipeline
 
-Multi-agent orchestration system for AI-powered IDEs (Claude Code + Cursor). Quality gates, continuous QA, and persistent institutional memory (Atelier Brain).
+Multi-agent orchestration system for AI-powered IDEs (Claude Code + Cursor). Quality gates and continuous QA. Persistent institutional memory is provided by the separate `mybrain` plugin (optional; install alongside this plugin).
 
 ## Tech Stack
 
 - **Hooks/Enforcement:** Bash shell scripts (PreToolUse hooks)
-- **Brain MCP Server:** Node.js (server.mjs), PostgreSQL with pgvector and ltree extensions
 - **Agent System:** Markdown persona files, slash commands, orchestration rules
 - **IDE Support:** Claude Code plugin + Cursor plugin (dual-target from shared source)
 - **Plugin System:** Claude Code plugin format (.claude-plugin/plugin.json), Cursor plugin format (.cursor-plugin/)
 
 ## Test Commands
 
-- `pytest tests/ && cd brain && node --test ../tests/brain/*.test.mjs` -- full test suite
+- `pytest tests/` -- full test suite
 - `echo "no linter configured"` -- linter
 - `echo "no typecheck configured"` -- type checker
 
@@ -42,8 +41,7 @@ source/          # Template files -- copied to target projects by /pipeline-setu
     commands/    # Command frontmatter overlays
     rules/       # Rule frontmatter overlays
     variants/    # Variant frontmatter overlays
-brain/           # Atelier Brain MCP server (Node.js + PostgreSQL)
-skills/          # Plugin skills (pipeline-setup, brain-setup, brain-hydrate, pipeline-overview)
+skills/          # Plugin skills (pipeline-setup, pipeline-uninstall, pipeline-overview)
 .claude/         # Installed pipeline files (this project eats its own cooking)
 docs/            # User guide, technical reference, ADRs, pipeline state
 scripts/         # Plugin lifecycle scripts (update checks)

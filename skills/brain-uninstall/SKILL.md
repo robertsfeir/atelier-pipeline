@@ -1,11 +1,11 @@
 ---
 name: brain-uninstall
-description: Use when users want to remove or disconnect the Atelier Brain persistent memory layer. Handles teardown for all database strategies (Docker, local PostgreSQL, remote PostgreSQL), config file removal, and offers a disconnect-only option that preserves the database.
+description: Use when users want to remove or disconnect the mybrain plugin's persistent memory layer. Handles teardown for all database strategies (Docker, local PostgreSQL, remote PostgreSQL), config file removal, and offers a disconnect-only option that preserves the database.
 ---
 
-# Atelier Brain -- Uninstall
+# Brain Plugin -- Uninstall
 
-This skill guides the user through removing or disconnecting the Atelier Brain persistent memory layer. Run this conversationally -- ask questions one at a time, not as a list. Present what will be removed BEFORE doing anything destructive.
+This skill guides the user through removing or disconnecting the brain plugin's persistent memory layer. Per ADR-0055, the brain ships as a standalone `mybrain` plugin (separate from atelier-pipeline). This skill targets the brain config and database — it does NOT uninstall the mybrain plugin itself (use `claude plugin uninstall mybrain` for that). Run this conversationally -- ask questions one at a time, not as a list. Present what will be removed BEFORE doing anything destructive.
 
 <contract>
   <requires>
@@ -99,7 +99,7 @@ WILL REMOVE:
 
 WILL NOT TOUCH:
   Database at [masked URL]    -- data remains intact
-  brain/ directory            -- plugin code, not user data
+  mybrain plugin              -- the plugin itself stays installed (use `claude plugin uninstall mybrain` to remove it)
 ```
 
 If the config is shared (`.claude/brain-config.json`), add:
@@ -157,9 +157,11 @@ Before anything else, warn clearly:
 
 ##### Docker
 
-1. Check if the Docker container is running:
+> **Note:** mybrain ships its own `docker-compose.yml` whose container and volume names may differ from the legacy bundled brain (`brain-db` / `brain-data`). Before running the commands below, inspect the mybrain compose file to confirm the actual names. The placeholders in this section reflect the legacy naming for users migrating from the bundled brain — substitute mybrain's actual container/volume names when applicable.
+
+1. Check if the Docker container is running. The mybrain plugin ships its own `docker-compose.yml` (see the mybrain plugin's installation directory — typically `${CLAUDE_PLUGIN_DATA}/mybrain/docker-compose.yml` or wherever `claude plugin show mybrain` reports its files). Run:
    ```
-   docker compose -f ${CLAUDE_PLUGIN_ROOT}/brain/docker-compose.yml ps
+   docker compose -f <mybrain-compose-path> ps
    ```
 
 2. Present the Docker removal plan:
@@ -200,7 +202,7 @@ Before anything else, warn clearly:
 
 5. Execute:
    ```
-   docker compose -f ${CLAUDE_PLUGIN_ROOT}/brain/docker-compose.yml down
+   docker compose -f <mybrain-compose-path> down
    ```
 
    If user chose to delete the volume:
@@ -297,7 +299,7 @@ Removed:
   Config:   [config file path(s)]
   Database: [what was done -- container removed, volume deleted/kept, database dropped, tables dropped, or "untouched"]
 
-The brain/ directory in the plugin was NOT removed (it contains plugin code, not your data).
+The mybrain plugin itself was NOT removed (this skill targets brain config + database only). To uninstall the mybrain plugin, run `claude plugin uninstall mybrain` separately.
 ```
 
 If shared config was removed:
@@ -334,8 +336,7 @@ To set up a new brain later, run /brain-setup.
 - **Never perform destructive actions without explicit confirmation.** Every database deletion (volume, database, tables) requires a separate "yes" from the user.
 - **Present the plan before executing.** The user must see what will be removed before anything is touched.
 - **Handle unreachable databases gracefully.** If the database cannot be reached, still remove the config file and provide manual cleanup instructions.
-- **Do NOT remove the `brain/` directory.** That directory contains the MCP server code (part of the plugin), not user data.
-- **Do NOT remove the plugin itself.** This skill removes the brain config and optionally the database. The plugin remains installed.
+- **Do NOT remove the mybrain plugin itself.** This skill removes the brain config and optionally the database. The mybrain plugin remains installed (use `claude plugin uninstall mybrain` to remove it).
 - **Mask passwords in output.** When displaying database URLs, replace the password portion with `****`.
 - **Shared config needs a commit.** When removing `.claude/brain-config.json`, remind the user to commit the deletion.
 
@@ -350,7 +351,7 @@ Handle these failure cases with clear messages:
 | Error | Message |
 |-------|---------|
 | No config file found | "No brain configuration found. Nothing to uninstall." |
-| Docker not running | "Docker is not running. Cannot stop the container. Removing config file only. Stop the container manually later with: `docker compose -f ${CLAUDE_PLUGIN_ROOT}/brain/docker-compose.yml down`" |
+| Docker not running | "Docker is not running. Cannot stop the container. Removing config file only. Stop the container manually later with: `docker compose -f <mybrain-compose-path> down` (find the path via `claude plugin show mybrain`)." |
 | Docker compose file missing | "Docker compose file not found. The container may have been set up differently. Removing config file only." |
 | PostgreSQL not reachable | "PostgreSQL is not reachable. Cannot drop the database. Removing config file only. Drop it manually later with: `dropdb [database_name]`" |
 | Remote database unreachable | "Cannot reach the remote database. Removing config file only. Clean up the remote tables manually when the database is available." |

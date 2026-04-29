@@ -9,6 +9,28 @@ This skill installs the full Atelier Pipeline multi-agent orchestration system i
 
 > **Heads-up (Claude Code < 2.1.89):** Agent persona frontmatter declares an `effort` field (values: `low`, `medium`, `high`, `xhigh`) in addition to `model`. Claude Code runtimes older than **2.1.89** ignore the `effort` field silently -- the pipeline still functions, but effort-based promotion signals are not honoured by the runtime. See **ADR-0041** for the full effort-tier model. If your team is on an older Claude Code build, either upgrade or treat the `effort` field as documentation-only. Cursor users: the `effort` field is passed through as metadata; refer to Cursor release notes for runtime support.
 
+<contract>
+  <requires>
+    - `CLAUDE_PLUGIN_ROOT` (Claude Code) or `CURSOR_PROJECT_DIR` (Cursor) environment variable set by the runtime.
+    - Plugin `source/` tree present at `${CLAUDE_PLUGIN_ROOT}/source/` (shared, claude, cursor overlays).
+    - Write access to project root (`.claude/`, `docs/`, `CLAUDE.md`).
+    - `jq` available on `PATH` for hook registration in `settings.json`.
+  </requires>
+  <produces>
+    - `.claude/rules/`, `.claude/agents/`, `.claude/commands/`, `.claude/references/`, `.claude/hooks/` populated from source overlays.
+    - `.claude/pipeline-config.json` with branching strategy, project name, and feature flags.
+    - `.claude/settings.json` with hook registrations (PreToolUse, SubagentStart, SubagentStop, SessionStart, PreCompact, PostCompact, StopFailure).
+    - `.claude/.atelier-version` plugin version marker.
+    - `docs/pipeline/` state files (`pipeline-state.md`, `context-brief.md`, `error-patterns.md`, `investigation-ledger.md`).
+    - `CLAUDE.md` with pipeline section appended.
+    - Cursor only: `.cursor-plugin/rules/*.mdc` reference wrappers.
+  </produces>
+  <invalidates>
+    - Any prior install's `.claude/rules/`, `.claude/agents/`, `.claude/commands/`, `.claude/references/`, and `.claude/hooks/` contents (overwritten from source on re-sync; live state files in `docs/pipeline/` and `.claude/pipeline-config.json` are preserved).
+    - Deprecated `quality-gate.sh`, orphan brain-capture hooks, orphan `session-hydrate.sh` registration, and stale `atelier-brain` `.mcp.json` entries (Steps 0–0d).
+  </invalidates>
+</contract>
+
 <procedure id="setup">
 
 ## Setup Procedure
@@ -157,6 +179,315 @@ Per ADR-0055, the brain is moving from this pipeline plugin into the standalone 
 3. **Silent no-op:** If no stale entries are found, the snippet prints nothing.
 
 This cleanup targets only entries with the `mcp__plugin_atelier-pipeline_atelier-brain__` prefix. Other `permissions.allow` entries (e.g., `Edit`, `Bash(...)`, other plugins' MCP tools) are not affected.
+
+### Step 0f: Brain Migration Wizard (ADR-0056)
+
+This step is a **one-time** migration wizard for users who installed the brain when it was bundled inside this plugin (ADR-0055 Phase 1 / Phase 2). Phase 3 deletes `brain/` from the plugin tree and moves the brain into the standalone `mybrain` plugin. The wizard hands the user from the old bundled brain to mybrain without losing data, or — if the user prefers — wipes the existing database and starts fresh against mybrain.
+
+The wizard runs **at most once per install**. After a successful migration, the detection signals no longer match and Step 0f is a silent no-op on every subsequent `/pipeline-setup` invocation. Idempotency is the load-bearing contract — running this skill twice on a freshly migrated install must NOT re-trigger any destructive action.
+
+#### S0 — Detect
+
+Run all three detection signals silently. The wizard activates **only when all three** are true (logical AND, not OR — any single signal alone produces false positives in long-lived projects).
+
+1. **mybrain is absent from the runtime tool registry.** Probe ToolSearch for any tool whose name matches the pattern `mcp__*mybrain*` or `mcp__*atelier-brain__*` (the suffix-match pattern from ADR-0055 Phase 1). If any matching tool resolves, the user is already on mybrain (or some compatible brain) — exit Step 0f silently.
+2. **A `.claude/brain-config.json` exists whose `database_url` references a reachable Postgres instance.** Read the file (use the same `python3 -c "import json; print(json.dumps(json.load(open('.claude/brain-config.json'))))"` pattern used by `/brain-setup` Path A). If absent or malformed, exit Step 0f silently. Otherwise, expand `${ENV_VAR}` placeholders against the current environment and run a `SELECT 1` reachability probe via `psql "<expanded_url>" -c "SELECT 1;"` (timeout 5s). If the probe fails, exit Step 0f silently — the wizard refuses to act on ambiguous state. Use the brain-uninstall skill's database-strategy detection logic to classify the URL as Docker / Local / Remote (this is needed in S3 below).
+3. **The bundled-brain artifact is present.** Check `${CLAUDE_PLUGIN_ROOT}/brain/server.mjs` is readable. Phase 3 deletes this file from the source tree. If it is present in the user's `${CLAUDE_PLUGIN_ROOT}`, they are on the upgrade boundary — exactly when the wizard should run. If absent, exit Step 0f silently (the user has already upgraded past Phase 3 OR has a stale install with a present config, in which case `/brain-setup` running later in this skill handles them).
+
+If any of the three signals is false, exit Step 0f silently and proceed to Step 1 (Gather Project Information). **Do not announce that you ran the detection.**
+
+If all three signals are true, proceed to S1.
+
+#### S1 — Inform & Consent
+
+Tell the user exactly what is about to happen, present the multi-project shared-DB warning, and offer the migrate vs. start-fresh fork. Wait for explicit consent before proceeding.
+
+Print:
+
+```
+A bundled brain installation was detected.
+
+The Atelier Brain has moved to a standalone plugin called `mybrain` (ADR-0055).
+This pipeline plugin no longer ships a brain server. To keep your captured
+thoughts, decisions, patterns, and lessons working, the brain plugin needs
+to migrate.
+
+Your existing brain data will NOT be lost. The database and all its contents
+are preserved. Only the brain server process is changing.
+
+If this Postgres database is shared with other atelier-pipeline projects,
+the schema migration will affect all of them. Existing data is preserved
+(additive migration — new columns added, nothing dropped or renamed).
+
+Two paths are available:
+
+  1. MIGRATE  -- Preserve your existing brain database and re-attach it to
+                 mybrain. The wizard takes a backup, stops the old bundled
+                 brain, walks you through installing mybrain, and verifies
+                 the additive schema migration on first connect. Same DB,
+                 same data, same config keys, different MCP server.
+
+  2. FRESH    -- Start over. The wizard drops the existing schema (after a
+                 backup), installs mybrain, and lets it create a brand-new
+                 brain database against the same Postgres instance.
+
+  3. CANCEL   -- Take no action. The wizard exits without changes. You can
+                 re-run /pipeline-setup anytime to revisit.
+
+Which path would you like? (migrate / fresh / cancel)
+```
+
+If the user says **cancel** (or anything other than `migrate`/`fresh`): print "Wizard cancelled. Re-run `/pipeline-setup` to revisit." Exit Step 0f. Proceed to Step 1.
+
+If the user says **migrate**: enter the migrate track (S2 → S3 → S4 → S5 → S6).
+
+If the user says **fresh**: enter the fresh track (S2-fresh → S3-fresh → S4-fresh → S5-fresh → S6-fresh).
+
+In both cases, before proceeding to S2 / S2-fresh, capture the timestamp `migration_ts` for the backup filename (`date +%Y%m%dT%H%M%S`) and announce: "Starting migration. Current state: S1 → S2."
+
+#### S2 — Backup (migrate path)
+
+Tell the user what will happen before doing it: "I will take a `pg_dump` backup of your existing brain database to `~/.atelier-brain-backup-{migration_ts}.sql`. This is your insurance policy — if anything goes wrong in a later step, you can restore from this file."
+
+1. **Check `pg_dump` availability.** Run `command -v pg_dump`. If on PATH, proceed to step 2. If not on PATH:
+   - Print the manual command the user can run themselves:
+     ```
+     pg_dump <expanded_database_url> > ~/.atelier-brain-backup-{migration_ts}.sql
+     ```
+   - Ask: "I cannot find `pg_dump` on PATH (common when your DB is remote and you have no local Postgres tooling). Do you have your own backup, or have you run the command above? Type `yes` to confirm and proceed without me taking the backup, or type `cancel` to exit the wizard."
+   - If the user types anything other than exactly `yes`: HALT. Print "S2 HALT: backup acknowledgement not given. Wizard cancelled with no changes." Exit Step 0f. **Do not proceed.**
+   - If the user types `yes`: record `backup_path = "(user-managed)"` and proceed to S3.
+
+2. **Take the backup.** Expand `${ENV_VAR}` placeholders in `database_url` against the current environment, then run:
+   ```bash
+   pg_dump "<expanded_database_url>" > ~/.atelier-brain-backup-{migration_ts}.sql
+   ```
+   Capture exit code. If non-zero: HALT. Print:
+   ```
+   S2 HALT — pg_dump failed.
+
+   Current state: old brain still installed, no changes have been made.
+   Backup attempt path: ~/.atelier-brain-backup-{migration_ts}.sql
+   pg_dump exit code: <code>
+   pg_dump stderr: <last 20 lines>
+
+   To resume the wizard later, fix the backup issue and re-run /pipeline-setup.
+   To abandon the migration, take no action — your install is unchanged.
+   ```
+   Exit Step 0f. **Do not proceed.**
+
+3. **Confirm the backup.** Print: "Backup saved to `~/.atelier-brain-backup-{migration_ts}.sql`. To restore later: `psql <expanded_database_url> < ~/.atelier-brain-backup-{migration_ts}.sql`." Record `backup_path`. Proceed to S3.
+
+#### S2-fresh — Backup (fresh path)
+
+Same procedure as S2, with one difference in framing: emphasize that this backup is what lets the user undo the fresh-start if they change their mind. Print before taking the dump: "Even though you chose `fresh`, I'm taking a backup first. If you change your mind after the schema is dropped, you can restore from this file."
+
+All other behavior (PATH check, halt on failure, halt on missing acknowledgement) is identical to S2. Proceed to S3-fresh on success.
+
+#### S3 — Stop & Remove Old Brain (migrate path)
+
+Tell the user what is about to happen: "I am about to stop the old bundled brain. I will NOT drop tables, I will NOT remove `.claude/brain-config.json`, and I will NOT remove the `ATELIER_BRAIN_DB_PASSWORD` environment variable. Your existing brain data will NOT be lost. The database and all its contents are preserved. Only the brain server process is changing."
+
+1. **Detect the database strategy** from `database_url` (already classified at S0). Behavior diverges per strategy:
+
+   - **Docker:** Run `docker compose -f ${CLAUDE_PLUGIN_ROOT}/brain/docker-compose.yml ps` to check container status. If the `brain-db` container is running, run `docker compose -f ${CLAUDE_PLUGIN_ROOT}/brain/docker-compose.yml down`. Capture the exit code. **Do NOT pass `-v` — the volume must survive so the data is preserved across the migration.** If `down` fails: HALT. Print:
+     ```
+     S3 HALT — docker compose down failed.
+
+     Current state: backup saved at <backup_path>; old brain container may still
+     be running. To recover: stop the container manually with
+     `docker compose -f ${CLAUDE_PLUGIN_ROOT}/brain/docker-compose.yml down`
+     and re-run /pipeline-setup. Backup is still valid.
+     ```
+     Exit Step 0f.
+
+   - **Local PostgreSQL / Remote PostgreSQL:** No container to stop. The bundled brain runs as an MCP server process spawned by Claude Code; once Phase 3 deletes `brain/`, that process can no longer be spawned. Print: "Your brain runs as a local/remote PostgreSQL connection — there's no separate container or daemon to stop. The bundled brain MCP server stops automatically when the plugin upgrade removes `brain/server.mjs`." Proceed.
+
+2. **Do NOT delete `.claude/brain-config.json`.** Mybrain accepts identical config keys (`database_url`, `scope`, `brain_name`, `openrouter_api_key`, and the ADR-0054 multi-provider fields under identical names). The config is a hand-off, not a translation. Leave the file in place.
+
+3. **Do NOT touch `permissions.allow` directly.** Step 0e earlier in this skill already strips the stale `mcp__plugin_atelier-pipeline_atelier-brain__` prefix entries on every run; mybrain's `brain-setup` re-adds the new-prefixed entries when the user runs it post-install (S4 below).
+
+4. Confirm: "Old brain stopped. Backup at `<backup_path>`. To roll back at this point: restart the bundled brain via `docker compose -f ${CLAUDE_PLUGIN_ROOT}/brain/docker-compose.yml up -d` (Docker only — local/remote setups never had a separate process to restart)."
+
+Proceed to S4.
+
+#### S3-fresh — Drop Schema (fresh path)
+
+Tell the user what will happen: "I am about to DROP the existing brain schema. All thoughts, decisions, patterns, lessons, and relations stored in this database will be permanently deleted. The Postgres database itself remains; only the schema contents go. Your backup at `<backup_path>` is your only recovery path if you change your mind."
+
+1. **Final confirmation.** Ask: "Type exactly `DROP` (uppercase, no quotes) to proceed. Anything else cancels the fresh-start path." If the user types anything other than exactly `DROP`: HALT. Print "S3-fresh HALT: drop confirmation not given. Wizard cancelled with no changes." Exit Step 0f.
+
+2. **Drop the schema.** Expand `${ENV_VAR}` placeholders in `database_url`, then run:
+   ```bash
+   psql "<expanded_database_url>" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+   ```
+   Capture exit code. If non-zero: HALT. Print:
+   ```
+   S3-fresh HALT — schema drop failed.
+
+   Current state: backup saved at <backup_path>; schema may be in partial state.
+   psql exit code: <code>
+   psql stderr: <last 20 lines>
+
+   To recover: connect with psql and inspect the schema state, then drop manually:
+     psql <expanded_database_url> -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+   To abandon the fresh-start: restore from backup with
+     psql <expanded_database_url> < <backup_path>
+   ```
+   Exit Step 0f.
+
+3. **Stop the old bundled brain** using the same per-strategy logic as S3 step 1 (Docker `compose down`, local/remote no-op). HALT semantics identical to S3.
+
+4. Confirm: "Schema dropped. Old brain stopped. Backup at `<backup_path>`."
+
+Proceed to S4-fresh.
+
+#### S4 — Install mybrain (migrate path)
+
+Tell the user: "I cannot install plugins on your behalf — that requires Claude Code's plugin manager. I will print the install command, and you run it in another shell, then come back here and confirm."
+
+1. Print the install command:
+   ```
+   Run this in another terminal (or in this one after I finish):
+
+     claude plugin install <mybrain-source-url>
+
+   See the mybrain plugin's README for the exact source URL. The plugin
+   will register itself as an MCP server with tool prefix
+   `mcp__plugin_mybrain__` (or similar — the suffix-match in the pipeline
+   gate hooks accepts any prefix).
+
+   Once the install completes and Claude Code reloads, type `installed`
+   to continue, or `cancel` to abort the wizard.
+   ```
+
+2. Wait for user input. If the user types anything other than `installed`: HALT. Print "S4 HALT: mybrain install not confirmed. Backup at `<backup_path>`. Wizard exited; re-run `/pipeline-setup` after installing mybrain to resume from this point — the wizard's idempotency check at S0 will detect that mybrain is now registered and skip the rest of Step 0f silently."
+
+3. **Probe ToolSearch to verify mybrain is registered.** Run:
+   ```
+   ToolSearch query: select:mcp__*__atelier_stats,mcp__*mybrain*
+   ```
+   If no mybrain-prefixed tool resolves: HALT. Print:
+   ```
+   S4 HALT — mybrain ToolSearch probe failed.
+
+   Current state: old brain stopped, mybrain not yet detected by Claude Code.
+   Backup at <backup_path>.
+
+   This usually means Claude Code has not reloaded the plugin registry. Try:
+     1. Reload Claude Code (Cmd+R / restart the session).
+     2. Verify the plugin is installed: `claude plugin list | grep mybrain`.
+     3. Re-run /pipeline-setup. The wizard's S0 detection will skip Step 0f
+        once mybrain is registered.
+
+   To roll back to the bundled brain: uninstall mybrain (`claude plugin uninstall mybrain`),
+   reinstall the previous version of atelier-pipeline that still bundles brain/,
+   and run `psql <expanded_database_url> < <backup_path>` if any schema changes
+   were applied.
+   ```
+   Exit Step 0f.
+
+4. Confirm: "mybrain is registered. Proceeding to schema verification."
+
+Proceed to S5.
+
+#### S4-fresh — Install mybrain (fresh path)
+
+Identical to S4. The mybrain install command and ToolSearch probe are the same; only the database state differs (empty schema after S3-fresh vs. preserved data after S3). Proceed to S5-fresh on success.
+
+#### S5 — Verify & Migrate Schema (migrate path) — HIGHEST RISK STATE
+
+Tell the user: "Mybrain is now connecting to your existing brain database. On first connect, mybrain runs `runMigrations()` which applies the additive v1→merged migration. Existing data is preserved (new columns are added; nothing is dropped or renamed). I will probe `/health` and run `atelier_stats` to verify the migration succeeded."
+
+This is the **highest-risk state** because: old brain is stopped, mybrain is installed, the database has been touched by `runMigrations()`, and a failure here leaves the user with a half-migrated DB. The HALT message MUST include the exact recovery command — that contract is the load-bearing piece.
+
+1. **Probe mybrain `/health` endpoint.** Mybrain exposes `GET /health` returning `{"status":"ok"}` (per ADR-0055 §Decision). Use the appropriate transport for the user's platform — typically `curl http://localhost:<mybrain-port>/health` or invoke the mybrain `atelier_stats` MCP tool directly.
+
+2. **Run `atelier_stats`** via the now-registered mybrain MCP tool. If it returns a non-empty result with `brain_enabled: true` (or the equivalent ready signal mybrain emits), the migration succeeded.
+
+3. **On success:** Print "Schema migrated. mybrain reports `<N>` tools available, `<scope>` scope active. Proceeding to S6 (cleanup)." Proceed to S5 → S6.
+
+4. **On failure (health probe fails OR atelier_stats fails OR runMigrations error in mybrain logs):** HALT. Print this exact message — the rollback contract requires it:
+
+   ```
+   S5 HALT — schema migration failed at the highest-risk state.
+
+   This is the state where:
+     - The old bundled brain is stopped.
+     - mybrain is installed and registered.
+     - Your database is in a partial migration state (runMigrations may have
+       applied some columns / tables but not others).
+
+   To recover, run the exact restore command:
+
+     psql <expanded_database_url> < <backup_path>
+
+   This restores your database to the pre-migration state. Then:
+     1. Pin mybrain to a known-good version (see mybrain release notes).
+     2. Re-run /pipeline-setup. The wizard's S0 detection will not re-trigger
+        on the same database (mybrain is registered) — you will need to
+        manually clear and re-attempt the migration with mybrain support.
+
+   Backup retained at: <backup_path>
+   Database URL: <expanded_database_url>
+   Migration ts: <migration_ts>
+   ```
+
+   Exit Step 0f.
+
+#### S5-fresh — Verify (fresh path)
+
+Identical to S5 but the database is empty so `runMigrations()` is a fresh apply of the merged schema, not an additive migration on existing data. The probe and HALT semantics are the same. On failure HALT message: same structure as S5, but the recovery command is `psql <expanded_database_url> -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"` followed by re-running `/brain-setup` from the new mybrain plugin. Proceed to S6-fresh on success.
+
+#### S6 — Clear Sentinels & Confirm
+
+1. **Remove sentinel files.** If `docs/pipeline/.brain-not-installed` exists, delete it. If `docs/pipeline/.brain-unavailable` exists, delete it. These were touched by previous sessions when the bundled brain was unreachable; mybrain is now live, so they are stale.
+
+2. **Run a final round-trip.** Call `agent_capture` with a minimal probe payload (`thought_type: 'lesson'`, content: "Brain migration to mybrain completed via Step 0f wizard."), then `agent_search` for the captured content. If both succeed, the migration is verified end-to-end.
+
+3. **On success — print the success summary:**
+   ```
+   Brain migration complete.
+
+   What changed:
+     - Bundled brain server stopped and removed (Phase 3 of ADR-0055).
+     - mybrain plugin registered and serving the brain MCP tools.
+     - Schema migrated additively (your existing data is preserved).
+     - Sentinel files cleared.
+
+   Backup retained at: <backup_path>
+   You own retention. Delete it manually when you are confident the migration
+   stuck (recommended: keep it for at least a few full pipeline cycles).
+
+   To re-run brain-setup against the new mybrain plugin (e.g., to refresh
+   permissions.allow entries with mybrain's tool prefix), run /brain-setup
+   from the mybrain plugin.
+   ```
+
+4. **On round-trip failure:** Print a soft warning (do NOT halt — mybrain is non-blocking per ADR-0053 / ADR-0055):
+   ```
+   S6 SOFT WARNING — final round-trip probe did not return cleanly. Brain
+   migration is structurally complete, but agent_capture / agent_search did
+   not round-trip on this attempt. Your pipeline still works because the
+   brain is non-blocking. Re-run /brain-setup against mybrain to diagnose.
+
+   Backup retained at: <backup_path>
+   ```
+   Exit Step 0f normally.
+
+#### S6-fresh — Confirm (fresh path)
+
+Same as S6 but the success message reads "Brain reset complete" rather than "migration complete," and notes that the previous data has been deleted (the backup is the only copy of it).
+
+#### Step 0f Idempotency
+
+After successful migration, the next `/pipeline-setup` invocation hits S0 and exits silently (mybrain is registered → signal 1 fails). This is the load-bearing idempotency contract. If a partially-migrated install re-triggers the wizard (e.g., S2 succeeded but S5 failed), the user must follow the HALT recovery command first; the wizard does not auto-resume from arbitrary failure states. Once the user restores the backup or completes recovery manually, the next run hits S0 with old-brain-still-bundled-but-mybrain-registered, signal 1 fails, and Step 0f exits silently.
+
+#### Step 0f Config Key Migration
+
+There is no config key translation. Mybrain accepts every key the atelier-brain `brain-config.json` writes — `database_url`, `scope`, `brain_name`, `openrouter_api_key`, `embedding_provider` / `embedding_model` / `embedding_api_key` / `embedding_base_url`, `chat_provider` / `chat_model` / `chat_api_key` / `chat_base_url` — under the same names. The wizard does NOT rename any keys, does NOT translate any values, and does NOT rewrite `.claude/brain-config.json`. The migration is a hand-off, not a translation.
+
+The `permissions.allow` rewrite is handled by Step 0e earlier in this skill (which strips the stale `mcp__plugin_atelier-pipeline_atelier-brain__` prefix on every run); mybrain's own `brain-setup` skill re-adds the new-prefixed entries when the user runs it.
 
 ### Step 1: Gather Project Information
 
@@ -396,6 +727,8 @@ Files are assembled from `source/shared/` (content) + `source/claude/` (overlays
 | `source/shared/agents/agatha.md` + `source/claude/agents/agatha.frontmatter.yml` | `.claude/agents/agatha.md` | Documentation subagent persona (overlay assembly) |
 | `source/shared/agents/robert-spec.md` + `source/claude/agents/robert-spec.frontmatter.yml` | `.claude/agents/robert-spec.md` | Product spec producer subagent persona (overlay assembly) |
 | `source/shared/agents/sable-ux.md` + `source/claude/agents/sable-ux.frontmatter.yml` | `.claude/agents/sable-ux.md` | UX design producer subagent persona (overlay assembly) |
+| `source/shared/agents/scout.md` + `source/claude/agents/scout.frontmatter.yml` | `.claude/agents/scout.md` | Read-only file/grep/read scout subagent persona (overlay assembly, ADR-0048) |
+| `source/shared/agents/synthesis.md` + `source/claude/agents/synthesis.frontmatter.yml` | `.claude/agents/synthesis.md` | Post-scout filter/rank/trim synthesis subagent persona (overlay assembly, ADR-0048) |
 | `source/shared/commands/pm.md` assembled with overlay | `.claude/commands/pm.md` | /pm slash command |
 | `source/shared/commands/ux.md` assembled with overlay | `.claude/commands/ux.md` | /ux slash command |
 | `source/shared/commands/architect.md` assembled with overlay | `.claude/commands/architect.md` | /architect slash command |
@@ -450,6 +783,7 @@ optional and must be installed for the pipeline to function correctly.
 | `source/claude/hooks/pre-compact.sh` | `.claude/hooks/pre-compact.sh` | Writes compaction marker to pipeline-state.md before context is compacted (PreCompact) |
 | `source/claude/hooks/log-agent-start.sh` | `.claude/hooks/log-agent-start.sh` | Logs agent start events to JSONL telemetry file (SubagentStart) |
 | `source/claude/hooks/log-agent-stop.sh` | `.claude/hooks/log-agent-stop.sh` | Logs agent stop events to JSONL telemetry file (SubagentStop) |
+| `source/claude/hooks/enforce-colby-stop-verify.sh` | `.claude/hooks/enforce-colby-stop-verify.sh` | Runs verify_commands.format + verify_commands.typecheck after Colby stops; exits 2 on typecheck failure to re-engage Colby (SubagentStop, ADR-0050). **Claude Code only -- Cursor does not support SubagentStop** (see `source/cursor/agents/brain-extractor.frontmatter.yml`); Cursor installs intentionally omit this hook. |
 | `source/claude/hooks/post-compact-reinject.sh` | `.claude/hooks/post-compact-reinject.sh` | Re-injects pipeline-state.md and context-brief.md after compaction (PostCompact) |
 | `source/claude/hooks/log-stop-failure.sh` | `.claude/hooks/log-stop-failure.sh` | Appends error entry to error-patterns.md on agent failure (StopFailure) |
 | `source/claude/hooks/prompt-brain-prefetch.sh` | `.claude/hooks/prompt-brain-prefetch.sh` | Brain prefetch prompt injection (Prompt) |
@@ -461,6 +795,37 @@ optional and must be installed for the pipeline to function correctly.
 | `source/shared/hooks/hook-lib.sh` | `.claude/hooks/hook-lib.sh` | Shared hook utility library — JSON parsers, agent type extraction, deny/allow emitters (sourced by enforcement and telemetry hooks) |
 | `source/shared/hooks/pipeline-state-path.sh` | `.claude/hooks/pipeline-state-path.sh` | Per-worktree session state path resolver — session_state_dir() and error_patterns_path() (sourced by session-boot, post-compact-reinject, prompt-compact-advisory) |
 | `source/claude/hooks/enforcement-config.json` | `.claude/hooks/enforcement-config.json` | Project-specific paths and agent rules |
+
+#### ADR-0050 verify_commands keys (`enforce-colby-stop-verify.sh`, opt-in)
+
+The Claude Code-only `enforce-colby-stop-verify.sh` hook (SubagentStop) reads
+three keys from `.claude/pipeline-config.json` (or `.cursor/pipeline-config.json`,
+checked first). All three are opt-in -- absent or empty values turn the
+behavior off without warnings.
+
+| Key | Type | Default | Meaning |
+|-----|------|---------|---------|
+| `verify_commands.format` | string | (missing) | Auto-format command run after every Colby stop. **Empty string = no-op** (skip the format step). **Missing key = silent skip** (same as empty). Format failures are logged to stderr but never block. |
+| `verify_commands.typecheck` | string | (missing) | Typecheck command run after format. **Empty string = no-op** (skip the typecheck step). **Missing key = silent skip**. On non-zero exit the hook prints the last ~40 lines of output on stderr and exits 2 to re-engage Colby. |
+| `verify_max_attempts` | integer | `3` | Maximum number of consecutive **typecheck failures** in a single session before the hook stops re-engaging Colby and exits 0 with a warning. The counter increments on failure only; a successful typecheck deletes the counter file (full reset). Format failures never touch the counter. |
+
+If both `verify_commands.format` and `verify_commands.typecheck` are missing
+or empty, the hook exits 0 immediately -- the project is treated as not
+opted in. To opt in to typecheck-only enforcement, set
+`verify_commands.typecheck` and leave `verify_commands.format` empty (or
+omit it entirely).
+
+Example (`pipeline-config.json` fragment):
+
+```json
+{
+  "verify_commands": {
+    "format": "npm run format",
+    "typecheck": "npm run typecheck"
+  },
+  "verify_max_attempts": 3
+}
+```
 
 After copying, make the `.sh` files executable: `chmod +x .claude/hooks/*.sh`
 
@@ -492,6 +857,9 @@ file already exists. Add this hooks section:
 
 ```json
 {
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
   "hooks": {
     "PreToolUse": [
       {
@@ -500,7 +868,7 @@ file already exists. Add this hooks section:
       },
       {
         "matcher": "Agent",
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-sequencing.sh"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-pipeline-activation.sh"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-scout-swarm.sh"}, {"type": "prompt", "prompt": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-brain-prefetch.sh", "if": "tool_input.subagent_type == 'sarah' || tool_input.subagent_type == 'colby' || tool_input.subagent_type == 'roz'"}]
+        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-sequencing.sh"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-pipeline-activation.sh"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-scout-swarm.sh", "if": "tool_input.subagent_type == 'sarah' || tool_input.subagent_type == 'colby' || tool_input.subagent_type == 'scout'"}, {"type": "prompt", "prompt": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-brain-prefetch.sh", "if": "tool_input.subagent_type == 'sarah' || tool_input.subagent_type == 'colby' || tool_input.subagent_type == 'poirot'"}]
       },
       {
         "matcher": "Bash",
@@ -515,8 +883,7 @@ file already exists. Add this hooks section:
     "SessionStart": [
       {
         "hooks": [
-          {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-boot.sh"},
-          {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-hydrate-enforcement.sh"}
+          {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-boot.sh"}
         ]
       }
     ],
@@ -526,6 +893,10 @@ file already exists. Add this hooks section:
           {
             "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/log-agent-stop.sh"
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-colby-stop-verify.sh"
           },
           {
             "type": "prompt",
@@ -854,17 +1225,7 @@ jq -r '.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS // empty' ~/.claude/settings.js
 
 **If the value is already `1`, skip to the Brain setup offer.** (Idempotency.)
 
-**Otherwise, prompt the user:**
-
-> The atelier-pipeline relies on subagent resume for efficient multi-turn
-> agent flows (Sarah ADR revisions, Colby rework cycles, Poirot scoped re-runs).
-> Claude Code currently gates the `SendMessage` tool behind
-> `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`
-> (github.com/anthropics/claude-code/issues/42737).
->
-> Add this env var to `~/.claude/settings.json`? [Y/n]
-
-**If user says yes**, apply idempotently via jq:
+**Otherwise, always apply idempotently via jq:**
 
 ```bash
 jq '. + {env: ((.env // {}) + {CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1"})}' \
@@ -872,28 +1233,41 @@ jq '. + {env: ((.env // {}) + {CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1"})}' \
   mv ~/.claude/settings.json.tmp ~/.claude/settings.json
 ```
 
-Confirm: "`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` is set. Restart Claude
+Confirm: "`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` is set in `~/.claude/settings.json`. Restart Claude
 Code for the change to take effect."
-
-**If user says no**, print: "Subagent resume will spawn a fresh agent each
-time. The pipeline still works but pays a context-rebuild cost on every
-follow-up. Enable later by re-running pipeline-setup or adding the env var
-manually."
 
 **No installation manifest expansion** -- this is a user-settings mutation,
 not a pipeline file install.
 
-**Brain setup offer (always ask):**
+**Brain plugin offer (conditional ask):**
 
-After the Claude Code Agent Resume Prerequisite (Step 6d) offer (whether user said yes or no), ask the user:
+After the Claude Code Agent Resume Prerequisite (Step 6d) offer (whether user said yes or no), check whether the user already has a brain plugin registered:
 
-> The pipeline is ready. Would you also like to set up the **Atelier Brain**?
-> It gives your agents persistent memory across sessions -- architectural
+1. Probe ToolSearch for any tool name matching `mcp__*mybrain*` or `mcp__*atelier-brain__*` (suffix-match, so any plugin prefix is acceptable per ADR-0055).
+2. If at least one match resolves: the user already has a brain plugin registered (either mybrain via the migration wizard in Step 0f, or an externally-installed equivalent). Print "Brain plugin already registered — skipping brain offer." Finish.
+3. If no match resolves: the user has no brain plugin. Ask:
+
+> The pipeline is ready. Would you also like to install the **mybrain** plugin?
+> mybrain gives your agents persistent memory across sessions — architectural
 > decisions, user corrections, QA lessons, and rejected alternatives survive
 > when you close the terminal. It's optional and the pipeline works fine
-> without it.
+> without it (per ADR-0055, the brain is now a separate plugin).
 
-If the user says yes, invoke the `brain-setup` skill. If no, finish.
+If the user says yes: print the install command and point them to the mybrain plugin's documentation:
+
+```
+Install mybrain in another terminal (or in this one after I finish):
+
+  claude plugin install <mybrain-source-url>
+
+See the mybrain plugin's README for the exact source URL. Once installed,
+run `/brain-setup` from the mybrain plugin to configure the database
+connection and provider settings.
+```
+
+If the user says no: print "OK — run `/pipeline-setup` again anytime if you change your mind. The pipeline runs fine without a brain plugin." Finish.
+
+The pipeline-setup skill itself does NOT install or configure a brain — that responsibility moved to the standalone mybrain plugin in Phase 3 of ADR-0055.
 
 ### Step 7: Lightweight Reconfig
 

@@ -246,3 +246,114 @@ def test_pending_hook_short_circuits_on_brain_unavailable(tmp_path):
     assert not pending.exists(), (
         "pending hook wrote a marker despite .brain-unavailable being set"
     )
+
+
+# ════════════════════════════════════════════════════════════════════════
+# ADR-0055 Phase 3 — brain/ deletion + plugin.json scrubbing + skill move
+# ════════════════════════════════════════════════════════════════════════
+
+
+def test_phase3_brain_directory_removed():
+    """Phase 3: brain/ directory must not exist in the repo root."""
+    assert not (PROJECT_ROOT / "brain").exists(), (
+        "brain/ directory still present; ADR-0055 Phase 3 deletes the bundled brain."
+    )
+
+
+def test_phase3_brain_server_mjs_removed():
+    """Phase 3: brain/server.mjs must not exist (Phase 0f detection signal 3)."""
+    assert not (PROJECT_ROOT / "brain" / "server.mjs").exists(), (
+        "brain/server.mjs still present; this is the Step 0f detection signal."
+    )
+
+
+def test_phase3_brain_setup_skill_removed():
+    """Phase 3: skills/brain-setup/ must not exist (moved to mybrain plugin)."""
+    assert not (PROJECT_ROOT / "skills" / "brain-setup").exists(), (
+        "skills/brain-setup/ still present; the brain-setup skill moved to mybrain."
+    )
+
+
+def test_phase3_claude_plugin_brain_setup_removed():
+    """Phase 3: .claude-plugin/brain-setup/ must not exist (no claude mirror)."""
+    assert not (PROJECT_ROOT / ".claude-plugin" / "brain-setup").exists(), (
+        ".claude-plugin/brain-setup/ still present; brain-setup moved to mybrain."
+    )
+
+
+def test_phase3_cursor_brain_setup_removed():
+    """Phase 3: .cursor-plugin/skills/brain-setup/ must not exist."""
+    assert not (PROJECT_ROOT / ".cursor-plugin" / "skills" / "brain-setup").exists(), (
+        ".cursor-plugin/skills/brain-setup/ still present; brain-setup moved to mybrain."
+    )
+
+
+def test_phase3_claude_plugin_json_no_mcpServers():
+    """Phase 3: .claude-plugin/plugin.json must NOT contain mcpServers (atelier-brain)."""
+    import json as _json
+
+    data = _json.loads((PROJECT_ROOT / ".claude-plugin" / "plugin.json").read_text())
+    assert "mcpServers" not in data, (
+        ".claude-plugin/plugin.json still has mcpServers; bundled brain registration must be removed."
+    )
+
+
+def test_phase3_claude_plugin_session_start_no_brain_refs():
+    """Phase 3: claude SessionStart hooks must contain no `brain/` reference."""
+    import json as _json
+
+    data = _json.loads((PROJECT_ROOT / ".claude-plugin" / "plugin.json").read_text())
+    for entry in data.get("hooks", {}).get("SessionStart", []):
+        for hook in entry.get("hooks", []):
+            cmd = hook.get("command", "")
+            assert "brain/" not in cmd, (
+                f"SessionStart still references brain/: {cmd!r}"
+            )
+            assert "hydrate-telemetry.mjs" not in cmd, (
+                f"SessionStart still references hydrate-telemetry.mjs: {cmd!r}"
+            )
+
+
+def test_phase3_cursor_plugin_session_start_no_brain_refs():
+    """Phase 3: cursor SessionStart hooks must contain no `brain/` reference."""
+    import json as _json
+
+    data = _json.loads((PROJECT_ROOT / ".cursor-plugin" / "plugin.json").read_text())
+    for entry in data.get("hooks", {}).get("SessionStart", []):
+        for hook in entry.get("hooks", []):
+            cmd = hook.get("command", "")
+            assert "brain/" not in cmd, (
+                f"cursor SessionStart still references brain/: {cmd!r}"
+            )
+            assert "hydrate-telemetry.mjs" not in cmd, (
+                f"cursor SessionStart still references hydrate-telemetry.mjs: {cmd!r}"
+            )
+
+
+def test_phase3_pipeline_setup_has_step_0f():
+    """Phase 3: pipeline-setup SKILL.md contains the migration wizard (Step 0f)."""
+    skill = (PROJECT_ROOT / "skills" / "pipeline-setup" / "SKILL.md").read_text()
+    assert "Step 0f" in skill, (
+        "pipeline-setup/SKILL.md is missing the Step 0f migration wizard required by Phase 3."
+    )
+
+
+def test_phase3_pipeline_setup_no_brain_setup_skill_invocation():
+    """Phase 3: pipeline-setup must NOT invoke the brain-setup skill (it's gone)."""
+    skill = (PROJECT_ROOT / "skills" / "pipeline-setup" / "SKILL.md").read_text()
+    # Phrases like "invoke the `brain-setup` skill" or "run /brain-setup" as
+    # a skill invocation are no longer valid because the skill moved to
+    # mybrain. The wizard's recovery messages may reference `/brain-setup`
+    # as a *user-facing command* on mybrain — that is allowed.
+    assert "invoke the `brain-setup` skill" not in skill, (
+        "pipeline-setup/SKILL.md still invokes the brain-setup skill; Phase 3 removed it."
+    )
+
+
+def test_phase3_cursor_pipeline_setup_in_sync():
+    """Phase 3: cursor mirror must contain Step 0f identical to skills/."""
+    src = (PROJECT_ROOT / "skills" / "pipeline-setup" / "SKILL.md").read_text()
+    cursor = (PROJECT_ROOT / ".cursor-plugin" / "skills" / "pipeline-setup" / "SKILL.md").read_text()
+    assert src == cursor, (
+        "skills/pipeline-setup/SKILL.md and .cursor-plugin mirror are out of sync."
+    )

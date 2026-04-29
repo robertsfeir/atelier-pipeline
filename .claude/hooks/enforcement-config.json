@@ -17,7 +17,7 @@
     "kubernetes/",
     ".claude/"
   ],
-  "test_command": "pytest tests/hooks/ && cd brain && node --test ../tests/brain/*.test.mjs",
+  "test_command": "pytest tests/",
   "test_patterns": [
     ".test.",
     ".spec.",

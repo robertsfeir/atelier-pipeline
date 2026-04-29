@@ -2,7 +2,9 @@
 
 Version: 3.26.0
 
-This document is the comprehensive technical reference for the atelier-pipeline plugin. It covers plugin architecture, agent system design, orchestration logic, brain infrastructure, and customization points. The pipeline runs on both Claude Code and Cursor with near-complete feature parity. For usage-oriented documentation, see [the user guide](user-guide.md).
+This document is the comprehensive technical reference for the atelier-pipeline plugin. It covers plugin architecture, agent system design, orchestration logic, brain integration, and customization points. The pipeline runs on both Claude Code and Cursor with near-complete feature parity. For usage-oriented documentation, see [the user guide](user-guide.md).
+
+> **Upgrading from v4.x:** The Atelier Brain is no longer bundled with atelier-pipeline. It now lives as a standalone `mybrain` plugin. Run `/pipeline-setup` once after upgrading -- the built-in migration wizard (Step 0f) handles the transition automatically, with no data loss. See the [Brain Integration](#brain-architecture) section.
 
 ---
 
@@ -71,10 +73,11 @@ Throughout this document, paths like `.claude/` refer to `.cursor/` on Cursor, a
 
 ## Plugin Architecture
 
-Atelier Pipeline is a plugin for Claude Code and Cursor distributed via the plugin marketplace. It consists of two subsystems:
+Atelier Pipeline is a plugin for Claude Code and Cursor distributed via the plugin marketplace. It is a pure orchestration layer -- no embedded servers. It consists of:
 
-1. **Multi-agent orchestration** -- template files installed into the target project's `.claude/` (Claude Code) or `.cursor/` (Cursor) directory, plus `docs/pipeline/`. These define agent personas, slash commands, quality references, and state files.
-2. **Atelier Brain** -- an MCP server (`brain/server.mjs`) that runs as a sidecar, providing persistent institutional memory backed by PostgreSQL and vector embeddings.
+- **Multi-agent orchestration** -- template files installed into the target project's `.claude/` (Claude Code) or `.cursor/` (Cursor) directory, plus `docs/pipeline/`. These define agent personas, slash commands, quality references, and state files.
+
+Persistent institutional memory (the "Atelier Brain") is provided by a separate plugin, `mybrain`, which users install alongside atelier-pipeline. The pipeline detects the brain at session start and uses it transparently when available; without it, the pipeline runs in baseline mode.
 
 The plugin itself lives in the IDE's plugin directory. On Claude Code, this is typically `~/.claude/plugins/atelier-pipeline/`. Plugin metadata is in `.claude-plugin/plugin.json` (Claude Code) or `.cursor-plugin/plugin.json` (Cursor).
 
@@ -123,38 +126,21 @@ atelier-pipeline/                         # Plugin root (CLAUDE_PLUGIN_ROOT)
       enforce-sequencing.sh               # Pipeline sequencing gates
       enforce-git.sh                      # Git write operation guard
       enforcement-config.json             # Project-specific paths and rules
-  brain/                                  # MCP server -- runs as sidecar
-    start.sh                              # Wrapper script -- installs node_modules then starts server
-    server.mjs                            # Main server (MCP + REST API, auto-migration)
-    schema.sql                            # PostgreSQL schema (canonical for fresh installs)
-    migrations/                           # Idempotent SQL migrations for existing databases
-      001-add-captured-by.sql             # Adds captured_by column, updates match function
-      002-add-handoff-enums.sql           # Adds handoff to thought_type and source_phase enums
-    docker-compose.yml                    # Docker setup for brain database
-    docker-entrypoint.sh
-    package.json
-    scripts/
-      hydrate-telemetry.mjs               # Telemetry hydration (SessionStart + /telemetry-hydrate)
-    ui/                                   # Dashboard + Settings UI
   skills/                                 # Plugin skills (run in main thread)
-    pipeline-setup/SKILL.md               # /pipeline-setup
+    pipeline-setup/SKILL.md               # /pipeline-setup (includes Step 0f brain migration wizard)
     pipeline-uninstall/SKILL.md           # /pipeline-uninstall
-    brain-setup/SKILL.md                  # /brain-setup
-    brain-uninstall/SKILL.md              # /brain-uninstall
-    brain-hydrate/SKILL.md                # /brain-hydrate
-    dashboard/SKILL.md                    # /dashboard
-    telemetry-hydrate/SKILL.md            # /telemetry-hydrate (also source/commands/)
+    pipeline-overview/SKILL.md            # /pipeline-overview
   scripts/
     check-updates.sh                      # SessionStart hook -- detects plugin updates
 ```
 
+The `brain/` directory and brain-related skills (`brain-setup`, `brain-hydrate`, `brain-uninstall`, `dashboard`, `telemetry-hydrate`) no longer ship with atelier-pipeline; they live in the standalone `mybrain` plugin.
+
 ### Hooks
 
-The plugin registers a `SessionStart` hook in `plugin.json` that runs three commands on every session start (both Claude Code and Cursor):
+The plugin registers a `SessionStart` hook in `plugin.json` that runs `scripts/check-updates.sh` to compare the installed template version (`.claude/.atelier-version` or `.cursor/.atelier-version`) against the current plugin version. If they differ, it notifies the user that pipeline files may be outdated.
 
-1. **Dependency install** -- runs `npm install` in the `brain/` directory if `node_modules` does not exist.
-2. **Update check** -- runs `scripts/check-updates.sh` to compare the installed template version (`.claude/.atelier-version` or `.cursor/.atelier-version`) against the current plugin version. If they differ, it notifies the user that pipeline files may be outdated.
-3. **Telemetry hydration** -- runs `brain/scripts/hydrate-telemetry.mjs` in `--silent` mode to capture per-agent telemetry from any new session JSONL files into the brain. Uses `$CLAUDE_PROJECT_DIR` (Claude Code) or `$CURSOR_PROJECT_DIR` (Cursor) to locate the project. Errors are suppressed (`2>/dev/null || true`) so hydration never blocks session startup.
+Brain-related session hooks (dependency install, telemetry hydration) are owned by the `mybrain` plugin when installed -- they are no longer part of atelier-pipeline.
 
 ### Triple-Source Assembly Model
 
@@ -330,7 +316,7 @@ Some agents operate in both modes:
 
 The slash commands (`/pm`, `/ux`, `/docs`, `/architect`, `/debug`, `/pipeline`, `/devops`) are **custom agent persona commands**, not IDE skills. The `Skill` tool must not be invoked for them. When the user types one, Eva reads the corresponding `commands/*.md` file (from `.claude/commands/` or `.cursor/commands/`) and adopts that agent's persona. This distinction matters because skills use the `Skill` tool invocation path, while custom commands trigger persona adoption in the main thread.
 
-The eight actual plugin skills (`/pipeline-setup`, `/pipeline-uninstall`, `/pipeline-overview`, `/brain-setup`, `/brain-uninstall`, `/brain-hydrate`, `/dashboard`, `/telemetry-hydrate`) live in the plugin's `skills/` directory and are invoked through the `Skill` tool.
+The plugin skills (`/pipeline-setup`, `/pipeline-uninstall`, `/pipeline-overview`) live in the plugin's `skills/` directory and are invoked through the `Skill` tool. Brain-related skills (`/brain-setup`, `/brain-uninstall`, `/brain-hydrate`, `/dashboard`, `/telemetry-hydrate`) ship with the standalone `mybrain` plugin.
 
 ---
 
@@ -791,320 +777,53 @@ The same dual-write pattern applies to context brief entries. Eva always writes 
 
 ### Overview
 
-The Atelier Brain is an MCP server (`brain/server.mjs`) backed by PostgreSQL with pgvector and ltree extensions. It provides persistent institutional memory that survives across sessions. The pipeline works without it, but with it, session 12 of a feature build has the same context as session 1.
+The Atelier Brain is persistent institutional memory that survives across sessions. The pipeline works without it; with it, session 12 of a feature build has the same context as session 1.
 
-### Startup
+The brain ships as a **standalone plugin (`mybrain`)**, not as part of atelier-pipeline. Users install the two plugins side-by-side. The pipeline integrates with the brain only through MCP tool calls -- there is no in-process linkage. Atelier-pipeline is a pure orchestration layer.
 
-The brain server is launched via `brain/start.sh`, a shell wrapper that installs `node_modules` (if missing) before starting the Node.js server. This solves a first-session timing issue where the project `.mcp.json` would spawn the server before the `SessionStart` hook had a chance to run `npm install`. The wrapper makes the server self-bootstrapping regardless of hook execution order.
+> **Upgrading from v4.x:** Earlier versions bundled the brain inside atelier-pipeline (`brain/server.mjs`, `/brain-setup`, etc.). Existing data is preserved. Run `/pipeline-setup` once after upgrading -- the built-in migration wizard (Step 0f) detects the legacy bundled brain, walks through installing `mybrain`, and migrates the database transparently with no data loss.
 
-### MCP Transport and Project Registration
+### Brain Integration Contract
 
-The plugin's `.mcp.json` supports HTTP transport only. The brain server uses stdio transport, which requires registration in the project-level `.mcp.json` with absolute paths (tilde `~` does not expand in `.mcp.json`). The `/brain-setup` skill handles this automatically: it locates the plugin install path, resolves absolute paths, and adds an `atelier-brain` entry to the project's `.mcp.json` using `sh` as the command with `start.sh` as the argument. Environment variables for config paths, database credentials, and the OpenRouter API key are passed through the `env` block. Existing entries in the project `.mcp.json` are preserved during this merge.
+Atelier-pipeline uses the brain through six MCP tools advertised by `mybrain`:
 
-### HTTP Transport, CORS, and Server Robustness
+| Tool | Purpose | Used by |
+|------|---------|---------|
+| `agent_capture` | Store a thought (decision, lesson, pattern, etc.) | Eva (curator-mode captures at gates per ADR-0053) |
+| `agent_search` | Semantic search across stored thoughts | Eva (prefetch before agent invocations) |
+| `atelier_browse` | Paginated browse by type or status | Diagnostics |
+| `atelier_stats` | Brain health check; returns `brain_name` and `brain_enabled` | Eva (session-start health probe) |
+| `atelier_relation` | Create typed edges between thoughts | Curator workflows |
+| `atelier_trace` | Walk relation chains from a thought | Diagnostics |
 
-The brain server implements a dual-transport architecture: stdio for MCP communication and HTTP for dashboard/REST API access.
+When `atelier_stats` is unavailable or returns `brain_enabled: false`, the pipeline runs in baseline mode: no captures, no search prefetch, no warnings. Eva announces brain status at session start.
 
-**HTTP Server Behavior:**
-- Listens on `http://localhost:PORT` (configured via `ATELIER_BRAIN_PORT`, default 8877)
-- Routes:
-  - `/ui` -- static HTML dashboard
-  - `/api/health` -- server status and thought count
-  - `/api/config`, `/api/config` (PUT) -- brain configuration
-  - `/api/stats` -- telemetry statistics and agent fitness
-  - `/api/telemetry/*` -- scoped agent and pipeline metrics
-  - All other paths -- MCP request relay
+### Capture Gate (ADR-0053)
 
-**CORS Headers:** All HTTP responses include CORS headers to permit localhost tools to make cross-origin requests:
-- `Access-Control-Allow-Origin: http://localhost:PORT` (localhost-only)
-- `Access-Control-Allow-Headers: Content-Type, Authorization, mcp-session-id`
-- `Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS`
+Eva captures curated content (1-3 sentences) before each agent handoff for an allowlisted set of agents (Sarah, Colby, Agatha, Robert, Robert-spec, Sable, Sable-ux, Ellis). The capture is mechanically gated by three hooks that ship with atelier-pipeline:
 
-OPTIONS requests return 204 No Content for preflight handling.
+1. **SubagentStop** writes `{pipeline_state_dir}/.pending-brain-capture.json` whenever an allowlisted agent finishes.
+2. **PreToolUse on `Agent`** (`enforce-brain-capture-gate.sh`) blocks Eva's next agent invocation while the pending file exists, unless the brain-unavailable sentinel (`{pipeline_state_dir}/.brain-unavailable`) is present.
+3. **PostToolUse on `agent_capture`** deletes the pending file once Eva captures.
 
-**Process-Level Crash Guards (ADR-0034):**
-The brain server installs handlers for all 6 process-level crash vectors to ensure it remains available for the full session duration:
-1. `uncaughtException` -- logs and survives
-2. `unhandledRejection` -- logs and survives
-3. EPIPE on stdout (Claude Code disconnects) -- graceful shutdown
-4. stderr errors -- swallowed silently (can't log to broken stderr)
-5. stdin EOF (MCP SDK #1814 workaround) -- graceful shutdown
-6. SIGHUP / SIGTERM / SIGINT -- graceful shutdown
+Eva is the curator. The brain remains a curated knowledge store, not a transcript dump. See `pipeline-orchestration.md` `<protocol id="brain-capture">` and ADR-0053 for the full hook loop, the brain-unavailable escape hatch, and the canonical thought-type/source-phase enums Eva uses when calling `agent_capture`.
 
-Graceful shutdown stops timers, closes the DB pool with async drain, and enforces a 3-second deadman timeout (using `Promise.race()`) to prevent zombie processes if the pool stalls. See `brain/lib/crash-guards.mjs` for implementation details.
+For all internals -- database schema, three-axis scoring, write-time conflict detection, TTL decay, configuration resolution, dashboard, and the LLM provider abstraction -- see the `mybrain` plugin documentation.
 
-### Brain Server Modules
-
-The brain server is composed of several hardened modules:
-
-| Module | Purpose |
-|--------|---------|
-| `server.mjs` | Main entry point. HTTP server, MCP transport relay, startup orchestration. Installs crash guards. |
-| `db.mjs` | PostgreSQL connection pool with explicit configuration (5 max connections, 5s timeout, 30s idle timeout). Auto-migration on startup. |
-| `rest-api.mjs` | HTTP route handlers for dashboard settings UI and telemetry API endpoints. Authentication via `Authorization: Bearer {token}`. |
-| `config.mjs` | Enums and Zod schemas for thought types, source agents, and source phases. Single source of truth for valid values. |
-| `conflict.mjs` | Detects duplicate or conflicting thoughts at write time using semantic search + optional LLM classification. Uses `llm-response.mjs` for safe LLM response parsing. |
-| `consolidation.mjs` | Periodic synthesis task: groups similar active thoughts and generates reflection summaries using the configured LLM provider (per ADR-0054, routed through `llm-provider.mjs`). Uses `llm-response.mjs` for safe parsing. |
-| `llm-provider.mjs` | Provider abstraction layer (ADR-0054). Three adapter families -- `openai-compat`, `anthropic`, `local` -- behind a uniform `embed(text, providerConfig)` and `chat(messages, providerConfig)` surface. `verifyEmbeddingDimension()` runs a 1536-dim probe at startup so misconfigured providers fail fast with remediation guidance. |
-| `llm-response.mjs` | Null-guard helper for safely extracting content from any configured LLM provider's chat-completion response. Prevents crashes on malformed responses. Exported `assertLlmContent(data, context)` validates response shape and throws named Error if invalid. |
-| `ttl.mjs` | Periodic TTL enforcement: marks thoughts past their type's TTL as expired, excludes them from searches. |
-| `crash-guards.mjs` | Process-level error handlers, graceful shutdown, deadman timeout logic. Injected into `server.mjs` for testability. |
-
-**LLM Response Parsing Safety:**
-Both `conflict.mjs` and `consolidation.mjs` use the `llm-response.mjs` module's `assertLlmContent()` function to safely extract synthesis results from the configured provider's responses (ADR-0054 routes both calls through `llm-provider.mjs`). This ensures that malformed responses (null `data`, empty `choices` array, missing `message` or `content` field) throw a named Error with context and a truncated payload dump, rather than crashing the process with an unhandled TypeError.
-
-### Database Schema
-
-**Required extensions:** `vector` (pgvector), `ltree`
-
-**Core tables:**
-
-| Table | Purpose |
-|-------|---------|
-| `thoughts` | Core knowledge store. Each row is a thought with content, embedding (1536-dimensional vector), metadata, type, source agent/phase, importance score, status, scope, `captured_by` (human attribution), and timestamps. |
-| `thought_relations` | Typed edges between thoughts. Convention: `source_id` = newer/derived thought, `target_id` = older/original thought. |
-| `thought_type_config` | Lookup table for TTL and default importance per thought type. |
-| `brain_config` | Singleton configuration row controlling conflict detection thresholds, consolidation settings, and default scope. |
-
-**Thought types (enum):**
-
-| Type | Default TTL | Default Importance | Description |
-|------|-------------|-------------------|-------------|
-| `decision` | Never expires | 0.9 | Architectural or product decisions |
-| `preference` | Never expires | 1.0 | Human preferences and HALT resolutions |
-| `lesson` | 365 days | 0.7 | Retro learnings and patterns |
-| `rejection` | 180 days | 0.5 | Alternatives considered and discarded |
-| `drift` | 90 days | 0.8 | Spec/UX drift findings |
-| `correction` | 90 days | 0.7 | Fixes applied after drift detection |
-| `insight` | 180 days | 0.6 | Mid-task discoveries |
-| `reflection` | Never expires | 0.85 | Consolidation-generated synthesis |
-| `handoff` | Never expires | 0.9 | Structured handoff briefs for team collaboration |
-
-**Source phases (enum):** `design`, `build`, `qa`, `review`, `reconciliation`, `setup`, `handoff`
-
-**Relation types (enum):** `supersedes`, `triggered_by`, `evolves_from`, `contradicts`, `supports`, `synthesized_from`
-
-### MCP Tools
-
-The brain exposes 6 tools via MCP:
-
-| Tool | Purpose | Key Parameters |
-|------|---------|---------------|
-| `agent_capture` | Store a thought with schema-enforced metadata, dedup, conflict detection, and auto-supersession. Human attribution (`captured_by`) is resolved automatically from git config or `ATELIER_BRAIN_USER` env var. | `content`, `thought_type`, `source_agent`, `source_phase`, `importance` (0-1), optional `supersedes_id`, `scope`, `metadata` |
-| `agent_search` | Semantic search using three-axis scoring. Updates `last_accessed_at` on returned results. | `query`, `threshold` (default 0.2), `limit` (default 10), `scope`, `include_invalidated`, `filter` |
-| `atelier_browse` | Paginated browse by type or status. | Type/status filter, pagination |
-| `atelier_stats` | Brain health check. Returns thought count, config, status, and `brain_name`. | None |
-| `atelier_relation` | Create typed edges between thoughts. | `source_id`, `target_id`, `relation_type`, `context` |
-| `atelier_trace` | Walk relation chains from a thought. Recursive traversal. | Starting thought ID, direction |
-
-### Three-Axis Scoring
-
-The `match_thoughts_scored` PostgreSQL function ranks search results using three weighted factors:
-
-```
-score = (0.5 * recency_decay) + (2.0 * importance) + (3.0 * cosine_similarity)
-```
-
-- **Relevance (weight 3.0):** cosine similarity between query embedding and thought embedding. What you're asking about matters most.
-- **Importance (weight 2.0):** the thought's importance score. Decisions outrank tactical findings.
-- **Recency (weight 0.5):** exponential decay based on `last_accessed_at`. Tiebreaker only -- old decisions still surface.
-
-Recency decay formula: `0.995 ^ hours_since_last_access`
-
-The function's return type includes `captured_by`, so search results show who produced each thought.
-
-### Write-Time Conflict Detection
-
-When `agent_capture` receives a new `decision` or `preference` thought:
-
-1. **Search** for similar active thoughts in overlapping scopes using the candidate threshold (default 0.7)
-2. **Tier 1 -- Duplicate (>0.9 similarity):** Merge into existing thought. Update content if new importance is higher, merge metadata, bump `last_accessed_at`.
-3. **Tier 2 -- Candidate (0.7-0.9 similarity):** If LLM classification is enabled, call GPT-4o-mini to classify as DUPLICATE, CONTRADICTION, COMPLEMENT, SUPERSESSION, or NOVEL.
-   - DUPLICATE: merge
-   - CONTRADICTION (same scope): auto-supersede (newest wins)
-   - CONTRADICTION (cross-scope): mark both as `conflicted`, create `contradicts` relation
-   - SUPERSESSION: auto-supersede, create `supersedes` relation
-   - COMPLEMENT/NOVEL: store normally, record related ID
-4. **Tier 3 -- Novel (<0.7 similarity):** Store normally with no conflict flag.
-
-### TTL-Based Knowledge Decay
-
-Each thought type has a configured TTL in `thought_type_config`. Thoughts past their TTL transition to `expired` status and are excluded from default searches (unless `include_invalidated` is set).
-
-### Config Resolution
-
-The brain server resolves its configuration using a priority chain:
-
-1. **Project config** (`BRAIN_CONFIG_PROJECT` env var -> `.claude/brain-config.json`) -- shared team config
-2. **Personal config** (`BRAIN_CONFIG_USER` env var -> `~/.claude/plugins/data/atelier-pipeline/brain-config.json`) -- local-only
-3. **Environment variables** (`DATABASE_URL` or `ATELIER_BRAIN_DATABASE_URL`, plus the API key matching the chosen provider -- `OPENROUTER_API_KEY` by default; `OPENAI_API_KEY`, `GITHUB_TOKEN`, or `ANTHROPIC_API_KEY` when the corresponding provider is selected; `local` needs no key) -- fallback
-4. **No config found** -- exit cleanly, brain disabled
-
-Config files support `${ENV_VAR}` placeholders for secrets. Shared configs never contain bare secret values.
-
-Per ADR-0054, the brain supports multiple LLM provider families (`openai-compat`, `anthropic`, `local`) for embeddings and chat. The optional config fields `embedding_provider`, `embedding_model`, `embedding_api_key`, `embedding_base_url`, `chat_provider`, `chat_model`, `chat_api_key`, and `chat_base_url` select and tune each provider independently. All fields are optional and default to OpenRouter, which preserves backward compatibility with v3.x configs (`openrouter_api_key` alone is still a complete configuration).
-
-The config file also supports an optional `brain_name` field -- a display name for the brain (e.g., "My Noodle", "Cortex"). When set, Eva uses this name in pipeline announcements and reports instead of the generic "Brain". The value flows through `atelier_stats` and `/api/health` responses as `brain_name`, defaulting to `"Brain"` when omitted.
-
-### Hybrid Capture Model
-
-Brain writes from Sarah, Colby, Agatha, Robert, Robert-spec, Sable, Sable-ux, and Ellis are **mechanical**: when any of these nine agents completes, a `SubagentStop` `"type": "agent"` hook launches a lightweight Sonnet extractor (`brain-extractor`). The extractor reads the parent agent's `last_assistant_message`, identifies decisions, patterns, lessons, and seeds worth preserving, and calls `agent_capture` using the correct `source_agent`, `thought_type`, `source_phase`, and `importance` values. No agent instruction is required -- the pipeline captures knowledge automatically on every completion.
-
-**Agent-to-metadata mapping (extractor-assigned):**
-
-| Agent | `source_agent` | `source_phase` |
-|-------|----------------|----------------|
-| Sarah   | `sarah`          | `design`       |
-| Colby | `colby`        | `build`        |
-| Poirot     | `investigator` | `review`       |
-| Agatha | `agatha`      | `handoff`      |
-| Robert | `robert`      | `product`      |
-| Robert-spec | `robert-spec` | `product`  |
-| Sable | `sable`        | `ux`           |
-| Sable-ux | `sable-ux`  | `ux`           |
-| Ellis | `ellis`        | `commit`       |
-
-**Extractor behavior:**
-- Captures only what the parent agent explicitly stated -- never fabricates
-- Produces zero captures if no extractable content is present -- a valid outcome
-- Exits cleanly when brain is unavailable -- never blocks the pipeline
-- The extractor's own `SubagentStop` does not trigger another extractor (loop prevention via `if:` condition scope)
-
-### Structured Quality Signal Extraction
-
-After extracting decisions/patterns/lessons/seeds, the extractor performs a second best-effort pass to capture structured quality signals from the same `last_assistant_message`. Both passes run independently -- the second does not gate or replace the first.
-
-Quality signal captures use `thought_type: 'insight'`, `source_phase: 'telemetry'`, `importance: 0.5`, and store parsed fields under `metadata.quality_signals`. The `metadata.quality_signals` key distinguishes these captures from Tier 1/Tier 3 telemetry (which use `metadata.telemetry_tier`). Darwin's telemetry queries filter by `metadata.telemetry_tier` and do not include quality signal captures.
-
-**Per-agent parsing schema:**
-
-| Agent | Fields extracted |
-|-------|----------------|
-
-| **Colby** | `dod_present` (true when `## DoD` section header is present); `files_changed` (integer from "Files Changed" row in DoD table or summary line); `rework` (true when DoR or message contains phrases indicating this invocation is fixing a prior Poirot FAIL: "fixing Poirot", "addressing Poirot", "FAIL verdict", "prior QA FAIL") |
-| **Sarah** | `adr_revision` (integer from "Revision N" in Sarah's ADR); `factual_claims` (count of `- ` bullet lines in `### Factual Claims` sub-section, if present); `loc_estimate` (LOC estimate string from `### LOC Estimate` sub-section, if present); `options_considered` (count of options sub-entries in `## Options Considered`); `falsifiability_present` (true when `## Falsifiability` section header present) |
-| **Agatha** | `docs_written` (count of paths after "Written" in receipt format `Agatha: Written {paths}, updated {paths}`); `docs_updated` (count of paths after "updated"); `divergence_count` (count of data rows in `## Divergence Report` table, when the section is present) |
-
-**Omission rule:** If a marker is absent from the output, the corresponding field is omitted from `quality_signals` entirely -- never set to null, never fabricated. If zero fields are parseable, no quality signal capture is emitted. Zero captures is a valid outcome.
-
-Eva captures **cross-cutting concerns only** -- things no single agent owns. As of ADR-0025, user decisions, phase transitions, and context brief entries are captured mechanically by the hydrator (state-file parsing) rather than by Eva calling `agent_capture` directly. Eva still captures:
-
-- Cross-agent pattern convergence (e.g., Poirot and Robert both flag the same drift)
-- Deploy/infra outcomes (in `/devops` mode)
-- Poirot's findings (Poirot himself never touches brain)
-- Handoff briefs at pipeline end or on explicit handoff trigger
-
-Phase transitions and user decisions are captured by `hydrate-telemetry.mjs` at `SessionStart` via state-file parsing -- see [State-File Hydration](#state-file-hydration-evas-pipeline-decisions).
-
-**Brain operations are batched per wave.** Eva calls `agent_search` once at the start of each wave (not per agent invocation) and injects the results into all invocations within that wave. Tier 1 telemetry is accumulated in-memory only during a wave (no per-invocation brain capture). Tier 2 is captured once per wave after Poirot verification PASS. State writes to `pipeline-state.md` happen at wave boundaries, not unit boundaries.
 
 ---
 
 ## Team Collaboration Internals
 
-### Human Attribution (`captured_by`)
+### Human Attribution
 
-Every thought stored in the brain includes a `captured_by` text column identifying who produced it. The server resolves this value at capture time using the following priority:
+Every brain thought records who produced it via the `captured_by` field, which the brain resolves automatically from `ATELIER_BRAIN_USER` (if set) or `git config user.name`. Attribution lets teammates see who shaped each decision in search results. For schema details, see the `mybrain` plugin documentation.
 
-1. `ATELIER_BRAIN_USER` environment variable (if set)
-2. Git config `user.name` (resolved via `git config user.name`)
+### Handoff Briefs
 
-The value is stored on the `thoughts` table and included in the return type of `match_thoughts_scored`, `atelier_browse`, and `atelier_stats`.
+Eva generates a structured handoff brief when a pipeline ends or when the user explicitly requests one ("hand off"). The brief is captured to the brain as a `handoff` thought with `source_agent: 'eva'`, `source_phase: 'handoff'`, `importance: 0.9`, and metadata tagging the feature and ADR. The brief synthesizes completed work, unfinished work, key decisions, surprises, user corrections, and warnings for the next developer.
 
-### Auto-Migration System
-
-The brain server runs migrations automatically on every startup via the generic file-loop runner in `brain/lib/db.mjs`. The runner is idempotent and safe to run repeatedly.
-
-#### Migration runner design
-
-The `runMigrations()` function executes on startup:
-
-1. **Creates the tracking table** if it does not exist: `schema_migrations` with columns `version TEXT PRIMARY KEY`, `applied_at TIMESTAMPTZ`, and `checksum TEXT`.
-2. **Scans** `brain/migrations/*.sql` sorted alphabetically by filename.
-3. **Checks** `schema_migrations` for each filename. If a row exists with that filename as `version`, the migration is skipped.
-4. **Executes** new migration files in order, then records each in `schema_migrations` with the filename as `version` and a truncated SHA-256 hash of the file contents as `checksum`.
-
-The checksum column is informational only -- the runner does not re-run a migration if its checksum changes. It only checks whether the `version` string (filename) is already present.
-
-**Fail-soft behavior.** Each migration file is wrapped in its own try/catch. A failed migration logs an error but does not prevent subsequent migrations from running. This ensures a single broken migration does not block the entire startup sequence.
-
-**Idempotency guarantee.** Every migration file uses idempotent SQL patterns: `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `ADD VALUE IF NOT EXISTS` for enum extensions. A migration that is not idempotent is a blocker -- it would cause errors on re-runs.
-
-**Fresh installs vs. upgrades.** For fresh databases, `brain/schema.sql` is the canonical schema and already includes all columns, enum values, and config rows. Migrations exist solely for upgrading existing databases that were created from an earlier version of the schema.
-
-#### Migration files
-
-| File | What It Does | ADR |
-|------|-------------|-----|
-| `001-add-captured-by.sql` | Adds `captured_by TEXT` column to `thoughts`. Replaces `match_thoughts_scored` to include `captured_by` in return type. | -- |
-| `002-add-handoff-enums.sql` | Adds `'handoff'` to `thought_type` and `source_phase` enums. Inserts `thought_type_config` row for handoff. | ADR-0002 |
-| `003-add-devops-phase.sql` | Adds `'devops'` to `source_phase` enum. | -- |
-| `004-add-pattern-and-seed-types.sql` | Adds `'pattern'` and `'seed'` to `thought_type` enum. Inserts `thought_type_config` rows for each. | ADR-0004 |
-| `005-add-telemetry-phases.sql` | Adds `'telemetry'` and `'ci-watch'` to `source_phase` enum. | ADR-0014, ADR-0013 |
-| `006-add-pipeline-phase.sql` | Adds `'pipeline'` to `source_phase` enum. | -- |
-| `007-beads-provenance-noop.sql` | No-op documentation file. Beads provenance uses existing `metadata` JSONB -- no schema change needed. | ADR-0026 |
-| `008-extend-agent-and-phase-enums.sql` | Adds `sentinel`, `darwin`, `deps`, `brain-extractor`, `robert-spec`, `sable-ux` to `source_agent`. Adds `product`, `ux`, `commit` to `source_phase`. | ADR-0034 |
-| `009-schema-migrations-table.sql` | Creates `schema_migrations` table. Backfills version rows for migrations 001-008 that were applied before tracking existed. | ADR-0034 |
-
-#### Adding a new migration
-
-1. **Pick the next sequence number.** Migration files are sorted lexicographically, so use a 3-digit zero-padded number (current highest: `009`, so next is `010`).
-2. **Create the file** in `brain/migrations/` with the naming pattern `NNN-description.sql`.
-3. **Write idempotent SQL.** Use `IF NOT EXISTS` guards for all DDL. Wrap DDL in a transaction where possible so partial failures roll back cleanly.
-4. **No registration step needed.** The runner discovers files automatically at the next brain server startup.
-
-To apply immediately without waiting for a restart, restart the brain server process. There is no separate migration CLI.
-
-### State-File Hydration (Eva's Pipeline Decisions)
-
-Eva writes `pipeline-state.md` and `context-brief.md` reliably because those files drive pipeline recovery. ADR-0025 converts those reliable file writes into brain captures without requiring any behavioral change from Eva: `hydrate-telemetry.mjs` parses these files at `SessionStart` and emits brain captures for every completed phase transition and user decision it finds.
-
-**What is parsed:**
-
-| File | Extracted items | Capture metadata |
-|------|----------------|-----------------|
-| `pipeline-state.md` | Each completed progress item (`- [x]` lines); feature name and sizing from `**Feature:**` and `**Sizing:**` fields | `thought_type: 'decision'`, `source_agent: 'eva'`, `source_phase: 'pipeline'`, `importance: 0.6`; metadata includes `feature`, `sizing`, `phase_item` |
-| `context-brief.md` | Bullet items under the `## User Decisions` section | `thought_type: 'decision'`, `source_agent: 'eva'`, `source_phase: 'pipeline'`, `importance: 0.6`; metadata includes `section: 'user_decisions'` |
-
-Duplicate detection uses a content hash keyed on `(feature + phase_item)` for pipeline-state items and on the decision text for context-brief items. State-file captures are idempotent -- re-running hydration never inserts duplicates.
-
-This hydration runs at `SessionStart` via `session-hydrate.sh` with the `--state-dir` flag pointing to `docs/pipeline/`. It captures decisions from the previous session when a new session begins. All errors are caught and logged; the function never throws and always exits 0 (Retro #003).
-
-The files remain the source of truth for in-session recovery. Brain capture is additive for cross-session and cross-teammate discovery.
-
-### Handoff Brief Generation
-
-Eva generates a structured handoff brief in two cases:
-
-1. **Automatic** -- pipeline reaches the Final Report phase
-2. **Explicit** -- user says "hand off," "someone else is picking this up," or equivalent
-
-The handoff brief is captured as a single brain thought with:
-
-- `thought_type: 'handoff'`
-- `source_agent: 'eva'`
-- `source_phase: 'handoff'`
-- `importance: 0.9`
-- Metadata tags: feature name, ADR reference, `handoff`
-
-The `handoff` thought type has the same importance tier as `decision` (0.9) and never expires (NULL TTL), ensuring handoff briefs rank alongside architectural decisions in search results.
-
-**Content structure:** Eva synthesizes the brief from the session's `context-brief.md`, `pipeline-state.md`, and any brain thoughts captured during the run. The brief contains six sections: completed work (with ADR step references), unfinished work, key decisions, surprises, user corrections, and warnings for the next developer.
-
-**Skip conditions:** Eva does not generate a handoff brief when brain is unavailable, when the session produced zero ADR step completions and zero context brief entries, or when the user explicitly declines ("no handoff" / "skip handoff").
-
-**Failure handling:** If `agent_capture` fails at pipeline end, Eva logs a warning ("Handoff brief not captured -- brain unavailable") and the Final Report renders normally. No pipeline disruption.
-
-**Mid-pipeline handoff:** When triggered explicitly, Eva generates the brief from current state, captures it, announces "Handoff brief captured," and ends the pipeline without proceeding to Final Report.
-
-### New Enum Values
-
-Two enum values were added to support handoff briefs:
-
-- `thought_type` enum: `'handoff'` (added after `'reflection'`)
-- `source_phase` enum: `'handoff'` (added after `'setup'`)
-
-The server's `THOUGHT_TYPES` and `SOURCE_PHASES` Zod validation arrays in `brain/server.mjs` include these values, allowing `agent_capture` to accept them without validation errors.
+Eva skips handoff generation when the brain is unavailable, when the session produced no ADR completions or context-brief entries, or when the user declines. If `agent_capture` fails at pipeline end, Eva logs a warning and the Final Report renders normally -- no pipeline disruption.
 
 ---
 
