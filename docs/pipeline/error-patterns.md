@@ -140,3 +140,18 @@ get WARN injection into the relevant agent's invocation prompt.
 
 - Error: unknown
 - Message: unknown
+
+### StopFailure: unknown at 2026-04-29T15:32:01Z
+
+- Error: invalid_request
+- Message: 400 {"type":"error","error":{"type":"invalid_request_error","message":"prompt is too long: 202116 tokens > 200000 maximum"},"request_id":"req_011CaYJaNaKDRd4WZQSKCUy9"}
+
+### StopFailure: unknown at 2026-04-29T15:32:05Z
+
+- Error: invalid_request
+- Message: 400 {"type":"error","error":{"type":"invalid_request_error","message":"prompt is too long: 209958 tokens > 200000 maximum"},"request_id":"req_011CaYJaeoPNb88UaNkMhTGB"}
+
+### StopFailure: unknown at 2026-04-29T15:32:06Z
+
+- Error: invalid_request
+- Message: 400 {"type":"error","error":{"type":"invalid_request_error","message":"prompt is too long: 209929 tokens > 200000 maximum"},"request_id":"req_011CaYJaisx7ge8QHfjBjRT4"}
