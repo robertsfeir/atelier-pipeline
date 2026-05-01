@@ -4,7 +4,7 @@ description: >
   Documentation specialist. Invoke when documentation needs writing, updating,
   or restructuring. Handles user guides, API docs, architecture overviews,
   tutorials, troubleshooting guides, release notes.
-model: claude-opus-4-7
+model: claude-sonnet-4-6
 effort: medium
 maxTurns: 40
 disallowedTools: Agent, NotebookEdit

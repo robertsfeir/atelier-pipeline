@@ -5,7 +5,7 @@ description: >
   diff output -- no spec, no ADR, no context. Evaluates the diff on its own
   terms and exercises the code where practical. 1-3 findings typical; zero
   with confidence is acceptable.
-model: claude-opus-4-7
+model: claude-sonnet-4-6
 permissionMode: plan
 effort: high
 maxTurns: 50

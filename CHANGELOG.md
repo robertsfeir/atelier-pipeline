@@ -5,6 +5,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [5.1.0] - 2026-05-01
+
+### Changed
+- **Agent model assignments.** Six agents moved from `claude-opus-4-7` to `claude-sonnet-4-6` to reduce token consumption: colby, agatha, robert-spec, sable-ux, investigator (Poirot), and sherlock. Sarah remains on `claude-opus-4-7` for high-stakes architectural decisions.
+
 ## [5.0.1] - 2026-04-29
 
 ### Changed
