@@ -23,8 +23,8 @@ signal only; it does not set the model.
 | Tier | Task class | Model | Base effort | Typical agents | Effort adjustment signal |
 |------|------------|-------|-------------|----------------|--------------------------|
 | Tier 1 | Mechanical -- no reasoning | Sonnet / Haiku | low | Ellis, scout (haiku), Distillator | -- (stays low) |
-| Tier 2 | Supporting reasoning -- review / acceptance / compliance / synthesis | Sonnet / Opus | medium | Robert (acceptance), Sable (acceptance), Sentinel, Agatha, Synthesis, Colby (rework), Colby (first-build Small) | Read-only / mechanical -- -1 rung (floor low) |
-| Tier 3 | Critical-path reasoning -- creates / verifies shipped artifact | Opus | high / medium | Colby (first-build Medium+), Poirot, Darwin | (no further promotion -- `high` is ceiling) |
+| Tier 2 | Supporting reasoning -- review / acceptance / compliance / synthesis | Sonnet (see opus-escalation gate for per-agent Opus conditions) | medium | Robert (acceptance), Sable (acceptance), Sentinel, Agatha, Synthesis, Colby (rework), Colby (first-build Small) | Read-only / mechanical -- -1 rung (floor low) |
+| Tier 3 | Critical-path reasoning -- creates / verifies shipped artifact | Sonnet (see opus-escalation gate for per-agent Opus conditions) | high / medium | Colby (first-build Medium+), Poirot, Darwin | (no further promotion -- `high` is ceiling) |
 | Tier 4 | Architectural design | Opus | high | Sarah | (already at ceiling; `high` is the ceiling value) |
 
 </model-table>
@@ -83,16 +83,17 @@ tool invocation based on this table plus the promotion signals above.
 | Agent | Tier | Base model | Base effort | Rationale (one line) |
 |-------|------|------------|-------------|----------------------|
 | **Sarah** | 4 | opus | high | Architectural deliberation dominates pattern-matching; `high` is sufficient for ADR-scale deliberation |
-| **Colby** | 3 (build) / 2 (rework, small first-build) | opus | high / medium | Critical-path artifact; high exposes adaptive thinking on execution sub-decisions |
+| **Colby** | 3 (first-build Medium+) | sonnet | high | Default first-build tier; sonnet/high covers execution sub-decisions. Opus only via escalation gate (core abstraction refactor, user-confirmed) |
+| **Colby** | 2 (rework, first-build Small) | sonnet | medium | Rework and small first-build are supporting tasks; Sonnet/medium covers coverage-oriented review without Opus cost |
 
-| **Poirot (investigator)** | 3 | opus | high | Blind diff review; `high` is ceiling, no further promotion |
-| **Sherlock** | 3 | opus | high | Diagnose-only bug hunt with fresh general-purpose isolation; no final-juncture promotion (runs before fix, not at review); isolation from session context is the load-bearing property |
+| **Poirot (investigator)** | 3 | sonnet | high | Blind diff review; sonnet/high covers verification sub-decisions. Opus only via escalation gate (security-critical code, user-confirmed) |
+| **Sherlock** | 3 | sonnet | high | Diagnose-only bug hunt; sonnet/high covers multi-layer tracing. Opus only via escalation gate (bug spans 3+ system layers simultaneously, user-confirmed); isolation from session context is the load-bearing property |
 | **Robert (acceptance)** | 2 | sonnet | medium | Spec-vs-implementation diff; structured review is Sonnet-capable |
-| **robert-spec (producer)** | 2 | opus | medium | Spec authoring requires generative capability |
+| **robert-spec (producer)** | 2 | sonnet | medium | Spec authoring; sonnet/medium covers structured generative work. Opus only via escalation gate (novel capability with no existing pattern, user-confirmed) |
 | **Sable (acceptance)** | 2 | sonnet | medium | UX-vs-implementation diff; structured review is Sonnet-capable |
-| **sable-ux (producer)** | 2 | opus | medium | UX doc authoring requires generative capability |
+| **sable-ux (producer)** | 2 | sonnet | medium | UX doc authoring; sonnet/medium covers structured design work. Opus only via escalation gate (novel interaction paradigm, user-confirmed) |
 | **Sentinel** | 2 | sonnet | low | Pattern-matching SAST with effort: low suppresses Opus reasoning; Sonnet matches the actual workload. Mechanical task signal -- effort demoted medium→low. |
-| **Agatha** | 2 | opus | medium | Documentation authoring; conceptual reasoning. Always Tier 2 (no runtime override) |
+| **Agatha** | 2 | sonnet | medium | Documentation authoring; sonnet/medium covers structured writing. Opus only via escalation gate (full information architecture restructure, user-confirmed). Always Tier 2 (no runtime override) |
 | **synthesis** | 2 | sonnet | low | Filter/rank/trim of scout output; no judgment, no opinions. Registered subagent (ADR-0048) — frontmatter pins `claude-sonnet-4-6`; invocation omits the `model` parameter |
 | **Ellis** | 1 | sonnet | low | Commit-message composition; Sonnet/low cheaper per successful pass than Haiku rework |
 | **Distillator** | 1 | sonnet | low | Structured compression; Sonnet/low preserves load-bearing facts Haiku drops |
@@ -160,7 +161,10 @@ For every Agent tool invocation:
    `effort`, and the promotion signals mechanically adjust effort by one rung.
    If Eva is about to invoke an agent at a `model` or `effort` that does not
    match the lookup, that is a configuration error -- same severity class as
-   invoking Poirot with spec context.
+   invoking Poirot with spec context. **Exception:** Any agent listed in the
+   `opus-escalation` gate below may be escalated to `opus` only by passing
+   that gate (user-confirmed). Sarah is excluded -- she has no escalation gate
+   and is always `opus / high`. Eva's judgment alone is not sufficient.
 2. **Explicit in every invocation.** Both the `model` and `effort` parameters
    MUST be set explicitly in every Agent tool invocation. No relying on
    frontmatter defaults. Omitting either parameter is a violation.
@@ -178,5 +182,32 @@ For every Agent tool invocation:
    guidance and tokenizer regression research, both `xhigh` and `max` cause excessive
    context burn on production workloads without quality gain. Ceiling is `high`. Eva MUST NOT invoke
    any agent at `effort: xhigh` or `effort: max`. Hypothetical invocations with either value are a configuration error, same class as omitting `effort`.
+
+</gate>
+
+<gate id="opus-escalation">
+
+## Opus Escalation Gate
+
+Applies to six agents. Sarah is excluded -- she has no escalation gate and is always `opus / high`.
+
+| Agent | Qualifying condition (one, non-negotiable) | Escalated model / effort |
+|-------|---------------------------------------------|--------------------------|
+| **Colby** (first-build only) | Task is a core abstraction refactor -- a change that alters how the system is reasoned about, not merely how it works. Reshuffling internals without changing the conceptual model does not qualify. | `opus / high` |
+| **Poirot** | Review covers security-critical code (auth, crypto, or access control). | `opus / high` |
+| **Sherlock** | Bug spans 3 or more system layers simultaneously. | `opus / high` |
+| **robert-spec** | Feature introduces a capability with no existing pattern in the codebase to draw from. | `opus / medium` |
+| **sable-ux** | Feature introduces an interaction paradigm not present elsewhere in the product. | `opus / medium` |
+| **Agatha** | Work restructures the entire information architecture (not just adds or updates individual docs). | `opus / medium` |
+
+**Protocol (applies to each agent above):**
+
+1. Eva identifies that the qualifying condition may apply and asks the user exactly one question before invoking the agent. The question must state which condition Eva judges as met and ask whether to proceed with Opus or Sonnet.
+2. User confirms → invoke the agent at the escalated `model / effort` shown in the table.
+3. User declines, or the answer is ambiguous → invoke the agent at its base `sonnet / effort` (effort stays at the agent's base tier; no demotion).
+
+**Colby rework is always `sonnet / medium`.** The escalation gate does not apply to Colby rework runs regardless of how the original first-build was invoked.
+
+**Eva's judgment alone is not the gate.** The user must confirm for every agent. Skipping the question and invoking at `opus` is a violation of Enforcement Rule 1.
 
 </gate>

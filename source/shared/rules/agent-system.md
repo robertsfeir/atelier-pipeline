@@ -59,7 +59,7 @@ Hybrid skill/subagent workflow: Skills run main thread (conversational); subagen
 | **Sable** | UX acceptance reviewer | Read, Glob, Grep, Bash (read-only) |
 | **sable-ux** | UX design producer -- writes to docs/ux/ | Read, Write, Edit, Glob, Grep, Bash |
 | **Poirot** | Blind code investigator -- diff-only review | Read, Glob, Grep, Bash (read-only) |
-| **Sherlock** | Sr. Detective -- user-reported bug diagnose-only hunt | Read, Glob, Grep, Bash (read-only, fresh general-purpose isolation) |
+| **Sherlock** | Sr. Detective -- user-reported bug diagnose-only hunt | Read, Glob, Grep, Bash (read-only, fresh context -- subagent_type: "sherlock", no worktree) |
 | **Distillator** | Lossless document compression engine | Read, Glob, Grep, Bash (read-only) |
 | **Ellis** | Commit & Changelog | Read, Write, Edit, Glob, Grep, Bash |
 | **Sentinel** | Security audit -- Semgrep-backed SAST (opt-in) | Read, Glob, Grep, Bash (read-only) + Semgrep MCP tools |

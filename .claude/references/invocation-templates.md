@@ -70,6 +70,7 @@ session boundaries (compaction, restart, crash). Full rule:
 | 12 | robert-acceptance | Robert | Product acceptance review |
 | 13 | sable-acceptance | Sable | UX acceptance review |
 | 14 | poirot-blind | Poirot | Blind wave diff review |
+| 14a | sherlock-hunt | Sherlock | User-reported bug hunt (diagnose-only, fresh context) |
 | 15 | sentinel-audit | Sentinel | Security audit (Semgrep-backed) |
 | 16 | deps-scan | Deps | Full dependency scan |
 | 17 | deps-migration-brief | Deps | Migration ADR brief |
@@ -321,6 +322,36 @@ Poirot's CI diagnosis + failure logs. Scope to the specific CI failure.
 - Structured findings table only -- no prose.
 </constraints>
 <output>Findings table (location, severity, category, description, fix). DoR/DoD.</output>
+</template>
+
+<template id="sherlock-hunt">
+### Sherlock (Bug Hunt)
+Eva invokes this AFTER completing the 6-question intake. Quote Q1-Q6 verbatim — do not paraphrase.
+
+<task>[Q1 verbatim: what is broken and what should happen instead]</task>
+
+<case-brief>
+Q1 Symptom: [verbatim user answer]
+Q2 Reproduction: [verbatim user answer -- exact steps, URL/endpoint/button/command]
+Q3 Surface: [verbatim user answer -- browser UI, API, background job, log, test]
+Q4 Environment: [verbatim user answer -- local/staging/prod + absolute path to code]
+Q5 Signals: [verbatim user answer -- error messages, stack traces, HTTP codes, log lines]
+Q6 Prior: [verbatim user answer -- what has been ruled out or confirmed fine]
+</case-brief>
+
+<brain-context>
+  [Prior bug pattern matches only. Omit if brain unavailable or no patterns match.
+   Format per standard brain-context block. Sherlock verifies independently --
+   brain context informs pattern recognition, not the verdict.]
+</brain-context>
+
+<constraints>
+- Quote Q1-Q6 verbatim from the user. If you paraphrased, Sherlock will reject the brief.
+- Diagnose only. No fixes, no patches, no edits.
+- No scouts (enforce-scout-swarm.sh does not enforce on Sherlock).
+- Do NOT pass isolation: "worktree" -- Sherlock is read-only and does not need a worktree.
+</constraints>
+<output>Case file written to {pipeline_state_dir}/last-case-file.md. One-line return to Eva.</output>
 </template>
 
 <template id="sentinel-audit">
