@@ -501,10 +501,10 @@ These rules are mandatory:
 
 | Component | Model | Rationale |
 |-----------|-------|-----------|
-| Phase 1 (scan) | claude-opus-4-7 (main thread) | Lightweight, conversational -- just Glob, shell inventory, stats |
-| Phase 2a (scouts) | claude-haiku-4-5-20251001 (scout subagent) | File reading only, no reasoning needed |
-| Phase 2b (extraction) | claude-sonnet-4-6 (subagent) | Synthesis quality sufficient for structured extraction rules |
-| Phase 3 (summary) | claude-opus-4-7 (main thread) | Format and present results |
+| Phase 1 (scan) | opus (main thread) | Lightweight, conversational -- just Glob, shell inventory, stats |
+| Phase 2a (scouts) | haiku (scout subagent — pinned via frontmatter) | File reading only, no reasoning needed |
+| Phase 2b (extraction) | sonnet (subagent) | Synthesis quality sufficient for structured extraction rules |
+| Phase 3 (summary) | opus (main thread) | Format and present results |
 
 Scouts are invoked as `Agent(subagent_type: "scout")` with no `model` parameter; per ADR-0048 the model pinning (`claude-haiku-4-5-20251001`) is owned by the scout frontmatter at `source/{claude,cursor}/agents/scout.frontmatter.yml`. The Phase 2b extraction subagent (which calls `agent_capture` directly per ADR-0027) is invoked as `Agent(model: "sonnet")` and is intentionally distinct from the post-scout `synthesis` subagent registered by ADR-0048 — synthesis is read-only filter/rank/trim and cannot call `agent_capture`.
 

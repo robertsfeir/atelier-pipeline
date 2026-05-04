@@ -103,13 +103,19 @@ tool invocation based on this table plus the promotion signals above.
 
 <model-table id="provider-shaped-model-ids">
 
-## Provider-Shaped Model ID Translation (ADR-0054)
+## Provider-Shaped Model ID Reference (ADR-0054)
 
-The tier table above uses logical names (opus/sonnet/haiku). Eva resolves
-each logical name to a provider-shaped model ID at invocation time by
-reading `model_provider` from `{pipeline_state_dir}/../pipeline-config.json`
-(field default `anthropic`). Credentials remain in the Claude Code
-environment configuration -- the pipeline emits IDs, it does not hold keys.
+> **CRITICAL — Agent tool constraint:** Always pass the logical alias
+> (`"sonnet"`, `"opus"`, or `"haiku"`) to the Agent tool's `model` parameter.
+> Full model ID strings (e.g. `claude-sonnet-4-6`) have been observed to cause
+> `Invalid tool parameters` errors in current versions of Claude Code, even
+> though the documentation lists them as valid. Claude Code resolves the alias
+> to the appropriate provider ID internally. Do not pre-translate.
+
+The table below is a **reference** mapping logical names to provider-shaped IDs.
+It is used for documentation, for Bedrock/Vertex install-time configuration
+(e.g. rewriting frontmatter for non-Anthropic deployments), and for external
+API contexts — not for Agent tool invocations.
 
 | Logical name | anthropic (default) | bedrock | vertex |
 |--------------|---------------------|---------|--------|
@@ -122,12 +128,16 @@ environment configuration -- the pipeline emits IDs, it does not hold keys.
 1. Eva reads `model_provider` from `pipeline-config.json` once at session
    boot and caches the value. Default is `anthropic` -- existing deployments
    are unaffected until they opt in.
-2. For every Agent tool invocation, Eva translates the logical name from the
-   per-agent assignment table to the provider-shaped ID using the row above.
-3. Frontmatter-pinned subagents (scout, synthesis -- ADR-0048) are not
-   re-translated by Eva. Their frontmatter holds the explicit `claude-*`
-   Anthropic ID; Bedrock/Vertex deployments must rewrite those frontmatter
-   values at install time, not at invocation time.
+2. For every Agent tool invocation, Eva passes the **logical name** (`sonnet`,
+   `opus`, or `haiku`) directly. No translation step. Claude Code resolves
+   the alias to the correct provider-shaped ID internally based on its own
+   deployment configuration.
+3. Frontmatter-pinned subagents (scout, synthesis -- ADR-0048) pin explicit
+   `claude-*` Anthropic IDs in their frontmatter files. This is a separate
+   code path from the Agent tool `model` parameter and accepts full IDs.
+   Bedrock/Vertex deployments must rewrite those frontmatter values at
+   install time. Eva omits the `model` parameter when invoking these
+   subagents -- the frontmatter handles it.
 4. Unknown `model_provider` values are a configuration error. Eva does not
    fall back silently; she surfaces the unknown value and stops.
 
@@ -149,8 +159,10 @@ For every Agent tool invocation:
 3. Apply promotion signals from the Promotion Signals table; effort moves by
    at most one rung regardless of how many signals fire.
 4. Clamp to the floor (`low`) and ceiling (`high`). `xhigh` and `max` are forbidden.
-5. Set `model` and `effort` explicitly on the Agent tool call. Omission is a
-   violation of the enforcement gate below.
+5. Set `model` and `effort` explicitly on the Agent tool call. The `model`
+   value is always the **logical alias** from the table (`"sonnet"`, `"opus"`,
+   or `"haiku"`). Never pass a full model ID string — the Agent tool rejects
+   them. Omission of either parameter is a violation of the enforcement gate below.
 
 <gate id="model-enforcement">
 

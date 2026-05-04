@@ -5,6 +5,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [5.1.3] - 2026-05-04
+
+### Fixed
+- **Brain capture gate fires before sequencing (ADR-0053).** `enforce-brain-capture-gate.sh` was registered after `enforce-sequencing.sh` in the Agent PreToolUse hook array. When both conditions needed resolving, Eva hit the sequencing block first, fixed state, then hit the brain gate — a two-step blocking dance per agent handoff. Gate and reminder now fire first; sequencing is checked after the pending capture is cleared.
+- **`prompt-brain-capture-reminder.sh` added (new hook).** Soft prompt hook that fires before the hard gate when a pending brain capture exists. Injects a plain-language reminder into Eva's context so she knows what to do before the block fires, rather than seeing only the exit-2 error.
+- **Brain capture gate hooks wired into the `pipeline-setup` template.** `enforce-brain-capture-gate.sh`, `enforce-brain-capture-pending.sh`, `clear-brain-capture-pending.sh`, and `prompt-brain-capture-reminder.sh` were present as source files but never registered in the `settings.json` template written by `/pipeline-setup`. Fresh installs and re-runs now wire all four hooks correctly: gate+reminder in PreToolUse Agent (first position), pending marker in SubagentStop, clear in PostToolUse.
+- **Step 0g added to `/pipeline-setup`.** Idempotent migration that runs on every invocation and fixes existing `settings.json` files: reorders the Agent PreToolUse hooks so brain-capture-gate precedes sequencing, inserts `enforce-brain-capture-pending.sh` into SubagentStop if absent, and adds the PostToolUse `clear-brain-capture-pending.sh` section if missing. Existing projects get the fix automatically on next `/pipeline-setup` run without manual intervention.
+- **Agent tool `model` parameter accepts only logical aliases.** `pipeline-models.md` Rule 2 instructed Eva to translate logical names to provider-shaped model IDs (e.g. `claude-sonnet-4-6`) before passing them to the Agent tool. The Agent tool schema rejects full model ID strings — only `"sonnet"`, `"opus"`, or `"haiku"` are valid. Rule 2 rewritten: Eva passes the logical alias directly; Claude Code resolves it internally. The reference table is retained for Bedrock/Vertex install-time configuration. `brain-hydrate/SKILL.md` model assignment table updated to show logical aliases for consistency.
+
+### Added
+- **`source/claude/hooks/prompt-brain-capture-reminder.sh`** — new soft prompt hook for brain capture pending state (see Fixed above).
+
 ## [5.1.0] - 2026-05-01
 
 ### Changed

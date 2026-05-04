@@ -489,6 +489,158 @@ There is no config key translation. Mybrain accepts every key the atelier-brain 
 
 The `permissions.allow` rewrite is handled by Step 0e earlier in this skill (which strips the stale `mcp__plugin_atelier-pipeline_atelier-brain__` prefix on every run); mybrain's own `brain-setup` skill re-adds the new-prefixed entries when the user runs it.
 
+### Step 0g: Wire Brain Capture Gate Hooks in settings.json
+
+Unconditionally run this migration on every /pipeline-setup invocation. It is silent unless it makes a change. This step ensures the brain-capture gate hooks introduced in ADR-0053 are correctly wired and ordered in existing installations.
+
+Three things to fix:
+
+**A. Agent PreToolUse — gate and reminder before sequencing**
+
+The brain-capture gate must fire before enforce-sequencing.sh so that Eva resolves any pending brain capture before hitting the sequencing check. The prompt reminder must fire before the gate.
+
+1. Check `.claude/settings.json`. If missing or malformed, skip silently.
+2. Find the `PreToolUse` Agent matcher hooks group.
+3. Separate prompt-type hooks from command-type hooks. Within the hooks array, apply this target order:
+   - First: `prompt-brain-capture-reminder.sh` (prompt type) — add if missing
+   - Second: `enforce-brain-capture-gate.sh` (command type) — add if missing; move to front if present elsewhere
+   - Then: `enforce-sequencing.sh`, followed by all other existing hooks in their current relative order
+4. If the hooks were already in this order and both hooks were already present, no change needed for this group.
+
+**B. SubagentStop — enforce-brain-capture-pending.sh**
+
+Writes `.pending-brain-capture.json` when an allowlisted agent stops, enabling the gate to block the next Agent invocation.
+
+1. Find the `SubagentStop` hooks group (there is only one).
+2. If a command hook referencing `enforce-brain-capture-pending.sh` is not present, insert it. Insert it after the `enforce-colby-stop-verify.sh` entry if that entry is present, otherwise insert it before any prompt or agent-type hooks (so it runs early in the stop sequence).
+
+**C. PostToolUse — clear-brain-capture-pending.sh**
+
+Clears `.pending-brain-capture.json` when `agent_capture` succeeds, releasing the gate.
+
+1. Check if a `PostToolUse` key exists in `hooks`.
+2. If absent, add:
+   ```json
+   "PostToolUse": [{"hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/clear-brain-capture-pending.sh"}]}]
+   ```
+3. If present, check whether any hook entry in any group references `clear-brain-capture-pending.sh`. If not, append `{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/clear-brain-capture-pending.sh"}` to the first group's hooks array.
+
+**Implementation — run via Bash:**
+
+```bash
+python3 << 'PYEOF'
+import json, os, sys
+
+p = '.claude/settings.json'
+if not os.path.exists(p):
+    sys.exit(0)
+
+try:
+    with open(p) as f:
+        s = json.load(f)
+except json.JSONDecodeError:
+    print('Warning: .claude/settings.json is malformed JSON -- skipping Step 0g brain capture gate migration.')
+    sys.exit(0)
+
+changed = False
+hooks = s.setdefault('hooks', {})
+
+PRJ = '"$CLAUDE_PROJECT_DIR"/.claude/hooks/'
+
+REMINDER_CMD = PRJ + 'prompt-brain-capture-reminder.sh'
+GATE_CMD     = PRJ + 'enforce-brain-capture-gate.sh'
+SEQ_CMD      = PRJ + 'enforce-sequencing.sh'
+PENDING_CMD  = PRJ + 'enforce-brain-capture-pending.sh'
+CLEAR_CMD    = PRJ + 'clear-brain-capture-pending.sh'
+
+def hook_ref(h):
+    """Return the command/prompt string for a hook entry, regardless of type."""
+    return h.get('command') or h.get('prompt') or h.get('agent') or ''
+
+# ── A. PreToolUse Agent reorder ──────────────────────────────────────────────
+pre = hooks.get('PreToolUse', [])
+agent_group = next((g for g in pre if g.get('matcher') == 'Agent'), None)
+if agent_group is not None:
+    arr = agent_group.get('hooks', [])
+
+    has_reminder = any(REMINDER_CMD in hook_ref(h) for h in arr)
+    has_gate     = any(GATE_CMD     in hook_ref(h) for h in arr)
+    has_seq      = any(SEQ_CMD      in hook_ref(h) for h in arr)
+
+    # Determine if reorder is needed: reminder and gate must precede sequencing.
+    def idx(cmd):
+        for i, h in enumerate(arr):
+            if cmd in hook_ref(h):
+                return i
+        return -1
+
+    reminder_idx = idx(REMINDER_CMD)
+    gate_idx     = idx(GATE_CMD)
+    seq_idx      = idx(SEQ_CMD) if has_seq else len(arr)
+
+    needs_reorder = (
+        not has_reminder
+        or not has_gate
+        or reminder_idx > seq_idx
+        or gate_idx > seq_idx
+        or reminder_idx > gate_idx
+    )
+
+    if needs_reorder:
+        # Strip any existing reminder/gate entries (will re-add at front).
+        rest = [h for h in arr if REMINDER_CMD not in hook_ref(h) and GATE_CMD not in hook_ref(h)]
+
+        reminder_hook = {'type': 'prompt', 'prompt': REMINDER_CMD}
+        gate_hook     = {'type': 'command', 'command': GATE_CMD}
+
+        agent_group['hooks'] = [reminder_hook, gate_hook] + rest
+        changed = True
+
+# ── B. SubagentStop — enforce-brain-capture-pending.sh ───────────────────────
+stop_groups = hooks.get('SubagentStop', [])
+if stop_groups:
+    stop_arr = stop_groups[0].get('hooks', [])
+    if not any(PENDING_CMD in hook_ref(h) for h in stop_arr):
+        pending_hook = {'type': 'command', 'command': PENDING_CMD}
+        # Insert after enforce-colby-stop-verify.sh if present, else before first non-command hook.
+        insert_at = len(stop_arr)
+        for i, h in enumerate(stop_arr):
+            if 'enforce-colby-stop-verify.sh' in hook_ref(h):
+                insert_at = i + 1
+                break
+        else:
+            # No colby-stop-verify: insert before first prompt/agent hook.
+            for i, h in enumerate(stop_arr):
+                if h.get('type') in ('prompt', 'agent'):
+                    insert_at = i
+                    break
+        stop_arr.insert(insert_at, pending_hook)
+        stop_groups[0]['hooks'] = stop_arr
+        changed = True
+
+# ── C. PostToolUse — clear-brain-capture-pending.sh ──────────────────────────
+post_groups = hooks.get('PostToolUse', [])
+if not post_groups:
+    hooks['PostToolUse'] = [{'hooks': [{'type': 'command', 'command': CLEAR_CMD}]}]
+    changed = True
+else:
+    all_post_hooks = [h for g in post_groups for h in g.get('hooks', [])]
+    if not any(CLEAR_CMD in hook_ref(h) for h in all_post_hooks):
+        post_groups[0].setdefault('hooks', []).append({'type': 'command', 'command': CLEAR_CMD})
+        changed = True
+
+if changed:
+    with open(p, 'w') as f:
+        json.dump(s, f, indent=2)
+    print('Wired brain capture gate hooks in .claude/settings.json (Step 0g).')
+PYEOF
+```
+
+**Print notice (conditional):** The script prints `Wired brain capture gate hooks in .claude/settings.json (Step 0g).` when it makes changes.
+**Silent no-op:** If all three conditions are already satisfied, the script prints nothing.
+
+This migration is safe to run on any settings.json — it only adds or reorders hook entries, never removes existing hooks.
+
 ### Step 1: Gather Project Information
 
 Before installing, ask the user about their project. Ask these questions conversationally, one at a time -- do not dump a list.
@@ -790,6 +942,10 @@ optional and must be installed for the pipeline to function correctly.
 | `source/claude/hooks/log-stop-failure.sh` | `.claude/hooks/log-stop-failure.sh` | Appends error entry to error-patterns.md on agent failure (StopFailure) |
 | `source/claude/hooks/prompt-brain-prefetch.sh` | `.claude/hooks/prompt-brain-prefetch.sh` | Brain prefetch prompt injection (Prompt) |
 | `source/claude/hooks/prompt-compact-advisory.sh` | `.claude/hooks/prompt-compact-advisory.sh` | Wave-boundary compaction advisory (SubagentStop) |
+| `source/claude/hooks/prompt-brain-capture-reminder.sh` | `.claude/hooks/prompt-brain-capture-reminder.sh` | Soft prompt reminder when brain capture is pending — fires before enforce-brain-capture-gate.sh so Eva sees guidance before the hard block (PreToolUse Agent, Prompt) |
+| `source/claude/hooks/enforce-brain-capture-gate.sh` | `.claude/hooks/enforce-brain-capture-gate.sh` | Blocks Agent invocations when a brain capture is pending — fires first in the Agent PreToolUse chain, before enforce-sequencing.sh (ADR-0053) |
+| `source/claude/hooks/enforce-brain-capture-pending.sh` | `.claude/hooks/enforce-brain-capture-pending.sh` | Writes .pending-brain-capture.json marker when an allowlisted agent stops (SubagentStop, ADR-0053) |
+| `source/claude/hooks/clear-brain-capture-pending.sh` | `.claude/hooks/clear-brain-capture-pending.sh` | Deletes .pending-brain-capture.json when agent_capture succeeds — suffix-matches *__agent_capture to support any plugin prefix (PostToolUse, ADR-0053) |
 | `source/shared/agents/brain-extractor.md` | `.claude/agents/brain-extractor.md` | Brain knowledge extractor agent (assembled with frontmatter overlay below) |
 | `source/claude/agents/brain-extractor.frontmatter.yml` | (assembled with above into `.claude/agents/brain-extractor.md`) | Claude Code frontmatter for brain-extractor agent |
 | `source/cursor/agents/brain-extractor.frontmatter.yml` | `.cursor-plugin/agents/brain-extractor.md` | Cursor frontmatter for brain-extractor agent |
@@ -870,7 +1026,7 @@ file already exists. Add this hooks section:
       },
       {
         "matcher": "Agent",
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-sequencing.sh"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-pipeline-activation.sh"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-scout-swarm.sh", "if": "tool_input.subagent_type == 'sarah' || tool_input.subagent_type == 'colby' || tool_input.subagent_type == 'scout'"}, {"type": "prompt", "prompt": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-brain-prefetch.sh", "if": "tool_input.subagent_type == 'sarah' || tool_input.subagent_type == 'colby' || tool_input.subagent_type == 'poirot'"}]
+        "hooks": [{"type": "prompt", "prompt": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-brain-capture-reminder.sh"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-brain-capture-gate.sh"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-sequencing.sh"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-pipeline-activation.sh"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-scout-swarm.sh", "if": "tool_input.subagent_type == 'sarah' || tool_input.subagent_type == 'colby' || tool_input.subagent_type == 'scout'"}, {"type": "prompt", "prompt": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-brain-prefetch.sh", "if": "tool_input.subagent_type == 'sarah' || tool_input.subagent_type == 'colby' || tool_input.subagent_type == 'poirot'"}]
       },
       {
         "matcher": "Bash",
@@ -901,6 +1057,10 @@ file already exists. Add this hooks section:
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-colby-stop-verify.sh"
           },
           {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-brain-capture-pending.sh"
+          },
+          {
             "type": "prompt",
             "prompt": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-compact-advisory.sh",
             "if": "agent_type == 'ellis'"
@@ -912,6 +1072,11 @@ file already exists. Add this hooks section:
             "if": "agent_type == 'sarah' || agent_type == 'colby' || agent_type == 'agatha' || agent_type == 'robert' || agent_type == 'robert-spec' || agent_type == 'sable' || agent_type == 'sable-ux' || agent_type == 'ellis'"
           }
         ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/clear-brain-capture-pending.sh"}]
       }
     ],
     "PreCompact": [
