@@ -1,9 +1,14 @@
 # Pipeline State
 
-<!-- PIPELINE_STATUS: {"phase": "idle", "sizing": null, "qa_status": null, "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": false, "robert_reviewed": false, "brain_available": true, "worktree_path": null, "session_id": null, "branch_name": null, "stop_reason": "completed_clean"} -->
+<!-- PIPELINE_STATUS: {"phase": "build", "sizing": "Medium", "qa_status": null, "telemetry_captured": false, "ci_watch_active": false, "ci_watch_retry_count": 0, "ci_watch_commit_sha": "", "poirot_reviewed": false, "robert_reviewed": false, "brain_available": true, "worktree_path": null, "session_id": null, "branch_name": null, "stop_reason": null} -->
 
 ## Active Pipeline
-**Phase:** idle
+**Feature:** ADR-0058 — Progressive-Disclosure Standardization
+**Phase:** build
+**Sizing:** Medium
+**ADR:** `docs/architecture/ADR-0058-progressive-disclosure-standardization.md`
+**Scope:** Split skills/pipeline-setup/SKILL.md (1,482 → ~300 lines + 3 companions); split skills/brain-hydrate/SKILL.md (511 → ~240 lines + 2 companions); structural standardization of source/shared/commands/*.md.
+**Mode:** in-place on main (no worktree — pre-existing dirty tree + uncommitted ADR-0058)
 
 **Brain hydration:** Complete (2026-04-29). 275 thoughts captured across all 53 ADRs, 14 product specs, 1 UX doc, pipeline artifacts, and git history. 142 decisions, 79 rejections, 34 insights, 10 lessons, 3 preferences. ~24 relations. mybrain plugin (scope: atelier.plugin).
 
@@ -495,3 +500,4 @@ Sarah (ADR-0044 with research brief) → Roz test spec review → Colby build �
 <!-- COMPACTION: 2026-05-01T00:24:22Z -->
 <!-- COMPACTION: 2026-05-01T00:27:41Z -->
 <!-- COMPACTION: 2026-05-01T00:30:10Z -->
+<!-- COMPACTION: 2026-05-04T17:45:50Z -->

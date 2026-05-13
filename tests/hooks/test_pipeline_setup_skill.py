@@ -27,6 +27,7 @@ import re
 from conftest import PROJECT_ROOT
 
 SKILL_MD = PROJECT_ROOT / "skills" / "pipeline-setup" / "SKILL.md"
+HOOKS_MD = PROJECT_ROOT / "skills" / "pipeline-setup" / "hooks.md"
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────
@@ -35,6 +36,11 @@ SKILL_MD = PROJECT_ROOT / "skills" / "pipeline-setup" / "SKILL.md"
 def read_skill_md() -> str:
     assert SKILL_MD.exists(), f"SKILL.md missing at {SKILL_MD}"
     return SKILL_MD.read_text()
+
+
+def read_hooks_md() -> str:
+    assert HOOKS_MD.exists(), f"hooks.md missing at {HOOKS_MD}"
+    return HOOKS_MD.read_text()
 
 
 def extract_json_block(text: str) -> str:
@@ -78,14 +84,14 @@ def flatten_hook_commands(hooks_section: dict) -> list[dict]:
 
 
 def test_T_0033_020_skill_md_json_block_parses():
-    """The fenced ```json settings.json template in SKILL.md must parse
+    """The fenced ```json settings.json template in hooks.md must parse
     as valid JSON via json.loads().
 
     Wave 2 surgically edits this block. A trailing comma, unbalanced bracket,
     or unescaped quote would silently break every fresh /pipeline-setup install.
     This test is the canary.
     """
-    text = read_skill_md()
+    text = read_hooks_md()
     block = extract_json_block(text)
     try:
         parsed = json.loads(block)
@@ -104,11 +110,13 @@ def test_T_0033_020_skill_md_json_block_parses():
 
 
 def test_T_0033_022_manifest_has_enforce_scout_swarm_row():
-    """The markdown file-copy manifest in SKILL.md must include a row that
+    """The markdown file-copy manifest in hooks.md must include a row that
     references enforce-scout-swarm.sh (so /pipeline-setup copies it into
     .claude/hooks/ on fresh installs). ADR-0033 Step 8 (C2 part 1).
+
+    Content moved from SKILL.md to hooks.md per ADR-0058 progressive disclosure.
     """
-    text = read_skill_md()
+    text = read_hooks_md()
     # The manifest is a markdown table. Look for a line referencing
     # source/claude/hooks/enforce-scout-swarm.sh.
     pattern = re.compile(
@@ -116,7 +124,7 @@ def test_T_0033_022_manifest_has_enforce_scout_swarm_row():
     )
     match = pattern.search(text)
     assert match is not None, (
-        "SKILL.md file-copy manifest missing a row for "
+        "hooks.md file-copy manifest missing a row for "
         "`source/claude/hooks/enforce-scout-swarm.sh`. "
         "ADR-0033 Step 8 (C2 part 1) requires this row."
     )
@@ -178,15 +186,17 @@ def test_T_0033_024_session_hydrate_manifest_description_updated():
     Rationale: the source file is an intentional no-op superseded by the
     atelier_hydrate MCP tool. The manifest description previously claimed
     it "runs telemetry hydration at SessionStart" — stale and misleading.
+
+    Content moved from SKILL.md to hooks.md per ADR-0058 progressive disclosure.
     """
-    text = read_skill_md()
+    text = read_hooks_md()
     # Find the manifest row referencing session-hydrate.sh.
     row_pattern = re.compile(
         r"\|\s*`source/claude/hooks/session-hydrate\.sh`[^\n]*",
     )
     match = row_pattern.search(text)
     assert match is not None, (
-        "SKILL.md manifest missing session-hydrate.sh row"
+        "hooks.md manifest missing session-hydrate.sh row"
     )
     row = match.group(0)
     assert "no-op" in row, (

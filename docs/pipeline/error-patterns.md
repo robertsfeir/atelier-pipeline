@@ -175,3 +175,8 @@ get WARN injection into the relevant agent's invocation prompt.
 
 - Error: invalid_request
 - Message: 400 {"type":"error","error":{"type":"invalid_request_error","message":"prompt is too long: 209723 tokens > 200000 maximum"},"request_id":"req_011CaaiLFowHARtWMHCwqueF"}
+
+### StopFailure: unknown at 2026-05-11T16:24:28Z
+
+- Error: authentication_failed
+- Message: unknown

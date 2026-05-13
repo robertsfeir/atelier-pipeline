@@ -5,6 +5,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [5.1.4] - 2026-05-13
+
+### Added
+- **ADR-0058: Progressive-disclosure standardization** for skills, agent personas, and slash commands. Functional split filenames, ~500-line entrypoint threshold. Agent layer was already compliant; skill layer was the immediate target.
+- **ADR-0057: Eva brain-capture style and mechanical defaults.** Five style levers (≤500-char content cap, mechanical metadata defaults, no preamble/postamble, parallel batching). Preserves ADR-0053's three-hook gate untouched.
+- **`/release` slash command** — Eva-in-Release-mode for cutting versioned GitHub Releases via the version-bump-PR ceremony.
+- **`skills/pipeline-setup/{hooks,post-install,directory-layout}.md`** — companion files split from the 1,482-line SKILL.md per ADR-0058.
+- **`skills/brain-hydrate/{scout-fanout,extraction}.md`** — companion files split from the 511-line SKILL.md per ADR-0058.
+
+### Changed
+- **`skills/pipeline-setup/SKILL.md`** reduced 1,482 → 955 lines via progressive-disclosure split.
+- **`skills/brain-hydrate/SKILL.md`** reduced 511 → 246 lines via progressive-disclosure split.
+
+### Fixed
+- **`.cursor-plugin/skills/{pipeline-setup,brain-hydrate}/`** synced with top-level skills after ADR-0058 split. Mirror had been drifting since ADR-0055/0056.
+- **5 hook tests** migrated to read split companion files instead of monolithic SKILL.md.
+- **Self-referential `<read>` pointer in `extraction.md`** (was telling subagent to read SKILL.md where rules used to live; now points at `extraction.md` where they live).
+
 ## [5.1.3] - 2026-05-04
 
 ### Fixed

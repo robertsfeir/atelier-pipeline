@@ -489,6 +489,158 @@ There is no config key translation. Mybrain accepts every key the atelier-brain 
 
 The `permissions.allow` rewrite is handled by Step 0e earlier in this skill (which strips the stale `mcp__plugin_atelier-pipeline_atelier-brain__` prefix on every run); mybrain's own `brain-setup` skill re-adds the new-prefixed entries when the user runs it.
 
+### Step 0g: Wire Brain Capture Gate Hooks in settings.json
+
+Unconditionally run this migration on every /pipeline-setup invocation. It is silent unless it makes a change. This step ensures the brain-capture gate hooks introduced in ADR-0053 are correctly wired and ordered in existing installations.
+
+Three things to fix:
+
+**A. Agent PreToolUse — gate and reminder before sequencing**
+
+The brain-capture gate must fire before enforce-sequencing.sh so that Eva resolves any pending brain capture before hitting the sequencing check. The prompt reminder must fire before the gate.
+
+1. Check `.claude/settings.json`. If missing or malformed, skip silently.
+2. Find the `PreToolUse` Agent matcher hooks group.
+3. Separate prompt-type hooks from command-type hooks. Within the hooks array, apply this target order:
+   - First: `prompt-brain-capture-reminder.sh` (prompt type) — add if missing
+   - Second: `enforce-brain-capture-gate.sh` (command type) — add if missing; move to front if present elsewhere
+   - Then: `enforce-sequencing.sh`, followed by all other existing hooks in their current relative order
+4. If the hooks were already in this order and both hooks were already present, no change needed for this group.
+
+**B. SubagentStop — enforce-brain-capture-pending.sh**
+
+Writes `.pending-brain-capture.json` when an allowlisted agent stops, enabling the gate to block the next Agent invocation.
+
+1. Find the `SubagentStop` hooks group (there is only one).
+2. If a command hook referencing `enforce-brain-capture-pending.sh` is not present, insert it. Insert it after the `enforce-colby-stop-verify.sh` entry if that entry is present, otherwise insert it before any prompt or agent-type hooks (so it runs early in the stop sequence).
+
+**C. PostToolUse — clear-brain-capture-pending.sh**
+
+Clears `.pending-brain-capture.json` when `agent_capture` succeeds, releasing the gate.
+
+1. Check if a `PostToolUse` key exists in `hooks`.
+2. If absent, add:
+   ```json
+   "PostToolUse": [{"hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/clear-brain-capture-pending.sh"}]}]
+   ```
+3. If present, check whether any hook entry in any group references `clear-brain-capture-pending.sh`. If not, append `{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/clear-brain-capture-pending.sh"}` to the first group's hooks array.
+
+**Implementation — run via Bash:**
+
+```bash
+python3 << 'PYEOF'
+import json, os, sys
+
+p = '.claude/settings.json'
+if not os.path.exists(p):
+    sys.exit(0)
+
+try:
+    with open(p) as f:
+        s = json.load(f)
+except json.JSONDecodeError:
+    print('Warning: .claude/settings.json is malformed JSON -- skipping Step 0g brain capture gate migration.')
+    sys.exit(0)
+
+changed = False
+hooks = s.setdefault('hooks', {})
+
+PRJ = '"$CLAUDE_PROJECT_DIR"/.claude/hooks/'
+
+REMINDER_CMD = PRJ + 'prompt-brain-capture-reminder.sh'
+GATE_CMD     = PRJ + 'enforce-brain-capture-gate.sh'
+SEQ_CMD      = PRJ + 'enforce-sequencing.sh'
+PENDING_CMD  = PRJ + 'enforce-brain-capture-pending.sh'
+CLEAR_CMD    = PRJ + 'clear-brain-capture-pending.sh'
+
+def hook_ref(h):
+    """Return the command/prompt string for a hook entry, regardless of type."""
+    return h.get('command') or h.get('prompt') or h.get('agent') or ''
+
+# ── A. PreToolUse Agent reorder ──────────────────────────────────────────────
+pre = hooks.get('PreToolUse', [])
+agent_group = next((g for g in pre if g.get('matcher') == 'Agent'), None)
+if agent_group is not None:
+    arr = agent_group.get('hooks', [])
+
+    has_reminder = any(REMINDER_CMD in hook_ref(h) for h in arr)
+    has_gate     = any(GATE_CMD     in hook_ref(h) for h in arr)
+    has_seq      = any(SEQ_CMD      in hook_ref(h) for h in arr)
+
+    # Determine if reorder is needed: reminder and gate must precede sequencing.
+    def idx(cmd):
+        for i, h in enumerate(arr):
+            if cmd in hook_ref(h):
+                return i
+        return -1
+
+    reminder_idx = idx(REMINDER_CMD)
+    gate_idx     = idx(GATE_CMD)
+    seq_idx      = idx(SEQ_CMD) if has_seq else len(arr)
+
+    needs_reorder = (
+        not has_reminder
+        or not has_gate
+        or reminder_idx > seq_idx
+        or gate_idx > seq_idx
+        or reminder_idx > gate_idx
+    )
+
+    if needs_reorder:
+        # Strip any existing reminder/gate entries (will re-add at front).
+        rest = [h for h in arr if REMINDER_CMD not in hook_ref(h) and GATE_CMD not in hook_ref(h)]
+
+        reminder_hook = {'type': 'prompt', 'prompt': REMINDER_CMD}
+        gate_hook     = {'type': 'command', 'command': GATE_CMD}
+
+        agent_group['hooks'] = [reminder_hook, gate_hook] + rest
+        changed = True
+
+# ── B. SubagentStop — enforce-brain-capture-pending.sh ───────────────────────
+stop_groups = hooks.get('SubagentStop', [])
+if stop_groups:
+    stop_arr = stop_groups[0].get('hooks', [])
+    if not any(PENDING_CMD in hook_ref(h) for h in stop_arr):
+        pending_hook = {'type': 'command', 'command': PENDING_CMD}
+        # Insert after enforce-colby-stop-verify.sh if present, else before first non-command hook.
+        insert_at = len(stop_arr)
+        for i, h in enumerate(stop_arr):
+            if 'enforce-colby-stop-verify.sh' in hook_ref(h):
+                insert_at = i + 1
+                break
+        else:
+            # No colby-stop-verify: insert before first prompt/agent hook.
+            for i, h in enumerate(stop_arr):
+                if h.get('type') in ('prompt', 'agent'):
+                    insert_at = i
+                    break
+        stop_arr.insert(insert_at, pending_hook)
+        stop_groups[0]['hooks'] = stop_arr
+        changed = True
+
+# ── C. PostToolUse — clear-brain-capture-pending.sh ──────────────────────────
+post_groups = hooks.get('PostToolUse', [])
+if not post_groups:
+    hooks['PostToolUse'] = [{'hooks': [{'type': 'command', 'command': CLEAR_CMD}]}]
+    changed = True
+else:
+    all_post_hooks = [h for g in post_groups for h in g.get('hooks', [])]
+    if not any(CLEAR_CMD in hook_ref(h) for h in all_post_hooks):
+        post_groups[0].setdefault('hooks', []).append({'type': 'command', 'command': CLEAR_CMD})
+        changed = True
+
+if changed:
+    with open(p, 'w') as f:
+        json.dump(s, f, indent=2)
+    print('Wired brain capture gate hooks in .claude/settings.json (Step 0g).')
+PYEOF
+```
+
+**Print notice (conditional):** The script prints `Wired brain capture gate hooks in .claude/settings.json (Step 0g).` when it makes changes.
+**Silent no-op:** If all three conditions are already satisfied, the script prints nothing.
+
+This migration is safe to run on any settings.json — it only adds or reorders hook entries, never removes existing hooks.
+
 ### Step 1: Gather Project Information
 
 Before installing, ask the user about their project. Ask these questions conversationally, one at a time -- do not dump a list.
@@ -762,248 +914,7 @@ Files are assembled from `source/shared/` (content) + `source/claude/` (overlays
 
 This guard does NOT apply to rules, agents, commands, references, or hooks — those are always overwritten from source templates on re-sync.
 
-### Step 3a: Install Enforcement Hooks
-
-Copy the hook scripts from the plugin's `source/claude/hooks/` directory to `.claude/hooks/`
-in the project. These hooks mechanically enforce agent boundaries — they are not
-optional and must be installed for the pipeline to function correctly.
-
-| Template Source | Destination | Purpose |
-|----------------|-------------|---------|
-| `source/claude/hooks/enforce-eva-paths.sh` | `.claude/hooks/enforce-eva-paths.sh` | Blocks main thread (Eva) Write/Edit outside docs/pipeline/ |
-| `source/claude/hooks/enforce-sarah-paths.sh` | `.claude/hooks/enforce-sarah-paths.sh` | Per-agent: Sarah can only write to docs/architecture/ |
-| `source/claude/hooks/enforce-colby-paths.sh` | `.claude/hooks/enforce-colby-paths.sh` | Per-agent: Colby blocked from colby_blocked_paths |
-| `source/claude/hooks/enforce-agatha-paths.sh` | `.claude/hooks/enforce-agatha-paths.sh` | Per-agent: Agatha can only write to docs/ |
-| `source/claude/hooks/enforce-product-paths.sh` | `.claude/hooks/enforce-product-paths.sh` | Per-agent: Robert-spec can only write to docs/product/ |
-| `source/claude/hooks/enforce-ux-paths.sh` | `.claude/hooks/enforce-ux-paths.sh` | Per-agent: Sable-ux can only write to docs/ux/ |
-| `source/claude/hooks/enforce-ellis-paths.sh` | `.claude/hooks/enforce-ellis-paths.sh` | Per-agent: Ellis can only write to CHANGELOG.md, git config files, and CI/CD paths |
-| `source/claude/hooks/enforce-sequencing.sh` | `.claude/hooks/enforce-sequencing.sh` | Blocks out-of-order agent invocations (e.g., Ellis without Poirot verification) |
-| `source/claude/hooks/enforce-pipeline-activation.sh` | `.claude/hooks/enforce-pipeline-activation.sh` | Blocks Colby/Ellis invocation when no active pipeline exists |
-| `source/claude/hooks/enforce-scout-swarm.sh` | `.claude/hooks/enforce-scout-swarm.sh` | Blocks Sarah/Colby/Poirot invocations missing the required scout evidence block (research-brief, colby-context, debug-evidence, qa-evidence) |
-| `source/claude/hooks/enforce-git.sh` | `.claude/hooks/enforce-git.sh` | Blocks git write operations from main thread (must go through Ellis) |
-| `source/claude/hooks/session-hydrate.sh` | `.claude/hooks/session-hydrate.sh` | Intentional no-op — superseded by atelier_hydrate MCP tool. Installed for backward-compatibility only; NOT registered in settings.json. |
-| `source/claude/hooks/pre-compact.sh` | `.claude/hooks/pre-compact.sh` | Writes compaction marker to pipeline-state.md before context is compacted (PreCompact) |
-| `source/claude/hooks/log-agent-start.sh` | `.claude/hooks/log-agent-start.sh` | Logs agent start events to JSONL telemetry file (SubagentStart) |
-| `source/claude/hooks/log-agent-stop.sh` | `.claude/hooks/log-agent-stop.sh` | Logs agent stop events to JSONL telemetry file (SubagentStop) |
-| `source/claude/hooks/enforce-colby-stop-verify.sh` | `.claude/hooks/enforce-colby-stop-verify.sh` | Runs verify_commands.format + verify_commands.typecheck after Colby stops; exits 2 on typecheck failure to re-engage Colby (SubagentStop, ADR-0050). **Claude Code only -- Cursor does not support SubagentStop** (see `source/cursor/agents/brain-extractor.frontmatter.yml`); Cursor installs intentionally omit this hook. |
-| `source/claude/hooks/post-compact-reinject.sh` | `.claude/hooks/post-compact-reinject.sh` | Re-injects pipeline-state.md and context-brief.md after compaction (PostCompact) |
-| `source/claude/hooks/log-stop-failure.sh` | `.claude/hooks/log-stop-failure.sh` | Appends error entry to error-patterns.md on agent failure (StopFailure) |
-| `source/claude/hooks/prompt-brain-prefetch.sh` | `.claude/hooks/prompt-brain-prefetch.sh` | Brain prefetch prompt injection (Prompt) |
-| `source/claude/hooks/prompt-compact-advisory.sh` | `.claude/hooks/prompt-compact-advisory.sh` | Wave-boundary compaction advisory (SubagentStop) |
-| `source/shared/agents/brain-extractor.md` | `.claude/agents/brain-extractor.md` | Brain knowledge extractor agent (assembled with frontmatter overlay below) |
-| `source/claude/agents/brain-extractor.frontmatter.yml` | (assembled with above into `.claude/agents/brain-extractor.md`) | Claude Code frontmatter for brain-extractor agent |
-| `source/cursor/agents/brain-extractor.frontmatter.yml` | `.cursor-plugin/agents/brain-extractor.md` | Cursor frontmatter for brain-extractor agent |
-| `source/shared/hooks/session-boot.sh` | `.claude/hooks/session-boot.sh` | Session boot data collector (SessionStart) -- reads pipeline state and config |
-| `source/shared/hooks/hook-lib.sh` | `.claude/hooks/hook-lib.sh` | Shared hook utility library — JSON parsers, agent type extraction, deny/allow emitters (sourced by enforcement and telemetry hooks) |
-| `source/shared/hooks/pipeline-state-path.sh` | `.claude/hooks/pipeline-state-path.sh` | Per-worktree session state path resolver — session_state_dir() and error_patterns_path() (sourced by session-boot, post-compact-reinject, prompt-compact-advisory) |
-| `source/claude/hooks/enforcement-config.json` | `.claude/hooks/enforcement-config.json` | Project-specific paths and agent rules |
-
-#### ADR-0050 verify_commands keys (`enforce-colby-stop-verify.sh`, opt-in)
-
-The Claude Code-only `enforce-colby-stop-verify.sh` hook (SubagentStop) reads
-three keys from `.claude/pipeline-config.json` (or `.cursor/pipeline-config.json`,
-checked first). All three are opt-in -- absent or empty values turn the
-behavior off without warnings.
-
-| Key | Type | Default | Meaning |
-|-----|------|---------|---------|
-| `verify_commands.format` | string | (missing) | Auto-format command run after every Colby stop. **Empty string = no-op** (skip the format step). **Missing key = silent skip** (same as empty). Format failures are logged to stderr but never block. |
-| `verify_commands.typecheck` | string | (missing) | Typecheck command run after format. **Empty string = no-op** (skip the typecheck step). **Missing key = silent skip**. On non-zero exit the hook prints the last ~40 lines of output on stderr and exits 2 to re-engage Colby. |
-| `verify_max_attempts` | integer | `3` | Maximum number of consecutive **typecheck failures** in a single session before the hook stops re-engaging Colby and exits 0 with a warning. The counter increments on failure only; a successful typecheck deletes the counter file (full reset). Format failures never touch the counter. |
-
-If both `verify_commands.format` and `verify_commands.typecheck` are missing
-or empty, the hook exits 0 immediately -- the project is treated as not
-opted in. To opt in to typecheck-only enforcement, set
-`verify_commands.typecheck` and leave `verify_commands.format` empty (or
-omit it entirely).
-
-Example (`pipeline-config.json` fragment):
-
-```json
-{
-  "verify_commands": {
-    "format": "npm run format",
-    "typecheck": "npm run typecheck"
-  },
-  "verify_max_attempts": 3
-}
-```
-
-After copying, make the `.sh` files executable: `chmod +x .claude/hooks/*.sh`
-
-**Validate enforcement-config.json** after copying and customizing. Read the installed `.claude/hooks/enforcement-config.json` and check the following required fields:
-
-| Field | Type | Requirement |
-|-------|------|-------------|
-| `pipeline_state_dir` | string | Non-empty |
-| `test_command` | string | Non-empty -- critical: Poirot cannot run tests without this |
-| `test_patterns` | array | Non-empty -- at least one pattern required |
-
-Also check `lint_command`: if the field is absent or empty, warn (but do not block) -- Eva's quality gate will fall back to `test_command`.
-
-Print the validation result:
-- **All required fields valid:** `Enforcement config validated — all required fields present.`
-- **Any required field missing or empty:** `WARNING: enforcement-config.json is missing required fields: [list]. Pipeline enforcement may not work correctly. Re-run /pipeline-setup to fix.`
-- **Only lint_command empty/absent:** `NOTE: lint_command is not set — Eva will fall back to test_command for quality checks.`
-
-Do not block installation on validation failure. The warning is informational -- the fix is re-running setup.
-
-**Customize enforcement-config.json** with the project-specific values from Step 1:
-- `pipeline_state_dir`: the pipeline state directory (default: `docs/pipeline`)
-- `colby_blocked_paths`: array of path prefixes Colby cannot write to (default includes `docs/`, `.github/`, infrastructure paths)
-- `test_patterns`: array of patterns matching the project's test files (e.g., `[".test.", ".spec.", "/tests/", "conftest"]`)
-- `test_command`: full test suite command from Step 1 -- used by Poirot for QA verification (e.g., `npm test`, `pytest`)
-
-**Register hooks in `.claude/settings.json`** — merge with existing settings if the
-file already exists. Add this hooks section:
-
-```json
-{
-  "env": {
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
-  },
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Write|Edit|MultiEdit",
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-eva-paths.sh"}]
-      },
-      {
-        "matcher": "Agent",
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-sequencing.sh"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-pipeline-activation.sh"}, {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-scout-swarm.sh", "if": "tool_input.subagent_type == 'sarah' || tool_input.subagent_type == 'colby' || tool_input.subagent_type == 'scout'"}, {"type": "prompt", "prompt": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-brain-prefetch.sh", "if": "tool_input.subagent_type == 'sarah' || tool_input.subagent_type == 'colby' || tool_input.subagent_type == 'poirot'"}]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-git.sh", "if": "tool_input.command.includes('git ')"}]
-      }
-    ],
-    "SubagentStart": [
-      {
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/log-agent-start.sh"}]
-      }
-    ],
-    "SessionStart": [
-      {
-        "hooks": [
-          {"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-boot.sh"}
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/log-agent-stop.sh"
-          },
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-colby-stop-verify.sh"
-          },
-          {
-            "type": "prompt",
-            "prompt": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-compact-advisory.sh",
-            "if": "agent_type == 'ellis'"
-          },
-          {
-            "type": "agent",
-            "agent": "brain-extractor",
-            "prompt": "Extract decisions, patterns, and lessons from the completed agent's output and capture them to the brain via agent_capture.",
-            "if": "agent_type == 'sarah' || agent_type == 'colby' || agent_type == 'agatha' || agent_type == 'robert' || agent_type == 'robert-spec' || agent_type == 'sable' || agent_type == 'sable-ux' || agent_type == 'ellis'"
-          }
-        ]
-      }
-    ],
-    "PreCompact": [
-      {
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-compact.sh"}]
-      }
-    ],
-    "PostCompact": [
-      {
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-compact-reinject.sh"}]
-      }
-    ],
-    "StopFailure": [
-      {
-        "hooks": [{"type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/log-stop-failure.sh"}]
-      }
-    ]
-  }
-}
-```
-
-**Important:** These hooks require `jq` to be installed. Check with `command -v jq`.
-If `jq` is not available, tell the user: "Install jq for pipeline enforcement hooks:
-`brew install jq` (macOS) or `apt install jq` (Linux)."
-
-**Total with hooks: 38 mandatory files across 7 directories.**
-
-#### Custom Agent Discovery
-
-The pipeline supports custom agents beyond the core 9. To add a custom agent:
-
-- **Drop a file:** Place any `.md` file into `.claude/agents/` with YAML
-  frontmatter (`name`, `description`) and Eva will discover it automatically
-  at session start.
-- **Paste markdown:** Paste a raw agent definition into the chat and Eva will
-  offer to convert it to the pipeline's XML format and write it as a proper
-  agent file.
-- **Read-only by default:** Discovered agents cannot use Write, Edit, or
-  MultiEdit tools. To grant write access, add a per-agent frontmatter hook
-  (enforce-{name}-paths.sh) to the agent's frontmatter overlay.
-
-See the "Agent Discovery" section in `agent-system.md` for full details.
-
-### Step 3b: Write Version Marker
-
-After copying all template files, write the current plugin version to `.claude/.atelier-version`:
-
-```bash
-# Read version from plugin.json and write to project
-grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" | head -1 | grep -o '"[^"]*"$' | tr -d '"' > .claude/.atelier-version
-```
-
-This file is used by the SessionStart hook to detect when the plugin has been updated and the project's pipeline files may be outdated. The hook compares this version against the plugin's current version and notifies the user if an update is available.
-
-**Important:** Always write this file, even on reinstalls. It must reflect the version of the templates that were actually installed.
-
-### Step 3c: Cursor Plugin Rules Sync (.mdc wrappers for reference docs)
-
-When running inside Cursor (detected via `CURSOR_PROJECT_DIR` env var), create `.mdc` wrappers
-for reference documents so Cursor can discover and load them. Each wrapper adds YAML frontmatter
-to the source content. All reference rules use `alwaysApply: false` -- they are loaded on demand
-by agents, not injected into every conversation.
-
-**File structure (each reference .mdc wrapper):**
-
-```markdown
----
-description: [short description of the document]
-alwaysApply: false
----
-
-[Full content from source/shared/references/<file>.md]
-```
-
-**Reference docs to sync (alwaysApply: false):**
-
-| Source | Destination | Description |
-|--------|-------------|-------------|
-| `source/shared/references/dor-dod.md` | `.cursor-plugin/rules/dor-dod.mdc` | Definition of Ready / Definition of Done framework |
-| `source/shared/references/invocation-templates.md` | `.cursor-plugin/rules/invocation-templates.mdc` | Invocation templates -- standardized XML tag patterns for subagent invocation |
-| `source/shared/references/pipeline-operations.md` | `.cursor-plugin/rules/pipeline-operations.mdc` | Pipeline operations -- continuous QA, feedback loops, batch mode, and worktree rules |
-| `source/shared/references/agent-preamble.md` | `.cursor-plugin/rules/agent-preamble.mdc` | Agent preamble -- shared actions and protocols for all pipeline agents |
-| `source/shared/references/branch-mr-mode.md` | `.cursor-plugin/rules/branch-mr-mode.mdc` | Branch and MR mode -- Colby branch creation and MR procedures for MR-based strategies |
-| `source/shared/references/telemetry-metrics.md` | `.cursor-plugin/rules/telemetry-metrics.mdc` | Telemetry metrics -- metric schemas, cost table, alert thresholds, JIT telemetry-capture protocol |
-| `source/shared/references/pipeline-phases.md` | `.cursor-plugin/rules/pipeline-phases.mdc` | JIT phase sizing, budget gate, investigation discipline, concurrent session detection, state file descriptions |
-| `source/shared/references/worktree-isolation.md` | `.cursor-plugin/rules/worktree-isolation.mdc` | JIT worktree-per-session protocol (ADR-0038) |
-| `source/shared/references/xml-prompt-schema.md` | `.cursor-plugin/rules/xml-prompt-schema.mdc` | XML prompt schema -- tag vocabulary for agent persona files |
-| `source/shared/references/cloud-architecture.md` | `.cursor-plugin/rules/cloud-architecture.mdc` | Cloud architecture -- reference for cloud-native deployment patterns |
-| `source/shared/references/step-sizing.md` | `.cursor-plugin/rules/step-sizing.mdc` | ADR step sizing gate (S1-S5) and split heuristics |
-| `source/shared/references/routing-detail.md` | `.cursor-plugin/rules/routing-detail.mdc` | Auto-routing intent detection matrix -- loaded JIT when Eva encounters edge-case routing decisions |
-
-**Skip when:** Running in Claude Code (no `CURSOR_PROJECT_DIR` env var). Claude Code reads `.claude/references/*.md` directly without `.mdc` wrappers.
+See `hooks.md` for hook script installation (Step 3a), version marker (Step 3b), and Cursor rules sync (Step 3c).
 
 ### Step 4: Customize Placeholders
 
@@ -1026,267 +937,7 @@ The following placeholders in template files must be replaced with project-speci
 
 **Replacement method — IMPORTANT:** Use the Read tool to load each installed file, perform substitutions in memory, then write the result back with the Write tool. Do NOT use `sed` for these replacements. BSD `sed` on macOS does not support multi-line replacement strings — values like `{{TECH_STACK}}` or `{{SOURCE_STRUCTURE}}` may contain newlines, which cause `sed` to misread the characters after the newline as flags and fail with `bad flag in substitute command`.
 
-### Step 5: Write CLAUDE.md
-
-**If the project already has a `CLAUDE.md` file:**
-
-1. Read the existing `CLAUDE.md`.
-2. Extract any project-specific content that the pipeline does not cover. Content to carry forward includes: tech stack, language/framework versions, test commands, lint/typecheck commands, build commands, file/directory structure, repo conventions, coding style rules, database patterns, CI/CD notes, environment setup, and any other project-specific facts. Do NOT carry forward content the pipeline now owns: agent behavior instructions, commit workflow, pipeline/QA process, or any "how Claude should behave" sections.
-3. Rename the existing file: `mv CLAUDE.md CLAUDE.md.orig` (use the Bash tool).
-4. Write a new `CLAUDE.md` containing: (a) any carried-forward project-specific sections, followed by (b) the pipeline section below.
-
-**If no `CLAUDE.md` exists:** create one with the pipeline section only.
-
-**Pipeline section:**
-
-```markdown
-## Pipeline System (Atelier Pipeline)
-
-This project uses a multi-agent orchestration pipeline for structured development.
-
-**Agents:** Eva (orchestrator), Robert (product), Sable (UX), Sarah (architect), Colby (engineer), Poirot, Agatha (docs), Ellis (commit)
-
-**Commands:** /pm, /ux, /architect, /pipeline, /devops, /docs
-
-**Pipeline state:** docs/pipeline/ -- Eva reads this at session start for recovery
-
-**Key rules:**
-- Colby writes tests when Sarah names a failure mode before Colby builds ()
-- Poirot verifies every Colby output (no self-review)
-- Ellis commits (Eva never runs git on code)
-- Full test suite between work units
-```
-
-### Step 6: Print Summary and Offer Optional Features
-
-After installation, print:
-
-1. A count of files installed (37 mandatory files across 7 directories, plus any optional tech-stack references)
-2. The directory tree showing what was created
-3. The configured branching strategy and any CI recommendations
-4. A reminder of available slash commands
-5. Instructions to start their first pipeline run
-6. **Offer optional features** -- Sentinel security agent, Agent Teams parallel execution, CI Watch automated CI monitoring, Claude Code Agent Resume prerequisite, and Atelier Brain persistent memory (Steps 6a through 6d)
-
-**Example summary:**
-
-```
-Atelier Pipeline installed successfully.
-
-Files installed: 36 (mandatory)
-  .claude/rules/       -- 5 files (Eva persona, orchestration rules, pipeline operations, model selection, branch lifecycle)
-  .claude/agents/      -- 9 files (Sarah, Colby, Robert, Sable, Poirot, Distillator, Ellis, Agatha)
-  .claude/commands/    -- 6 files (/pm, /ux, /architect, /pipeline, /devops, /docs)
-  .claude/references/  -- 6 files (quality framework, invocation templates, pipeline operations, agent preamble, branch/MR mode, telemetry metrics)
-  .claude/hooks/       -- 6 files (path enforcement, sequencing, git guard, DoR/DoD warning, pre-compact, config)
-  docs/pipeline/       -- 4 files (state tracking for session recovery)
-  .claude/pipeline-config.json -- branching strategy configuration
-  .claude/settings.json -- updated with hook registration
-  CLAUDE.md            -- written fresh (project-specific content carried forward from CLAUDE.md.orig)
-
-Branching strategy: [selected strategy]
-  [CI template recommendations -- advisory, printed not written to files:
-   - Trunk-based: Run CI on every push to main.
-   - GitHub Flow: Run CI on MR events + push to main. Protect main.
-   - GitLab Flow: Same + CI on push to staging/production. Protect all env branches.
-   - GitFlow: CI on MR events for develop AND main. Protect both.]
-
-Sentinel security agent: [enabled (Semgrep MCP) | not enabled]
-Agent Teams: [enabled (experimental) | not enabled]
-CI Watch: [enabled (max retries: N) | not enabled]
-Compaction API: PreCompact hook installed for pipeline state preservation
-
-Available commands:
-  /pm          -- Feature discovery and product spec (Robert)
-  /ux          -- UI/UX design (Sable)
-  /architect   -- Architecture and ADR production (Sarah)
-  /pipeline    -- Full pipeline orchestration (Eva)
-  /devops      -- Infrastructure and deployment (Eva)
-  /docs        -- Documentation planning and writing (Agatha)
-
-To start your first pipeline:
-  Describe a feature idea, or say "let's build [feature name]"
-  Eva will size the work and route to the right starting agent.
-```
-
-### Step 6a: Sentinel Security Agent (Opt-In)
-
-After printing the summary, offer the optional Sentinel security agent:
-
-> Would you also like to enable **Sentinel** -- the security audit agent?
-> It uses Semgrep to scan your code for vulnerabilities during QA.
-> Requires the Semgrep MCP server (free). Optional -- the pipeline works fine without it.
-
-**If user says yes:**
-
-1. **Clean up legacy Sentinel install** (if present) — previous versions of pipeline-setup installed the deprecated `semgrep-mcp` PyPI package and registered it manually in `.mcp.json`. Check and clean up:
-   - Run `command -v semgrep-mcp`. If found: run `pipx uninstall semgrep-mcp` (or `pip3 uninstall semgrep-mcp -y` if pipx is not available). Tell user: "Removed deprecated semgrep-mcp package — Sentinel now uses the official Semgrep plugin."
-   - Check `.mcp.json` for a `"semgrep-mcp"` or `"semgrep"` entry that was manually added (command is `"semgrep-mcp"` or command is `"semgrep"` with args `["mcp"]`). If found: remove the entry. If `.mcp.json` is now empty (`{}` or `{"mcpServers": {}}`), delete the file.
-   - This cleanup is safe to run even if the user never had the old install — all checks are no-ops when nothing is found.
-
-2. **Check for Semgrep MCP** — verify the Semgrep MCP server is available. Run a quick check: `command -v semgrep && semgrep mcp --version`.
-   - If not available, tell user: "Sentinel requires the Semgrep MCP server. Set it up with: `claude mcp add semgrep semgrep mcp` — then re-run `/pipeline-setup` to enable Sentinel." Skip Sentinel setup.
-   - If semgrep is installed but not authenticated: tell user to run `semgrep login` first (opens browser, free account at https://semgrep.dev/login). Skip Sentinel setup.
-
-3. Assemble `source/shared/agents/sentinel.md` + `source/claude/agents/sentinel.frontmatter.yml` to `.claude/agents/sentinel.md` (with placeholder customization, same as other agent personas).
-
-4. Set `sentinel_enabled: true` in `.claude/pipeline-config.json`.
-
-5. Update installation summary: "Sentinel security agent: enabled (Semgrep MCP)"
-
-**If user says no:** Skip entirely. `sentinel_enabled` remains `false` in `pipeline-config.json`. Print: "Sentinel security agent: not enabled"
-
-**Installation manifest addition (conditional):**
-
-| Template Source | Destination | Install When |
-|----------------|-------------|-------------|
-| `source/shared/agents/sentinel.md` + `source/claude/agents/sentinel.frontmatter.yml` | `.claude/agents/sentinel.md` | User enables Sentinel in Step 6a (overlay assembly) |
-
-### Step 6b: Agent Teams Opt-In (Experimental)
-
-After the Sentinel offer (whether user said yes or no), offer the optional Agent Teams feature:
-
-> Would you also like to enable **Agent Teams** -- experimental parallel wave execution?
-> When Claude Code's Agent Teams feature is active (`CLAUDE_AGENT_TEAMS=1`), Eva can run
-> multiple Colby build units in parallel using git worktrees. This is experimental and the
-> pipeline works identically without it.
-
-**If user says yes:**
-
-1. Set `agent_teams_enabled: true` in `.claude/pipeline-config.json`.
-2. Print: "Agent Teams: enabled (experimental). Set `CLAUDE_AGENT_TEAMS=1` in your environment
-   to activate. The pipeline will fall back to sequential execution if the env var is unset."
-
-**Idempotency:** If `agent_teams_enabled` already exists in `pipeline-config.json` and is `true`, skip the mutation and inform the user: "Agent Teams is already enabled." If it exists and is `false`, confirm with the user before changing.
-
-**If user says no:** Skip entirely. `agent_teams_enabled` remains `false` in
-`pipeline-config.json`. Print: "Agent Teams: not enabled"
-
-**No dependency checks needed** -- unlike Sentinel (Semgrep MCP) or Brain (PostgreSQL), Agent Teams
-has no external tools to install. The feature is entirely runtime-activated via the env var.
-
-**No installation manifest expansion** -- Agent Teams uses the existing Colby persona
-(`.claude/agents/colby.md`). No new files are installed.
-
-### Step 6c: CI Watch Opt-In
-
-After the Agent Teams offer (whether user said yes or no), offer the optional CI Watch feature:
-
-> Would you also like to enable **CI Watch** -- automated post-push CI monitoring?
-> After Ellis pushes, Eva watches your CI run and autonomously fixes failures via Poirot and Colby,
-> pausing for your approval before pushing a fix. Requires `gh` (GitHub) or `glab` (GitLab) CLI.
-
-**Platform CLI gate:** Read `platform_cli` from `.claude/pipeline-config.json`.
-- If `platform_cli` is empty or missing, block with message: "CI Watch requires `gh` or `glab`. Configure a platform CLI first (run `/pipeline-setup` and set a platform)." Skip CI Watch setup.
-- If `platform_cli` is set, continue.
-
-**If user says yes:**
-
-1. **Check CLI authentication:** run `gh auth status` (GitHub) or `glab auth status` (GitLab).
-   - If auth check fails, tell user: "CI Watch requires an authenticated `{platform_cli}` session. Run `{platform_cli} auth login` first, then re-run `/pipeline-setup` to enable CI Watch." Skip CI Watch setup.
-
-2. **Ask max retries:** "How many times should the fix cycle retry before stopping? (default: 3, minimum: 1)"
-   - Accept an integer >= 1. If user presses Enter, use 3.
-
-3. **Set config values:** in `.claude/pipeline-config.json`:
-   - `ci_watch_enabled: true`
-   - `ci_watch_max_retries: N` (the value from step 2)
-
-4. **Compute and store platform commands** in `.claude/pipeline-config.json`:
-   - `ci_watch_poll_command`: `gh run list --commit {sha} --json status,conclusion,url,databaseId --limit 1` (GitHub) or `glab ci list --branch {branch} -o json | head -1` (GitLab)
-   - `ci_watch_log_command`: `gh run view {run_id} --log-failed | tail -200` (GitHub) or `glab ci trace {job_id} | tail -200` (GitLab)
-
-5. Print: "CI Watch: enabled (max retries: N)"
-
-**Idempotency:** If `ci_watch_enabled` already exists in `pipeline-config.json` and is `true`, skip the mutation and inform the user: "CI Watch is already enabled (max retries: {current_value})." If it exists and is `false`, confirm with the user before changing.
-
-**If user says no:** Skip entirely. `ci_watch_enabled` remains `false` in `pipeline-config.json`. Print: "CI Watch: not enabled"
-
-**No new agent files installed** -- CI Watch uses existing Poirot, Colby, and Ellis personas.
-
-### Step 6d: Claude Code Agent Resume Prerequisite (Experimental)
-
-After the CI Watch offer (whether user said yes or no), if the user is running Claude Code, offer one more experimental flag — ensure Claude Code's experimental
-subagent-resume flag is enabled. This unlocks the `SendMessage` tool, which
-the Agent tool advertises as the standard way to resume a spawned subagent
-("use SendMessage with to: '<agentId>' to continue this agent"). Without
-the flag, `SendMessage` is absent from the tool registry and every
-follow-up to a subagent respawns a fresh agent that re-reads context from
-scratch.
-
-This is a Claude Code regression currently tracked at
-[anthropics/claude-code#42737](https://github.com/anthropics/claude-code/issues/42737).
-The atelier pipeline depends on cheap subagent resume for Sarah ADR
-revisions, Colby rework cycles, and Poirot scoped re-runs.
-
-**Check `~/.claude/settings.json` for the existing env var:**
-
-```bash
-jq -r '.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS // empty' ~/.claude/settings.json
-```
-
-**If the value is already `1`, skip to the Brain setup offer.** (Idempotency.)
-
-**Otherwise, always apply idempotently via jq:**
-
-```bash
-jq '. + {env: ((.env // {}) + {CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1"})}' \
-  ~/.claude/settings.json > ~/.claude/settings.json.tmp && \
-  mv ~/.claude/settings.json.tmp ~/.claude/settings.json
-```
-
-Confirm: "`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` is set in `~/.claude/settings.json`. Restart Claude
-Code for the change to take effect."
-
-**No installation manifest expansion** -- this is a user-settings mutation,
-not a pipeline file install.
-
-**Brain plugin offer (conditional ask):**
-
-After the Claude Code Agent Resume Prerequisite (Step 6d) offer (whether user said yes or no), check whether the user already has a brain plugin registered:
-
-1. Probe ToolSearch for any tool name matching `mcp__*mybrain*` or `mcp__*atelier-brain__*` (suffix-match, so any plugin prefix is acceptable per ADR-0055).
-2. If at least one match resolves: the user already has a brain plugin registered (either mybrain via the migration wizard in Step 0f, or an externally-installed equivalent). Print "Brain plugin already registered — skipping brain offer." Finish.
-3. If no match resolves: the user has no brain plugin. Ask:
-
-> The pipeline is ready. Would you also like to install the **mybrain** plugin?
-> mybrain gives your agents persistent memory across sessions — architectural
-> decisions, user corrections, QA lessons, and rejected alternatives survive
-> when you close the terminal. It's optional and the pipeline works fine
-> without it (per ADR-0055, the brain is now a separate plugin).
-
-If the user says yes: print the install command and point them to the mybrain plugin's documentation:
-
-```
-Install mybrain in another terminal (or in this one after I finish):
-
-  claude plugin install <mybrain-source-url>
-
-See the mybrain plugin's README for the exact source URL. Once installed,
-run `/brain-setup` from the mybrain plugin to configure the database
-connection and provider settings.
-```
-
-If the user says no: print "OK — run `/pipeline-setup` again anytime if you change your mind. The pipeline runs fine without a brain plugin." Finish.
-
-The pipeline-setup skill itself does NOT install or configure a brain — that responsibility moved to the standalone mybrain plugin in Phase 3 of ADR-0055.
-
-### Step 7: Lightweight Reconfig
-
-Users can change branching strategy without full reinstall by asking Eva to
-"change branching strategy" or "switch to GitHub Flow".
-
-**Procedure:**
-1. Eva reads `.claude/pipeline-config.json`
-2. Eva confirms no active pipeline. If active, return error: "Cannot change
-   branching strategy mid-pipeline. Complete or abandon the current pipeline
-   first."
-3. Eva asks the new strategy question (same as Step 1b)
-4. Eva rewrites `.claude/pipeline-config.json` and
-   `.claude/rules/branch-lifecycle.md` only (installs the selected variant)
-5. Eva announces the change and any new CI recommendations
-
-No other files are modified during reconfig.
+See `post-install.md` for CLAUDE.md writing (Step 5), the installation summary and optional-feature offers (Step 6 through 6d), and lightweight reconfig (Step 7).
 
 </procedure>
 
@@ -1301,17 +952,4 @@ No other files are modified during reconfig.
 
 </gate>
 
-<section id="directory-map">
-
-## What Each Directory Does
-
-| Directory | Loaded By | Purpose |
-|-----------|-----------|---------|
-| `.claude/rules/` | Claude Code automatically (every conversation) | Eva persona and orchestration rules -- always active |
-| `.claude/agents/` | Claude Code when subagents are invoked | Agent personas for execution tasks |
-| `.claude/commands/` | Claude Code when user types a slash command | Manual agent invocation overrides |
-| `.claude/references/` | Agents when they need shared knowledge | Quality framework, lessons, templates |
-| `.claude/hooks/` | Claude Code on every tool call (PreToolUse) | Mechanical enforcement of agent boundaries, sequencing, and git operations |
-| `docs/pipeline/` | Eva at session start | State recovery, context preservation, error tracking |
-
-</section>
+See `directory-layout.md` for the directory reference table (what each installed directory is loaded by and what it does).
