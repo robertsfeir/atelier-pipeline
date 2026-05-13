@@ -1,0 +1,2 @@
+name: release # prettier-ignore
+description: Invoke Eva (Release) to cut a versioned GitHub Release from main, or backfill historical releases. Routes the version-bump commit through a PR (branch protection-friendly) and uses full 40-char SHAs with `gh release create` to avoid the silent short-SHA rejection.

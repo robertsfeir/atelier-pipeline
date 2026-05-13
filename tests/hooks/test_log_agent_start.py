@@ -164,9 +164,10 @@ def test_T_0020_023_settings_json_subagent_start():
 
 
 def test_T_0020_024_skill_md_includes_hook():
-    skill = (PROJECT_ROOT / "skills" / "pipeline-setup" / "SKILL.md").read_text()
-    assert "log-agent-start.sh" in skill
-    assert "SubagentStart" in skill
+    # Hook manifest moved from SKILL.md to hooks.md per ADR-0058 progressive disclosure.
+    hooks_md = (PROJECT_ROOT / "skills" / "pipeline-setup" / "hooks.md").read_text()
+    assert "log-agent-start.sh" in hooks_md
+    assert "SubagentStart" in hooks_md
 
 
 def test_T_0020_025_unwritable_jsonl(hook_env):

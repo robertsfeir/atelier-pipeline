@@ -90,12 +90,13 @@ def test_T_0020_006_regression_enforce_pipeline_activation(hook_env):
 
 def test_T_0020_007_skill_md_if_values():
     settings_file = PROJECT_ROOT / ".claude" / "settings.json"
-    skill_file = PROJECT_ROOT / "skills" / "pipeline-setup" / "SKILL.md"
+    # Hook manifest (including JSON template with if conditions) moved to hooks.md per ADR-0058.
+    hooks_file = PROJECT_ROOT / "skills" / "pipeline-setup" / "hooks.md"
     assert settings_file.exists()
-    assert skill_file.exists()
+    assert hooks_file.exists()
 
     settings = json.loads(settings_file.read_text())
-    skill_text = skill_file.read_text()
+    hooks_text = hooks_file.read_text()
 
     # Extract if value for enforce-git.sh
     bash_matchers = [e for e in settings["hooks"]["PreToolUse"] if e.get("matcher") == "Bash"]
@@ -105,7 +106,7 @@ def test_T_0020_007_skill_md_if_values():
     ]
     git_if = git_hooks[0].get("if", "")
     assert git_if
-    assert git_if in skill_text
+    assert git_if in hooks_text
 
     # warn-dor-dod.sh removed in ADR-0025; session-hydrate.sh (SessionStart) has no if condition
 
