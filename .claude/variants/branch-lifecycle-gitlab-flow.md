@@ -1,3 +1,7 @@
+---
+paths:
+  - "docs/pipeline/**"
+---
 # Branch Lifecycle: GitLab Flow
 
 Same as GitHub Flow for feature work, plus environment promotion branches.
@@ -8,7 +12,7 @@ Eva creates the feature branch and worktree at pipeline start, before any
 agent invocation. See the `worktree-per-session` protocol in
 `pipeline-orchestration.md` for the full creation sequence. If resuming a
 pipeline with an existing worktree (recorded in
-`docs/pipeline/pipeline-state.md`), Eva verifies the worktree still
+`{pipeline_state_dir}/pipeline-state.md`), Eva verifies the worktree still
 exists and re-uses it.
 
 ## Branch Naming
@@ -46,7 +50,7 @@ After MR creation, Ellis removes the local worktree
 (`git worktree remove --force <path>`) and runs `git branch -d <branch>`
 (soft delete; the remote branch persists for the MR). After MR merge, Eva
 deletes the remote branch and logs cleanup in
-`docs/pipeline/pipeline-state.md`.
+`{pipeline_state_dir}/pipeline-state.md`.
 
 ## CI Advisory
 

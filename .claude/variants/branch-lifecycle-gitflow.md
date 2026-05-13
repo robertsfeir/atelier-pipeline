@@ -1,3 +1,7 @@
+---
+paths:
+  - "docs/pipeline/**"
+---
 # Branch Lifecycle: GitFlow
 
 Two long-lived branches: main (production-ready) and develop (integration).
@@ -40,7 +44,7 @@ main AND a separate MR to develop. Both must pass CI.
 ## Branch Cleanup
 
 After MR merge, Eva deletes the feature branch (local + remote) and logs
-cleanup in `docs/pipeline/pipeline-state.md`.
+cleanup in `{pipeline_state_dir}/pipeline-state.md`.
 
 ## CI Advisory
 
