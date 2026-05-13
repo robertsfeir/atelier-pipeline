@@ -5,8 +5,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [5.1.6] - 2026-05-13
+
 ### Changed
-- **ADR-0059 lost-in-the-middle fix applied.** Two rule files reordered so each ends with a binding rule (`default-persona.md` ends with `<gate id="no-code-writing">`; `agent-system.md` ends with `<gate id="no-skill-tool">`). New soft-reminder hook `prompt-eva-path-reminder.sh` injects routing guidance before `enforce-eva-paths.sh` hard-blocks Eva's out-of-scope Edit/Write/MultiEdit attempts. Hard-block contract unchanged. Convention HTML comments added to both rule files.
+- **ADR-0059 lost-in-the-middle fix applied.** Two top-level rule files (`source/shared/rules/default-persona.md`, `source/shared/rules/agent-system.md`) reordered so each now ends with a binding `<gate>` block (the `<gate id="no-code-writing">` Forbidden Actions in `default-persona.md`; the `<gate id="no-skill-tool">` "Custom Commands Are NOT Skills" gate in `agent-system.md`). This puts the binding rules in the recency-region of the file per Anthropic's published prompting guidance (longform data at top, instructions at end). Convention HTML comments at the top of each file document the ordering contract so future contributors do not push binding rules deeper into the middle.
+- **New soft-reminder hook `prompt-eva-path-reminder.sh`** added at `source/claude/hooks/` and `.claude/hooks/`. Fires on `PreToolUse Write|Edit|MultiEdit` before `enforce-eva-paths.sh`. Always exits 0 (advisory, never blocks). Mirrors the architecture of `prompt-brain-capture-reminder.sh`: when Eva is on the main thread and the target path is outside `docs/pipeline/`, injects routing guidance ("route to Colby for code, Ellis for git plumbing / version manifests") so Eva re-plans the call instead of attempting an Edit the hard gate will reject. Cursor mirror: no equivalent (the brain-capture-reminder hook is Claude-only too).
+
+### Preserved
+- **`enforce-eva-paths.sh` hard-block contract is untouched** — byte-identical to v5.1.5. The new soft reminder is additive; the hard gate remains the backstop.
+- **ADR-0053 three-hook brain-capture gate flow untouched** — `enforce-brain-capture-gate.sh`, `enforce-brain-capture-pending.sh`, `clear-brain-capture-pending.sh` byte-identical to v5.1.5.
+- **ADR-0057 Eva brain-capture style** persona edits from v5.1.5 are reinforced by the reorder: `default-persona.md` now also ends on a binding gate (no-code-writing), so future content additions keep both v5.1.5 and v5.1.6 conventions intact.
 
 ## [5.1.5] - 2026-05-13
 
