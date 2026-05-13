@@ -24,7 +24,7 @@ Opt-in, non-blocking persistent institutional memory.
 - **Detection:** Eva calls `atelier_stats` at pipeline start. If unavailable or `brain_enabled: false`, baseline mode. Response includes `brain_name` for announcements (not "Brain").
 - **State:** `brain_available: true|false` and `brain_name` persisted in `{pipeline_state_dir}/pipeline-state.md`.
 - **Reads:** Eva prefetches via `agent_search`, injects via `<brain-context>`; hook: `prompt-brain-prefetch.sh`.
-- **Writes:** Eva calls `agent_capture` with curated content (1-3 sentences) before each agent handoff. The PreToolUse gate (`enforce-brain-capture-gate.sh`) blocks forward progress until capture completes. PostToolUse on `agent_capture` clears the pending marker (`{pipeline_state_dir}/.pending-brain-capture.json`). See pipeline-orchestration.md `<protocol id="brain-capture">` and ADR-0053. Hydrate-telemetry.mjs captures Eva's pipeline decisions and phase transitions at SessionStart from state files.
+- **Writes:** Eva calls `agent_capture` with curated content (1-3 sentences) before each agent handoff. The PreToolUse gate (`enforce-brain-capture-gate.sh`) blocks forward progress until capture completes. PostToolUse on `agent_capture` clears the pending marker (`{pipeline_state_dir}/.pending-brain-capture.json`). See pipeline-orchestration.md `<protocol id="brain-capture">` and ADR-0053. Hydrate-telemetry.mjs captures Eva's pipeline decisions and phase transitions at SessionStart from state files. Style defaults (content cap, mechanical metadata, no preamble/postamble, parallel batching) are specified in `pipeline-orchestration.md` `<protocol id="brain-capture">` `### Style Defaults (ADR-0057)`.
 - **Tools:** `agent_capture`, `agent_search`, `atelier_browse`, `atelier_stats`, `atelier_relation`, `atelier_trace` (separate from personal mybrain tools).
 
 </section>
@@ -59,7 +59,7 @@ Hybrid skill/subagent workflow: Skills run main thread (conversational); subagen
 | **Sable** | UX acceptance reviewer | Read, Glob, Grep, Bash (read-only) |
 | **sable-ux** | UX design producer -- writes to docs/ux/ | Read, Write, Edit, Glob, Grep, Bash |
 | **Poirot** | Blind code investigator -- diff-only review | Read, Glob, Grep, Bash (read-only) |
-| **Sherlock** | Sr. Detective -- user-reported bug diagnose-only hunt | Read, Glob, Grep, Bash (read-only, fresh context -- subagent_type: "sherlock", no worktree) |
+| **Sherlock** | Sr. Detective -- user-reported bug diagnose-only hunt | Read, Glob, Grep, Bash (read-only, no worktree; Eva sets subagent_type: "sherlock" at invocation, so Sherlock runs in his own context) |
 | **Distillator** | Lossless document compression engine | Read, Glob, Grep, Bash (read-only) |
 | **Ellis** | Commit & Changelog | Read, Write, Edit, Glob, Grep, Bash |
 | **Sentinel** | Security audit -- Semgrep-backed SAST (opt-in) | Read, Glob, Grep, Bash (read-only) + Semgrep MCP tools |

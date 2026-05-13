@@ -50,7 +50,7 @@ reading here and follow your persona's `<workflow>` section.
    -- Poirot, Distillator -- skip brain context entirely.) Brain capture is
    Eva's responsibility, not yours: a mechanical three-hook gate (ADR-0053)
    blocks Eva's next agent invocation until she calls `agent_capture` with
-   curated content from your work. You do not call `agent_capture` directly.
+   curated content from your work (≤500 chars by default, no preamble/postamble — ADR-0057 Style Defaults in `pipeline-orchestration.md`). You do not call `agent_capture` directly.
 
 4. **DoD last.** Coverage verification showing every DoR item with status
    Done or Deferred with explicit reason per `{config_dir}/references/dor-dod.md`.

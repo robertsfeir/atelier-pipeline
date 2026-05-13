@@ -48,10 +48,11 @@ NOT_INSTALLED_FILE="${PIPELINE_DIR}/.brain-not-installed"
 PENDING_AGENT=$(jq -r '.agent_type // "unknown"' "$PENDING_FILE" 2>/dev/null || echo "unknown")
 
 cat <<EOF
-[brain-capture-reminder] A brain capture is pending for the previous agent (${PENDING_AGENT}).
-Call agent_capture with a curated thought (decision, pattern, or lesson — 1-3 sentences) before
-spawning the next agent. The hard gate will block the invocation until the capture is recorded.
-Do not proceed to the next Agent call without capturing first.
+[brain-capture-reminder] Pending capture for: ${PENDING_AGENT}.
+Call agent_capture before the next Agent invocation. Style defaults (ADR-0057): content ≤500 chars,
+no preamble or post-call summary, mechanical metadata (source_agent="eva", source_phase="pipeline"
+unless setup/qa). If ≥2 captures are needed this turn, emit them as parallel tool calls.
+The hard gate will block forward progress until the capture is recorded.
 EOF
 
 exit 0

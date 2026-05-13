@@ -5,6 +5,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Changed
+- **ADR-0057 persona edits applied** across `pipeline-orchestration.md`, `default-persona.md`, `agent-system.md`, and `agent-preamble.md`; reminder hook text updated for coherence. ADR-0057 shipped the decision in v5.1.4; this lands the rule discipline Eva loads each session.
+
 ## [5.1.4] - 2026-05-13
 
 ### Added

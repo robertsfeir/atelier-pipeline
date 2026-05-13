@@ -37,10 +37,24 @@ When `brain_available: true`, Eva performs these brain operations at mechanical 
 The brain-extractor agent no longer exists. Brain capture is enforced by three `type: command` hooks that form a closed loop around Eva's curation:
 
 1. **SubagentStop** writes `{pipeline_state_dir}/.pending-brain-capture.json` whenever an agent in the 8-agent allowlist (`sarah`, `colby`, `agatha`, `robert`, `robert-spec`, `sable`, `sable-ux`, `ellis`) finishes. The file holds `agent_type`, `transcript_path`, and `timestamp`.
-2. **PreToolUse on `Agent`** (`enforce-brain-capture-gate.sh`) checks for the pending file before Eva's next agent invocation. If present and Eva is on the main thread, the hook exits 2 with a BLOCKED message instructing Eva to call `agent_capture` with curated content (1-3 sentences, `thought_type` of `decision`/`lesson`/`pattern`/`seed`) before spawning the next agent.
+2. **PreToolUse on `Agent`** (`enforce-brain-capture-gate.sh`) checks for the pending file before Eva's next agent invocation. If present and Eva is on the main thread, the hook exits 2 with a BLOCKED message instructing Eva to call `agent_capture` with curated content (1-3 sentences, ≤500 chars by default — see Style Defaults below, `thought_type` of `decision`/`lesson`/`pattern`/`seed`) before spawning the next agent.
 3. **PostToolUse on `agent_capture`** deletes the pending file on successful capture, releasing the gate.
 
 Eva curates content -- the brain stays a curated knowledge store, not a transcript dump. Capture is mechanical because the gate blocks her next forward step until she captures. Hydrate-telemetry.mjs continues to capture Eva's pipeline decisions and phase transitions at SessionStart from state files.
+
+### Style Defaults (ADR-0057)
+
+Five mechanical defaults for every `agent_capture` Eva makes. No change to the gate flow, the allowlist, or the schema.
+
+1. **Content cap ≤500 chars by default.** Eva's `content` field stays at or under 500 characters. Verbosity is the exception and requires one stated trigger: (a) `alternatives_rejected` metadata list with ≥2 entries, (b) `evidence` array with ≥1 entry, (c) a formal correction enumerating ≥3 runtime scenarios, or (d) the user explicitly flags the capture as load-bearing. The 1-3 sentence contract above is preserved; this puts a hard ceiling on what "1-3 sentences" means in practice.
+
+2. **Mechanical metadata defaults.** Stop re-deriving these per call. `source_agent="eva"`. `source_phase="pipeline"` with two exceptions: `"setup"` when invoked from a setup command (`/pipeline-setup`, `/pipeline-uninstall`) and `"qa"` when capturing a Poirot finding. `decided_by.agent="eva"`. `decided_by.human_approved=true` iff the user explicitly asked for the capture in the current turn, otherwise `false`. Fill these four fields mechanically; do not deliberate.
+
+3. **No post-capture summary.** The `agent_capture` tool result is the receipt. Eva does not enumerate what was captured, recite UUIDs, or re-narrate `evolves_from` links. At most a single short acknowledgement ("Done.") when conversational flow demands one — and never the UUID.
+
+4. **No pre-capture preamble.** Eva does not announce the upcoming call, narrate brain health, or enumerate counts. Legitimate pre-call surfaces: a clarification question the user must answer before Eva can curate, a one-line routing receipt for the next agent, or a failure pre-flight when `atelier_stats` is unreachable. None of those are preambles.
+
+5. **Batch parallel when ≥2 captures are needed in one turn.** The PreToolUse gate is per-`Agent`-call, not per-`agent_capture` call. Multiple `agent_capture` uses in a single assistant message are safe and run faster. When Eva needs ≥2 curated thoughts before the next handoff, emit them as parallel tool calls.
 
 ### Brain-Unavailable Escape Hatch
 
@@ -55,7 +69,7 @@ Eva captures **cross-cutting concerns** -- things no single agent owns -- by cal
 - Before each wave: calls `agent_search` once for the wave's feature area. Injects results into all agent invocations within that wave. Does NOT call `agent_search` per individual agent invocation.
 - Health check: calls `atelier_stats` at pipeline start to verify brain is live.
 
-**Writes:** Eva calls `agent_capture` with curated content (1-3 sentences) before each agent handoff for allowlisted agents -- the PreToolUse gate enforces this. Hydrate-telemetry.mjs captures Eva's pipeline decisions and phase transitions at SessionStart from state files.
+**Writes:** Eva calls `agent_capture` with curated content (1-3 sentences, ≤500 chars by default — see Style Defaults above) before each agent handoff for allowlisted agents -- the PreToolUse gate enforces this. Hydrate-telemetry.mjs captures Eva's pipeline decisions and phase transitions at SessionStart from state files.
 
 ### /devops Capture Gates
 
