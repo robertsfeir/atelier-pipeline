@@ -5,8 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [5.1.5] - 2026-05-13
+
 ### Changed
-- **ADR-0057 persona edits applied** across `pipeline-orchestration.md`, `default-persona.md`, `agent-system.md`, and `agent-preamble.md`; reminder hook text updated for coherence. ADR-0057 shipped the decision in v5.1.4; this lands the rule discipline Eva loads each session.
+- **ADR-0057 persona edits applied** across `source/shared/rules/pipeline-orchestration.md`, `default-persona.md`, `agent-system.md`, and `source/shared/references/agent-preamble.md` (with `.claude/` and `.cursor-plugin/` mirrors synced). A new `### Style Defaults (ADR-0057)` block lands inside `<protocol id="brain-capture">` codifying the five levers: ≤500-char content cap with four named verbosity triggers, mechanical metadata defaults (`source_agent="eva"`, `source_phase="pipeline"` with `setup`/`qa` exceptions, `decided_by` defaults), no post-capture summary, no pre-capture preamble, parallel batching for ≥2 captures. ADR-0057 shipped the decision in v5.1.4; this release lands the rule discipline Eva loads each session.
+- **`prompt-brain-capture-reminder.sh` heredoc rewritten** to reference ADR-0057 style defaults explicitly (≤500-char default, no preamble/postamble, mechanical metadata, parallel batching) rather than only the generic 1-3 sentence guidance.
+
+### Fixed
+- **Sherlock parenthetical wording in `agent-system.md`** clarified across all three triple-target copies. Old text read `(read-only, fresh context -- subagent_type: "sherlock", no worktree)`, which read like a frontmatter declaration; new text reads `(read-only, no worktree; Eva sets subagent_type: "sherlock" at invocation, so Sherlock runs in his own context)`, naming Eva as the actor and disambiguating the runtime parameter from a persona-frontmatter field.
+
+### Preserved
+- **ADR-0053 three-hook brain-capture gate flow is untouched.** `enforce-brain-capture-gate.sh`, `enforce-brain-capture-pending.sh`, `clear-brain-capture-pending.sh` are byte-identical to v5.1.4. The 8-agent capture allowlist is unchanged. Capture timing is unchanged.
 
 ## [5.1.4] - 2026-05-13
 
