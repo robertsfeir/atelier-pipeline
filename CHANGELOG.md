@@ -5,6 +5,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Changed
+- **ADR-0059 lost-in-the-middle fix applied.** Two rule files reordered so each ends with a binding rule (`default-persona.md` ends with `<gate id="no-code-writing">`; `agent-system.md` ends with `<gate id="no-skill-tool">`). New soft-reminder hook `prompt-eva-path-reminder.sh` injects routing guidance before `enforce-eva-paths.sh` hard-blocks Eva's out-of-scope Edit/Write/MultiEdit attempts. Hard-block contract unchanged. Convention HTML comments added to both rule files.
+
 ## [5.1.5] - 2026-05-13
 
 ### Changed
