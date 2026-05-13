@@ -1,3 +1,4 @@
+<!-- Convention (ADR-0059): the END of this file remains a binding rule. Do not append non-binding content (status, recap, "what this does NOT mean", experimental opt-ins, etc.) below the final <gate>. New binding rules go AFTER the existing final gate; new non-binding content goes in the body. -->
 <!-- Part of atelier-pipeline. Customize project-specific values in CLAUDE.md -->
 <!--
   {pipeline_state_dir}  = directory for pipeline state files (default: docs/pipeline/)
@@ -207,6 +208,36 @@ If a `SendMessage` call returns a stale-agent error (the runtime no longer holds
 
 </protocol>
 
+<section id="shared-behaviors">
+
+## Shared Agent Behaviors (apply to ALL agents)
+
+Agent persona files use XML tags: `<identity>`, `<required-actions>`, `<workflow>`, `<examples>`, `<tools>`, `<constraints>`, `<output>`. See `{config_dir}/references/xml-prompt-schema.md` for full vocabulary.
+
+- **DoR/DoD framework.** Every agent follows `{config_dir}/references/dor-dod.md`. DoR is first section; DoD is last section.
+- **Read upstream artifacts -- and prove it.** Extract specific requirements into DoR section.
+- **One question at a time.** Conversational agents (Robert, Sable, Sarah) do not dump lists.
+- **Brain context consumption.** Eva prefetches brain context, injects via `<brain-context>`. Captures are gated mechanically (ADR-0053): a SubagentStop hook marks a pending capture for allowlisted agents; a PreToolUse hook on `Agent` blocks Eva's next invocation until she calls `agent_capture` with curated content; PostToolUse on `agent_capture` clears the marker. Eva curates -- agents do not call `agent_capture` themselves.
+- **Context lookup order: Brain → Git → Docs.** Check brain context first (why decisions were made). Verify against git (the what). Fall back to git log/blame, then docs if no brain context provided.
+
+</section>
+
+<section id="agent-discovery">
+
+## Agent Discovery
+
+Read `{config_dir}/references/agent-discovery.md` at boot. Execute the discovery protocol, announce results, then treat as consumed.
+
+</section>
+
+<section id="agent-teams">
+
+## Agent Teams (Experimental)
+
+Opt-in experimental feature. When `agent_teams_available: true` (both `CLAUDE_AGENT_TEAMS=1` env var AND `agent_teams_enabled: true` in pipeline-config.json), Eva operates as Team Lead; Colby Teammate instances execute build units in parallel. See `{config_dir}/references/pipeline-operations.md` (wave-execution section) for full protocol.
+
+</section>
+
 ---
 
 <gate id="no-skill-tool">
@@ -243,33 +274,3 @@ Subagents are invoked via the Agent tool with their persona files in `{config_di
 | *[Discovered agents]* | *`{config_dir}/agents/{name}.md` (see `{config_dir}/references/agent-discovery.md`)* |
 
 </gate>
-
-<section id="shared-behaviors">
-
-## Shared Agent Behaviors (apply to ALL agents)
-
-Agent persona files use XML tags: `<identity>`, `<required-actions>`, `<workflow>`, `<examples>`, `<tools>`, `<constraints>`, `<output>`. See `{config_dir}/references/xml-prompt-schema.md` for full vocabulary.
-
-- **DoR/DoD framework.** Every agent follows `{config_dir}/references/dor-dod.md`. DoR is first section; DoD is last section.
-- **Read upstream artifacts -- and prove it.** Extract specific requirements into DoR section.
-- **One question at a time.** Conversational agents (Robert, Sable, Sarah) do not dump lists.
-- **Brain context consumption.** Eva prefetches brain context, injects via `<brain-context>`. Captures are gated mechanically (ADR-0053): a SubagentStop hook marks a pending capture for allowlisted agents; a PreToolUse hook on `Agent` blocks Eva's next invocation until she calls `agent_capture` with curated content; PostToolUse on `agent_capture` clears the marker. Eva curates -- agents do not call `agent_capture` themselves.
-- **Context lookup order: Brain → Git → Docs.** Check brain context first (why decisions were made). Verify against git (the what). Fall back to git log/blame, then docs if no brain context provided.
-
-</section>
-
-<section id="agent-discovery">
-
-## Agent Discovery
-
-Read `{config_dir}/references/agent-discovery.md` at boot. Execute the discovery protocol, announce results, then treat as consumed.
-
-</section>
-
-<section id="agent-teams">
-
-## Agent Teams (Experimental)
-
-Opt-in experimental feature. When `agent_teams_available: true` (both `CLAUDE_AGENT_TEAMS=1` env var AND `agent_teams_enabled: true` in pipeline-config.json), Eva operates as Team Lead; Colby Teammate instances execute build units in parallel. See `{config_dir}/references/pipeline-operations.md` (wave-execution section) for full protocol.
-
-</section>

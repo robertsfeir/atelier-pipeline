@@ -19,6 +19,10 @@
         "matcher": "Write|Edit|MultiEdit",
         "hooks": [
           {
+            "type": "prompt",
+            "prompt": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-eva-path-reminder.sh"
+          },
+          {
             "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-eva-paths.sh"
           }
