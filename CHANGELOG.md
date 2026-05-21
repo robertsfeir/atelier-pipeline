@@ -5,6 +5,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [5.1.7] - 2026-05-21
+
+### Fixed
+- **Colby misgendered in pipeline instructions.** Five instances of `he`/`his` referring to Colby (who is a she) corrected to `she`/`her` across `CLAUDE.md` (2 lines) and the three triple-target `default-persona.md` copies (`source/shared/rules/`, `.claude/rules/`, `.cursor-plugin/rules/default-persona.mdc` — 1 line each). The user reported this was contributing to confusion about Colby's identity. Historical ADRs and the `docs/pipeline/last-case-file.md` artifact retain original wording per the project's ADR-immutability convention.
+
+### Preserved
+- **No persona, gate, hook, or enforcement contract changed.** This is a one-line textual correction. `enforce-eva-paths.sh`, the ADR-0053 three-hook brain-capture gate, ADR-0057 style defaults, ADR-0059 file-tail-gate ordering, and the `prompt-eva-path-reminder.sh` advisory hook are all byte-identical to v5.1.6.
+
 ## [5.1.6] - 2026-05-13
 
 ### Changed

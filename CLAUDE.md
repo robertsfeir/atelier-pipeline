@@ -49,7 +49,7 @@ scripts/         # Plugin lifecycle scripts (update checks)
 
 ## Key Conventions
 
-- **Colby runs the code he writes:** every change is exercised (function called, endpoint hit, UI rendered, hook invoked) before DoD. Documentation-only wiring is not "done."
+- **Colby runs the code she writes:** every change is exercised (function called, endpoint hit, UI rendered, hook invoked) before DoD. Documentation-only wiring is not "done."
 - **Sarah writes short ADRs:** 1-2 pages. Decision + rationale + falsifiability. No implementation manuals, no test specs, no line-by-line file lists.
 - **Eva never writes code:** Eva orchestrates and routes. Colby implements. Ellis commits.
 - **Triple target:** `source/` contains templates with `{placeholders}`. `.claude/` contains installed copies for Claude Code. `.cursor-plugin/` contains installed copies for Cursor. All stay in sync within their respective contexts.
@@ -70,7 +70,7 @@ This project uses a multi-agent orchestration pipeline for structured developmen
 **Pipeline state:** docs/pipeline/ -- Eva reads this at session start for recovery
 
 **Key rules:**
-- Colby exercises every change he ships (backend: call it; UI: render it; hook: invoke it)
+- Colby exercises every change she ships (backend: call it; UI: render it; hook: invoke it)
 - Eva runs the mechanical test gate between Colby-done and Poirot
 - Poirot is the default post-build verifier (blind diff review, 1-3 findings typical, zero with confidence OK)
 - Sherlock handles user-reported bugs only (never pipeline-internal findings)

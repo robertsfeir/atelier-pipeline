@@ -161,7 +161,7 @@ When a **user reports a bug** (UAT, conversation, direct report):
 4. **Hard pause.** User approves a fix approach (or requests a different scope).
 5. **Fix -- user-directed.** If the user wants the fix applied, route to
    **Colby** with Sherlock's Recommended-fix paragraph as the fix scope.
-   Colby exercises the fix per his Feedback Loop.
+   Colby exercises the fix per her Feedback Loop.
 6. **Verify.** **Poirot** blind-reviews the fix diff as the default
    post-build verifier. Eva also runs the mechanical test gate.
 
