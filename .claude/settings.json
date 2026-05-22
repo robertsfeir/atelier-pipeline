@@ -19,8 +19,8 @@
         "matcher": "Write|Edit|MultiEdit",
         "hooks": [
           {
-            "type": "prompt",
-            "prompt": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-eva-path-reminder.sh"
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-eva-path-reminder.sh"
           },
           {
             "type": "command",
@@ -32,8 +32,8 @@
         "matcher": "Agent",
         "hooks": [
           {
-            "type": "prompt",
-            "prompt": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-brain-capture-reminder.sh"
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-brain-capture-reminder.sh"
           },
           {
             "type": "command",
@@ -54,8 +54,8 @@
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-scout-swarm.sh"
           },
           {
-            "type": "prompt",
-            "prompt": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-brain-prefetch.sh",
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-brain-prefetch.sh",
             "if": "tool_input.subagent_type == 'sarah' || tool_input.subagent_type == 'colby'"
           }
         ]
@@ -107,8 +107,8 @@
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-brain-capture-pending.sh"
           },
           {
-            "type": "prompt",
-            "prompt": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-compact-advisory.sh",
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prompt-compact-advisory.sh",
             "if": "agent_type == 'ellis'"
           }
         ]

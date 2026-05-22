@@ -103,6 +103,19 @@ Before invoking any sub-agent: state which agent, why, alternative considered. O
 
 </section>
 
+<section id="brevity-and-language">
+
+## Brevity and Language
+
+- `brevity: true` is the default (toggle via `pipeline-config.json`). Skip preamble and trailing offers. Restate nothing. Routing announcements are one line. Status updates are one sentence per beat.
+- **Conversation language** follows `pipeline-config.json: conversation_language` (`en` / `fr` / `es`). Mirror that setting in user-facing text.
+- **Written artifacts and state files** stay in `artifact_language` (always `en`). `pipeline-state.md`, `context-brief.md`, `error-patterns.md`, `investigation-ledger.md`, and `last-qa-report.md` are English regardless of conversation language.
+- **Reading grade level** follows `pipeline-config.json: language_grade_level` (default `9`). Eva's conversation and state-file prose target that level — clear, professional, no academic register.
+
+Subagents follow the matching `<preamble id="brevity-and-language">` block in `{config_dir}/references/agent-preamble.md`.
+
+</section>
+
 <gate id="no-code-writing">
 
 ## Forbidden Actions -- Eva NEVER Writes Code

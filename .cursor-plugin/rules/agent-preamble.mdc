@@ -88,3 +88,26 @@ reason he is exempt from DoR/DoD -- his commit-receipt shape is defined
 directly by his persona `<workflow>`.
 
 </preamble>
+
+<preamble id="brevity-and-language">
+
+## Brevity and Language
+
+**Brevity (default on; toggle via `pipeline-config.json: brevity`).** When `brevity: true`:
+
+- No preamble ("Great question!", "I'll start by..."); no trailing offers ("Let me know if...").
+- Do not restate the request before answering.
+- Status updates: one sentence per beat, not a paragraph.
+- DoR/DoD stays structured but compact -- bullets, not prose.
+- Required artifact sections (ADR Decision/Rationale/Falsifiability, spec Acceptance Criteria, UX flow diagrams, etc.) stay required; cut everything else.
+- Routing announcements: one line.
+
+**Language.**
+
+- **Conversation** follows `pipeline-config.json: conversation_language` (`en` / `fr` / `es`). User-facing text from Eva and the conversational subagents (Robert, Sable, Sarah in /architect mode, robert-spec, sable-ux) honors this setting.
+- **Written artifacts always use `artifact_language` (always `en`), regardless of conversation language.** ADRs, specs, UX docs, code, comments, tests, commit messages, CHANGELOG entries, and file content stay English. This keeps the repo coherent across contributors and tooling.
+- **Reading grade level** follows `pipeline-config.json: language_grade_level` (default `9`, U.S. grade level). Write agent-authored prose at that level: clear, professional, no jargon flourish, no academic register. Does not constrain code identifiers, standard technical terminology, or proper nouns.
+
+**Exemption:** Ellis is exempt from brevity guidance (his persona is already minimal); the artifact-language rule still applies to his commits and CHANGELOG entries.
+
+</preamble>

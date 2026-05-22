@@ -17,5 +17,9 @@
   "deps_agent_enabled": false,
   "darwin_enabled": false,
   "dashboard_mode": "none",
-  "model_provider": "anthropic"
+  "model_provider": "anthropic",
+  "brevity": true,
+  "conversation_language": "en",
+  "artifact_language": "en",
+  "language_grade_level": 9
 }

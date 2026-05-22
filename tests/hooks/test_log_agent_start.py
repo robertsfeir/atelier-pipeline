@@ -45,7 +45,7 @@ def test_T_0020_012_json_fields(hook_env):
 def test_T_0020_013_unwritable_parent(hook_env):
     readonly_dir = hook_env / "readonly_project"
     (readonly_dir / ".claude").mkdir(parents=True)
-    (readonly_dir / ".claude").chmod(0o444)
+    (readonly_dir / ".claude").chmod(0o555)
     inp = build_subagent_start_input("colby", "agent-abc123", "session-xyz789")
     hook_path = prepare_hook("log-agent-start.sh", hook_env)
     env = os.environ.copy()
