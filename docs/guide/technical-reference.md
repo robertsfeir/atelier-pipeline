@@ -1000,7 +1000,11 @@ The selected strategy is persisted in `.claude/pipeline-config.json`:
   "deps_agent_enabled": false,
   "darwin_enabled": false,
   "dashboard_mode": "none",
-  "token_budget_warning_threshold": null
+  "token_budget_warning_threshold": null,
+  "brevity": true,
+  "conversation_language": "en",
+  "artifact_language": "en",
+  "language_grade_level": 9
 }
 ```
 
@@ -1020,6 +1024,10 @@ The selected strategy is persisted in `.claude/pipeline-config.json`:
 | `darwin_enabled` | Enable Darwin self-evolving pipeline engine. Requires brain. Set by `/pipeline-setup`. Default: `false` |
 | `dashboard_mode` | Dashboard display mode. Default: `"none"`. |
 | `token_budget_warning_threshold` | Type: `number \| null`. Units: USD. Default: `null`. When set to a number (e.g., `10.0`), Eva shows the pre-pipeline cost estimate and fires the budget gate on Medium pipelines when the estimate exceeds the threshold. When `null`, the estimate is shown on Large pipelines only with no threshold comparison. Upgrade-safe: absent key treated as `null`. |
+| `brevity` | Boolean. Default: `true`. When `true`, all agents skip preamble/trailing offers, do not restate requests, and emit one-sentence status updates. Required artifact sections (ADR Decision/Rationale/Falsifiability, spec Acceptance Criteria, etc.) stay required. Toggle to `false` for verbose mode. |
+| `conversation_language` | String. Valid values: `"en"`, `"fr"`, `"es"`. Default: `"en"`. Eva and the conversational subagents (Robert, Sable, Sarah in `/architect` mode, robert-spec, sable-ux) reply to the user in this language. |
+| `artifact_language` | String. Default: `"en"`. **Immutable English.** ADRs, specs, UX docs, code, comments, tests, commit messages, CHANGELOG entries, and pipeline state files always use English regardless of `conversation_language`. Keeps the repo coherent across contributors and tooling. |
+| `language_grade_level` | Integer (U.S. reading grade). Default: `9`. Agent-authored prose (conversation, ADRs, specs, UX docs, code comments) targets this reading level — clear, professional, no academic register. Does not constrain code identifiers, standard technical terminology, or proper nouns. |
 
 Eva reads this file during the session boot sequence. Colby reads it to determine branch naming conventions and merge targets. Ellis reads it to determine commit targets.
 

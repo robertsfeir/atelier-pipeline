@@ -5,6 +5,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [5.1.8] - 2026-05-22
+
+### Added
+- **Brevity flag (`brevity: true`)** — default-on. When enabled, Eva and all subagents trim preamble, postamble, and in-flight narration. New `<preamble id="brevity-and-language">` block in `source/shared/references/agent-preamble.md` and a matching `<section>` in `source/shared/rules/default-persona.md` carry the rule; both mirrored to `.claude/` and `.cursor-plugin/`. Documented in `docs/guide/technical-reference.md` config field table.
+- **Conversation language (`conversation_language: "en"`)** — controls the language Eva and agents use for all spoken interaction (pipeline updates, questions, findings). Valid values: `en`, `fr`, `es`. Defaults to English. Agents with language-specific phrasing apply this setting to all non-artifact output.
+- **Artifact language (`artifact_language: "en"`)** — immutable English lock on all written artifacts (ADRs, specs, UX docs, code comments, commit messages, CHANGELOG entries). User-facing conversation may vary by `conversation_language`; artifacts never do. Prevents mixed-language artifacts when `conversation_language` is non-English.
+- **Grade-level setting (`language_grade_level: 9`)** — U.S. reading grade (Flesch-Kincaid scale). Applies to agent prose in artifacts and conversation output. Default 9 (accessible technical writing). Carried in the same `<preamble id="brevity-and-language">` block.
+
+### Changed
+- **Colby personality scope clarifier** — humor "punches at the problem, never self-deprecating." Added to Colby's `<identity>` block in `source/shared/agents/colby.md`, `.claude/agents/colby.md`, and `.cursor-plugin/agents/colby.md`. No behavioral contract changed; clarifies the existing humor note.
+- **Ellis personality scope clarifier** — wry phrasing is for the commit body only, never the title. Added to Ellis's `<identity>` block across all three target trees. Conventional Commits title format is untouched.
+
+### Fixed
+- **`settings.json` hook type mis-registration.** Four `PreToolUse` entries were typed `"type": "prompt"` with a script path in the hook body — the `prompt` type expects a literal prompt string, not a command path. Flipped to `"type": "command"` with the path moved to the `command:` field. Affected hooks: `prompt-eva-path-reminder.sh`, `prompt-brain-capture-reminder.sh`, `prompt-brain-prefetch.sh`, `prompt-compact-advisory.sh`. Hook script bodies are byte-identical to v5.1.7; only the registration schema was wrong.
+- **`test_T_0020_013_unwritable_parent` chmod on macOS.** Test chmodded a directory to `0o444`, stripping the execute (search) bit, so `.exists()` raised `PermissionError` instead of returning `False`. Changed to `0o555` (no write, still searchable). One-character fix at `tests/hooks/test_log_agent_start.py`; cleanup at line 56 already restored `0o755`.
+
+### Preserved
+- **No persona gate, hook contract, or enforcement script changed.** The four `enforce-*` scripts are byte-identical to v5.1.7; only the `settings.json` hook-type registrations were corrected. ADR-0053 brain-capture three-hook gate, ADR-0057 style defaults, and ADR-0059 file-tail-gate ordering all intact.
+
 ## [5.1.7] - 2026-05-21
 
 ### Fixed

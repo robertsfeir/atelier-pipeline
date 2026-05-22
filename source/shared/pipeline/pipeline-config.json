@@ -23,5 +23,9 @@
     "format": "",
     "typecheck": ""
   },
-  "verify_max_attempts": 3
+  "verify_max_attempts": 3,
+  "brevity": true,
+  "conversation_language": "en",
+  "artifact_language": "en",
+  "language_grade_level": 9
 }
