@@ -58,9 +58,10 @@ _roster_check() {
   local agent="$1"
   # Map from agent_type values used by SubagentStop to roster keys.
   # robert-spec and sable-ux are skill-activated producers -- not in the roster;
-  # treat as enabled so their captures are not silently dropped.
+  # sable (reviewer) is always-on -- never gated by roster.
+  # Treat all three as enabled so their captures are not silently dropped.
   case "$agent" in
-    robert-spec|sable-ux) return 0 ;;
+    robert-spec|sable|sable-ux) return 0 ;;
   esac
   local roster_config
   if [ -f "${PROJECT_ROOT}/.cursor/pipeline-config.json" ]; then

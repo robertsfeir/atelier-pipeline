@@ -23,6 +23,7 @@
   "language_grade_level": 9,
   "agent_roster": {
     "robert": { "enabled": true, "firing": "core" },
+    "robert-spec": { "enabled": true, "firing": "core" },
     "sarah": { "enabled": true, "firing": "core" },
     "colby": { "enabled": true, "firing": "core" },
     "investigator": { "enabled": true, "firing": "after-every-unit" },

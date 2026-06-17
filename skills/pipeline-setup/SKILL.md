@@ -495,7 +495,7 @@ Unconditionally run this cleanup on every /pipeline-setup invocation. Silent unl
 
 `dashboard_mode` was removed in ADR-0060. Older installs may carry the key.
 
-1. **Check pipeline-config.json:** If `.claude/pipeline-config.json` exists and contains a `dashboard_mode` key, remove it atomically:
+1. **Check pipeline-config.json:** If `.claude/pipeline-config.json` exists and contains a `dashboard_mode` key, remove it. Write the result to a temporary file then rename it into place so a mid-write failure cannot corrupt the config:
 
    ```bash
    python3 -c "
@@ -508,7 +508,10 @@ Unconditionally run this cleanup on every /pipeline-setup invocation. Silent unl
        exit(0)
    if 'dashboard_mode' not in d: exit(0)
    del d['dashboard_mode']
-   json.dump(d, open(p, 'w'), indent=2)
+   tmp = p + '.tmp'
+   with open(tmp, 'w') as f:
+       json.dump(d, f, indent=2)
+   os.replace(tmp, p)
    print('Removed deprecated dashboard_mode from .claude/pipeline-config.json (ADR-0060).')
    "
    ```
@@ -802,37 +805,69 @@ Ask the user one question:
 
 ### Step 1e: Tech Stack Dependencies (Optional Offer)
 
-After gathering the tech stack in Step 1, offer to generate a dependency install list based on what the user described.
+After gathering the tech stack in Step 1, check for missing tools and offer to install them.
 
-1. **Parse the tech stack** the user provided. Look for signals: Node.js/npm, Python, Ruby, Go, Rust, Java/Gradle, Docker, PostgreSQL, MySQL, Redis, jq, gh CLI, glab CLI, semgrep.
+#### Predefined Tool Mapping Table
 
-2. **Build a Brew install list** (macOS) for any detected dependencies that are installable via Homebrew:
-   - `node` for Node.js/npm
-   - `python` for Python
-   - `jq` (always include — required by pipeline hooks)
-   - `gh` if GitHub platform selected
-   - `glab` if GitLab platform selected
-   - `docker` for Docker
-   - `postgresql@15` for PostgreSQL
-   - Other detected dependencies
+Use this table to map stack signals to tools that can be checked with `command -v` and installed via package manager:
 
-3. **Offer the list** (only if there are items beyond jq):
+| Stack / Signal | Tools to check (`command -v`) | Homebrew | apt-get | dnf | winget |
+|---------------|-------------------------------|----------|---------|-----|--------|
+| Node.js / JS / npm | `node`, `npm` | `node` | `nodejs npm` | `nodejs npm` | `OpenJS.NodeJS` |
+| pnpm | `pnpm` | `pnpm` | `pnpm` | `pnpm` | `pnpm.pnpm` |
+| yarn | `yarn` | `yarn` | `yarn` | `yarn` | `Yarn.Yarn` |
+| TypeScript | `tsc` | `typescript` | `node-typescript` | `nodejs-typescript` | *(via npm: `npm i -g typescript`)* |
+| Python / FastAPI / Django / Flask | `python3`, `pip` | `python` | `python3 python3-pip` | `python3 python3-pip` | `Python.Python.3` |
+| ruff | `ruff` | `ruff` | `ruff` | `ruff` | `Astral.ruff` |
+| mypy | `mypy` | `mypy` | `mypy` | `python3-mypy` | *(via pip: `pip install mypy`)* |
+| pytest | `pytest` | `pytest` | `python3-pytest` | `python3-pytest` | *(via pip: `pip install pytest`)* |
+| Go | `go` | `go` | `golang` | `golang` | `GoLang.Go` |
+| Rust / Cargo | `cargo`, `rustfmt` | `rust` | `rustc cargo` | `rust cargo` | `Rustlang.Rust` |
+| Ruby / Rails | `ruby`, `bundle` | `ruby` | `ruby bundler` | `ruby rubygems` | `RubyInstallerTeam.Ruby` |
+| Java / Spring / Kotlin | `java`, `mvn` | `openjdk maven` | `default-jdk maven` | `java-latest-openjdk maven` | `EclipseAdoptium.Temurin` |
+| Gradle | `gradle` | `gradle` | `gradle` | `gradle` | `Gradle.Gradle` |
+| PHP / Laravel | `php`, `composer` | `php composer` | `php composer` | `php composer` | `PHP.PHP` |
+| .NET / C# | `dotnet` | `dotnet` | `dotnet-sdk-8.0` | `dotnet-sdk-8.0` | `Microsoft.DotNet.SDK.8` |
+| Docker | `docker` | `docker` | `docker.io` | `docker` | `Docker.DockerDesktop` |
+| PostgreSQL (client) | `psql` | `postgresql` | `postgresql-client` | `postgresql` | `PostgreSQL.PostgreSQL` |
+| jq (always required) | `jq` | `jq` | `jq` | `jq` | `jqlang.jq` |
+| GitHub CLI | `gh` | `gh` | `gh` | `gh` | `GitHub.cli` |
+| GitLab CLI | `glab` | `glab` | `glab` | `glab` | `GitLab.GLAB` |
+| Semgrep | `semgrep` | `semgrep` | `semgrep` | `semgrep` | *(via pip: `pip install semgrep`)* |
 
-   > Based on your tech stack, these tools are needed. Want me to install them via Homebrew, or just print the commands?
+**Best-effort inference for unlisted tools:** If the user mentions a tool or framework not in the table above, attempt to look it up against the appropriate package manager's known package names. If no mapping can be found with confidence, print the tool name and instruct the user to install it manually, then continue without blocking.
+
+#### Detection and Offer Procedure
+
+1. **Detect package manager.** Run in order: `command -v brew` (macOS/Homebrew), `command -v apt-get` (Debian/Ubuntu), `command -v dnf` (Fedora/RHEL), `command -v winget` (Windows). Use the first one found. If none found, fall through to the "no package manager" path.
+
+2. **Parse the tech stack** the user provided. Match signals against the table above to build a list of tools to check. Always include `jq` (required by pipeline hooks). Add `gh` if GitHub platform was selected; add `glab` if GitLab platform was selected.
+
+3. **Check each tool** with `command -v <tool>`. Collect the list of tools that are missing from PATH.
+
+4. **If no tools are missing:** Print "All required tools found on PATH." and continue.
+
+5. **If tools are missing and a package manager is available:**
+
+   > Based on your tech stack, these tools are not on PATH:
+   > `[list of missing tools]`
    >
+   > I can install them with `[package-manager]`:
    > ```
-   > brew install jq [other detected packages]
+   > [package-manager install command(s)]
    > ```
    >
    > Options: "Install for me" / "Print the commands" / "Skip"
 
-   - **Install for me:** Run `brew install [packages]` via Bash. Report success or failure per package.
-   - **Print the commands:** Print the brew install line(s). User installs manually.
-   - **Skip:** Continue without installing. Note that `jq` is required by pipeline hooks and must be installed separately.
+   - **Install for me:** Run the package manager command(s) via Bash, one package at a time. After each install, re-run `command -v <tool>` to verify. Report success or failure per tool.
+   - **Print the commands:** Print the install line(s). User installs manually.
+   - **Skip:** Continue without installing. Remind the user that `jq` is required by pipeline hooks and must be present before hooks fire.
 
-4. **If only jq is in the list:** Print "Pipeline hooks require `jq`. Install with: `brew install jq`" and continue without asking.
+6. **If tools are missing and no package manager found:**
+   Print the install commands for the user's likely platform (infer from uname output or OS signals), note that no package manager was detected, and move on without blocking.
 
-5. **Non-macOS:** If `command -v brew` is not found, print the equivalent package manager alternatives: `apt-get install jq` (Linux/Debian) or point to https://jqlang.github.io/jq/download/. Do not attempt to run package managers other than brew without user consent.
+7. **If only `jq` is missing:** Prioritize the `jq` notice:
+   "Pipeline hooks require `jq` — it is missing. Install with: `brew install jq` (macOS) / `apt-get install jq` (Debian) / `dnf install jq` (Fedora)." and continue without asking.
 
 ### Step 1f: Agent Roster Selection
 
@@ -856,7 +891,7 @@ If the user chooses **Customize**: proceed with the agent selection below.
 
 Explain the model first (one paragraph, not a list):
 
-> The pipeline has three core agents that are always active: **Robert** (product review), **Sarah** (architecture), and **Colby** (build). Beyond that, you can add any combination of the following agents. For each, you choose when it fires: after every Colby build unit, at pipeline end, or on-demand only.
+> The pipeline has a core trio that is always active: **Robert** (product review and spec, including `robert-spec`), **Sarah** (architecture), and **Colby** (build). **Sable** (UX) is also always available — invoke her any time via `/ux` or by name, no configuration needed. Beyond that, you can add any combination of the following agents. For each, you choose when it fires: after every Colby build unit, at pipeline end, or on-demand only.
 
 Then ask about each optional agent **one at a time** (do not dump the full list):
 
@@ -876,17 +911,9 @@ Then ask about each optional agent **one at a time** (do not dump the full list)
 **Agatha (documentation):**
 > Would you like to include **Agatha** -- the documentation agent? Agatha writes and updates project docs after each feature is built.
 >
-> If yes: When should Agatha fire?
-> - **pipeline-end** (recommended) -- Updates docs after the full pipeline completes.
-> - **on-demand** -- Only when explicitly requested.
+> If yes: Agatha fires at **pipeline-end** -- she updates docs after the full pipeline completes. No further prompt needed.
 
-**Sable (UX reviewer):**
-> Would you like to include **Sable** -- the UX acceptance reviewer? Sable reviews Colby's UI output against the UX spec for fidelity and accessibility.
->
-> If yes: When should Sable fire?
-> - **after-every-unit** -- Reviews each UI-touching build unit.
-> - **pipeline-end** -- Reviews the full UI delta at end.
-> - **on-demand** -- Only on request.
+**Note:** Sable (UX) is always available without configuration. She is not listed here because she does not require a firing position. Invoke her any time via `/ux` or by name.
 
 **Sentinel (security audit):**
 > Would you like to include **Sentinel** -- the security audit agent? Sentinel runs Semgrep SAST against new code. Requires the Semgrep MCP server (see Step 6a for setup). Skip now and enable in Step 6a if you want Semgrep configured first.
@@ -902,6 +929,8 @@ Then ask about each optional agent **one at a time** (do not dump the full list)
 
 After all agent selections, write the `agent_roster` object to `.claude/pipeline-config.json`. Always include the core trio with `firing: "core"`. For each optional agent the user selected, include it with the chosen firing position. For each agent the user declined, set `enabled: false, firing: "on-demand"` (so the roster key exists for hooks to read, but the agent is disabled).
 
+For Agatha, always write `firing: "pipeline-end"` — no other firing position is valid.
+
 Also set `generic_commit_enabled` in `.claude/pipeline-config.json`:
 - `true` when Ellis is not enabled (or not selected)
 - `false` when Ellis is enabled
@@ -911,23 +940,43 @@ Also set `generic_commit_enabled` in `.claude/pipeline-config.json`:
 ```json
 "agent_roster": {
   "robert": { "enabled": true, "firing": "core" },
+  "robert-spec": { "enabled": true, "firing": "core" },
   "sarah": { "enabled": true, "firing": "core" },
   "colby": { "enabled": true, "firing": "core" },
   "investigator": { "enabled": true, "firing": "after-every-unit" },
   "ellis": { "enabled": true, "firing": "pipeline-end" },
   "agatha": { "enabled": false, "firing": "on-demand" },
-  "sable": { "enabled": false, "firing": "on-demand" },
   "sentinel": { "enabled": false, "firing": "on-demand" },
   "sherlock": { "enabled": false, "firing": "on-demand" }
 },
 "generic_commit_enabled": false
 ```
 
+**Example roster JSON (Poirot + Ellis + Agatha selected; others declined):**
+
+```json
+"agent_roster": {
+  "robert": { "enabled": true, "firing": "core" },
+  "robert-spec": { "enabled": true, "firing": "core" },
+  "sarah": { "enabled": true, "firing": "core" },
+  "colby": { "enabled": true, "firing": "core" },
+  "investigator": { "enabled": true, "firing": "after-every-unit" },
+  "ellis": { "enabled": true, "firing": "pipeline-end" },
+  "agatha": { "enabled": true, "firing": "pipeline-end" },
+  "sentinel": { "enabled": false, "firing": "on-demand" },
+  "sherlock": { "enabled": false, "firing": "on-demand" }
+},
+"generic_commit_enabled": false
+```
+
+Note: `sable` and `sable-ux` are always-on and never appear in the roster. `robert-spec` is part of the core trio alongside `robert`.
+
 **Minimal default (no optional agents selected):**
 
 ```json
 "agent_roster": {
   "robert": { "enabled": true, "firing": "core" },
+  "robert-spec": { "enabled": true, "firing": "core" },
   "sarah": { "enabled": true, "firing": "core" },
   "colby": { "enabled": true, "firing": "core" }
 },

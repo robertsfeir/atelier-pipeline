@@ -3,7 +3,7 @@
 | # | Requirement | Source |
 |---|-------------|--------|
 | 1 | Default install includes only Robert, Sarah, and Colby | User direction |
-| 2 | All other agents are opt-in, added after install | User direction |
+| 2 | All other agents except Sable are opt-in, added after install; Sable is always-on but not core | User direction |
 | 3 | Each added agent has a configurable firing position: after-every-unit, pipeline-end, or on-demand | User direction |
 | 4 | Hooks must respect the active roster — absent agents produce no hook activity and no blocking | User direction |
 | 5 | When Ellis is absent, Eva provides a generic commit capability with no persona and no ceremony | User direction |
@@ -24,7 +24,7 @@
 
 ## Summary
 
-This redesign replaces a fixed, high-ceremony pipeline with a minimal core and an explicit opt-in model for every agent beyond the essential trio. Users get a working pipeline immediately after install — Eva orchestrating Robert (product), Sarah (architecture), and Colby (implementation) — and add more agents only when they want them. Each added agent is configured with a firing position that the user controls. The setup wizard collects enough context to configure the pipeline correctly at install time, including tech stack, dependency installation, and agent selection. Dashboard and plugin-integration features are removed.
+This redesign replaces a fixed, high-ceremony pipeline with a minimal core and an explicit opt-in model for every agent beyond the essential trio. Users get a working pipeline immediately after install — Eva orchestrating Robert (product, both reviewer and spec-producer personas), Sarah (architecture), and Colby (implementation) — and add more agents only when they want them. Each added agent is configured with a firing position that the user controls. The setup wizard collects enough context to configure the pipeline correctly at install time, including tech stack, dependency installation, and agent selection. Dashboard and plugin-integration features are removed.
 
 ## Problem Statement
 
@@ -63,8 +63,9 @@ These terms are used precisely throughout this spec and in configuration:
 | Term | Definition |
 |------|-----------|
 | **Roster** | The set of agents the user has explicitly enabled. Stored in `pipeline-config.json` as `agent_roster`. |
-| **Core trio** | Robert, Sarah, Colby — always installed, not configurable. |
-| **Optional agents** | Poirot, Ellis, Sable, Agatha, Sentinel, Sherlock — available to add; each requires a firing position. |
+| **Core trio** | Robert (both `robert` reviewer and `robert-spec` producer), Sarah, and Colby — always installed, not configurable. |
+| **Always-on, not core** | Sable (both `sable` reviewer and `sable-ux` producer) — available without roster selection; does not appear in the agent-selection list during setup; does not block if not invoked. |
+| **Optional agents** | Poirot, Ellis, Agatha, Sentinel, Sherlock — available to add; each requires a firing position. |
 | **Firing position** | When an optional agent activates: `after-every-unit`, `pipeline-end`, or `on-demand`. |
 | **after-every-unit** | Agent fires each time Colby completes a work unit. |
 | **pipeline-end** | Agent fires once at the end of the full pipeline, before any commit step. |
@@ -89,11 +90,11 @@ Wizard: Which agents do you want beyond the core trio (Robert, Sarah, Colby)?
         Available agents:
           Poirot   — Blind code reviewer. Catches regressions and quality issues after Colby builds.
           Ellis    — Commit manager. Writes structured commit messages and manages changelogs.
-          Sable    — UX reviewer. Reviews UI flows and accessibility.
           Agatha   — Documentation writer. Produces and maintains docs.
           Sentinel — Security auditor. Semgrep-backed SAST scanning.
           Sherlock — Bug detective. Deep investigation for user-reported bugs.
 
+        Note: Sable (UX) is always available — invoke her any time via /ux or by name.
         (Press Enter to accept minimal install — core trio only)
 
 User: Poirot, Ellis
@@ -243,7 +244,7 @@ Existing `pipeline-config.json` files that contain `dashboard_mode` are silently
 
 **Setup wizard — agent selection:**
 
-17. During /pipeline-setup, after branching strategy selection, the wizard presents the six optional agents (Poirot, Ellis, Sable, Agatha, Sentinel, Sherlock) with one-line descriptions of each.
+17. During /pipeline-setup, after branching strategy selection, the wizard presents the five optional agents (Poirot, Ellis, Agatha, Sentinel, Sherlock) with one-line descriptions of each. Sable is not listed — she is always available without selection.
 18. The wizard accepts a blank Enter as "core trio only" and writes the roster accordingly.
 19. For each selected agent, the wizard asks exactly one follow-up question: the firing position.
 20. The firing-position prompt offers exactly three choices: `after-every-unit`, `pipeline-end`, `on-demand`.
@@ -253,24 +254,35 @@ Existing `pipeline-config.json` files that contain `dashboard_mode` are silently
 
 **Setup wizard — tech stack and dependencies:**
 
-23. During /pipeline-setup Step 1, the wizard asks the user to describe their tech stack in plain language (language, framework, runtime).
-24. After the user provides a tech stack, the wizard checks whether tools inferred from that stack are available on PATH (e.g., `node`, `python3`, `cargo`, `psql`, the configured lint and test commands).
-25. For each missing tool, the wizard offers to install it using the platform's package manager (Homebrew on macOS, apt-get on Debian/Ubuntu, dnf on Fedora, winget on Windows).
-26. If the user accepts the install offer, the wizard runs the package manager command and re-checks PATH before continuing.
-27. If no package manager is detected, the wizard prints the install command(s) and moves on without blocking.
-28. The wizard does not attempt to install tools the user's stack does not require.
+24. During /pipeline-setup Step 1, the wizard asks the user to describe their tech stack in plain language (language, framework, runtime).
+25. After the user provides a tech stack, the wizard checks whether tools inferred from that stack are available on PATH (e.g., `node`, `python3`, `cargo`, `psql`, the configured lint and test commands).
+26. For each missing tool, the wizard offers to install it using the platform's package manager (Homebrew on macOS, apt-get on Debian/Ubuntu, dnf on Fedora, winget on Windows).
+27. If the user accepts the install offer, the wizard runs the package manager command and re-checks PATH before continuing.
+28. If no package manager is detected, the wizard prints the install command(s) and moves on without blocking.
+29. The wizard does not attempt to install tools the user's stack does not require.
+30. The wizard's tool-to-package-manager mapping covers the predefined common stacks: Node/JS, Python, Go, Rust, Ruby, Java/JVM, PHP, and .NET. For tools the user mentions that fall outside this table, the wizard attempts best-effort inference to a known package manager install; if no mapping is found, the wizard prints the tool name and instructs the user to install it manually, then continues without blocking.
+
+**Sable always-on status:**
+
+31. After a minimal install (core trio only), Sable is available via `/ux` or explicit name mention without any additional configuration step.
+32. Sable does not appear in the agent-selection list presented by the setup wizard. The wizard displays a note that Sable is always available.
+33. Sable's absence from a user's explicit selections does not produce any "agent not on roster" error or hook block; she never requires a firing-position entry in `agent_roster`.
+
+**Agatha firing position:**
+
+34. The setup wizard offers only `pipeline-end` as the firing position for Agatha. The wizard does not present `after-every-unit` or `on-demand` as choices when the user selects Agatha.
 
 **Dashboard and plugin integration removal:**
 
-29. After install, `pipeline-config.json` does not contain a `dashboard_mode` key.
-30. After install, no file in `.claude/` references dashboard mode, Kanban, or plugin integration (except in changelog/ADR documents).
-31. When /pipeline-setup encounters an existing `pipeline-config.json` containing `dashboard_mode`, it removes the key and continues without prompting the user.
+35. After install, `pipeline-config.json` does not contain a `dashboard_mode` key.
+36. After install, no file in `.claude/` references dashboard mode, Kanban, or plugin integration (except in changelog/ADR documents).
+37. When /pipeline-setup encounters an existing `pipeline-config.json` containing `dashboard_mode`, it removes the key and continues without prompting the user.
 
 **Agent addition post-install:**
 
-32. When the user asks to add an agent after install, Eva prompts for the firing position, then routes to Colby to update `pipeline-config.json` and `settings.json`.
-33. After Colby completes the addition, Eva announces the agent's name and its configured firing position.
-34. Eva does not write `pipeline-config.json` or `settings.json` herself — these changes always route to Colby.
+38. When the user asks to add an agent after install, Eva prompts for the firing position, then routes to Colby to update `pipeline-config.json` and `settings.json`.
+39. After Colby completes the addition, Eva announces the agent's name and its configured firing position.
+40. Eva does not write `pipeline-config.json` or `settings.json` herself — these changes always route to Colby.
 
 ## Out of Scope
 
@@ -286,10 +298,4 @@ Existing `pipeline-config.json` files that contain `dashboard_mode` are silently
 
 ## Open Questions
 
-1. **Robert and Sable as reviewers vs. producers.** Robert and Sable each have two personas: a reviewer (subagent) and a producer (subagent). The core trio includes Robert the reviewer. Should the spec producer (`robert-spec`) and UX producer (`sable-ux`) be treated as part of the core trio, as optional agents, or as always-on skill commands that do not appear in the roster? Currently they are skill-activated (via `/pm` and `/ux`) and are not pipeline agents in the flow sense.
-
-2. **Sherlock dependency on Ellis.** Sherlock's fix flow ends with Colby fixing the bug. If Ellis is not on the roster, the generic commit flow applies. Is there any case where Sherlock's flow requires Ellis to be on the roster, or is the generic commit always an acceptable fallback after a Sherlock-routed fix?
-
-3. **firing position for Agatha.** Documentation writing at `after-every-unit` would produce incremental doc updates per Colby unit, which may be noisy. Is `pipeline-end` the only sensible option for Agatha, or should `after-every-unit` remain available?
-
-4. **Package manager detection scope.** The tech stack dependency offer checks tools inferred from the stated stack. What is the list of tools the wizard knows how to infer and install? This list needs to be defined before implementation — otherwise Colby has no bounded scope for the dependency-detection logic.
+None. All open questions resolved.
