@@ -10,7 +10,7 @@ pipeline-config.json, counts custom agents, and checks the CLAUDE_AGENT_TEAMS
 env var. It outputs structured JSON with: `pipeline_active`, `phase`, `feature`,
 `stale_context`, `warn_agents[]`, `branching_strategy`, `agent_teams_enabled`,
 `agent_teams_env`, `custom_agent_count`, `ci_watch_enabled`, `darwin_enabled`,
-`dashboard_mode`, `project_name`, `sentinel_enabled`, `deps_agent_enabled`,
+`project_name`, `sentinel_enabled`, `deps_agent_enabled`,
 `token_budget_warning_threshold` (number or null; absent key treated as null --
 no budget gate for Medium, Large-only estimate with hard pause),
 `stop_reason` (present when a previous terminal pipeline has a recorded stop reason,

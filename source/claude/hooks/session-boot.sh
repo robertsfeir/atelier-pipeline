@@ -42,7 +42,6 @@ AGENT_TEAMS_ENABLED=false
 AGENT_TEAMS_ENV=false
 CUSTOM_AGENT_COUNT=0
 CI_WATCH_ENABLED=false
-DASHBOARD_MODE="none"
 PROJECT_NAME=""
 SENTINEL_ENABLED=false
 WARN_AGENTS="[]"
@@ -104,7 +103,6 @@ if [ -n "$CONFIG_FILE" ] && [ -f "$CONFIG_FILE" ] && command -v jq &>/dev/null; 
   BRANCHING_STRATEGY=$(jq -r '.branching_strategy // "trunk-based"' "$CONFIG_FILE" 2>/dev/null || echo "trunk-based")
   AGENT_TEAMS_ENABLED=$(jq -r '.agent_teams_enabled // false' "$CONFIG_FILE" 2>/dev/null || echo "false")
   CI_WATCH_ENABLED=$(jq -r '.ci_watch_enabled // false' "$CONFIG_FILE" 2>/dev/null || echo "false")
-  DASHBOARD_MODE=$(jq -r '.dashboard_mode // "none"' "$CONFIG_FILE" 2>/dev/null || echo "none")
   SENTINEL_ENABLED=$(jq -r '.sentinel_enabled // false' "$CONFIG_FILE" 2>/dev/null || echo "false")
   CFG_PROJECT_NAME=$(jq -r '.project_name // ""' "$CONFIG_FILE" 2>/dev/null || echo "")
   if [ -n "$CFG_PROJECT_NAME" ]; then
@@ -180,7 +178,6 @@ cat <<EOF
   "agent_teams_env": $AGENT_TEAMS_ENV,
   "custom_agent_count": $CUSTOM_AGENT_COUNT,
   "ci_watch_enabled": $CI_WATCH_ENABLED,
-  "dashboard_mode": "$(json_escape "$DASHBOARD_MODE")",
   "project_name": "$(json_escape "$PROJECT_NAME")",
   "sentinel_enabled": $SENTINEL_ENABLED,
   "state_dir": "$(json_escape "$STATE_DIR")"

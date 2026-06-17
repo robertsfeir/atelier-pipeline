@@ -489,7 +489,33 @@ There is no config key translation. Mybrain accepts every key the atelier-brain 
 
 The `permissions.allow` rewrite is handled by Step 0e earlier in this skill (which strips the stale `mcp__plugin_atelier-pipeline_atelier-brain__` prefix on every run); mybrain's own `brain-setup` skill re-adds the new-prefixed entries when the user runs it.
 
-### Step 0g: Wire Brain Capture Gate Hooks in settings.json
+### Step 0g: Remove Deprecated dashboard_mode Key
+
+Unconditionally run this cleanup on every /pipeline-setup invocation. Silent unless it finds something to remove.
+
+`dashboard_mode` was removed in ADR-0060. Older installs may carry the key.
+
+1. **Check pipeline-config.json:** If `.claude/pipeline-config.json` exists and contains a `dashboard_mode` key, remove it atomically:
+
+   ```bash
+   python3 -c "
+   import json, os
+   p = '.claude/pipeline-config.json'
+   if not os.path.exists(p): exit(0)
+   try:
+       d = json.load(open(p))
+   except Exception:
+       exit(0)
+   if 'dashboard_mode' not in d: exit(0)
+   del d['dashboard_mode']
+   json.dump(d, open(p, 'w'), indent=2)
+   print('Removed deprecated dashboard_mode from .claude/pipeline-config.json (ADR-0060).')
+   "
+   ```
+
+2. **Silent no-op:** If the key is absent, the script prints nothing.
+
+### Step 0h: Wire Brain Capture Gate Hooks in settings.json
 
 Unconditionally run this migration on every /pipeline-setup invocation. It is silent unless it makes a change. This step ensures the brain-capture gate hooks introduced in ADR-0053 are correctly wired and ordered in existing installations.
 
@@ -539,7 +565,7 @@ try:
     with open(p) as f:
         s = json.load(f)
 except json.JSONDecodeError:
-    print('Warning: .claude/settings.json is malformed JSON -- skipping Step 0g brain capture gate migration.')
+    print('Warning: .claude/settings.json is malformed JSON -- skipping Step 0h brain capture gate migration.')
     sys.exit(0)
 
 changed = False
@@ -632,11 +658,11 @@ else:
 if changed:
     with open(p, 'w') as f:
         json.dump(s, f, indent=2)
-    print('Wired brain capture gate hooks in .claude/settings.json (Step 0g).')
+    print('Wired brain capture gate hooks in .claude/settings.json (Step 0h).')
 PYEOF
 ```
 
-**Print notice (conditional):** The script prints `Wired brain capture gate hooks in .claude/settings.json (Step 0g).` when it makes changes.
+**Print notice (conditional):** The script prints `Wired brain capture gate hooks in .claude/settings.json (Step 0h).` when it makes changes.
 **Silent no-op:** If all three conditions are already satisfied, the script prints nothing.
 
 This migration is safe to run on any settings.json — it only adds or reorders hook entries, never removes existing hooks.
@@ -773,6 +799,140 @@ Ask the user one question:
 - **Google Vertex AI:** Confirm: "Make sure `ANTHROPIC_VERTEX_PROJECT_ID` and `CLOUD_ML_REGION` are set in your Claude Code environment, and that service account auth is configured (via `GOOGLE_APPLICATION_CREDENTIALS` or `gcloud auth application-default login`)." No input required — informational only.
 
 **Write model_provider:** The template ships with `"model_provider": "anthropic"` — no file change is needed when the user selects the default. For AWS Bedrock or Google Vertex AI, update `.claude/pipeline-config.json` to set `model_provider` to `bedrock` or `vertex` respectively.
+
+### Step 1e: Tech Stack Dependencies (Optional Offer)
+
+After gathering the tech stack in Step 1, offer to generate a dependency install list based on what the user described.
+
+1. **Parse the tech stack** the user provided. Look for signals: Node.js/npm, Python, Ruby, Go, Rust, Java/Gradle, Docker, PostgreSQL, MySQL, Redis, jq, gh CLI, glab CLI, semgrep.
+
+2. **Build a Brew install list** (macOS) for any detected dependencies that are installable via Homebrew:
+   - `node` for Node.js/npm
+   - `python` for Python
+   - `jq` (always include — required by pipeline hooks)
+   - `gh` if GitHub platform selected
+   - `glab` if GitLab platform selected
+   - `docker` for Docker
+   - `postgresql@15` for PostgreSQL
+   - Other detected dependencies
+
+3. **Offer the list** (only if there are items beyond jq):
+
+   > Based on your tech stack, these tools are needed. Want me to install them via Homebrew, or just print the commands?
+   >
+   > ```
+   > brew install jq [other detected packages]
+   > ```
+   >
+   > Options: "Install for me" / "Print the commands" / "Skip"
+
+   - **Install for me:** Run `brew install [packages]` via Bash. Report success or failure per package.
+   - **Print the commands:** Print the brew install line(s). User installs manually.
+   - **Skip:** Continue without installing. Note that `jq` is required by pipeline hooks and must be installed separately.
+
+4. **If only jq is in the list:** Print "Pipeline hooks require `jq`. Install with: `brew install jq`" and continue without asking.
+
+5. **Non-macOS:** If `command -v brew` is not found, print the equivalent package manager alternatives: `apt-get install jq` (Linux/Debian) or point to https://jqlang.github.io/jq/download/. Do not attempt to run package managers other than brew without user consent.
+
+### Step 1f: Agent Roster Selection
+
+After Step 1e, configure which agents are active for this project.
+
+**Existing roster detection (update path):**
+
+If `.claude/pipeline-config.json` already exists and contains an `agent_roster` key, detect the existing configuration and ask:
+
+> You have an existing agent roster configured. Keep your current configuration or customize it?
+>
+> Current roster: [list enabled agents with their firing positions]
+>
+> - **Keep** -- Use the current roster as-is.
+> - **Customize** -- Walk through agent selection again.
+
+If the user chooses **Keep**: skip the rest of Step 1f and proceed to Step 2.
+If the user chooses **Customize**: proceed with the agent selection below.
+
+**New install / customize path:**
+
+Explain the model first (one paragraph, not a list):
+
+> The pipeline has three core agents that are always active: **Robert** (product review), **Sarah** (architecture), and **Colby** (build). Beyond that, you can add any combination of the following agents. For each, you choose when it fires: after every Colby build unit, at pipeline end, or on-demand only.
+
+Then ask about each optional agent **one at a time** (do not dump the full list):
+
+**Poirot (blind code investigator):**
+> Would you like to include **Poirot** -- the blind code reviewer? Poirot does a diff-only review of every Colby build unit and catches implementation drift before it compounds. Recommended for any team-size project.
+>
+> If yes: When should Poirot fire?
+> - **after-every-unit** (recommended) -- Reviews each Colby build unit before Ellis commits.
+> - **pipeline-end** -- Reviews the full diff at the end, not unit-by-unit.
+> - **on-demand** -- Only when Eva explicitly invokes.
+
+**Ellis (commit manager):**
+> Would you like to include **Ellis** -- the commit and changelog manager? Ellis handles git add, commit, and push with a proper commit message. Without Ellis, the pipeline uses a lightweight generic commit (Eva asks "Want to commit? [y/n]" and runs standard git commands with no ceremony).
+>
+> If yes: Ellis fires at pipeline-end (after Poirot review). No further prompt needed.
+
+**Agatha (documentation):**
+> Would you like to include **Agatha** -- the documentation agent? Agatha writes and updates project docs after each feature is built.
+>
+> If yes: When should Agatha fire?
+> - **pipeline-end** (recommended) -- Updates docs after the full pipeline completes.
+> - **on-demand** -- Only when explicitly requested.
+
+**Sable (UX reviewer):**
+> Would you like to include **Sable** -- the UX acceptance reviewer? Sable reviews Colby's UI output against the UX spec for fidelity and accessibility.
+>
+> If yes: When should Sable fire?
+> - **after-every-unit** -- Reviews each UI-touching build unit.
+> - **pipeline-end** -- Reviews the full UI delta at end.
+> - **on-demand** -- Only on request.
+
+**Sentinel (security audit):**
+> Would you like to include **Sentinel** -- the security audit agent? Sentinel runs Semgrep SAST against new code. Requires the Semgrep MCP server (see Step 6a for setup). Skip now and enable in Step 6a if you want Semgrep configured first.
+>
+> If yes: on-demand only (security audits are always explicit).
+
+**Sherlock (bug detective):**
+> Would you like to include **Sherlock** -- the bug investigation agent? Sherlock handles user-reported bug diagnosis (distinct from Poirot's code review). Without Sherlock, Eva handles bug intake but cannot dispatch a specialist investigation.
+>
+> If yes: on-demand only (Sherlock is always triggered by user bug reports).
+
+**Write the roster:**
+
+After all agent selections, write the `agent_roster` object to `.claude/pipeline-config.json`. Always include the core trio with `firing: "core"`. For each optional agent the user selected, include it with the chosen firing position. For each agent the user declined, set `enabled: false, firing: "on-demand"` (so the roster key exists for hooks to read, but the agent is disabled).
+
+Also set `generic_commit_enabled` in `.claude/pipeline-config.json`:
+- `true` when Ellis is not enabled (or not selected)
+- `false` when Ellis is enabled
+
+**Example roster JSON (Poirot + Ellis selected; others declined):**
+
+```json
+"agent_roster": {
+  "robert": { "enabled": true, "firing": "core" },
+  "sarah": { "enabled": true, "firing": "core" },
+  "colby": { "enabled": true, "firing": "core" },
+  "investigator": { "enabled": true, "firing": "after-every-unit" },
+  "ellis": { "enabled": true, "firing": "pipeline-end" },
+  "agatha": { "enabled": false, "firing": "on-demand" },
+  "sable": { "enabled": false, "firing": "on-demand" },
+  "sentinel": { "enabled": false, "firing": "on-demand" },
+  "sherlock": { "enabled": false, "firing": "on-demand" }
+},
+"generic_commit_enabled": false
+```
+
+**Minimal default (no optional agents selected):**
+
+```json
+"agent_roster": {
+  "robert": { "enabled": true, "firing": "core" },
+  "sarah": { "enabled": true, "firing": "core" },
+  "colby": { "enabled": true, "firing": "core" }
+},
+"generic_commit_enabled": true
+```
 
 ### Step 2: Read Templates
 

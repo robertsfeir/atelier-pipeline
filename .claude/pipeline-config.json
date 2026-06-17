@@ -16,10 +16,20 @@
   "ci_watch_log_command": "",
   "deps_agent_enabled": false,
   "darwin_enabled": false,
-  "dashboard_mode": "none",
   "model_provider": "anthropic",
   "brevity": true,
   "conversation_language": "en",
   "artifact_language": "en",
-  "language_grade_level": 9
+  "language_grade_level": 9,
+  "agent_roster": {
+    "robert": { "enabled": true, "firing": "core" },
+    "sarah": { "enabled": true, "firing": "core" },
+    "colby": { "enabled": true, "firing": "core" },
+    "investigator": { "enabled": true, "firing": "after-every-unit" },
+    "ellis": { "enabled": true, "firing": "pipeline-end" },
+    "agatha": { "enabled": true, "firing": "pipeline-end" },
+    "sentinel": { "enabled": true, "firing": "on-demand" },
+    "sherlock": { "enabled": true, "firing": "on-demand" }
+  },
+  "generic_commit_enabled": false
 }

@@ -47,7 +47,6 @@ AGENT_TEAMS_ENV=false
 CUSTOM_AGENT_COUNT=0
 CI_WATCH_ENABLED=false
 DARWIN_ENABLED=false
-DASHBOARD_MODE="none"
 PROJECT_NAME=""
 SENTINEL_ENABLED=false
 DEPS_AGENT_ENABLED=false
@@ -111,7 +110,6 @@ if [ -n "$CONFIG_FILE" ] && [ -f "$CONFIG_FILE" ] && command -v jq &>/dev/null; 
   AGENT_TEAMS_ENABLED=$(jq -r '.agent_teams_enabled // false' "$CONFIG_FILE" 2>/dev/null || echo "false")
   CI_WATCH_ENABLED=$(jq -r '.ci_watch_enabled // false' "$CONFIG_FILE" 2>/dev/null || echo "false")
   DARWIN_ENABLED=$(jq -r '.darwin_enabled // false' "$CONFIG_FILE" 2>/dev/null || echo "false")
-  DASHBOARD_MODE=$(jq -r '.dashboard_mode // "none"' "$CONFIG_FILE" 2>/dev/null || echo "none")
   SENTINEL_ENABLED=$(jq -r '.sentinel_enabled // false' "$CONFIG_FILE" 2>/dev/null || echo "false")
   DEPS_AGENT_ENABLED=$(jq -r '.deps_agent_enabled // false' "$CONFIG_FILE" 2>/dev/null || echo "false")
   CFG_PROJECT_NAME=$(jq -r '.project_name // ""' "$CONFIG_FILE" 2>/dev/null || echo "")
@@ -189,7 +187,6 @@ cat <<EOF
   "custom_agent_count": $CUSTOM_AGENT_COUNT,
   "ci_watch_enabled": $CI_WATCH_ENABLED,
   "darwin_enabled": $DARWIN_ENABLED,
-  "dashboard_mode": "$(json_escape "$DASHBOARD_MODE")",
   "project_name": "$(json_escape "$PROJECT_NAME")",
   "sentinel_enabled": $SENTINEL_ENABLED,
   "deps_agent_enabled": $DEPS_AGENT_ENABLED,

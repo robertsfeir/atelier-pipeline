@@ -47,6 +47,39 @@ fi
 PIPELINE_DIR=$(jq -r '.pipeline_state_dir' "$CONFIG")
 STATE_FILE="$PIPELINE_DIR/pipeline-state.md"
 
+# ─── Roster-aware helper ───────────────────────────────────────────────────
+# Returns 0 (true) when the agent is enabled in the active roster, or when
+# the roster key is absent/malformed (fail-open per ADR-0060).
+roster_agent_enabled() {
+  local agent_name="$1"
+  # Try .cursor/ first (Cursor), fall back to .claude/ (Claude Code)
+  local roster_config
+  if [ -f "${PROJECT_ROOT}/.cursor/pipeline-config.json" ]; then
+    roster_config="${PROJECT_ROOT}/.cursor/pipeline-config.json"
+  else
+    roster_config="${PROJECT_ROOT}/.claude/pipeline-config.json"
+  fi
+  if [ ! -f "$roster_config" ]; then
+    return 0  # fail-open: no config means treat as enabled
+  fi
+  # Fail-open when agent_roster key is entirely absent (upgrade path from v5).
+  # When agent_roster IS present, an agent absent from it is treated as disabled.
+  local roster_present
+  roster_present=$(jq -r 'if .agent_roster then "yes" else "no" end' \
+    "$roster_config" 2>/dev/null) || true
+  if [ "${roster_present:-no}" = "no" ]; then
+    return 0  # fail-open: no roster means old install, treat all agents as enabled
+  fi
+  local enabled
+  # Use explicit false comparison: jq's // alternative ignores false (falsy).
+  # When the agent key is absent from the roster, treat as disabled (user didn't select it).
+  enabled=$(jq -r --arg agent "$agent_name" \
+    'if .agent_roster[$agent] == null then "false" elif .agent_roster[$agent].enabled == false then "false" else "true" end' \
+    "$roster_config" 2>/dev/null) || true
+  # fail-open: any jq error -> enabled
+  [ "${enabled:-true}" != "false" ]
+}
+
 # ─── Snapshot state file to avoid partial-read race ───────────────────
 # Eva may be mid-write to pipeline-state.md when this hook fires.
 # Copying to a temp file gives a consistent snapshot for parsing.
@@ -68,7 +101,7 @@ parse_pipeline_status() {
 # invocation prompt must reference that path. Otherwise the investigator
 # would read files from the wrong location (main repo instead of worktree).
 # Fails open when worktree_path is empty/absent.
-if [ "$SUBAGENT_TYPE" = "investigator" ]; then
+if [ "$SUBAGENT_TYPE" = "investigator" ] && roster_agent_enabled "investigator"; then
   WORKTREE_PATH=$(parse_pipeline_status "worktree_path") || true
   if [ -n "$WORKTREE_PATH" ] && [ "$WORKTREE_PATH" != "null" ]; then
     INVOCATION_PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // empty')
@@ -90,6 +123,10 @@ fi
 # ─── Gate 0: Ellis blocked when git is not available ────────────────
 # When git_available: false in pipeline-config.json, Ellis cannot operate
 # (no git repo to commit to). Block with a clear message.
+# Roster check: if Ellis is not in the roster, skip all Ellis gates.
+if [ "$SUBAGENT_TYPE" = "ellis" ] && ! roster_agent_enabled "ellis"; then
+  exit 0
+fi
 if [ "$SUBAGENT_TYPE" = "ellis" ]; then
   # Try .cursor/ first (Cursor), fall back to .claude/ (Claude Code)
   if [ -f "${PROJECT_ROOT}/.cursor/pipeline-config.json" ]; then
@@ -159,7 +196,7 @@ fi
 # ─── Gate 2: Agatha after Poirot, not during build ─────────────────────
 # "Agatha writes docs after final Poirot review, not during build."
 # Uses the structured PIPELINE_STATUS phase field instead of grep.
-if [ "$SUBAGENT_TYPE" = "agatha" ]; then
+if [ "$SUBAGENT_TYPE" = "agatha" ] && roster_agent_enabled "agatha"; then
   if [ -f "$STATE_FILE" ]; then
     CURRENT_PHASE=$(parse_pipeline_status "phase") || true
     CURRENT_PHASE=$(echo "$CURRENT_PHASE" | tr '[:upper:]' '[:lower:]')

@@ -15,7 +15,6 @@
   "ci_watch_max_retries": 3,
   "ci_watch_poll_command": "",
   "ci_watch_log_command": "",
-  "dashboard_mode": "none",
   "token_budget_warning_threshold": null,
   "design_system_path": null,
   "model_provider": "anthropic",
@@ -27,5 +26,11 @@
   "brevity": true,
   "conversation_language": "en",
   "artifact_language": "en",
-  "language_grade_level": 9
+  "language_grade_level": 9,
+  "agent_roster": {
+    "robert": { "enabled": true, "firing": "core" },
+    "sarah": { "enabled": true, "firing": "core" },
+    "colby": { "enabled": true, "firing": "core" }
+  },
+  "generic_commit_enabled": true
 }

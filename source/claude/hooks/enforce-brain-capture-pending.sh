@@ -52,6 +52,41 @@ case "$AGENT_TYPE" in
   *) exit 0 ;;
 esac
 
+# Roster intersection (ADR-0060): skip capture when the stopping agent is not
+# in the active agent_roster. Fail-open when roster key is absent/malformed.
+_roster_check() {
+  local agent="$1"
+  # Map from agent_type values used by SubagentStop to roster keys.
+  # robert-spec and sable-ux are skill-activated producers -- not in the roster;
+  # treat as enabled so their captures are not silently dropped.
+  case "$agent" in
+    robert-spec|sable-ux) return 0 ;;
+  esac
+  local roster_config
+  if [ -f "${PROJECT_ROOT}/.cursor/pipeline-config.json" ]; then
+    roster_config="${PROJECT_ROOT}/.cursor/pipeline-config.json"
+  else
+    roster_config="${PROJECT_ROOT}/.claude/pipeline-config.json"
+  fi
+  [ ! -f "$roster_config" ] && return 0  # fail-open: no config
+  # Fail-open when agent_roster key is entirely absent (upgrade path from v5).
+  local roster_present
+  roster_present=$(jq -r 'if .agent_roster then "yes" else "no" end' \
+    "$roster_config" 2>/dev/null) || true
+  if [ "${roster_present:-no}" = "no" ]; then
+    return 0  # fail-open: old install, treat all agents as enabled
+  fi
+  local enabled
+  # Agent absent from a present roster = disabled (user didn't select it).
+  enabled=$(jq -r --arg a "$agent" \
+    'if .agent_roster[$a] == null then "false" elif .agent_roster[$a].enabled == false then "false" else "true" end' \
+    "$roster_config" 2>/dev/null) || true
+  [ "${enabled:-true}" != "false" ]
+}
+if ! _roster_check "$AGENT_TYPE"; then
+  exit 0
+fi
+
 # Resolve pipeline_state_dir from enforcement-config.json. Fail-open on a
 # missing config -- this hook must never block the stop.
 CONFIG="$SCRIPT_DIR/enforcement-config.json"

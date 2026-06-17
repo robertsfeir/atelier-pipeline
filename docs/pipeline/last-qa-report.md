@@ -1,18 +1,17 @@
 ## DoR: Diff Metadata
-**Files:** 2 (`.cursor-plugin/skills/pipeline-setup/SKILL.md`, `skills/pipeline-setup/SKILL.md`) | **Added:** 24 | **Removed:** 20
-**Functions modified:** none (documentation/skill prompt only -- Step 1d "Model Provider Selection") | **New dependencies:** none
+**Files:** 2 (scoped re-run) | `.cursor-plugin/hooks/session-boot.sh`, `skills/pipeline-setup/SKILL.md`
+**Functions modified:** session-boot.sh (dashboard_mode removal); SKILL.md (step renumbering 0g/0h)
+**New dependencies:** none
 
 ## Exercised
-- Ran the project test gate (`pytest tests/adr-0054/`): **8 passed, 0 failed** -- the ADR-0054 invariants (`model_provider` field present in template with default `"anthropic"`; Bedrock/Vertex enum values still recognized; pipeline-setup SKILL still references the field) all hold post-edit.
-- Verified dual-target sync via `diff .cursor-plugin/skills/pipeline-setup/SKILL.md skills/pipeline-setup/SKILL.md` -- zero output, files identical.
-- Static-traced the user flow: user picks "Claude Code" -> Write step (line 623) ships template `model_provider: "anthropic"` unchanged. User picks "AWS Bedrock" or "Google Vertex AI" -> Write step says "set `model_provider` to `bedrock` or `vertex` respectively". Mapping label -> enum value is correct in all three branches.
-- Grep-confirmed downstream consumers of the enum values still expect lowercase `anthropic`/`bedrock`/`vertex` (`source/shared/rules/pipeline-models.md` lines 113-117 translation table; `tests/adr-0054/test_adr_0054.py` line 41 default assertion). No downstream consumer reads the user-facing label "Claude Code" -- only the persisted enum, which the Write step still emits correctly.
+- Ran `.cursor-plugin/hooks/session-boot.sh`: output has no `dashboard_mode` key. Finding 1 resolved.
+- Grepped `.cursor-plugin/hooks/session-boot.sh` for `dashboard_mode`: zero matches confirmed.
+- Grepped `skills/pipeline-setup/SKILL.md` for `### Step 0` headings: sequence now reads 0, 0b, 0c, 0d, 0e, 0f, 0g, 0h. Finding 2 resolved.
 
 ## DoD: Verification
-**Findings:** 2 (1 NIT, 1 NIT) | **Categories checked:** label/enum mapping consistency, dual-target sync, downstream consumer alignment, default behavior preservation, tone/framing | **Grep verified:** `model_provider`, `"anthropic"`, `"bedrock"`, `"vertex"` across `source/`, `skills/`, `scripts/`, `tests/` | **Exercised:** pytest gate (8/8 pass), dual-target diff, three-branch trace of the renamed wizard prompt
+**Findings:** 0 | **Categories:** sync omission (resolved), naming (resolved) | **Grep verified:** `dashboard_mode` absence in `.cursor-plugin/hooks/session-boot.sh`; step ordering in SKILL.md | **Exercised:** `.cursor-plugin/hooks/session-boot.sh` (live run)
 
 ## Findings
 | # | Location | Severity | Category | Description | Suggested Fix |
 |---|----------|----------|----------|-------------|---------------|
-| 1 | `skills/pipeline-setup/SKILL.md:611` and `.cursor-plugin/skills/pipeline-setup/SKILL.md:611` | NIT | naming / mapping clarity | The Default line now reads "default to `Claude Code`" but `Claude Code` is a user-facing label, not the enum value persisted to `pipeline-config.json`. The pre-edit text said "default to `anthropic`", which matched the value actually written. The new wording is correct in spirit (the Write step on line 623 still emits `"model_provider": "anthropic"`), but a future reader skimming line 611 alone could think "Claude Code" is a literal config value. The other two options have the same shape -- "AWS Bedrock" / "Google Vertex AI" are labels, not the `bedrock` / `vertex` enum values. | Add a one-line label-to-value table near line 611, or parenthesize the enum: "default to `Claude Code` (writes `model_provider: \"anthropic\"`)". Same treatment for the Bedrock and Vertex bullets. Keeps the friendlier wording while preserving the label-to-enum mapping at the point of decision rather than 12 lines later. |
-| 2 | `skills/pipeline-setup/SKILL.md:604` and `.cursor-plugin/skills/pipeline-setup/SKILL.md:604` | NIT | tone / framing | The new preamble ("this is a string formatting decision, not a service selection. You're not being asked to set up a new API or pay for anything extra") reads as reassurance against an objection the user has not raised. It is the only place in the setup wizard that uses persuasive framing -- the branching-strategy and brain-setup steps state the choice and move on. The framing makes sense if telemetry showed users abandoning at this step thinking they had to configure a cloud provider, but I have no diff context to confirm that motivation, and the wording is asymmetric with the rest of the wizard's voice. | If the user-confusion signal is real, keep the reassurance but trim to one sentence: "Eva needs the model ID format to use when invoking agents -- credentials and billing stay in your existing Claude Code setup." If the signal is hypothetical, drop the preamble and let the option labels do the work; "Claude Code (default)" and the unchanged Credential note already tell the user no new API is required. |
+| — | — | — | — | Both prior findings resolved. No new issues. | — |
