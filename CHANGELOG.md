@@ -5,6 +5,26 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [5.2.0] - 2026-06-17
+
+### Added
+- **Configurable agent roster (`agent_roster`)** — fresh installs now ship with Robert, Sarah, and Colby only (the minimum viable pipeline). Additional agents (Poirot, Ellis, Agatha, Sentinel, Sherlock) are opt-in via an `agent_roster` array in `pipeline-config.json`. Each optional agent is configured with a firing position: `after-every-unit`, `pipeline-end`, or `on-demand`. Implements ADR-0060.
+- **Setup wizard — agent selection** — `/pipeline-setup` now presents the six optional agents with one-line descriptions and asks for a firing position per selected agent. Writes the complete `agent_roster` block to `pipeline-config.json` before finishing. On plugin update with an existing full-roster install, prompts "Keep your current configuration or customize it?" and runs the selection wizard on request.
+- **Setup wizard — tech stack and dependency detection** — wizard asks for the user's tech stack and checks required tools against PATH using `command -v`. Offers to install missing tools via the platform package manager (Homebrew on macOS, apt-get/dnf/winget elsewhere). Predefined mapping for eight common stacks (Node/JS, Python, Go, Rust, Ruby, Java/JVM, PHP, .NET); best-effort inference for unlisted tools.
+- **Generic commit fallback** — when Ellis is not on the roster, Eva provides a lightweight commit path: one question (commit message), then `git commit` directly. No persona, no changelog entry, no structured format. `generic_commit_enabled` flag in `pipeline-config.json` activates this path automatically.
+- **Sable always-on** — Sable (UX reviewer and producer) is available without roster selection. Never gated by roster absence; not listed as an optional agent in the setup wizard.
+- **robert-spec in core trio** — the spec producer persona is now treated as part of the core trio alongside the reviewer, always installed and always enabled.
+- **15 new behavioral tests** — `tests/hooks/test_adr_0060_configurable_roster.py` covering absent-agent no-op and Ellis-absent commit flow. 428 tests total.
+
+### Changed
+- **Hook roster-awareness** — `enforce-sequencing.sh` and `enforce-brain-capture-pending.sh` now read `agent_roster` at runtime and exit 0 (no-op) when the target agent is absent from the roster. Fail-open when `agent_roster` key is missing (safe upgrade path from v5.1.x installs). Sable bypasses the roster gate entirely (always-on).
+- **Agatha firing position restricted** — setup wizard offers only `pipeline-end` for Agatha; `after-every-unit` and `on-demand` are not presented.
+- **Default pipeline-config.json template** — source template now ships with a minimal core-trio roster. The self-dogfooding `.claude/pipeline-config.json` retains the full roster for this repo.
+
+### Removed
+- **Dashboard feature** — `source/shared/dashboard/telemetry-bridge.sh` (432 lines) and all `dashboard_mode` references removed from session-boot scripts (Claude, Cursor, source variants) and telemetry-metrics docs. The `/pipeline-setup` Step 0g cleanup removes `dashboard_mode` from existing `pipeline-config.json` files on upgrade using a safe tempfile write.
+- **Kanban and plugin integration references** — removed from all non-ADR, non-changelog documentation.
+
 ## [5.1.8] - 2026-05-22
 
 ### Added
